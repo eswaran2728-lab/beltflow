@@ -41,7 +41,7 @@ export default function AdminDashboard() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Persatuan Silambam Malaysia Daerah Sepang</p>
+          <p className="text-gray-500 text-sm mt-0.5">Persatuan Silambam Malaysia — Daerah Sepang ✓</p>
         </div>
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 bg-green-100 text-green-800 text-xs font-bold px-3 py-1.5 rounded-full">
