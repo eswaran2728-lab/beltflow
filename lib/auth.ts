@@ -14,8 +14,8 @@ export interface AuthUser {
 const MOCK_USERS: (AuthUser & { password: string })[] = [
   {
     id: 'u-admin',
-    email: 'admin@beltflow.com',
-    password: 'admin123',
+    email: 'eswaran2728@gmail.com',
+    password: 'Eswaran0321@',
     role: 'admin',
     name: 'ESWARAN A/L Padmanathan',
   },
@@ -98,7 +98,7 @@ export function clearSession(): void {
 }
 
 export const DEMO_CREDENTIALS: Record<UserRole, { email: string; password: string }> = {
-  admin:   { email: 'admin@beltflow.com',   password: 'admin123'   },
+  admin:   { email: 'eswaran2728@gmail.com', password: 'Eswaran0321@' },
   coach:   { email: 'coach@beltflow.com',   password: 'coach123'   },
   parent:  { email: 'parent@beltflow.com',  password: 'parent123'  },
   student: { email: 'student@beltflow.com', password: 'student123' },
