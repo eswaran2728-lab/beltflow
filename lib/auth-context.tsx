@@ -1,7 +1,7 @@
 'use client';
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from './supabase';
-import { AuthUser, UserRole, saveSession, loadSession, clearSession } from './auth';
+import { AuthUser, UserRole, saveSession, loadSession, clearSession, DEMO_USERS } from './auth';
 
 interface SignupData {
   name: string;
@@ -19,6 +19,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   signup: (data: SignupData) => Promise<{ success: boolean; error?: string }>;
+  loginAsDemo: (role: UserRole) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -130,10 +131,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: true };
   };
 
+  const loginAsDemo = (role: UserRole) => {
+    const demoUser = DEMO_USERS[role];
+    saveSession(demoUser);
+    setCurrentUser(demoUser);
+  };
+
   if (!loaded) return null;
 
   return (
-    <AuthContext.Provider value={{ currentUser, isAuthenticated: !!currentUser, login, logout, signup }}>
+    <AuthContext.Provider value={{ currentUser, isAuthenticated: !!currentUser, login, logout, signup, loginAsDemo }}>
       {children}
     </AuthContext.Provider>
   );

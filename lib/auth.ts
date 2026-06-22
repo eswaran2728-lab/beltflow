@@ -9,9 +9,11 @@ export interface AuthUser {
   assignedClassIds?: string[];
   childStudentIds?: string[];
   studentId?: string;
+  isDemo?: boolean;
 }
 
 const MOCK_USERS: (AuthUser & { password: string })[] = [
+  // Real admin
   {
     id: 'u-admin',
     email: 'eswaran2728@gmail.com',
@@ -19,6 +21,7 @@ const MOCK_USERS: (AuthUser & { password: string })[] = [
     role: 'admin',
     name: 'ESWARAN A/L Padmanathan',
   },
+  // Real coach/parent/student added via code when provided
   {
     id: 'u-coach',
     email: 'coach@beltflow.com',
@@ -45,6 +48,41 @@ const MOCK_USERS: (AuthUser & { password: string })[] = [
   },
 ];
 
+// Demo-only users (no password needed, used from landing page)
+export const DEMO_USERS: Record<UserRole, AuthUser> = {
+  admin: {
+    id: 'demo-admin',
+    email: 'demo-admin@beltflow.com',
+    name: 'Demo Admin',
+    role: 'admin',
+    isDemo: true,
+  },
+  coach: {
+    id: 'demo-coach',
+    email: 'demo-coach@beltflow.com',
+    name: 'Demo Coach',
+    role: 'coach',
+    assignedClassIds: ['sungai-pelek-kids', 'sungai-pelek-senior'],
+    isDemo: true,
+  },
+  parent: {
+    id: 'demo-parent',
+    email: 'demo-parent@beltflow.com',
+    name: 'Demo Parent',
+    role: 'parent',
+    childStudentIds: ['stu-rubisha'],
+    isDemo: true,
+  },
+  student: {
+    id: 'demo-student',
+    email: 'demo-student@beltflow.com',
+    name: 'Demo Student',
+    role: 'student',
+    studentId: 'stu-rubisha',
+    isDemo: true,
+  },
+};
+
 const STORAGE_KEY = 'beltflow_auth_user';
 
 export function mockLogin(email: string, password: string): AuthUser | null {
@@ -63,7 +101,6 @@ export function mockSignup(data: {
   childStudentIds?: string[];
   assignedClassIds?: string[];
 }): AuthUser {
-  // TODO: Replace with supabase.auth.signUp() when Supabase is connected
   return {
     id: `u-${Date.now()}`,
     email: data.email,
@@ -96,13 +133,6 @@ export function clearSession(): void {
     localStorage.removeItem(STORAGE_KEY);
   }
 }
-
-export const DEMO_CREDENTIALS: Record<UserRole, { email: string; password: string }> = {
-  admin:   { email: 'eswaran2728@gmail.com', password: 'Eswaran0321@' },
-  coach:   { email: 'coach@beltflow.com',   password: 'coach123'   },
-  parent:  { email: 'parent@beltflow.com',  password: 'parent123'  },
-  student: { email: 'student@beltflow.com', password: 'student123' },
-};
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   admin:   'Admin',

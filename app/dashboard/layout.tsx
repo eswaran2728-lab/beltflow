@@ -46,6 +46,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Topbar onMenuClick={() => setSidebarOpen(true)} />
+        {currentUser.isDemo && (
+          <div className="bg-yellow-400 text-yellow-900 text-xs font-bold text-center py-2 px-4 flex items-center justify-center gap-2 flex-shrink-0">
+            <span>👁️ DEMO MODE — You are viewing sample data. No changes will be saved.</span>
+            <a href="/auth/login" className="underline ml-2">Login with real account →</a>
+          </div>
+        )}
         <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
       </div>
     </div>

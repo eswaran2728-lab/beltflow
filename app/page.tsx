@@ -145,6 +145,31 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Demo Section */}
+      <section id="demo" className="py-20 px-4 bg-[#0f172a]">
+        <div className="max-w-4xl mx-auto text-center">
+          <span className="inline-block bg-yellow-500 text-gray-900 text-xs font-bold px-4 py-1.5 rounded-full mb-4 uppercase tracking-wide">Try It Free — No Login Needed</span>
+          <h2 className="text-3xl font-extrabold text-white mb-4">See BeltFlow in Action</h2>
+          <p className="text-white/60 mb-10 max-w-xl mx-auto">Click any role below to explore the full dashboard with sample data. No account required.</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { role: 'admin',   label: 'Admin View',   desc: 'Full dashboard & all data', emoji: '🛡️', color: 'bg-white text-gray-900' },
+              { role: 'coach',   label: 'Coach View',   desc: 'Classes & student progress', emoji: '🥋', color: 'bg-blue-600 text-white' },
+              { role: 'parent',  label: 'Parent View',  desc: "Child's progress & payments", emoji: '👨‍👧', color: 'bg-green-600 text-white' },
+              { role: 'student', label: 'Student View', desc: 'My profile & achievements', emoji: '⭐', color: 'bg-purple-600 text-white' },
+            ].map(d => (
+              <a key={d.role} href={`/demo/${d.role}`}
+                className={`${d.color} rounded-2xl p-6 text-center hover:opacity-90 transition-all hover:scale-105 cursor-pointer block`}>
+                <div className="text-4xl mb-3">{d.emoji}</div>
+                <p className="font-extrabold text-sm">{d.label}</p>
+                <p className="text-xs opacity-70 mt-1">{d.desc}</p>
+              </a>
+            ))}
+          </div>
+          <p className="text-white/30 text-xs mt-8">Demo uses sample data only. Register for a real account to manage your academy.</p>
+        </div>
+      </section>
+
       <section id="pricing" className="py-20 px-4 bg-gray-50">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
