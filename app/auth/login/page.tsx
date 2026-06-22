@@ -2,19 +2,12 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Eye, EyeOff, LogIn, Shield, Dumbbell, Users, User } from 'lucide-react';
+import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { UserRole, ROLE_HOME, loadSession } from '@/lib/auth';
-
-const demoRoles: { role: UserRole; label: string; icon: React.ReactNode; color: string; desc: string }[] = [
-  { role: 'admin',   label: 'Admin',   icon: <Shield size={15} />,   color: 'bg-[#0f172a] text-white',   desc: 'Full access' },
-  { role: 'coach',   label: 'Coach',   icon: <Dumbbell size={15} />, color: 'bg-blue-600 text-white',    desc: 'My classes' },
-  { role: 'parent',  label: 'Parent',  icon: <Users size={15} />,    color: 'bg-green-600 text-white',   desc: 'My child' },
-  { role: 'student', label: 'Student', icon: <User size={15} />,     color: 'bg-purple-600 text-white',  desc: 'My profile' },
-];
+import { ROLE_HOME, loadSession } from '@/lib/auth';
 
 export default function LoginPage() {
-  const { login, switchDemoUser } = useAuth();
+  const { login } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,11 +24,6 @@ export default function LoginPage() {
     if (!result.success) { setError(result.error || 'Login failed.'); return; }
     const user = loadSession();
     if (user) router.push(ROLE_HOME[user.role]);
-  };
-
-  const handleDemo = (role: UserRole) => {
-    switchDemoUser(role);
-    router.push(ROLE_HOME[role]);
   };
 
   return (
@@ -64,7 +52,7 @@ export default function LoginPage() {
               <div className="relative">
                 <input
                   type={showPw ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
-                  placeholder="Enter password" required autoComplete="current-password"
+                  placeholder="Enter your password" required autoComplete="current-password"
                   className="w-full border border-gray-200 rounded-xl px-3 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <button type="button" onClick={() => setShowPw(!showPw)}
@@ -75,7 +63,9 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600">{error}</div>
+              <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600">
+                {error}
+              </div>
             )}
 
             <button type="submit" disabled={loading}
@@ -84,32 +74,13 @@ export default function LoginPage() {
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
-
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-px bg-gray-100" />
-            <span className="text-xs text-gray-400 font-medium">QUICK DEMO</span>
-            <div className="flex-1 h-px bg-gray-100" />
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            {demoRoles.map(d => (
-              <button key={d.role} onClick={() => handleDemo(d.role)}
-                className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-85 ${d.color}`}>
-                {d.icon}
-                <div className="text-left">
-                  <div className="text-xs font-bold leading-none">{d.label}</div>
-                  <div className="text-xs opacity-70 mt-0.5">{d.desc}</div>
-                </div>
-              </button>
-            ))}
-          </div>
         </div>
 
         <p className="text-center text-sm text-gray-500 mt-5">
           New academy?{' '}
           <Link href="/auth/signup" className="text-blue-600 font-semibold hover:underline">Create account</Link>
         </p>
-        <p className="text-center text-xs text-gray-400 mt-3">BeltFlow MVP · Free for Daerah Sepang Testing</p>
+        <p className="text-center text-xs text-gray-400 mt-3">BeltFlow · Persatuan Silambam Malaysia Daerah Sepang</p>
       </div>
     </div>
   );
