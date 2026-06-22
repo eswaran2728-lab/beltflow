@@ -76,8 +76,11 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="text-center text-xs text-gray-400 mt-5">BeltFlow · Persatuan Silambam Malaysia Daerah Sepang</p>
-        <p className="text-center text-xs text-gray-400 mt-1">Contact your admin to get access.</p>
+        <p className="text-center text-sm text-gray-500 mt-5">
+          New user?{' '}
+          <Link href="/auth/signup" className="text-blue-600 font-semibold hover:underline">Register here</Link>
+        </p>
+        <p className="text-center text-xs text-gray-400 mt-2">BeltFlow · Persatuan Silambam Malaysia Daerah Sepang</p>
       </div>
     </div>
   );

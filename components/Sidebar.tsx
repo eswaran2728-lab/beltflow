@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Users, Calendar, Award, BookOpen,
   CreditCard, Settings, Trophy, Receipt, X, Dumbbell,
-  User, CheckSquare, MessageSquare, Bell
+  User, CheckSquare, MessageSquare, Bell, UserCheck
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { UserRole } from '@/lib/auth';
@@ -20,6 +20,7 @@ const adminNav: NavItem[] = [
   { href: '/dashboard/payments',    label: 'Payments',        icon: CreditCard },
   { href: '/dashboard/tournaments', label: 'Tournaments',     icon: Trophy },
   { href: '/dashboard/coach',       label: 'Coach Tools',     icon: Dumbbell },
+  { href: '/dashboard/approvals',   label: 'Approvals',       icon: UserCheck, badge: '!' },
   { href: '/dashboard/settings',    label: 'Settings',        icon: Settings },
   { href: '/dashboard/billing',     label: 'Billing',         icon: Receipt, badge: 'Soon' },
 ];

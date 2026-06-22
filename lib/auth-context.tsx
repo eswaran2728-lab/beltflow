@@ -1,9 +1,7 @@
 'use client';
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import {
-  AuthUser, UserRole,
-  mockLogin, mockSignup, saveSession, loadSession, clearSession, DEMO_CREDENTIALS,
-} from './auth';
+import { supabase } from './supabase';
+import { AuthUser, UserRole, saveSession, loadSession, clearSession } from './auth';
 
 interface SignupData {
   name: string;
@@ -12,7 +10,7 @@ interface SignupData {
   role: UserRole;
   phone?: string;
   childName?: string;
-  assignedClassIds?: string[];
+  assignedClass?: string;
 }
 
 interface AuthContextType {
@@ -21,7 +19,6 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   signup: (data: SignupData) => Promise<{ success: boolean; error?: string }>;
-  switchDemoUser: (role: UserRole) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -31,53 +28,112 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    // Check existing session
     const session = loadSession();
     if (session) setCurrentUser(session);
     setLoaded(true);
+
+    // Listen for Supabase auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT') {
+        clearSession();
+        setCurrentUser(null);
+      }
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string) => {
-    // TODO: Replace with supabase.auth.signInWithPassword() when connected
-    const user = mockLogin(email, password);
-    if (!user) return { success: false, error: 'Wrong email or password. Try the demo buttons below.' };
+    // Check admin hardcoded credentials first
+    const { mockLogin } = await import('./auth');
+    const mockUser = mockLogin(email, password);
+    if (mockUser) {
+      saveSession(mockUser);
+      setCurrentUser(mockUser);
+      return { success: true };
+    }
+
+    // Try Supabase auth for real users
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error || !data.user) {
+      return { success: false, error: 'Wrong email or password.' };
+    }
+
+    // Get profile from Supabase
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('auth_user_id', data.user.id)
+      .single();
+
+    if (!profile) {
+      await supabase.auth.signOut();
+      return { success: false, error: 'Account not found. Contact admin.' };
+    }
+
+    if (profile.status !== 'approved') {
+      await supabase.auth.signOut();
+      return { success: false, error: 'Your account is pending admin approval. Please wait.' };
+    }
+
+    const user: AuthUser = {
+      id: data.user.id,
+      email: data.user.email!,
+      name: profile.full_name,
+      role: profile.role as UserRole,
+      phone: profile.phone,
+      assignedClassIds: profile.assigned_class_ids,
+      childStudentIds: profile.child_student_ids,
+      studentId: profile.student_id,
+    };
+
     saveSession(user);
     setCurrentUser(user);
     return { success: true };
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     clearSession();
     setCurrentUser(null);
   };
 
   const signup = async (data: SignupData) => {
-    // TODO: Replace with supabase.auth.signUp() when connected
-    const user = mockSignup({
-      name: data.name,
+    // Register with Supabase auth
+    const { data: authData, error } = await supabase.auth.signUp({
       email: data.email,
-      role: data.role,
-      phone: data.phone,
-      assignedClassIds: data.assignedClassIds,
-      childStudentIds: data.childName ? ['child-' + Date.now()] : undefined,
+      password: data.password,
     });
-    saveSession(user);
-    setCurrentUser(user);
-    return { success: true };
-  };
 
-  const switchDemoUser = (role: UserRole) => {
-    const creds = DEMO_CREDENTIALS[role];
-    const user = mockLogin(creds.email, creds.password);
-    if (user) {
-      saveSession(user);
-      setCurrentUser(user);
+    if (error || !authData.user) {
+      return { success: false, error: error?.message || 'Signup failed.' };
     }
+
+    // Create profile with status = pending
+    const { error: profileError } = await supabase.from('profiles').insert({
+      auth_user_id: authData.user.id,
+      full_name: data.name,
+      email: data.email,
+      phone: data.phone || null,
+      role: data.role,
+      status: 'pending',
+      child_name: data.childName || null,
+      assigned_class: data.assignedClass || null,
+    });
+
+    if (profileError) {
+      return { success: false, error: 'Could not save profile. Try again.' };
+    }
+
+    // Sign out immediately — must wait for admin approval
+    await supabase.auth.signOut();
+    return { success: true };
   };
 
   if (!loaded) return null;
 
   return (
-    <AuthContext.Provider value={{ currentUser, isAuthenticated: !!currentUser, login, logout, signup, switchDemoUser }}>
+    <AuthContext.Provider value={{ currentUser, isAuthenticated: !!currentUser, login, logout, signup }}>
       {children}
     </AuthContext.Provider>
   );
