@@ -83,16 +83,20 @@ export default function LandingPage() {
           <div className="w-20 h-20 bg-yellow-500 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl shadow-lg">🥋</div>
           <h2 className="text-3xl font-extrabold mb-6 text-gray-900">Built by a Martial Arts Instructor</h2>
           <p className="text-lg text-gray-600 leading-relaxed mb-6">
-            Founded by <strong>ESWARAN A/L Padmanathan</strong>, Silambam instructor and proud student of <strong>Mahaguru Sri S. Arumugam</strong>, founder of Persatuan Silambam Malaysia, and proud student of <strong>Dato Mahaguru A. Sivakumar</strong>.
+            Founded by <strong>ESWARAN A/L PADMANATHAN</strong>, Silambam instructor and proud student of{' '}
+            <strong>Mahaguru Sri S. Arumugam</strong>, <strong>Dato&apos; Mahaguru A. Sivakumar</strong>,{' '}
+            <strong>Grandmaster Vijaya Sekaran</strong> and <strong>Master Kanesan</strong>.
           </p>
           <p className="text-gray-500 leading-relaxed mb-8">
             Having managed a Silambam academy firsthand, Eswaran understood the pain of tracking 100+ students with spreadsheets and WhatsApp groups. BeltFlow was built to solve real problems faced by real instructors across Malaysia and beyond.
           </p>
           <div className="inline-flex items-center gap-3 bg-white border border-gray-200 px-6 py-4 rounded-xl shadow-sm">
-            <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center text-white font-bold">E</div>
+            <div className="w-14 h-14 bg-gray-900 rounded-full flex items-center justify-center text-white font-bold text-xl flex-shrink-0">E</div>
             <div className="text-left">
-              <p className="font-bold text-gray-900">ESWARAN A/L Padmanathan</p>
-              <p className="text-sm text-gray-500">Founder - Silambam Instructor - Persatuan Silambam Malaysia</p>
+              <p className="font-extrabold text-gray-900 text-lg">ESWARAN A/L PADMANATHAN</p>
+              <p className="text-sm text-gray-500 mt-0.5">Founder · Silambam Instructor</p>
+              <p className="text-sm text-gray-500">Persatuan Silambam Malaysia Daerah Sepang</p>
+              <p className="text-xs text-yellow-600 mt-1 font-medium">📸 Photo coming soon</p>
             </div>
           </div>
         </div>
@@ -219,7 +223,7 @@ export default function LandingPage() {
             <p className="text-white/40 text-xs mt-1">Built for martial arts. Powered by progress.</p>
           </div>
           <p className="text-white/40 text-sm text-center">
-            Created by <span className="text-white/70 font-medium">ESWARAN A/L Padmanathan</span>
+            Created by <span className="text-white/70 font-medium">ESWARAN A/L PADMANATHAN</span>
           </p>
           <div className="flex items-center gap-4 text-sm text-white/40">
             <Link href="/auth/login" className="hover:text-white/70">Login</Link>
