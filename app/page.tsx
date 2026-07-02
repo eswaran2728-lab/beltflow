@@ -44,7 +44,7 @@ export default function LandingPage() {
         </div>
         <div className="relative max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-yellow-500/20 text-yellow-400 text-sm font-semibold px-4 py-1.5 rounded-full mb-6 border border-yellow-500/30">
-            <Zap size={14} /> Silambam, Karate, Taekwondo, Muay Thai, BJJ
+            <Zap size={14} /> Silambam, Karate, Taekwondo, Muay Thai, BJJ, Silat, Wushu
           </div>
           <h1 className="text-4xl md:text-6xl font-extrabold leading-tight mb-6">
             Manage Your Martial Arts<br /><span className="text-yellow-500">Academy with Ease</span>
