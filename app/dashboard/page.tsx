@@ -6,16 +6,21 @@ import StatCard from '@/components/StatCard';
 import PaymentStatusBadge from '@/components/PaymentStatusBadge';
 import Badge from '@/components/Badge';
 import Link from 'next/link';
-import { mockStudents } from '@/data/students';
-import { mockPayments } from '@/data/payments';
-import { mockGradingEvents } from '@/data/grading';
-import { mockAttendance } from '@/data/attendance';
 import { useAuth } from '@/lib/auth-context';
 import { ROLE_HOME } from '@/lib/auth';
+import { useLive } from '@/lib/useLive';
+import { getStudents, getPayments, getGradingEvents, getAttendance, getClasses, setPaymentStatus } from '@/lib/db';
+import { monthLabel } from '@/lib/types';
 
 export default function AdminDashboard() {
   const { currentUser } = useAuth();
   const router = useRouter();
+
+  const { data: students } = useLive(getStudents, ['students']);
+  const { data: payments } = useLive(getPayments, ['payments']);
+  const { data: gradingEvents } = useLive(getGradingEvents, ['grading_events']);
+  const { data: attendance } = useLive(getAttendance, ['attendance']);
+  const { data: classes } = useLive(getClasses, ['classes']);
 
   useEffect(() => {
     if (currentUser && currentUser.role !== 'admin') {
@@ -24,17 +29,25 @@ export default function AdminDashboard() {
   }, [currentUser, router]);
 
   if (currentUser && currentUser.role !== 'admin') return null;
-  const totalStudents = mockStudents.length;
-  const activeStudents = mockStudents.filter(s => s.status === 'Active').length;
-  const atRisk = mockStudents.filter(s => s.missedClasses >= 3);
-  const monthlyRevenue = mockPayments
-    .filter(p => p.status === 'Paid' && p.month === 'June 2026')
-    .reduce((sum, p) => sum + p.amount, 0);
-  const pendingCash = mockPayments.filter(p => p.status === 'Pending Cash Approval');
-  const upcomingGrading = mockGradingEvents.filter(g => g.status === 'Upcoming');
-  const recentPayments = mockPayments.slice(0, 5);
-  const totalPresent = mockAttendance.filter(a => a.present).length;
-  const attendanceRate = Math.round((totalPresent / mockAttendance.length) * 100);
+
+  const currentMonth = monthLabel();
+  const totalStudents = students?.length ?? 0;
+  const activeStudents = students?.filter(s => s.status === 'Active').length ?? 0;
+  const atRisk = students?.filter(s => s.missedClasses >= 3) ?? [];
+  const monthlyRevenue = payments
+    ?.filter(p => p.status === 'Paid' && p.month === currentMonth)
+    .reduce((sum, p) => sum + p.amount, 0) ?? 0;
+  const pendingCash = payments?.filter(p => p.status === 'Pending Cash Approval') ?? [];
+  const upcomingGrading = gradingEvents?.filter(g => g.status === 'Upcoming') ?? [];
+  const recentPayments = payments?.slice(0, 5) ?? [];
+  const totalPresent = attendance?.filter(a => a.present).length ?? 0;
+  const attendanceRate = attendance && attendance.length > 0
+    ? Math.round((totalPresent / attendance.length) * 100)
+    : 0;
+
+  const approve = async (id: string) => {
+    try { await setPaymentStatus(id, 'Paid', currentUser?.name); } catch { /* surfaces via realtime refresh */ }
+  };
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -45,23 +58,23 @@ export default function AdminDashboard() {
         </div>
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 bg-green-100 text-green-800 text-xs font-bold px-3 py-1.5 rounded-full">
-            ✓ Free MVP — All Features Unlocked
+            ✓ Live Data — Updates in Real Time
           </span>
         </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Total Students" value={totalStudents} icon={Users} iconBg="bg-blue-50 text-blue-600" subtitle="Registered members" />
-        <StatCard title="Active Students" value={activeStudents} icon={UserCheck} iconBg="bg-green-50 text-green-600" trend={{ value: 'from last month', positive: true }} />
-        <StatCard title="Monthly Revenue" value={`RM ${monthlyRevenue}`} icon={DollarSign} iconBg="bg-yellow-50 text-yellow-600" subtitle="June 2026" />
-        <StatCard title="Attendance Rate" value={`${attendanceRate}%`} icon={TrendingUp} iconBg="bg-purple-50 text-purple-600" subtitle="Last 30 days" />
+        <StatCard title="Active Students" value={activeStudents} icon={UserCheck} iconBg="bg-green-50 text-green-600" subtitle="Currently training" />
+        <StatCard title="Monthly Revenue" value={`RM ${monthlyRevenue}`} icon={DollarSign} iconBg="bg-yellow-50 text-yellow-600" subtitle={currentMonth} />
+        <StatCard title="Attendance Rate" value={`${attendanceRate}%`} icon={TrendingUp} iconBg="bg-purple-50 text-purple-600" subtitle="All sessions" />
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="At Risk Students" value={atRisk.length} icon={AlertTriangle} iconBg="bg-red-50 text-red-500" subtitle="Missed 3+ classes" />
         <StatCard title="Pending Cash" value={pendingCash.length} icon={Clock} iconBg="bg-orange-50 text-orange-500" subtitle="Awaiting approval" />
         <StatCard title="Upcoming Grading" value={upcomingGrading.length} icon={Award} iconBg="bg-indigo-50 text-indigo-600" subtitle={upcomingGrading[0]?.date || 'None scheduled'} />
-        <StatCard title="Classes Today" value={3} icon={Calendar} iconBg="bg-teal-50 text-teal-600" subtitle="Junior A, Senior A, B" />
+        <StatCard title="Classes" value={classes?.length ?? 0} icon={Calendar} iconBg="bg-teal-50 text-teal-600" subtitle="Configured classes" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -89,6 +102,9 @@ export default function AdminDashboard() {
                     <td className="px-4 py-3"><PaymentStatusBadge status={p.status} /></td>
                   </tr>
                 ))}
+                {recentPayments.length === 0 && (
+                  <tr><td colSpan={4} className="px-4 py-10 text-center text-gray-400">No payments recorded yet.</td></tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -105,10 +121,11 @@ export default function AdminDashboard() {
                 <div>
                   <p className="font-semibold text-gray-900 text-sm">{g.title}</p>
                   <p className="text-xs text-gray-400 mt-0.5">{g.date}</p>
-                  <p className="text-xs text-gray-400">{g.students.length} students registered</p>
+                  <p className="text-xs text-gray-400">{g.studentIds.length} students registered</p>
                 </div>
               </div>
             ))}
+            {upcomingGrading.length === 0 && <p className="text-sm text-gray-400">No grading events scheduled.</p>}
             <Link href="/dashboard/grading" className="block mt-3 text-center text-sm text-blue-600 hover:underline font-medium">Manage Grading</Link>
           </div>
 
@@ -145,7 +162,8 @@ export default function AdminDashboard() {
                   <p className="text-xs text-gray-500 mt-0.5">{p.month} · RM {p.amount}</p>
                   {p.notes && <p className="text-xs text-orange-600 mt-0.5">{p.notes}</p>}
                 </div>
-                <button className="bg-green-600 text-white text-xs px-2.5 py-1.5 rounded-lg hover:bg-green-700 font-semibold ml-2">
+                <button onClick={() => approve(p.id)}
+                  className="bg-green-600 text-white text-xs px-2.5 py-1.5 rounded-lg hover:bg-green-700 font-semibold ml-2">
                   Approve
                 </button>
               </div>

@@ -7,21 +7,21 @@ import { useAuth } from '@/lib/auth-context';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { currentUser, isAuthenticated } = useAuth();
+  const { currentUser, isAuthenticated, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!loading && !isAuthenticated) {
       router.replace('/auth/login');
     }
-  }, [isAuthenticated, router]);
+  }, [loading, isAuthenticated, router]);
 
-  if (!isAuthenticated || !currentUser) {
+  if (loading || !isAuthenticated || !currentUser) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-10 h-10 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-gray-500">Redirecting to login...</p>
+          <p className="text-sm text-gray-500">{loading ? 'Loading...' : 'Redirecting to login...'}</p>
         </div>
       </div>
     );
@@ -46,12 +46,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Topbar onMenuClick={() => setSidebarOpen(true)} />
-        {currentUser.isDemo && (
-          <div className="bg-yellow-400 text-yellow-900 text-xs font-bold text-center py-2 px-4 flex items-center justify-center gap-2 flex-shrink-0">
-            <span>👁️ DEMO MODE — You are viewing sample data. No changes will be saved.</span>
-            <a href="/auth/login" className="underline ml-2">Login with real account →</a>
-          </div>
-        )}
         <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
       </div>
     </div>

@@ -5,55 +5,65 @@ import Badge from '@/components/Badge';
 import Button from '@/components/Button';
 import Modal from '@/components/Modal';
 import FormInput from '@/components/FormInput';
-import { mockGradingEvents, mockGradingRecords } from '@/data/grading';
-import { mockStudents } from '@/data/students';
-import { GradingEvent, GradingRecord, BeltRank, GradingResultType } from '@/lib/types';
-
-const belts: BeltRank[] = ['White', 'Yellow', 'Orange', 'Green', 'Blue', 'Purple', 'Brown', 'Red', 'Black'];
+import { useAuth } from '@/lib/auth-context';
+import { useLive } from '@/lib/useLive';
+import { getGradingEvents, getGradingRecords, getStudents, addGradingEvent, setGradingEventStudents, recordGradingResult } from '@/lib/db';
+import { GradingResultType, BELT_LEVELS } from '@/lib/types';
 
 export default function GradingPage() {
-  const [events, setEvents] = useState(mockGradingEvents);
-  const [records, setRecords] = useState(mockGradingRecords);
-  const [selectedEvent, setSelectedEvent] = useState(mockGradingEvents[0]);
+  const { currentUser } = useAuth();
+  const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'coach';
+  const { data: events } = useLive(getGradingEvents, ['grading_events']);
+  const { data: records } = useLive(() => getGradingRecords(), ['grading_records']);
+  const { data: students } = useLive(getStudents, ['students']);
+
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
   const [form, setForm] = useState({ title: '', date: '', location: '', examiner: '' });
+  const [addStudentId, setAddStudentId] = useState('');
 
-  const eventRecords = records.filter(r => r.eventId === selectedEvent?.id);
-  const eligibleStudents = mockStudents.filter(s => selectedEvent?.students.includes(s.id));
+  const selectedEvent = (events ?? []).find(e => e.id === selectedId) ?? (events ?? [])[0] ?? null;
+  const eventRecords = (records ?? []).filter(r => r.eventId === selectedEvent?.id);
+  const eligibleStudents = (students ?? []).filter(s => selectedEvent?.studentIds.includes(s.id));
+  const unregisteredStudents = (students ?? []).filter(s => !selectedEvent?.studentIds.includes(s.id));
 
-  const handleAddEvent = (e: React.FormEvent) => {
+  const handleAddEvent = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newEvent: GradingEvent = {
-      id: `ge${Date.now()}`, academyId: 'academy1',
-      title: form.title, date: form.date, location: form.location,
-      examiner: form.examiner, students: [], status: 'Upcoming',
-    };
-    setEvents([...events, newEvent]);
-    setShowModal(false);
-    setForm({ title: '', date: '', location: '', examiner: '' });
-  };
-
-  const updateResult = (studentId: string, result: GradingResultType) => {
-    const student = mockStudents.find(s => s.id === studentId);
-    if (!student) return;
-    const existing = records.find(r => r.eventId === selectedEvent.id && r.studentId === studentId);
-    if (existing) {
-      setRecords(records.map(r => r.id === existing.id ? { ...r, result } : r));
-    } else {
-      const beltIdx = belts.indexOf(student.beltRank);
-      const newRecord: GradingRecord = {
-        id: `gr${Date.now()}`, eventId: selectedEvent.id, studentId,
-        studentName: student.fullName, currentBelt: student.beltRank,
-        targetBelt: beltIdx < belts.length - 1 ? belts[beltIdx + 1] : student.beltRank,
-        result, examiner: selectedEvent.examiner, date: selectedEvent.date,
-      };
-      setRecords([...records, newRecord]);
+    setSaving(true);
+    setError('');
+    try {
+      await addGradingEvent(form);
+      setShowModal(false);
+      setForm({ title: '', date: '', location: '', examiner: '' });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not create event.');
+    } finally {
+      setSaving(false);
     }
   };
 
-  const getResult = (studentId: string): GradingResultType | null => {
-    return records.find(r => r.eventId === selectedEvent?.id && r.studentId === studentId)?.result || null;
+  const addStudentToEvent = async () => {
+    if (!selectedEvent || !addStudentId) return;
+    await setGradingEventStudents(selectedEvent.id, [...selectedEvent.studentIds, addStudentId]);
+    setAddStudentId('');
   };
+
+  const updateResult = async (studentId: string, result: GradingResultType) => {
+    const student = students?.find(s => s.id === studentId);
+    if (!student || !selectedEvent) return;
+    const beltIdx = BELT_LEVELS.indexOf(student.beltRank);
+    const targetBelt = beltIdx >= 0 && beltIdx < BELT_LEVELS.length - 1 ? BELT_LEVELS[beltIdx + 1] : student.beltRank;
+    await recordGradingResult({
+      eventId: selectedEvent.id, studentId, studentName: student.fullName,
+      currentBelt: student.beltRank, targetBelt, result,
+      examiner: selectedEvent.examiner, date: selectedEvent.date,
+    });
+  };
+
+  const getResult = (studentId: string): GradingResultType | null =>
+    eventRecords.find(r => r.studentId === studentId)?.result || null;
 
   return (
     <div className="space-y-5 max-w-5xl mx-auto">
@@ -62,18 +72,20 @@ export default function GradingPage() {
           <h1 className="text-2xl font-extrabold text-gray-900">Belt Grading</h1>
           <p className="text-gray-500 text-sm mt-0.5">Manage grading events and student results</p>
         </div>
-        <Button onClick={() => setShowModal(true)} variant="primary">
-          <Plus size={16} /> New Grading Event
-        </Button>
+        {isStaff && (
+          <Button onClick={() => setShowModal(true)} variant="primary">
+            <Plus size={16} /> New Grading Event
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Event list */}
         <div className="space-y-3">
           <h2 className="font-semibold text-gray-700 text-sm uppercase tracking-wider">Grading Events</h2>
-          {events.map(event => (
+          {(events ?? []).map(event => (
             <div key={event.id}
-              onClick={() => setSelectedEvent(event)}
+              onClick={() => setSelectedId(event.id)}
               className={`bg-white rounded-xl border p-4 cursor-pointer transition-all ${selectedEvent?.id === event.id ? 'border-yellow-400 shadow-md' : 'border-gray-100 hover:border-gray-200'}`}>
               <div className="flex items-start gap-3">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${event.status === 'Upcoming' ? 'bg-indigo-50' : 'bg-green-50'}`}>
@@ -85,12 +97,17 @@ export default function GradingPage() {
                   <p className="text-xs text-gray-400">{event.location}</p>
                   <div className="flex items-center gap-2 mt-2">
                     <Badge label={event.status} color={event.status === 'Upcoming' ? 'blue' : 'green'} />
-                    <span className="text-xs text-gray-400">{event.students.length} students</span>
+                    <span className="text-xs text-gray-400">{event.studentIds.length} students</span>
                   </div>
                 </div>
               </div>
             </div>
           ))}
+          {(events ?? []).length === 0 && (
+            <div className="bg-white rounded-xl border border-gray-100 p-6 text-center text-gray-400 text-sm">
+              No grading events yet.{isStaff ? ' Create your first event.' : ''}
+            </div>
+          )}
         </div>
 
         {/* Event detail */}
@@ -107,7 +124,19 @@ export default function GradingPage() {
               </div>
 
               <div className="p-5">
-                <h3 className="font-semibold text-gray-900 mb-4">Registered Students</h3>
+                <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+                  <h3 className="font-semibold text-gray-900">Registered Students</h3>
+                  {isStaff && selectedEvent.status === 'Upcoming' && unregisteredStudents.length > 0 && (
+                    <div className="flex gap-2">
+                      <select value={addStudentId} onChange={e => setAddStudentId(e.target.value)}
+                        className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                        <option value="">Add student...</option>
+                        {unregisteredStudents.map(s => <option key={s.id} value={s.id}>{s.fullName}</option>)}
+                      </select>
+                      <Button size="sm" onClick={addStudentToEvent} disabled={!addStudentId}>Add</Button>
+                    </div>
+                  )}
+                </div>
                 {eligibleStudents.length === 0 ? (
                   <div className="text-center py-10 text-gray-400">
                     <Award size={32} className="mx-auto mb-2 opacity-40" />
@@ -117,8 +146,8 @@ export default function GradingPage() {
                   <div className="space-y-3">
                     {eligibleStudents.map(student => {
                       const result = getResult(student.id);
-                      const beltIdx = belts.indexOf(student.beltRank);
-                      const targetBelt = beltIdx < belts.length - 1 ? belts[beltIdx + 1] : student.beltRank;
+                      const beltIdx = BELT_LEVELS.indexOf(student.beltRank);
+                      const targetBelt = beltIdx >= 0 && beltIdx < BELT_LEVELS.length - 1 ? BELT_LEVELS[beltIdx + 1] : student.beltRank;
                       return (
                         <div key={student.id} className="flex items-center justify-between flex-wrap gap-3 bg-gray-50 rounded-xl p-4">
                           <div>
@@ -131,7 +160,7 @@ export default function GradingPage() {
                           </div>
                           <div className="flex items-center gap-2">
                             {result && <Badge label={result} color={result === 'Pass' ? 'green' : result === 'Fail' ? 'red' : 'yellow'} />}
-                            {selectedEvent.status === 'Upcoming' && (
+                            {isStaff && selectedEvent.status === 'Upcoming' && (
                               <div className="flex gap-1.5">
                                 <button onClick={() => updateResult(student.id, 'Pass')}
                                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${result === 'Pass' ? 'bg-green-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-green-50'}`}>
@@ -184,9 +213,10 @@ export default function GradingPage() {
           <FormInput label="Event Title" value={form.title} onChange={e => setForm({...form, title: e.target.value})} placeholder="Mid-Year Belt Grading 2026" required />
           <FormInput label="Date" type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} required />
           <FormInput label="Location / Venue" value={form.location} onChange={e => setForm({...form, location: e.target.value})} placeholder="Dewan Komuniti Sepang" required />
-          <FormInput label="Chief Examiner" value={form.examiner} onChange={e => setForm({...form, examiner: e.target.value})} placeholder="Mahaguru Sri S. Arumugam" required />
+          <FormInput label="Chief Examiner" value={form.examiner} onChange={e => setForm({...form, examiner: e.target.value})} placeholder="Chief examiner name" required />
+          {error && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>}
           <div className="flex gap-3 pt-2">
-            <Button type="submit" variant="primary" className="flex-1">Create Event</Button>
+            <Button type="submit" variant="primary" className="flex-1" disabled={saving}>{saving ? 'Creating...' : 'Create Event'}</Button>
             <Button type="button" variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button>
           </div>
         </form>

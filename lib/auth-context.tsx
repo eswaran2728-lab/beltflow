@@ -1,7 +1,7 @@
 'use client';
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useCallback, useEffect, useState, ReactNode } from 'react';
 import { supabase } from './supabase';
-import { AuthUser, UserRole, saveSession, loadSession, clearSession, DEMO_USERS } from './auth';
+import { AuthUser, UserRole } from './auth';
 
 interface SignupData {
   name: string;
@@ -16,131 +16,143 @@ interface SignupData {
 interface AuthContextType {
   currentUser: AuthUser | null;
   isAuthenticated: boolean;
+  loading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
+  logout: () => Promise<void>;
   signup: (data: SignupData) => Promise<{ success: boolean; error?: string }>;
-  loginAsDemo: (role: UserRole) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+interface ProfileRow {
+  id: string;
+  auth_user_id: string;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  role: UserRole;
+  status: 'pending' | 'approved' | 'rejected';
+  assigned_class: string | null;
+  child_student_ids: string[] | null;
+  student_id: string | null;
+}
+
+function toAuthUser(profile: ProfileRow): AuthUser {
+  return {
+    id: profile.id,
+    authUserId: profile.auth_user_id,
+    email: profile.email,
+    name: profile.full_name,
+    role: profile.role,
+    phone: profile.phone ?? undefined,
+    assignedClass: profile.assigned_class ?? undefined,
+    childStudentIds: profile.child_student_ids ?? undefined,
+    studentId: profile.student_id ?? undefined,
+  };
+}
+
+async function fetchProfile(authUserId: string): Promise<ProfileRow | null> {
+  const { data } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('auth_user_id', authUserId)
+    .maybeSingle();
+  return (data as ProfileRow | null) ?? null;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Check existing session
-    const session = loadSession();
-    if (session) setCurrentUser(session);
-    setLoaded(true);
-
-    // Listen for Supabase auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT') {
-        clearSession();
-        setCurrentUser(null);
-      }
-    });
-    return () => subscription.unsubscribe();
+  const loadUser = useCallback(async (authUserId: string | undefined) => {
+    if (!authUserId) {
+      setCurrentUser(null);
+      return;
+    }
+    const profile = await fetchProfile(authUserId);
+    if (profile && profile.status === 'approved') {
+      setCurrentUser(toAuthUser(profile));
+    } else {
+      setCurrentUser(null);
+    }
   }, []);
 
-  const login = async (email: string, password: string) => {
-    // Check admin hardcoded credentials first
-    const { mockLogin } = await import('./auth');
-    const mockUser = mockLogin(email, password);
-    if (mockUser) {
-      saveSession(mockUser);
-      setCurrentUser(mockUser);
-      return { success: true };
-    }
+  useEffect(() => {
+    let mounted = true;
 
-    // Try Supabase auth for real users
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!mounted) return;
+      await loadUser(session?.user?.id);
+      if (mounted) setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setCurrentUser(null);
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        loadUser(session?.user?.id);
+      }
+    });
+    return () => { mounted = false; subscription.unsubscribe(); };
+  }, [loadUser]);
+
+  const login = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error || !data.user) {
-      return { success: false, error: 'Wrong email or password.' };
+      return { success: false, error: error?.message || 'Wrong email or password.' };
     }
 
-    // Get profile from Supabase
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('auth_user_id', data.user.id)
-      .single();
-
+    const profile = await fetchProfile(data.user.id);
     if (!profile) {
       await supabase.auth.signOut();
       return { success: false, error: 'Account not found. Contact admin.' };
     }
-
+    if (profile.status === 'rejected') {
+      await supabase.auth.signOut();
+      return { success: false, error: 'Your registration was rejected. Contact admin.' };
+    }
     if (profile.status !== 'approved') {
       await supabase.auth.signOut();
       return { success: false, error: 'Your account is pending admin approval. Please wait.' };
     }
 
-    const user: AuthUser = {
-      id: data.user.id,
-      email: data.user.email!,
-      name: profile.full_name,
-      role: profile.role as UserRole,
-      phone: profile.phone,
-      assignedClassIds: profile.assigned_class_ids,
-      childStudentIds: profile.child_student_ids,
-      studentId: profile.student_id,
-    };
-
-    saveSession(user);
-    setCurrentUser(user);
+    setCurrentUser(toAuthUser(profile));
     return { success: true };
   };
 
   const logout = async () => {
     await supabase.auth.signOut();
-    clearSession();
     setCurrentUser(null);
   };
 
   const signup = async (data: SignupData) => {
-    // Register with Supabase auth
+    // Profile is created server-side by a database trigger; the role is
+    // validated there and every new account starts as "pending".
     const { data: authData, error } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
+      options: {
+        data: {
+          full_name: data.name,
+          role: data.role,
+          phone: data.phone || null,
+          child_name: data.childName || null,
+          assigned_class: data.assignedClass || null,
+        },
+      },
     });
 
     if (error || !authData.user) {
       return { success: false, error: error?.message || 'Signup failed.' };
     }
 
-    // Create profile with status = pending
-    const { error: profileError } = await supabase.from('profiles').insert({
-      auth_user_id: authData.user.id,
-      full_name: data.name,
-      email: data.email,
-      phone: data.phone || null,
-      role: data.role,
-      status: 'pending',
-      child_name: data.childName || null,
-      assigned_class: data.assignedClass || null,
-    });
-
-    if (profileError) {
-      return { success: false, error: 'Could not save profile. Try again.' };
-    }
-
-    // Sign out immediately — must wait for admin approval
+    // Must wait for admin approval before using the app
     await supabase.auth.signOut();
     return { success: true };
   };
 
-  const loginAsDemo = (role: UserRole) => {
-    const demoUser = DEMO_USERS[role];
-    saveSession(demoUser);
-    setCurrentUser(demoUser);
-  };
-
-  if (!loaded) return null;
-
   return (
-    <AuthContext.Provider value={{ currentUser, isAuthenticated: !!currentUser, login, logout, signup, loginAsDemo }}>
+    <AuthContext.Provider value={{ currentUser, isAuthenticated: !!currentUser, loading, login, logout, signup }}>
       {children}
     </AuthContext.Provider>
   );
