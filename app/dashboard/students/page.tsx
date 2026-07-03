@@ -8,26 +8,30 @@ import Modal from '@/components/Modal';
 import Button from '@/components/Button';
 import FormInput from '@/components/FormInput';
 import SelectInput from '@/components/SelectInput';
-import { mockStudents } from '@/data/students';
-import { Student, BeltRank, StudentStatus } from '@/lib/types';
+import { Student, BeltRank, StudentStatus, BELT_LEVELS } from '@/lib/types';
+import { useLive } from '@/lib/useLive';
+import { getStudents, getBranches, getClasses, addStudent } from '@/lib/db';
 import Link from 'next/link';
 
-const belts: BeltRank[] = ['White', 'Yellow', 'Orange', 'Green', 'Blue', 'Purple', 'Brown', 'Red', 'Black'];
 const statusColors: Record<StudentStatus, 'green' | 'gray' | 'red'> = { Active: 'green', Inactive: 'gray', 'At Risk': 'red' };
 
 export default function StudentsPage() {
-  const [students, setStudents] = useState(mockStudents);
+  const { data: students, loading } = useLive(getStudents, ['students']);
+  const { data: branches } = useLive(getBranches, ['branches']);
+  const { data: classes } = useLive(getClasses, ['classes']);
   const [search, setSearch] = useState('');
   const [beltFilter, setBeltFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [showModal, setShowModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
   const [form, setForm] = useState({
     fullName: '', age: '', icNumber: '', parentName: '', parentPhone: '',
-    beltRank: 'White' as BeltRank, branch: 'Sepang Main', classGroup: 'Junior A',
+    beltRank: 'White' as BeltRank, branch: '', classId: '',
   });
 
-  const filtered = students.filter(s => {
+  const filtered = (students ?? []).filter(s => {
     const matchSearch = s.fullName.toLowerCase().includes(search.toLowerCase()) ||
       s.parentName.toLowerCase().includes(search.toLowerCase());
     const matchBelt = !beltFilter || s.beltRank === beltFilter;
@@ -35,18 +39,25 @@ export default function StudentsPage() {
     return matchSearch && matchBelt && matchStatus;
   });
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newStudent: Student = {
-      id: `s${Date.now()}`, academyId: 'academy1',
-      fullName: form.fullName, age: parseInt(form.age), icNumber: form.icNumber,
-      parentName: form.parentName, parentPhone: form.parentPhone,
-      beltRank: form.beltRank, joinDate: new Date().toISOString().split('T')[0],
-      status: 'Active', branch: form.branch, classGroup: form.classGroup, missedClasses: 0,
-    };
-    setStudents([...students, newStudent]);
-    setShowModal(false);
-    setForm({ fullName: '', age: '', icNumber: '', parentName: '', parentPhone: '', beltRank: 'White', branch: 'Sepang Main', classGroup: 'Junior A' });
+    setSaving(true);
+    setError('');
+    try {
+      const cls = classes?.find(c => c.id === form.classId);
+      await addStudent({
+        fullName: form.fullName, age: parseInt(form.age) || 0, icNumber: form.icNumber,
+        parentName: form.parentName, parentPhone: form.parentPhone,
+        beltRank: form.beltRank, branch: form.branch, classGroup: cls?.name ?? '',
+        classId: form.classId || null,
+      });
+      setShowModal(false);
+      setForm({ fullName: '', age: '', icNumber: '', parentName: '', parentPhone: '', beltRank: 'White', branch: '', classId: '' });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not add student.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const tableColumns = [
@@ -70,7 +81,7 @@ export default function StudentsPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900">Students</h1>
-          <p className="text-gray-500 text-sm">{filtered.length} of {students.length} students</p>
+          <p className="text-gray-500 text-sm">{filtered.length} of {students?.length ?? 0} students</p>
         </div>
         <Button onClick={() => setShowModal(true)} variant="primary">
           <Plus size={16} /> Add Student
@@ -89,7 +100,7 @@ export default function StudentsPage() {
         <select value={beltFilter} onChange={e => setBeltFilter(e.target.value)}
           className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
           <option value="">All Belts</option>
-          {belts.map(b => <option key={b} value={b}>{b}</option>)}
+          {BELT_LEVELS.map(b => <option key={b} value={b}>{b}</option>)}
         </select>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
           className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
@@ -114,7 +125,7 @@ export default function StudentsPage() {
           {filtered.length === 0 && (
             <div className="col-span-full text-center py-16 text-gray-400">
               <Users size={40} className="mx-auto mb-3 opacity-40" />
-              <p>No students found matching your filters.</p>
+              <p>{loading ? 'Loading students...' : students?.length === 0 ? 'No students yet. Add your first student to get started.' : 'No students found matching your filters.'}</p>
             </div>
           )}
         </div>
@@ -134,16 +145,19 @@ export default function StudentsPage() {
             <FormInput label="Parent Phone" value={form.parentPhone} onChange={e => setForm({...form, parentPhone: e.target.value})} placeholder="012-3456789" required />
             <SelectInput label="Belt / Rank" value={form.beltRank}
               onChange={e => setForm({...form, beltRank: e.target.value as BeltRank})}
-              options={belts.map(b => ({ value: b, label: b }))} />
+              options={BELT_LEVELS.map(b => ({ value: b, label: b }))} />
             <SelectInput label="Branch" value={form.branch}
               onChange={e => setForm({...form, branch: e.target.value})}
-              options={[{ value: 'Sepang Main', label: 'Sepang Main' }, { value: 'Nilai Branch', label: 'Nilai Branch' }]} />
-            <SelectInput label="Class Group" value={form.classGroup}
-              onChange={e => setForm({...form, classGroup: e.target.value})}
-              options={['Junior A', 'Junior B', 'Senior A', 'Senior B'].map(c => ({ value: c, label: c }))} />
+              options={[{ value: '', label: branches?.length ? 'Select branch...' : 'No branches — add in Settings' },
+                ...(branches ?? []).map(b => ({ value: b.name, label: b.name }))]} />
+            <SelectInput label="Class Group" value={form.classId}
+              onChange={e => setForm({...form, classId: e.target.value})}
+              options={[{ value: '', label: classes?.length ? 'Select class...' : 'No classes — add in Settings' },
+                ...(classes ?? []).map(c => ({ value: c.id, label: c.name }))]} />
           </div>
+          {error && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>}
           <div className="flex gap-3 pt-2">
-            <Button type="submit" variant="primary" className="flex-1">Add Student</Button>
+            <Button type="submit" variant="primary" className="flex-1" disabled={saving}>{saving ? 'Adding...' : 'Add Student'}</Button>
             <Button type="button" variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button>
           </div>
         </form>
@@ -151,4 +165,3 @@ export default function StudentsPage() {
     </div>
   );
 }
-

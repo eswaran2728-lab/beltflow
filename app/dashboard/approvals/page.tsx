@@ -1,48 +1,53 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, Clock, RefreshCw, Users } from 'lucide-react';
+import { useState } from 'react';
+import { CheckCircle, XCircle, Clock, RefreshCw, Users, Link2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
+import { useLive } from '@/lib/useLive';
+import { getStudents } from '@/lib/db';
 import Badge from '@/components/Badge';
 
 interface PendingUser {
   id: string;
   full_name: string;
   email: string;
-  phone: string;
+  phone: string | null;
   role: string;
   status: string;
-  child_name: string;
-  assigned_class: string;
+  child_name: string | null;
+  assigned_class: string | null;
+  child_student_ids: string[] | null;
+  student_id: string | null;
   created_at: string;
 }
 
 export default function ApprovalsPage() {
   const { currentUser } = useAuth();
-  const [users, setUsers] = useState<PendingUser[]>([]);
-  const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const fetchUsers = async () => {
-    setLoading(true);
-    const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
-    setUsers((data || []) as PendingUser[]);
-    setLoading(false);
-  };
+  const { data: users, refetch } = useLive(async () => {
+    const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data ?? []) as PendingUser[];
+  }, ['profiles']);
+  const { data: students } = useLive(getStudents, ['students']);
 
-  useEffect(() => { fetchUsers(); }, []);
-
-  const approve = async (id: string) => {
+  const setStatus = async (id: string, status: 'approved' | 'rejected') => {
     setActionLoading(id);
-    await supabase.from('profiles').update({ status: 'approved' }).eq('id', id);
-    await fetchUsers();
+    await supabase.from('profiles').update({ status }).eq('id', id);
+    await refetch();
     setActionLoading(null);
   };
 
-  const reject = async (id: string) => {
-    setActionLoading(id);
-    await supabase.from('profiles').update({ status: 'rejected' }).eq('id', id);
-    await fetchUsers();
+  const linkStudent = async (user: PendingUser, studentId: string) => {
+    if (!studentId) return;
+    setActionLoading(user.id);
+    if (user.role === 'parent') {
+      await supabase.from('profiles').update({ child_student_ids: [studentId] }).eq('id', user.id);
+    } else if (user.role === 'student') {
+      await supabase.from('profiles').update({ student_id: studentId }).eq('id', user.id);
+    }
+    await refetch();
     setActionLoading(null);
   };
 
@@ -55,12 +60,19 @@ export default function ApprovalsPage() {
     );
   }
 
-  const pending = users.filter(u => u.status === 'pending');
-  const approved = users.filter(u => u.status === 'approved');
-  const rejected = users.filter(u => u.status === 'rejected');
+  const all = users ?? [];
+  const pending = all.filter(u => u.status === 'pending');
+  const approved = all.filter(u => u.status === 'approved');
+  const rejected = all.filter(u => u.status === 'rejected');
 
-  const roleColor: Record<string, 'blue' | 'green' | 'purple'> = {
-    coach: 'blue', parent: 'green', student: 'purple',
+  const roleColor: Record<string, 'blue' | 'green' | 'purple' | 'navy'> = {
+    admin: 'navy', coach: 'blue', parent: 'green', student: 'purple',
+  };
+
+  const linkedStudentName = (u: PendingUser) => {
+    const id = u.role === 'parent' ? u.child_student_ids?.[0] : u.student_id;
+    if (!id) return null;
+    return students?.find(s => s.id === id)?.fullName ?? null;
   };
 
   return (
@@ -68,9 +80,9 @@ export default function ApprovalsPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900">Account Approvals</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Approve or reject new registrations</p>
+          <p className="text-gray-500 text-sm mt-0.5">Approve registrations and link parents/students to student profiles</p>
         </div>
-        <button onClick={fetchUsers}
+        <button onClick={() => refetch()}
           className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
           <RefreshCw size={14} /> Refresh
         </button>
@@ -94,16 +106,11 @@ export default function ApprovalsPage() {
       </div>
 
       {/* Pending approvals */}
-      {loading ? (
-        <div className="bg-white rounded-xl border border-gray-100 p-10 text-center">
-          <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-gray-500">Loading registrations...</p>
-        </div>
-      ) : pending.length === 0 ? (
+      {pending.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-10 text-center">
           <Users size={36} className="text-gray-200 mx-auto mb-3" />
           <p className="text-gray-500 font-medium">No pending approvals</p>
-          <p className="text-gray-400 text-sm mt-1">New registrations will appear here</p>
+          <p className="text-gray-400 text-sm mt-1">New registrations will appear here in real time</p>
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
@@ -126,12 +133,12 @@ export default function ApprovalsPage() {
                   <p className="text-xs text-gray-300 mt-1">{new Date(u.created_at).toLocaleString()}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => approve(u.id)} disabled={actionLoading === u.id}
+                  <button onClick={() => setStatus(u.id, 'approved')} disabled={actionLoading === u.id}
                     className="flex items-center gap-1.5 bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-green-700 transition-colors disabled:opacity-60">
                     <CheckCircle size={15} />
                     {actionLoading === u.id ? '...' : 'Approve'}
                   </button>
-                  <button onClick={() => reject(u.id)} disabled={actionLoading === u.id}
+                  <button onClick={() => setStatus(u.id, 'rejected')} disabled={actionLoading === u.id}
                     className="flex items-center gap-1.5 bg-red-50 text-red-600 border border-red-100 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition-colors disabled:opacity-60">
                     <XCircle size={15} />
                     Reject
@@ -151,21 +158,44 @@ export default function ApprovalsPage() {
             <h2 className="font-bold text-gray-900">Approved Users ({approved.length})</h2>
           </div>
           <div className="divide-y divide-gray-50">
-            {approved.map(u => (
-              <div key={u.id} className="px-5 py-4 flex items-center justify-between gap-3 flex-wrap">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold text-gray-900 text-sm">{u.full_name}</p>
-                    <Badge label={u.role} color={roleColor[u.role] || 'blue'} />
+            {approved.map(u => {
+              const linked = linkedStudentName(u);
+              const linkable = u.role === 'parent' || u.role === 'student';
+              return (
+                <div key={u.id} className="px-5 py-4 flex items-center justify-between gap-3 flex-wrap">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-gray-900 text-sm">{u.full_name}</p>
+                      <Badge label={u.role} color={roleColor[u.role] || 'blue'} />
+                    </div>
+                    <p className="text-xs text-gray-400">{u.email}</p>
+                    {linkable && linked && (
+                      <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                        <Link2 size={11} /> Linked to {linked}
+                      </p>
+                    )}
                   </div>
-                  <p className="text-xs text-gray-400">{u.email}</p>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {linkable && (
+                      <select
+                        value={(u.role === 'parent' ? u.child_student_ids?.[0] : u.student_id) ?? ''}
+                        onChange={e => linkStudent(u, e.target.value)}
+                        disabled={actionLoading === u.id}
+                        className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                        <option value="">{u.role === 'parent' ? 'Link child...' : 'Link student profile...'}</option>
+                        {(students ?? []).map(s => <option key={s.id} value={s.id}>{s.fullName}</option>)}
+                      </select>
+                    )}
+                    {u.role !== 'admin' && (
+                      <button onClick={() => setStatus(u.id, 'rejected')} disabled={actionLoading === u.id}
+                        className="text-xs text-red-500 hover:underline font-semibold">
+                        Revoke
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <button onClick={() => reject(u.id)} disabled={actionLoading === u.id}
-                  className="text-xs text-red-500 hover:underline font-semibold">
-                  Revoke
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

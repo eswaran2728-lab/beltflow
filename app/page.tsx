@@ -1,5 +1,5 @@
 ﻿import Link from "next/link";
-import { CheckCircle, Users, Calendar, Award, CreditCard, BarChart3, Trophy, Shield, Star, ArrowRight, Zap } from "lucide-react";
+import { CheckCircle, Users, Calendar, Award, CreditCard, BarChart3, Trophy, Shield, ArrowRight, Zap } from "lucide-react";
 
 const features = [
   { icon: Users, title: "Student Management", desc: "Manage student profiles, belt ranks, parent contacts, and emergency information in one place." },
@@ -17,12 +17,6 @@ const plans = [
   { name: "Starter", price: "RM49", period: "/month", border: "border-blue-200", badge: "Popular", features: ["Up to 50 students", "Attendance and Payments", "Parent portal", "Basic reports"] },
   { name: "Academy", price: "RM99", period: "/month", border: "border-yellow-400", badge: "Best Value", features: ["Up to 150 students", "Full dashboard", "Belt grading", "Skill tracking", "Coach tools", "Cash payment approval"] },
   { name: "Association", price: "RM199", period: "/month", border: "border-purple-200", badge: "Enterprise", features: ["Multiple branches", "Multiple coaches", "Advanced reports", "Custom settings", "Priority support"] },
-];
-
-const testimonials = [
-  { name: "Guru Selvam", role: "Silambam Instructor, KL", text: "BeltFlow transformed how we manage our 80+ students. Attendance and payment collection is now effortless." },
-  { name: "Sensei Ravi", role: "Karate Academy, Penang", text: "The belt grading module saves us hours every grading season. Highly recommended for any martial arts school." },
-  { name: "Coach Priya", role: "Taekwondo Club, JB", text: "Parents love the portal. They can check their child progress anytime without calling us." },
 ];
 
 export default function LandingPage() {
@@ -50,7 +44,7 @@ export default function LandingPage() {
         </div>
         <div className="relative max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-yellow-500/20 text-yellow-400 text-sm font-semibold px-4 py-1.5 rounded-full mb-6 border border-yellow-500/30">
-            <Zap size={14} /> Silambam, Karate, Taekwondo, Muay Thai, BJJ
+            <Zap size={14} /> Silambam, Karate, Taekwondo, Muay Thai, BJJ, Silat, Wushu
           </div>
           <h1 className="text-4xl md:text-6xl font-extrabold leading-tight mb-6">
             Manage Your Martial Arts<br /><span className="text-yellow-500">Academy with Ease</span>
@@ -60,21 +54,13 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/auth/signup" className="bg-yellow-500 text-white font-bold px-8 py-4 rounded-xl hover:bg-yellow-600 text-lg flex items-center gap-2 shadow-lg shadow-yellow-500/30">
-              Start Free Trial <ArrowRight size={20} />
+              Register Now <ArrowRight size={20} />
             </Link>
-            <Link href="/dashboard" className="bg-white/10 text-white font-semibold px-8 py-4 rounded-xl hover:bg-white/20 text-lg border border-white/20">
-              View Demo
+            <Link href="/auth/login" className="bg-white/10 text-white font-semibold px-8 py-4 rounded-xl hover:bg-white/20 text-lg border border-white/20">
+              Log In
             </Link>
           </div>
-          <p className="text-white/30 text-sm mt-6">No credit card required - 14-day free trial - Cancel anytime</p>
-        </div>
-      </section>
-
-      <section className="bg-yellow-500 py-5 px-4">
-        <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 text-center text-white">
-          {[{ v: "500+", l: "Academies" }, { v: "12,000+", l: "Students Tracked" }, { v: "98%", l: "Retention Rate" }, { v: "6", l: "Martial Art Styles" }].map(s => (
-            <div key={s.l}><p className="text-2xl font-extrabold">{s.v}</p><p className="text-white/80 text-sm">{s.l}</p></div>
-          ))}
+          <p className="text-white/30 text-sm mt-6">Free during the MVP period - Accounts require admin approval</p>
         </div>
       </section>
 
@@ -145,31 +131,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Demo Section */}
-      <section id="demo" className="py-20 px-4 bg-[#0f172a]">
-        <div className="max-w-4xl mx-auto text-center">
-          <span className="inline-block bg-yellow-500 text-gray-900 text-xs font-bold px-4 py-1.5 rounded-full mb-4 uppercase tracking-wide">Try It Free — No Login Needed</span>
-          <h2 className="text-3xl font-extrabold text-white mb-4">See BeltFlow in Action</h2>
-          <p className="text-white/60 mb-10 max-w-xl mx-auto">Click any role below to explore the full dashboard with sample data. No account required.</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { role: 'admin',   label: 'Admin View',   desc: 'Full dashboard & all data', emoji: '🛡️', color: 'bg-white text-gray-900' },
-              { role: 'coach',   label: 'Coach View',   desc: 'Classes & student progress', emoji: '🥋', color: 'bg-blue-600 text-white' },
-              { role: 'parent',  label: 'Parent View',  desc: "Child's progress & payments", emoji: '👨‍👧', color: 'bg-green-600 text-white' },
-              { role: 'student', label: 'Student View', desc: 'My profile & achievements', emoji: '⭐', color: 'bg-purple-600 text-white' },
-            ].map(d => (
-              <a key={d.role} href={`/demo/${d.role}`}
-                className={`${d.color} rounded-2xl p-6 text-center hover:opacity-90 transition-all hover:scale-105 cursor-pointer block`}>
-                <div className="text-4xl mb-3">{d.emoji}</div>
-                <p className="font-extrabold text-sm">{d.label}</p>
-                <p className="text-xs opacity-70 mt-1">{d.desc}</p>
-              </a>
-            ))}
-          </div>
-          <p className="text-white/30 text-xs mt-8">Demo uses sample data only. Register for a real account to manage your academy.</p>
-        </div>
-      </section>
-
       <section id="pricing" className="py-20 px-4 bg-gray-50">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
@@ -203,39 +164,16 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="py-20 px-4">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-extrabold text-gray-900 mb-4">Loved by Instructors Across Malaysia</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map(t => (
-              <div key={t.name} className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
-                <div className="flex gap-1 mb-4">{[...Array(5)].map((_, i) => <Star key={i} size={14} className="text-yellow-500 fill-yellow-500" />)}</div>
-                <p className="text-gray-600 text-sm leading-relaxed mb-4">{t.text}</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-gray-900 rounded-full flex items-center justify-center text-white font-bold text-sm">{t.name[0]}</div>
-                  <div>
-                    <p className="font-semibold text-gray-900 text-sm">{t.name}</p>
-                    <p className="text-xs text-gray-400">{t.role}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section className="py-20 px-4 bg-gray-900 text-white">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-extrabold mb-6">Ready to Transform Your Academy?</h2>
-          <p className="text-white/60 text-lg mb-10">Join hundreds of martial arts academies using BeltFlow to grow and run a professional operation.</p>
+          <p className="text-white/60 text-lg mb-10">Run your martial arts academy like a professional operation with BeltFlow.</p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/auth/signup" className="bg-yellow-500 text-white font-bold px-10 py-4 rounded-xl hover:bg-yellow-600 text-lg flex items-center gap-2 shadow-lg">
-              Start Your Free Trial <ArrowRight size={20} />
+              Register Now <ArrowRight size={20} />
             </Link>
-            <Link href="/dashboard" className="bg-white/10 border border-white/20 text-white font-semibold px-8 py-4 rounded-xl hover:bg-white/20 text-lg">
-              View Live Demo
+            <Link href="/auth/login" className="bg-white/10 border border-white/20 text-white font-semibold px-8 py-4 rounded-xl hover:bg-white/20 text-lg">
+              Log In
             </Link>
           </div>
         </div>
@@ -253,7 +191,6 @@ export default function LandingPage() {
           <div className="flex items-center gap-4 text-sm text-white/40">
             <Link href="/auth/login" className="hover:text-white/70">Login</Link>
             <Link href="/auth/signup" className="hover:text-white/70">Sign Up</Link>
-            <Link href="/dashboard" className="hover:text-white/70">Demo</Link>
           </div>
         </div>
       </footer>

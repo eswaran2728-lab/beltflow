@@ -1,16 +1,29 @@
 'use client';
-import { Award, Calendar, BookOpen, Trophy, Lock } from 'lucide-react';
+import { Award, Calendar, BookOpen, Trophy, Lock, User } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import ProgressBar from '@/components/ProgressBar';
 import Badge from '@/components/Badge';
-import { mockStudents } from '@/data/students';
-import { mockAttendance } from '@/data/attendance';
-import { mockStudentSkills } from '@/data/skills';
-import { mockAthleteAchievements } from '@/data/tournaments';
+import { useLive } from '@/lib/useLive';
+import { getStudent, getAttendance, getStudentSkills, getResults, getTournaments } from '@/lib/db';
+
+const beltColors: Record<string, string> = {
+  White: 'bg-gray-100 text-gray-800', Yellow: 'bg-yellow-100 text-yellow-800',
+  Orange: 'bg-orange-100 text-orange-800', Green: 'bg-green-100 text-green-800',
+  Blue: 'bg-blue-100 text-blue-800', Purple: 'bg-purple-100 text-purple-800',
+  Brown: 'bg-amber-900 text-white', Red: 'bg-red-100 text-red-800', Black: 'bg-gray-900 text-white',
+};
+const medalEmoji: Record<string, string> = { Gold: '🥇', Silver: '🥈', Bronze: '🥉', Participation: '🏅', 'No Medal': '🎖️' };
 
 export default function StudentDashboard() {
   const { currentUser } = useAuth();
+  const studentId = currentUser?.studentId ?? '';
+
+  const { data: student, loading } = useLive(() => studentId ? getStudent(studentId) : Promise.resolve(null), ['students'], [studentId]);
+  const { data: attendance } = useLive(() => studentId ? getAttendance(studentId) : Promise.resolve([]), ['attendance'], [studentId]);
+  const { data: skills } = useLive(() => studentId ? getStudentSkills(studentId) : Promise.resolve([]), ['student_skills'], [studentId]);
+  const { data: results } = useLive(() => studentId ? getResults(studentId) : Promise.resolve([]), ['tournament_results'], [studentId]);
+  const { data: tournaments } = useLive(getTournaments, ['tournaments']);
 
   if (!currentUser || currentUser.role !== 'student') {
     return (
@@ -22,22 +35,37 @@ export default function StudentDashboard() {
     );
   }
 
-  const studentId = currentUser.studentId || 'stu-rubisha';
-  const student = mockStudents.find(s => s.id === studentId) || mockStudents[0];
-  const attendance = mockAttendance.filter(a => a.studentId === studentId);
-  const totalClasses = attendance.length;
-  const presentCount = attendance.filter(a => a.present).length;
-  const attendancePct = totalClasses > 0 ? Math.round((presentCount / totalClasses) * 100) : 0;
-  const skills = mockStudentSkills.filter(s => s.studentId === studentId);
-  const masteredSkills = skills.filter(s => s.progress === 'Mastered').length;
-  const achievements = mockAthleteAchievements.filter(a => a.studentId === studentId);
+  if (!studentId || (!loading && !student)) {
+    return (
+      <div className="max-w-lg mx-auto text-center py-20">
+        <User size={40} className="text-gray-300 mx-auto mb-4" />
+        <h1 className="text-xl font-bold text-gray-900">No student profile linked yet</h1>
+        <p className="text-gray-500 text-sm mt-2 leading-relaxed">
+          Your account is not linked to a student profile yet.<br />
+          Please ask the academy admin to link your student profile to your account.
+        </p>
+      </div>
+    );
+  }
 
-  const beltColors: Record<string, string> = {
-    White: 'bg-gray-100 text-gray-800', Yellow: 'bg-yellow-100 text-yellow-800',
-    Orange: 'bg-orange-100 text-orange-800', Green: 'bg-green-100 text-green-800',
-    Blue: 'bg-blue-100 text-blue-800', Purple: 'bg-purple-100 text-purple-800',
-    Brown: 'bg-amber-900 text-white', Red: 'bg-red-100 text-red-800', Black: 'bg-gray-900 text-white',
-  };
+  if (loading || !student) {
+    return (
+      <div className="max-w-lg mx-auto text-center py-20">
+        <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-gray-500 text-sm">Loading...</p>
+      </div>
+    );
+  }
+
+  const totalClasses = attendance?.length ?? 0;
+  const presentCount = (attendance ?? []).filter(a => a.present).length;
+  const attendancePct = totalClasses > 0 ? Math.round((presentCount / totalClasses) * 100) : 0;
+  const masteredSkills = (skills ?? []).filter(s => s.progress === 'Mastered').length;
+  const achievements = (results ?? []).map(r => ({
+    ...r,
+    tournamentName: tournaments?.find(t => t.id === r.tournamentId)?.name ?? 'Tournament',
+    date: tournaments?.find(t => t.id === r.tournamentId)?.date ?? '',
+  }));
 
   return (
     <div className="space-y-5 max-w-3xl mx-auto">
@@ -86,11 +114,11 @@ export default function StudentDashboard() {
       </div>
 
       {/* Skills */}
-      {skills.length > 0 && (
+      {(skills ?? []).length > 0 && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
           <h2 className="font-bold text-gray-900 mb-4">My Skills</h2>
           <div className="space-y-3">
-            {skills.slice(0, 6).map(s => (
+            {(skills ?? []).slice(0, 6).map(s => (
               <div key={s.id}>
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-gray-700 font-medium">{s.skillName}</span>
@@ -117,7 +145,7 @@ export default function StudentDashboard() {
           <div className="space-y-2">
             {achievements.map(a => (
               <div key={a.id} className="flex items-center gap-3 bg-yellow-50 rounded-xl px-4 py-3">
-                <span className="text-2xl">{a.medal === 'Gold' ? '🥇' : a.medal === 'Silver' ? '🥈' : '🥉'}</span>
+                <span className="text-2xl">{medalEmoji[a.medal]}</span>
                 <div>
                   <p className="font-semibold text-gray-900 text-sm">{a.tournamentName}</p>
                   <p className="text-xs text-gray-500">{a.category} · {a.date}</p>

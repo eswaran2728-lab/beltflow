@@ -6,14 +6,14 @@ import Badge from '@/components/Badge';
 import ProgressBar from '@/components/ProgressBar';
 import PaymentStatusBadge from '@/components/PaymentStatusBadge';
 import Button from '@/components/Button';
-import { mockStudents } from '@/data/students';
-import { mockPayments } from '@/data/payments';
-import { mockAttendance } from '@/data/attendance';
-import { mockGradingRecords } from '@/data/grading';
-import { mockStudentSkills } from '@/data/skills';
-import { mockInstructorNotes } from '@/lib/mock-db';
-import { mockAthleteAchievements } from '@/data/tournaments';
-import { StudentStatus, BeltRank, SkillProgress } from '@/lib/types';
+import { useAuth } from '@/lib/auth-context';
+import { useLive } from '@/lib/useLive';
+import {
+  getStudent, getPayments, getAttendance, getGradingRecords,
+  getStudentSkills, getNotes, getResults, getTournaments,
+  updateStudent, addNote,
+} from '@/lib/db';
+import { Student, StudentStatus, SkillProgress } from '@/lib/types';
 
 const skillProgressColor: Record<SkillProgress, 'red' | 'gold' | 'blue' | 'green'> = {
   'Not Started': 'red', 'Learning': 'gold', 'Good': 'blue', 'Mastered': 'green',
@@ -28,20 +28,42 @@ const beltColors: Record<string, string> = {
   Brown: 'bg-amber-100 text-amber-800', Red: 'bg-red-100 text-red-800',
   Black: 'bg-gray-900 text-white',
 };
+const medalEmoji: Record<string, string> = {
+  Gold: '🥇', Silver: '🥈', Bronze: '🥉', Participation: '🏅', 'No Medal': '🎖️',
+};
 
 const tabs = ['Overview', 'Attendance', 'Payments', 'Grading', 'Skills', 'Notes', 'Tournaments'];
 
 export default function StudentProfilePage() {
   const params = useParams();
   const router = useRouter();
+  const { currentUser } = useAuth();
+  const studentId = params.id as string;
   const [activeTab, setActiveTab] = useState('Overview');
   const [editing, setEditing] = useState(false);
-
-  const student = mockStudents.find(s => s.id === params.id);
-  const [editData, setEditData] = useState(student || null);
+  const [editData, setEditData] = useState<Student | null>(null);
   const [noteText, setNoteText] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
 
-  if (!student || !editData) {
+  const { data: student, loading } = useLive(() => getStudent(studentId), ['students'], [studentId]);
+  const { data: payments } = useLive(() => getPayments(studentId), ['payments'], [studentId]);
+  const { data: attendance } = useLive(() => getAttendance(studentId), ['attendance'], [studentId]);
+  const { data: gradingRecords } = useLive(() => getGradingRecords(studentId), ['grading_records'], [studentId]);
+  const { data: skills } = useLive(() => getStudentSkills(studentId), ['student_skills'], [studentId]);
+  const { data: notes } = useLive(() => getNotes(studentId), ['instructor_notes'], [studentId]);
+  const { data: results } = useLive(() => getResults(studentId), ['tournament_results'], [studentId]);
+  const { data: tournaments } = useLive(getTournaments, ['tournaments']);
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto text-center py-20">
+        <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-gray-500 text-sm">Loading student...</p>
+      </div>
+    );
+  }
+
+  if (!student) {
     return (
       <div className="max-w-4xl mx-auto text-center py-20">
         <p className="text-gray-500">Student not found.</p>
@@ -50,17 +72,35 @@ export default function StudentProfilePage() {
     );
   }
 
-  const payments = mockPayments.filter(p => p.studentId === student.id);
-  const attendance = mockAttendance.filter(a => a.studentId === student.id);
-  const gradingRecords = mockGradingRecords.filter(g => g.studentId === student.id);
-  const skills = mockStudentSkills.filter(s => s.studentId === student.id);
-  const notes = mockInstructorNotes.filter(n => n.studentId === student.id);
-  const achievements = mockAthleteAchievements.filter(a => a.studentId === student.id);
-  const presentCount = attendance.filter(a => a.present).length;
-  const attendancePct = attendance.length > 0 ? Math.round((presentCount / attendance.length) * 100) : 0;
+  const display = editing && editData ? editData : student;
+  const achievements = (results ?? []).map(r => ({
+    ...r,
+    tournamentName: tournaments?.find(t => t.id === r.tournamentId)?.name ?? 'Tournament',
+    date: tournaments?.find(t => t.id === r.tournamentId)?.date ?? '',
+  }));
+  const presentCount = (attendance ?? []).filter(a => a.present).length;
+  const attendancePct = attendance && attendance.length > 0 ? Math.round((presentCount / attendance.length) * 100) : 0;
   const statusColor: Record<StudentStatus, 'green' | 'gray' | 'red'> = { Active: 'green', Inactive: 'gray', 'At Risk': 'red' };
 
   const whatsappMsg = `Hi ${student.parentName}, we noticed ${student.fullName} missed a few classes. Hope everything is okay. We would love to see them back in training this week.`;
+
+  const startEdit = () => { setEditData(student); setEditing(true); };
+  const saveEdit = async () => {
+    if (!editData) return;
+    await updateStudent(student.id, { fullName: editData.fullName, beltRank: editData.beltRank });
+    setEditing(false);
+  };
+
+  const saveNote = async () => {
+    if (!noteText.trim() || !currentUser) return;
+    setSavingNote(true);
+    try {
+      await addNote({ studentId: student.id, coachId: currentUser.id, coachName: currentUser.name, note: noteText.trim() });
+      setNoteText('');
+    } finally {
+      setSavingNote(false);
+    }
+  };
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">
@@ -78,23 +118,23 @@ export default function StudentProfilePage() {
             {student.fullName[0]}
           </div>
           <div className="flex-1 min-w-0">
-            {editing ? (
+            {editing && editData ? (
               <input value={editData.fullName} onChange={e => setEditData({...editData, fullName: e.target.value})}
                 className="text-xl font-bold border-b border-blue-400 focus:outline-none w-full" />
             ) : (
-              <h2 className="text-xl font-bold text-gray-900">{editData.fullName}</h2>
+              <h2 className="text-xl font-bold text-gray-900">{display.fullName}</h2>
             )}
             <p className="text-gray-500 text-sm mt-1">{student.classGroup} · {student.branch}</p>
             <div className="flex items-center gap-2 mt-2 flex-wrap">
-              <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${beltColors[editData.beltRank] || 'bg-gray-100 text-gray-700'}`}>
-                {editData.beltRank} Belt
+              <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${beltColors[display.beltRank] || 'bg-gray-100 text-gray-700'}`}>
+                {display.beltRank} Belt
               </span>
               <Badge label={student.status} color={statusColor[student.status]} />
               {student.missedClasses >= 3 && <Badge label="High Risk" color="red" />}
             </div>
           </div>
           <div className="flex gap-2 flex-wrap">
-            {student.missedClasses >= 3 && (
+            {student.missedClasses >= 3 && student.parentPhone && (
               <a href={`https://wa.me/${student.parentPhone.replace(/\D/g, '')}?text=${encodeURIComponent(whatsappMsg)}`}
                 target="_blank" rel="noopener noreferrer">
                 <Button size="sm" variant="gold">
@@ -104,11 +144,11 @@ export default function StudentProfilePage() {
             )}
             {editing ? (
               <>
-                <Button size="sm" variant="primary" onClick={() => setEditing(false)}><Save size={14} /> Save</Button>
-                <Button size="sm" variant="secondary" onClick={() => { setEditData(student); setEditing(false); }}><X size={14} /></Button>
+                <Button size="sm" variant="primary" onClick={saveEdit}><Save size={14} /> Save</Button>
+                <Button size="sm" variant="secondary" onClick={() => setEditing(false)}><X size={14} /></Button>
               </>
             ) : (
-              <Button size="sm" variant="secondary" onClick={() => setEditing(true)}><Edit2 size={14} /> Edit</Button>
+              <Button size="sm" variant="secondary" onClick={startEdit}><Edit2 size={14} /> Edit</Button>
             )}
           </div>
         </div>
@@ -120,11 +160,11 @@ export default function StudentProfilePage() {
             <p className="text-xs text-gray-400">Attendance</p>
           </div>
           <div className="text-center">
-            <p className="text-2xl font-bold text-gray-900">{payments.filter(p => p.status === 'Paid').length}</p>
+            <p className="text-2xl font-bold text-gray-900">{(payments ?? []).filter(p => p.status === 'Paid').length}</p>
             <p className="text-xs text-gray-400">Payments Made</p>
           </div>
           <div className="text-center">
-            <p className="text-2xl font-bold text-gray-900">{gradingRecords.length}</p>
+            <p className="text-2xl font-bold text-gray-900">{gradingRecords?.length ?? 0}</p>
             <p className="text-xs text-gray-400">Gradings</p>
           </div>
           <div className="text-center">
@@ -150,10 +190,10 @@ export default function StudentProfilePage() {
           <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-3">
             <h3 className="font-bold text-gray-900">Personal Information</h3>
             {[
-              { label: 'Full Name', value: editData.fullName },
-              { label: 'Age', value: `${editData.age} years` },
-              { label: 'IC / Passport', value: editData.icNumber },
-              { label: 'Join Date', value: editData.joinDate },
+              { label: 'Full Name', value: student.fullName },
+              { label: 'Age', value: `${student.age} years` },
+              { label: 'IC / Passport', value: student.icNumber || '—' },
+              { label: 'Join Date', value: student.joinDate || '—' },
             ].map(f => (
               <div key={f.label} className="flex justify-between text-sm border-b border-gray-50 pb-2 last:border-0">
                 <span className="text-gray-500">{f.label}</span>
@@ -164,11 +204,11 @@ export default function StudentProfilePage() {
           <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-3">
             <h3 className="font-bold text-gray-900">Parent / Contact</h3>
             {[
-              { label: 'Parent Name', value: editData.parentName },
-              { label: 'Parent Phone', value: editData.parentPhone },
-              { label: 'Emergency Contact', value: editData.emergencyContact || 'Not set' },
-              { label: 'Branch', value: editData.branch },
-              { label: 'Class Group', value: editData.classGroup },
+              { label: 'Parent Name', value: student.parentName || '—' },
+              { label: 'Parent Phone', value: student.parentPhone || '—' },
+              { label: 'Emergency Contact', value: student.emergencyContact || 'Not set' },
+              { label: 'Branch', value: student.branch || '—' },
+              { label: 'Class Group', value: student.classGroup || '—' },
             ].map(f => (
               <div key={f.label} className="flex justify-between text-sm border-b border-gray-50 pb-2 last:border-0">
                 <span className="text-gray-500">{f.label}</span>
@@ -178,17 +218,19 @@ export default function StudentProfilePage() {
           </div>
           {student.missedClasses >= 3 && (
             <div className="lg:col-span-2 bg-red-50 border border-red-100 rounded-xl p-5">
-              <h3 className="font-bold text-red-800 mb-2">AI Retention Alert</h3>
+              <h3 className="font-bold text-red-800 mb-2">Retention Alert</h3>
               <p className="text-sm text-red-600 mb-3">This student has missed {student.missedClasses} classes. Risk Level: <strong>High</strong></p>
               <div className="bg-white rounded-lg p-4 text-sm text-gray-700 border border-red-100">
                 <p className="font-medium text-gray-900 mb-2">Suggested WhatsApp Message:</p>
                 <p className="italic text-gray-600">&ldquo;{whatsappMsg}&rdquo;</p>
               </div>
-              <a href={`https://wa.me/${student.parentPhone.replace(/\D/g, '')}?text=${encodeURIComponent(whatsappMsg)}`}
-                target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 mt-3 bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
-                <MessageCircle size={15} /> Send WhatsApp
-              </a>
+              {student.parentPhone && (
+                <a href={`https://wa.me/${student.parentPhone.replace(/\D/g, '')}?text=${encodeURIComponent(whatsappMsg)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 mt-3 bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                  <MessageCircle size={15} /> Send WhatsApp
+                </a>
+              )}
             </div>
           )}
         </div>
@@ -198,7 +240,7 @@ export default function StudentProfilePage() {
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
           <div className="p-5 border-b border-gray-50">
             <h3 className="font-bold text-gray-900">Attendance History</h3>
-            <p className="text-sm text-gray-500 mt-1">{presentCount}/{attendance.length} sessions attended ({attendancePct}%)</p>
+            <p className="text-sm text-gray-500 mt-1">{presentCount}/{attendance?.length ?? 0} sessions attended ({attendancePct}%)</p>
             <div className="mt-3">
               <ProgressBar value={attendancePct} color={attendancePct >= 80 ? 'green' : attendancePct >= 60 ? 'gold' : 'red'} />
             </div>
@@ -207,21 +249,19 @@ export default function StudentProfilePage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Date</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Class</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {attendance.map(a => (
+              {(attendance ?? []).map(a => (
                 <tr key={a.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-gray-700">{a.date}</td>
-                  <td className="px-4 py-3 text-gray-500">{a.classId}</td>
                   <td className="px-4 py-3">
                     <Badge label={a.present ? 'Present' : 'Absent'} color={a.present ? 'green' : 'red'} />
                   </td>
                 </tr>
               ))}
-              {attendance.length === 0 && <tr><td colSpan={3} className="px-4 py-8 text-center text-gray-400">No attendance records</td></tr>}
+              {(attendance ?? []).length === 0 && <tr><td colSpan={2} className="px-4 py-8 text-center text-gray-400">No attendance records</td></tr>}
             </tbody>
           </table>
         </div>
@@ -243,7 +283,7 @@ export default function StudentProfilePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {payments.map(p => (
+              {(payments ?? []).map(p => (
                 <tr key={p.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium text-gray-900">{p.month}</td>
                   <td className="px-4 py-3 text-gray-700">RM {p.amount}</td>
@@ -252,7 +292,7 @@ export default function StudentProfilePage() {
                   <td className="px-4 py-3 text-gray-400 text-xs">{p.receiptNumber || '-'}</td>
                 </tr>
               ))}
-              {payments.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No payment records</td></tr>}
+              {(payments ?? []).length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No payment records</td></tr>}
             </tbody>
           </table>
         </div>
@@ -272,7 +312,7 @@ export default function StudentProfilePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {gradingRecords.map(g => (
+              {(gradingRecords ?? []).map(g => (
                 <tr key={g.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-gray-700">{g.date}</td>
                   <td className="px-4 py-3"><Badge label={g.currentBelt} color="gray" /></td>
@@ -281,7 +321,7 @@ export default function StudentProfilePage() {
                   <td className="px-4 py-3"><Badge label={g.result} color={g.result === 'Pass' ? 'green' : g.result === 'Fail' ? 'red' : 'yellow'} /></td>
                 </tr>
               ))}
-              {gradingRecords.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No grading records</td></tr>}
+              {(gradingRecords ?? []).length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No grading records</td></tr>}
             </tbody>
           </table>
         </div>
@@ -290,9 +330,9 @@ export default function StudentProfilePage() {
       {activeTab === 'Skills' && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
           <h3 className="font-bold text-gray-900 mb-4">Skill Progress</h3>
-          {skills.length === 0 && <p className="text-gray-400 text-sm">No skills tracked yet.</p>}
+          {(skills ?? []).length === 0 && <p className="text-gray-400 text-sm">No skills tracked yet.</p>}
           <div className="space-y-4">
-            {skills.map(skill => (
+            {(skills ?? []).map(skill => (
               <div key={skill.id}>
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-sm font-medium text-gray-800">{skill.skillName}</span>
@@ -307,15 +347,19 @@ export default function StudentProfilePage() {
 
       {activeTab === 'Notes' && (
         <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-            <h3 className="font-bold text-gray-900 mb-4">Add Instructor Note</h3>
-            <textarea value={noteText} onChange={e => setNoteText(e.target.value)}
-              placeholder="Add a performance or behavioral note..."
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 h-24 resize-none" />
-            <Button className="mt-3" onClick={() => setNoteText('')}>Save Note</Button>
-          </div>
+          {(currentUser?.role === 'admin' || currentUser?.role === 'coach') && (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+              <h3 className="font-bold text-gray-900 mb-4">Add Instructor Note</h3>
+              <textarea value={noteText} onChange={e => setNoteText(e.target.value)}
+                placeholder="Add a performance or behavioral note..."
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 h-24 resize-none" />
+              <Button className="mt-3" onClick={saveNote} disabled={savingNote || !noteText.trim()}>
+                {savingNote ? 'Saving...' : 'Save Note'}
+              </Button>
+            </div>
+          )}
           <div className="space-y-3">
-            {notes.map(n => (
+            {(notes ?? []).map(n => (
               <div key={n.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-semibold text-gray-900 text-sm">{n.coachName}</span>
@@ -327,7 +371,7 @@ export default function StudentProfilePage() {
                 <p className="text-sm text-gray-600">{n.note}</p>
               </div>
             ))}
-            {notes.length === 0 && <p className="text-sm text-gray-400 text-center py-8">No instructor notes yet.</p>}
+            {(notes ?? []).length === 0 && <p className="text-sm text-gray-400 text-center py-8">No instructor notes yet.</p>}
           </div>
         </div>
       )}
@@ -339,7 +383,7 @@ export default function StudentProfilePage() {
           <div className="space-y-3">
             {achievements.map(a => (
               <div key={a.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
-                <span className="text-3xl">{a.badge}</span>
+                <span className="text-3xl">{medalEmoji[a.medal]}</span>
                 <div className="flex-1">
                   <p className="font-semibold text-gray-900 text-sm">{a.tournamentName}</p>
                   <p className="text-xs text-gray-500 mt-0.5">{a.category} · {a.date}</p>

@@ -1,19 +1,23 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { ROLE_HOME, loadSession } from '@/lib/auth';
+import { ROLE_HOME } from '@/lib/auth';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, currentUser } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (currentUser) router.replace(ROLE_HOME[currentUser.role]);
+  }, [currentUser, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,8 +26,6 @@ export default function LoginPage() {
     const result = await login(email, password);
     setLoading(false);
     if (!result.success) { setError(result.error || 'Login failed.'); return; }
-    const user = loadSession();
-    if (user) router.push(ROLE_HOME[user.role]);
   };
 
   return (

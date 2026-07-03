@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard, Users, Calendar, Award, BookOpen,
+  LayoutDashboard, Users, Award, BookOpen,
   CreditCard, Settings, Trophy, Receipt, X, Dumbbell,
   User, CheckSquare, MessageSquare, Bell, UserCheck
 } from 'lucide-react';
