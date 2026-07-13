@@ -11,6 +11,7 @@ interface SignupData {
   phone?: string;
   childName?: string;
   assignedClass?: string;
+  preferredLanguage?: 'en' | 'ms' | 'ta';
 }
 
 interface AuthContextType {
@@ -27,27 +28,25 @@ const AuthContext = createContext<AuthContextType | null>(null);
 interface ProfileRow {
   id: string;
   auth_user_id: string;
+  academy_id: string;
   full_name: string;
   email: string;
   phone: string | null;
   role: UserRole;
   status: 'pending' | 'approved' | 'rejected';
-  assigned_class: string | null;
-  child_student_ids: string[] | null;
-  student_id: string | null;
+  preferred_language: 'en' | 'ms' | 'ta' | null;
 }
 
 function toAuthUser(profile: ProfileRow): AuthUser {
   return {
     id: profile.id,
     authUserId: profile.auth_user_id,
+    academyId: profile.academy_id,
     email: profile.email,
     name: profile.full_name,
     role: profile.role,
     phone: profile.phone ?? undefined,
-    assignedClass: profile.assigned_class ?? undefined,
-    childStudentIds: profile.child_student_ids ?? undefined,
-    studentId: profile.student_id ?? undefined,
+    preferredLanguage: profile.preferred_language ?? 'en',
   };
 }
 
@@ -138,6 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           phone: data.phone || null,
           child_name: data.childName || null,
           assigned_class: data.assignedClass || null,
+          preferred_language: data.preferredLanguage || 'en',
         },
       },
     });
