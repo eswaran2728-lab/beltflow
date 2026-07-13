@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
 import { Users, CreditCard, CheckCircle, Award, Calendar } from 'lucide-react';
 import Badge from '@/components/Badge';
 import ProgressBar from '@/components/ProgressBar';
@@ -8,7 +9,7 @@ import Button from '@/components/Button';
 import Modal from '@/components/Modal';
 import { useAuth } from '@/lib/auth-context';
 import { useLive } from '@/lib/useLive';
-import { getMyChildren, getInvoicesForStudent, getAttendanceForStudent, getStudentSkills, getSkills, getNotes, submitPayment } from '@/lib/db';
+import { getMyChildren, getInvoicesForStudent, getAttendanceForStudent, getStudentSkills, getSkills, getNotes, getCertificates, submitPayment } from '@/lib/db';
 import { SKILL_LEVEL_LABEL, SKILL_LEVEL_PCT, SkillLevel, monthLabel, Invoice } from '@/lib/types';
 
 const skillColor: Record<SkillLevel, 'red' | 'gold' | 'blue' | 'green'> = { not_started: 'red', learning: 'gold', good: 'blue', mastered: 'green' };
@@ -27,6 +28,7 @@ export default function ParentPortalPage() {
   const { data: studentSkills } = useLive(() => child ? getStudentSkills(child.id) : Promise.resolve([]), ['student_skills'], [child?.id]);
   const { data: skills } = useLive(getSkills, ['skills']);
   const { data: notes } = useLive(() => child ? getNotes(child.id) : Promise.resolve([]), ['student_notes'], [child?.id]);
+  const { data: certs } = useLive(() => child ? getCertificates(child.id) : Promise.resolve([]), ['certificates'], [child?.id]);
 
   if (loading) return <div className="max-w-lg mx-auto text-center py-20"><div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-3" /><p className="text-gray-500 text-sm">Loading...</p></div>;
   if (!children || children.length === 0) return (
@@ -116,6 +118,20 @@ export default function ParentPortalPage() {
           {(skills ?? []).length === 0 && <p className="text-sm text-gray-400">No skills tracked yet.</p>}
         </div>
       </div>
+
+      {(certs ?? []).length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+          <h2 className="font-bold text-gray-900 mb-4">Certificates</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {(certs ?? []).map(c => (
+              <Link key={c.id} href={`/certificate/${c.id}`} className="bg-yellow-50 rounded-xl px-4 py-3 hover:bg-yellow-100 transition-colors block">
+                <p className="font-semibold text-gray-900 text-sm">{c.title}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{c.certNo} · {c.issuedAt}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {visibleNotes.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-100 p-5">

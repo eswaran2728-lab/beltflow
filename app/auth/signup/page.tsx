@@ -18,6 +18,7 @@ export default function SignupPage() {
   const [role, setRole] = useState<UserRole>('parent');
   const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', childName: '', assignedClass: '' });
   const [showPw, setShowPw] = useState(false);
+  const [consent, setConsent] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
@@ -26,6 +27,7 @@ export default function SignupPage() {
     e.preventDefault();
     setError('');
     if (form.password.length < 6) { setError('Password must be at least 6 characters.'); return; }
+    if (!consent) { setError('Please agree to the Privacy Policy and Terms to continue.'); return; }
     setLoading(true);
     const result = await signup({
       name: form.name, email: form.email, password: form.password, role,
@@ -140,6 +142,16 @@ export default function SignupPage() {
                   className="w-full border border-blue-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
               </div>
             )}
+
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+              <span className="text-xs text-gray-500 leading-relaxed">
+                I agree to the <Link href="/privacy" target="_blank" className="text-blue-600 hover:underline">Privacy Policy</Link> and{' '}
+                <Link href="/terms" target="_blank" className="text-blue-600 hover:underline">Terms of Service</Link>
+                {role === 'parent' ? ', and consent to my child’s data being stored and processed as described.' : '.'}
+              </span>
+            </label>
 
             {error && (
               <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600">{error}</div>

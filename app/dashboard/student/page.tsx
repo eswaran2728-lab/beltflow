@@ -69,7 +69,12 @@ export default function StudentDashboard() {
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
           <h2 className="font-bold text-gray-900 mb-4">My Certificates</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {(certs ?? []).map(c => <div key={c.id} className="bg-yellow-50 rounded-xl px-4 py-3"><p className="font-semibold text-gray-900 text-sm">{c.title}</p><p className="text-xs text-gray-500 mt-0.5">{c.certNo} · {c.issuedAt}</p></div>)}
+            {(certs ?? []).map(c => (
+              <Link key={c.id} href={`/certificate/${c.id}`} className="bg-yellow-50 rounded-xl px-4 py-3 hover:bg-yellow-100 transition-colors block">
+                <p className="font-semibold text-gray-900 text-sm">{c.title}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{c.certNo} · {c.issuedAt}</p>
+              </Link>
+            ))}
           </div>
         </div>
       )}
