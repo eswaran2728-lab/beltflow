@@ -3,84 +3,71 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Users, UserCheck, DollarSign, Calendar, Award, AlertTriangle, TrendingUp, Clock } from 'lucide-react';
 import StatCard from '@/components/StatCard';
-import PaymentStatusBadge from '@/components/PaymentStatusBadge';
+import InvoiceStatusBadge from '@/components/InvoiceStatusBadge';
 import Badge from '@/components/Badge';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { ROLE_HOME } from '@/lib/auth';
 import { useLive } from '@/lib/useLive';
-import { getStudents, getPayments, getGradingEvents, getAttendance, getClasses, setPaymentStatus } from '@/lib/db';
-import { monthLabel } from '@/lib/types';
+import { getStudents, getInvoices, getGradingEvents, getClasses, getAtRiskMap } from '@/lib/db';
+import { firstOfMonth, monthLabel } from '@/lib/types';
 
 export default function AdminDashboard() {
   const { currentUser } = useAuth();
   const router = useRouter();
 
-  const { data: students } = useLive(getStudents, ['students']);
-  const { data: payments } = useLive(getPayments, ['payments']);
+  const { data: students } = useLive(getStudents, ['students', 'enrollments', 'grading_results']);
+  const { data: invoices } = useLive(getInvoices, ['invoices', 'payments']);
   const { data: gradingEvents } = useLive(getGradingEvents, ['grading_events']);
-  const { data: attendance } = useLive(getAttendance, ['attendance']);
-  const { data: classes } = useLive(getClasses, ['classes']);
+  const { data: classes } = useLive(getClasses, ['classes', 'class_coaches']);
+  const { data: atRisk } = useLive(getAtRiskMap, ['attendance']);
 
   useEffect(() => {
-    if (currentUser && currentUser.role !== 'admin') {
-      router.replace(ROLE_HOME[currentUser.role]);
-    }
+    if (currentUser && currentUser.role !== 'admin') router.replace(ROLE_HOME[currentUser.role]);
   }, [currentUser, router]);
-
   if (currentUser && currentUser.role !== 'admin') return null;
 
-  const currentMonth = monthLabel();
+  const thisMonth = firstOfMonth();
   const totalStudents = students?.length ?? 0;
-  const activeStudents = students?.filter(s => s.status === 'Active').length ?? 0;
-  const atRisk = students?.filter(s => s.missedClasses >= 3) ?? [];
-  const monthlyRevenue = payments
-    ?.filter(p => p.status === 'Paid' && p.month === currentMonth)
-    .reduce((sum, p) => sum + p.amount, 0) ?? 0;
-  const pendingCash = payments?.filter(p => p.status === 'Pending Cash Approval') ?? [];
-  const upcomingGrading = gradingEvents?.filter(g => g.status === 'Upcoming') ?? [];
-  const recentPayments = payments?.slice(0, 5) ?? [];
-  const totalPresent = attendance?.filter(a => a.present).length ?? 0;
-  const attendanceRate = attendance && attendance.length > 0
-    ? Math.round((totalPresent / attendance.length) * 100)
-    : 0;
-
-  const approve = async (id: string) => {
-    try { await setPaymentStatus(id, 'Paid', currentUser?.name); } catch { /* surfaces via realtime refresh */ }
-  };
+  const activeStudents = students?.filter(s => s.lifecycle === 'active').length ?? 0;
+  const monthlyRevenue = invoices?.filter(i => i.status === 'paid' && i.billingMonth === thisMonth)
+    .reduce((sum, i) => sum + i.net, 0) ?? 0;
+  const pendingApprovals = invoices?.filter(i => i.status === 'pending_approval') ?? [];
+  const upcomingGrading = gradingEvents?.filter(g => new Date(g.eventDate) >= new Date(new Date().toDateString())) ?? [];
+  const atRiskEntries = Object.entries(atRisk ?? {});
+  const recentInvoices = invoices?.slice(0, 5) ?? [];
+  const studentName = (id: string) => students?.find(s => s.id === id)?.fullName ?? '—';
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Persatuan Silambam Malaysia — Daerah Sepang ✓</p>
+          <p className="text-gray-500 text-sm mt-0.5">Persatuan Silambam Malaysia — Daerah Sepang</p>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 bg-green-100 text-green-800 text-xs font-bold px-3 py-1.5 rounded-full">
-            ✓ Live Data — Updates in Real Time
-          </span>
-        </div>
+        <span className="inline-flex items-center gap-1.5 bg-green-100 text-green-800 text-xs font-bold px-3 py-1.5 rounded-full">
+          ✓ Live Data — Updates in Real Time
+        </span>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Students" value={totalStudents} icon={Users} iconBg="bg-blue-50 text-blue-600" subtitle="Registered members" />
+        <StatCard title="Total Students" value={totalStudents} icon={Users} iconBg="bg-blue-50 text-blue-600" subtitle="All members" />
         <StatCard title="Active Students" value={activeStudents} icon={UserCheck} iconBg="bg-green-50 text-green-600" subtitle="Currently training" />
-        <StatCard title="Monthly Revenue" value={`RM ${monthlyRevenue}`} icon={DollarSign} iconBg="bg-yellow-50 text-yellow-600" subtitle={currentMonth} />
-        <StatCard title="Attendance Rate" value={`${attendanceRate}%`} icon={TrendingUp} iconBg="bg-purple-50 text-purple-600" subtitle="All sessions" />
+        <StatCard title="Revenue This Month" value={`RM ${monthlyRevenue}`} icon={DollarSign} iconBg="bg-yellow-50 text-yellow-600" subtitle={monthLabel(thisMonth)} />
+        <StatCard title="Classes" value={classes?.length ?? 0} icon={Calendar} iconBg="bg-teal-50 text-teal-600" subtitle="Configured" />
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="At Risk Students" value={atRisk.length} icon={AlertTriangle} iconBg="bg-red-50 text-red-500" subtitle="Missed 3+ classes" />
-        <StatCard title="Pending Cash" value={pendingCash.length} icon={Clock} iconBg="bg-orange-50 text-orange-500" subtitle="Awaiting approval" />
-        <StatCard title="Upcoming Grading" value={upcomingGrading.length} icon={Award} iconBg="bg-indigo-50 text-indigo-600" subtitle={upcomingGrading[0]?.date || 'None scheduled'} />
-        <StatCard title="Classes" value={classes?.length ?? 0} icon={Calendar} iconBg="bg-teal-50 text-teal-600" subtitle="Configured classes" />
+        <StatCard title="At Risk Students" value={atRiskEntries.length} icon={AlertTriangle} iconBg="bg-red-50 text-red-500" subtitle="3+ recent absences" />
+        <StatCard title="Pending Payments" value={pendingApprovals.length} icon={Clock} iconBg="bg-orange-50 text-orange-500" subtitle="Awaiting approval" />
+        <StatCard title="Upcoming Grading" value={upcomingGrading.length} icon={Award} iconBg="bg-indigo-50 text-indigo-600" subtitle={upcomingGrading[0]?.eventDate || 'None scheduled'} />
+        <StatCard title="Unpaid Invoices" value={invoices?.filter(i => i.status === 'unpaid' || i.status === 'overdue').length ?? 0} icon={TrendingUp} iconBg="bg-purple-50 text-purple-600" subtitle="Outstanding" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm">
           <div className="flex items-center justify-between p-5 border-b border-gray-50">
-            <h2 className="font-bold text-gray-900">Recent Payments</h2>
+            <h2 className="font-bold text-gray-900">Recent Invoices</h2>
             <Link href="/dashboard/payments" className="text-sm text-blue-600 hover:underline font-medium">View all</Link>
           </div>
           <div className="overflow-x-auto">
@@ -94,16 +81,16 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {recentPayments.map(p => (
-                  <tr key={p.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-900">{p.studentName}</td>
-                    <td className="px-4 py-3 text-gray-500">{p.month}</td>
-                    <td className="px-4 py-3 font-semibold text-gray-900">RM {p.amount}</td>
-                    <td className="px-4 py-3"><PaymentStatusBadge status={p.status} /></td>
+                {recentInvoices.map(i => (
+                  <tr key={i.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium text-gray-900">{studentName(i.studentId)}</td>
+                    <td className="px-4 py-3 text-gray-500">{monthLabel(i.billingMonth)}</td>
+                    <td className="px-4 py-3 font-semibold text-gray-900">RM {i.net}</td>
+                    <td className="px-4 py-3"><InvoiceStatusBadge status={i.status} /></td>
                   </tr>
                 ))}
-                {recentPayments.length === 0 && (
-                  <tr><td colSpan={4} className="px-4 py-10 text-center text-gray-400">No payments recorded yet.</td></tr>
+                {recentInvoices.length === 0 && (
+                  <tr><td colSpan={4} className="px-4 py-10 text-center text-gray-400">No invoices yet. Generate them from the Payments page.</td></tr>
                 )}
               </tbody>
             </table>
@@ -119,9 +106,8 @@ export default function AdminDashboard() {
                   <Award size={18} className="text-indigo-600" />
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900 text-sm">{g.title}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{g.date}</p>
-                  <p className="text-xs text-gray-400">{g.studentIds.length} students registered</p>
+                  <p className="font-semibold text-gray-900 text-sm">{g.name}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{g.eventDate}</p>
                 </div>
               </div>
             ))}
@@ -131,46 +117,20 @@ export default function AdminDashboard() {
 
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
             <h2 className="font-bold text-gray-900 mb-4">Students at Risk</h2>
-            {atRisk.map(s => (
-              <div key={s.id} className="flex items-center justify-between mb-3">
+            {atRiskEntries.map(([sid, count]) => (
+              <div key={sid} className="flex items-center justify-between mb-3">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{s.fullName}</p>
-                  <p className="text-xs text-red-500">{s.missedClasses} classes missed</p>
+                  <Link href={`/dashboard/students/${sid}`} className="text-sm font-medium text-gray-900 hover:text-blue-600">{studentName(sid)}</Link>
+                  <p className="text-xs text-red-500">{count} recent absences</p>
                 </div>
                 <Badge label="High Risk" color="red" />
               </div>
             ))}
-            {atRisk.length === 0 && <p className="text-sm text-gray-400">No at-risk students</p>}
+            {atRiskEntries.length === 0 && <p className="text-sm text-gray-400">No at-risk students</p>}
             <Link href="/dashboard/attendance" className="block mt-3 text-center text-sm text-blue-600 hover:underline font-medium">View Attendance</Link>
           </div>
         </div>
       </div>
-
-      {pendingCash.length > 0 && (
-        <div className="bg-white rounded-xl border border-orange-100 shadow-sm">
-          <div className="flex items-center justify-between p-5 border-b border-orange-50">
-            <h2 className="font-bold text-gray-900 flex items-center gap-2">
-              <Clock size={16} className="text-orange-500" /> Pending Cash Approvals
-            </h2>
-            <Link href="/dashboard/payments" className="text-sm text-blue-600 hover:underline font-medium">View all</Link>
-          </div>
-          <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {pendingCash.map(p => (
-              <div key={p.id} className="flex items-center justify-between bg-orange-50 rounded-xl p-3.5">
-                <div>
-                  <p className="font-semibold text-gray-900 text-sm">{p.studentName}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{p.month} · RM {p.amount}</p>
-                  {p.notes && <p className="text-xs text-orange-600 mt-0.5">{p.notes}</p>}
-                </div>
-                <button onClick={() => approve(p.id)}
-                  className="bg-green-600 text-white text-xs px-2.5 py-1.5 rounded-lg hover:bg-green-700 font-semibold ml-2">
-                  Approve
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

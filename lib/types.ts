@@ -1,156 +1,160 @@
-// BeltFlow Types — map directly to Supabase tables (snake_case in DB, camelCase here)
+// BeltFlow v2 domain types — map to the multi-tenant Supabase schema.
 
 export type UserRole = 'admin' | 'coach' | 'parent' | 'student';
+export type ProfileStatus = 'pending' | 'approved' | 'rejected';
+export type Language = 'en' | 'ms' | 'ta';
 
-export type BeltRank =
-  | 'White' | 'Yellow' | 'Orange' | 'Green' | 'Blue' | 'Purple' | 'Brown' | 'Red' | 'Black';
+export type Lifecycle = 'trial' | 'active' | 'frozen' | 'quit';
+export type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
+export type InvoiceStatus = 'unpaid' | 'pending_approval' | 'paid' | 'waived' | 'overdue';
+export type PaymentMethod = 'cash' | 'fpx' | 'transfer';
+export type GradingResultType = 'registered' | 'pass' | 'fail' | 'absent';
+export type SkillLevel = 'not_started' | 'learning' | 'good' | 'mastered';
+export type Medal = 'gold' | 'silver' | 'bronze' | 'participation';
+export type Relationship = 'father' | 'mother' | 'guardian';
+export type NoteVisibility = 'staff' | 'parent_visible';
+export type CertType = 'grading' | 'tournament' | 'participation' | 'achievement';
 
-export type StudentStatus = 'Active' | 'Inactive' | 'At Risk';
+export interface Academy {
+  id: string;
+  name: string;
+  description: string;
+  logoUrl?: string;
+  monthlyFeeDefault: number;
+}
 
-export type PaymentStatus = 'Paid' | 'Unpaid' | 'Overdue' | 'Pending Cash Approval' | 'Rejected';
-
-export type PaymentMethod = 'FPX' | 'Cash';
-
-export type SkillProgress = 'Not Started' | 'Learning' | 'Good' | 'Mastered';
-
-export type GradingResultType = 'Pass' | 'Fail' | 'Pending';
-
-export type TournamentStatus = 'Draft' | 'Open Registration' | 'Registration Closed' | 'Completed' | 'Cancelled';
-
-export type RegistrationStatus = 'Registered' | 'Confirmed' | 'Withdrawn' | 'Completed';
-
-export type MedalResult = 'Gold' | 'Silver' | 'Bronze' | 'Participation' | 'No Medal';
+export interface Belt {
+  id: string;
+  name: string;
+  colorHex: string;
+  sortOrder: number;
+}
 
 export interface Branch {
   id: string;
   name: string;
   address: string;
-  phone: string;
 }
 
-export interface Class {
+export interface ClassRow {
   id: string;
   branchId: string | null;
   name: string;
-  schedule: string;
-  coachId: string | null;
+  dayOfWeek: number | null;
+  startTime: string | null;
+  endTime: string | null;
+  scheduleNote: string;
+  monthlyFeeOverride: number | null;
+  coachIds: string[];
+  coachNames: string[];
 }
 
 export interface Student {
   id: string;
+  profileId: string | null;
   fullName: string;
-  age: number;
-  icNumber: string;
-  parentName: string;
-  parentPhone: string;
-  emergencyContact?: string;
-  beltRank: BeltRank;
-  joinDate: string;
-  status: StudentStatus;
-  branch: string;
-  classGroup: string;
-  classId: string | null;
-  missedClasses: number;
-  notes?: string;
+  icOrMykid: string;
+  dateOfBirth: string | null;
+  age: number | null;
+  gender: string;
+  beltId: string | null;
+  beltName: string;
+  lifecycle: Lifecycle;
+  joinedAt: string;
+  photoUrl?: string;
+  medicalNotes: string;
+  classIds: string[];
+  classNames: string[];
 }
 
-export interface AttendanceRecord {
+export interface Guardian {
+  parentProfileId: string;
+  parentName: string;
+  parentPhone: string;
+  studentId: string;
+  relationship: Relationship;
+  isPrimaryPayer: boolean;
+}
+
+export interface ClassSession {
+  id: string;
+  classId: string;
+  sessionDate: string;
+  cancelled: boolean;
+}
+
+export interface AttendanceRow {
+  id: string;
+  sessionId: string;
+  studentId: string;
+  status: AttendanceStatus;
+  sessionDate: string;
+  classId: string;
+}
+
+export interface Invoice {
   id: string;
   studentId: string;
-  classId: string | null;
-  date: string;
-  present: boolean;
-  notes?: string;
+  studentName: string;
+  billingMonth: string;
+  amount: number;
+  discount: number;
+  discountReason: string;
+  status: InvoiceStatus;
+  net: number;
 }
 
 export interface Payment {
   id: string;
-  studentId: string;
-  studentName: string;
-  amount: number;
-  month: string;
-  status: PaymentStatus;
+  invoiceId: string;
   method: PaymentMethod;
-  paidDate?: string;
-  receiptNumber?: string;
-  approvedBy?: string;
-  notes?: string;
+  amount: number;
+  submittedBy: string | null;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  receiptNo: string | null;
+  proofUrl: string | null;
 }
 
 export interface GradingEvent {
   id: string;
-  title: string;
-  date: string;
+  name: string;
+  eventDate: string;
   location: string;
   examiner: string;
-  studentIds: string[];
-  status: 'Upcoming' | 'Completed';
+  fee: number;
 }
 
-export interface GradingRecord {
+export interface GradingResult {
   id: string;
-  eventId: string;
+  gradingEventId: string;
   studentId: string;
   studentName: string;
-  currentBelt: BeltRank;
-  targetBelt: BeltRank;
+  fromBeltId: string | null;
+  toBeltId: string | null;
+  fromBeltName: string;
+  toBeltName: string;
   result: GradingResultType;
-  examiner: string;
-  date: string;
-  notes?: string;
 }
 
 export interface Skill {
   id: string;
   name: string;
   category: string;
-  description?: string;
-  order: number;
+  sortOrder: number;
 }
 
 export interface StudentSkill {
-  id: string;
   studentId: string;
   skillId: string;
-  skillName: string;
-  progress: SkillProgress;
-  updatedAt: string;
-  notes?: string;
-}
-
-export interface InstructorNote {
-  id: string;
-  studentId: string;
-  coachId: string | null;
-  coachName: string;
-  note: string;
-  date: string;
-  isPrivate: boolean;
+  level: SkillLevel;
 }
 
 export interface Tournament {
   id: string;
   name: string;
-  organizer: string;
-  venue: string;
-  date: string;
-  registrationDeadline: string;
-  status: TournamentStatus;
-  notes?: string;
-  categories: string[];
-}
-
-export interface TournamentRegistration {
-  id: string;
-  tournamentId: string;
-  studentId: string;
-  studentName: string;
-  ageGroup: string;
-  category: string;
-  branch: string;
-  coachName: string;
-  status: RegistrationStatus;
-  remarks?: string;
+  eventDate: string;
+  location: string;
 }
 
 export interface TournamentResult {
@@ -158,27 +162,75 @@ export interface TournamentResult {
   tournamentId: string;
   studentId: string;
   studentName: string;
-  category: string;
-  medal: MedalResult;
+  eventCategory: string;
+  medal: Medal | null;
   points: number;
-  position?: number;
-  notes?: string;
 }
 
-export interface AcademySettings {
+export interface StudentNote {
   id: string;
-  name: string;
-  description: string;
-  martialArtStyle: string;
-  phone: string;
-  email: string;
-  address: string;
-  monthlyFee: number;
+  studentId: string;
+  authorId: string | null;
+  authorName: string;
+  body: string;
+  visibility: NoteVisibility;
+  createdAt: string;
 }
 
-export const BELT_LEVELS: BeltRank[] = ['White', 'Yellow', 'Orange', 'Green', 'Blue', 'Purple', 'Brown', 'Red', 'Black'];
+export interface AppNotification {
+  id: string;
+  title: string;
+  body: string;
+  linkPath: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
 
-/** e.g. "July 2026" — the label used for monthly payments */
-export function monthLabel(d: Date = new Date()): string {
+export interface Certificate {
+  id: string;
+  studentId: string;
+  type: CertType;
+  title: string;
+  certNo: string;
+  verifyCode: string;
+  issuedAt: string;
+  pdfUrl: string | null;
+}
+
+// ---- helpers ----
+export const SKILL_LEVELS: SkillLevel[] = ['not_started', 'learning', 'good', 'mastered'];
+export const SKILL_LEVEL_LABEL: Record<SkillLevel, string> = {
+  not_started: 'Not Started', learning: 'Learning', good: 'Good', mastered: 'Mastered',
+};
+export const SKILL_LEVEL_PCT: Record<SkillLevel, number> = {
+  not_started: 0, learning: 33, good: 66, mastered: 100,
+};
+export const LIFECYCLE_LABEL: Record<Lifecycle, string> = {
+  trial: 'Trial', active: 'Active', frozen: 'Frozen', quit: 'Quit',
+};
+export const ATTENDANCE_LABEL: Record<AttendanceStatus, string> = {
+  present: 'Present', absent: 'Absent', late: 'Late', excused: 'Excused',
+};
+export const INVOICE_LABEL: Record<InvoiceStatus, string> = {
+  unpaid: 'Unpaid', pending_approval: 'Pending Approval', paid: 'Paid', waived: 'Waived', overdue: 'Overdue',
+};
+export const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+export function firstOfMonth(d: Date = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+}
+
+export function monthLabel(iso: string): string {
+  const d = new Date(iso + (iso.length === 10 ? 'T00:00:00' : ''));
   return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+export function ageFromDob(dob: string | null): number | null {
+  if (!dob) return null;
+  const b = new Date(dob);
+  const now = new Date();
+  let a = now.getFullYear() - b.getFullYear();
+  const m = now.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < b.getDate())) a--;
+  return a;
 }
