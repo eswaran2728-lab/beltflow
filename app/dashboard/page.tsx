@@ -5,11 +5,12 @@ import { Users, UserCheck, DollarSign, Calendar, Award, AlertTriangle, TrendingU
 import StatCard from '@/components/StatCard';
 import InvoiceStatusBadge from '@/components/InvoiceStatusBadge';
 import Badge from '@/components/Badge';
+import OnboardingChecklist from '@/components/OnboardingChecklist';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { ROLE_HOME } from '@/lib/auth';
 import { useLive } from '@/lib/useLive';
-import { getStudents, getInvoices, getGradingEvents, getClasses, getAtRiskMap } from '@/lib/db';
+import { getStudents, getInvoices, getGradingEvents, getClasses, getAtRiskMap, getAcademy, getBelts, getBranches } from '@/lib/db';
 import { firstOfMonth, monthLabel } from '@/lib/types';
 
 export default function AdminDashboard() {
@@ -21,6 +22,9 @@ export default function AdminDashboard() {
   const { data: gradingEvents } = useLive(getGradingEvents, ['grading_events']);
   const { data: classes } = useLive(getClasses, ['classes', 'class_coaches']);
   const { data: atRisk } = useLive(getAtRiskMap, ['attendance']);
+  const { data: academy } = useLive(getAcademy, ['academies']);
+  const { data: belts } = useLive(getBelts, ['belts']);
+  const { data: branches } = useLive(getBranches, ['branches']);
 
   useEffect(() => {
     if (currentUser && currentUser.role !== 'admin') router.replace(ROLE_HOME[currentUser.role]);
@@ -49,6 +53,13 @@ export default function AdminDashboard() {
           ✓ Live Data — Updates in Real Time
         </span>
       </div>
+
+      <OnboardingChecklist
+        hasAcademyInfo={!!academy?.description}
+        hasBelts={(belts?.length ?? 0) > 0}
+        hasBranchOrClass={(branches?.length ?? 0) > 0 || (classes?.length ?? 0) > 0}
+        hasStudent={totalStudents > 0}
+      />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Total Students" value={totalStudents} icon={Users} iconBg="bg-blue-50 text-blue-600" subtitle="All members" />
