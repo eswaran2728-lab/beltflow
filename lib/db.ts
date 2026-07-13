@@ -94,6 +94,11 @@ export async function deleteClass(id: string) {
   const { error } = await supabase.from('classes').delete().eq('id', id);
   if (error) fail(error);
 }
+/** Coach (or admin) sets the monthly fee for a class. Enforced server-side. */
+export async function setClassFee(classId: string, fee: number) {
+  const { error } = await supabase.rpc('set_class_fee', { p_class_id: classId, p_fee: fee });
+  if (error) fail(error);
+}
 export async function assignCoach(classId: string, coachProfileId: string) {
   const { error } = await supabase.from('class_coaches').insert({ class_id: classId, coach_profile_id: coachProfileId });
   if (error) fail(error);
@@ -297,13 +302,25 @@ export async function getInvoicesForStudent(studentId: string): Promise<Invoice[
   return (data as Row[]).map(r => mapInvoice(r, {}));
 }
 
-/** Generate unpaid invoices for all active/trial students for a billing month. Applies sibling discount. */
-export async function generateInvoices(academyId: string, billingMonth: string): Promise<number> {
-  const [students, classes, academy] = await Promise.all([getStudents(), getClasses(), getAcademy()]);
+export interface GenerateInvoicesResult {
+  created: number;
+  /** Students skipped because their class has no fee set by the coach yet. */
+  skippedNoFee: string[];
+}
+
+/**
+ * Generate unpaid invoices for all active/trial students for a billing month.
+ * Each student's fee comes from their class's coach-set fee — there is no academy
+ * default. Students whose class has no fee yet are skipped and reported back so
+ * the coach can be asked to set it. Applies the sibling discount.
+ */
+export async function generateInvoices(academyId: string, billingMonth: string): Promise<GenerateInvoicesResult> {
+  const [students, classes] = await Promise.all([getStudents(), getClasses()]);
   const active = students.filter(s => s.lifecycle === 'active' || s.lifecycle === 'trial');
-  const feeFor = (s: Student): number => {
+  // Fee = the fee of the (first) class the student is enrolled in that has a fee set.
+  const feeFor = (s: Student): number | null => {
     const cls = classes.find(c => s.classIds.includes(c.id) && c.monthlyFeeOverride != null);
-    return cls?.monthlyFeeOverride ?? academy?.monthlyFeeDefault ?? 0;
+    return cls ? cls.monthlyFeeOverride : null;
   };
 
   // Sibling discount: 2+ active students sharing a primary payer → 10% off each sibling after the first.
@@ -313,22 +330,24 @@ export async function generateInvoices(academyId: string, billingMonth: string):
   const studentPayer: Record<string, string> = {};
   for (const l of (links ?? []) as Row[]) studentPayer[l.student_id] = l.parent_profile_id;
 
-  const rows = active.map(s => {
+  const skippedNoFee: string[] = [];
+  const rows = active.flatMap(s => {
     const amount = feeFor(s);
+    if (amount == null) { skippedNoFee.push(s.fullName); return []; }
     const payer = studentPayer[s.id];
     const siblings = payer ? payerCount[payer] : 1;
     const discount = siblings >= 2 ? Math.round(amount * 0.1 * 100) / 100 : 0;
-    return {
+    return [{
       academy_id: academyId, student_id: s.id, billing_month: billingMonth,
       amount, discount, discount_reason: discount > 0 ? 'Sibling discount (10%)' : null, status: 'unpaid',
-    };
+    }];
   });
-  if (!rows.length) return 0;
+  if (!rows.length) return { created: 0, skippedNoFee };
   const { data, error } = await supabase.from('invoices')
     .upsert(rows, { onConflict: 'student_id,billing_month', ignoreDuplicates: true })
     .select('id');
   if (error) fail(error);
-  return (data as Row[])?.length ?? 0;
+  return { created: (data as Row[])?.length ?? 0, skippedNoFee };
 }
 
 export async function setInvoiceStatus(invoiceId: string, status: InvoiceStatus) {

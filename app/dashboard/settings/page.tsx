@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Save, Plus, Trash2, Building2, BookOpen, DollarSign, Award, Users } from 'lucide-react';
+import { Save, Plus, Trash2, Building2, BookOpen, Award, Users } from 'lucide-react';
 import Button from '@/components/Button';
 import FormInput from '@/components/FormInput';
 import Badge from '@/components/Badge';
@@ -13,7 +13,7 @@ import {
 } from '@/lib/db';
 import { Academy, DAY_NAMES } from '@/lib/types';
 
-const tabs = ['Academy', 'Branches', 'Classes', 'Belts', 'Skills', 'Fees'];
+const tabs = ['Academy', 'Branches & Classes', 'Belts', 'Skills'];
 
 export default function SettingsPage() {
   const { currentUser } = useAuth();
@@ -70,9 +70,10 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {tab === 'Branches' && (
+      {tab === 'Branches & Classes' && (
+        <div className="space-y-5">
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <h2 className="font-bold text-gray-900 mb-4">Branches</h2>
+          <h2 className="font-bold text-gray-900 mb-4 flex items-center gap-2"><Building2 size={16} /> Branches</h2>
           <div className="space-y-3 mb-4">
             {(branches ?? []).map(b => (
               <div key={b.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
@@ -88,18 +89,17 @@ export default function SettingsPage() {
           </div>
           <Button size="sm" className="mt-3" onClick={async () => { if (newBranch.name) { await addBranch(aid, newBranch.name, newBranch.address); setNewBranch({ name: '', address: '' }); } }}><Plus size={14} /> Add Branch</Button>
         </div>
-      )}
 
-      {tab === 'Classes' && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <h2 className="font-bold text-gray-900 mb-4">Classes</h2>
+          <h2 className="font-bold text-gray-900 mb-1 flex items-center gap-2"><Users size={16} /> Classes</h2>
+          <p className="text-xs text-gray-400 mb-4">Create classes and assign coaches. The assigned coach sets each class&apos;s monthly fee from the Coach dashboard.</p>
           <div className="space-y-3 mb-4">
             {(classes ?? []).map(c => (
               <div key={c.id} className="bg-gray-50 rounded-xl px-4 py-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-semibold text-gray-900 text-sm">{c.name}</p>
-                    <p className="text-xs text-gray-500">{c.dayOfWeek != null ? `${DAY_NAMES[c.dayOfWeek]} ${c.startTime ?? ''}–${c.endTime ?? ''}` : c.scheduleNote}{c.monthlyFeeOverride != null ? ` · RM${c.monthlyFeeOverride}` : ''}</p>
+                    <p className="text-xs text-gray-500">{c.dayOfWeek != null ? `${DAY_NAMES[c.dayOfWeek]} ${c.startTime ?? ''}–${c.endTime ?? ''}` : c.scheduleNote}{c.monthlyFeeOverride != null ? ` · RM${c.monthlyFeeOverride}/mo` : ' · fee not set'}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     {(branches ?? []).find(b => b.id === c.branchId) && <Badge label={branches!.find(b => b.id === c.branchId)!.name} color="blue" />}
@@ -134,7 +134,7 @@ export default function SettingsPage() {
                 </select>
               </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Day</label>
                 <select value={newClass.dayOfWeek} onChange={e => setNewClass({ ...newClass, dayOfWeek: e.target.value })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
@@ -143,14 +143,14 @@ export default function SettingsPage() {
               </div>
               <FormInput label="Start" type="time" value={newClass.startTime} onChange={e => setNewClass({ ...newClass, startTime: e.target.value })} />
               <FormInput label="End" type="time" value={newClass.endTime} onChange={e => setNewClass({ ...newClass, endTime: e.target.value })} />
-              <FormInput label="Fee (opt)" type="number" value={newClass.fee} onChange={e => setNewClass({ ...newClass, fee: e.target.value })} placeholder="default" />
             </div>
             <Button size="sm" onClick={async () => {
               if (!newClass.name) return;
-              await addClass(aid, { name: newClass.name, branchId: newClass.branchId || null, dayOfWeek: parseInt(newClass.dayOfWeek), startTime: newClass.startTime, endTime: newClass.endTime, scheduleNote: '', monthlyFeeOverride: newClass.fee ? parseFloat(newClass.fee) : null });
+              await addClass(aid, { name: newClass.name, branchId: newClass.branchId || null, dayOfWeek: parseInt(newClass.dayOfWeek), startTime: newClass.startTime, endTime: newClass.endTime, scheduleNote: '', monthlyFeeOverride: null });
               setNewClass({ name: '', branchId: '', dayOfWeek: '2', startTime: '19:00', endTime: '21:00', fee: '' });
             }}><Plus size={14} /> Add Class</Button>
           </div>
+        </div>
         </div>
       )}
 
@@ -197,18 +197,6 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {tab === 'Fees' && form && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <h2 className="font-bold text-gray-900 flex items-center gap-2 mb-4"><DollarSign size={16} /> Default Monthly Fee</h2>
-          <div className="max-w-xs">
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-sm">RM</span>
-              <input type="number" value={form.monthlyFeeDefault} onChange={e => setForm({ ...form, monthlyFeeDefault: Number(e.target.value) })} className="w-full border border-gray-200 rounded-lg pl-10 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <p className="text-xs text-gray-400 mt-2">Used when a class has no fee override. Press Save Changes to apply.</p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
