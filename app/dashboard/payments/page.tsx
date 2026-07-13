@@ -40,9 +40,11 @@ export default function PaymentsPage() {
     if (!currentUser) return;
     setBusy('gen'); setMsg('');
     try {
-      const n = await generateInvoices(currentUser.academyId, genMonth);
-      setMsg(`Generated ${n} invoice${n === 1 ? '' : 's'} for ${monthLabel(genMonth)}.`);
-      setShowGen(false);
+      const { created, skippedNoFee } = await generateInvoices(currentUser.academyId, genMonth);
+      let m = `Generated ${created} invoice${created === 1 ? '' : 's'} for ${monthLabel(genMonth)}.`;
+      if (skippedNoFee.length) m += ` Skipped ${skippedNoFee.length} student${skippedNoFee.length === 1 ? '' : 's'} whose class has no fee set yet (${skippedNoFee.slice(0, 3).join(', ')}${skippedNoFee.length > 3 ? '…' : ''}). Ask the coach to set the class fee.`;
+      setMsg(m);
+      if (created > 0) setShowGen(false);
       await refetch();
     } catch (e) { setMsg(e instanceof Error ? e.message : 'Failed to generate.'); }
     finally { setBusy(''); }

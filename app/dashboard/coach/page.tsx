@@ -1,11 +1,12 @@
 'use client';
 import { useState } from 'react';
-import { Users, Calendar } from 'lucide-react';
+import { Users, Calendar, DollarSign, Check } from 'lucide-react';
 import Link from 'next/link';
 import Badge from '@/components/Badge';
+import Button from '@/components/Button';
 import { useAuth } from '@/lib/auth-context';
 import { useLive } from '@/lib/useLive';
-import { getStudents, getClasses, getAtRiskMap } from '@/lib/db';
+import { getStudents, getClasses, getAtRiskMap, setClassFee } from '@/lib/db';
 import { LIFECYCLE_LABEL, Lifecycle, DAY_NAMES } from '@/lib/types';
 
 const lifecycleColor: Record<Lifecycle, 'green' | 'gray' | 'red' | 'yellow'> = { active: 'green', trial: 'yellow', frozen: 'gray', quit: 'red' };
@@ -15,7 +16,11 @@ export default function CoachDashboardPage() {
   const { data: classes } = useLive(getClasses, ['classes', 'class_coaches']);
   const { data: students } = useLive(getStudents, ['students', 'enrollments']);
   const { data: atRisk } = useLive(getAtRiskMap, ['attendance']);
+  const { refetch: refetchClasses } = useLive(getClasses, ['classes']);
   const [selState, setSel] = useState('');
+  const [feeDraft, setFeeDraft] = useState<Record<string, string>>({});
+  const [feeBusy, setFeeBusy] = useState('');
+  const [feeSaved, setFeeSaved] = useState('');
 
   // RLS already limits coach reads to their assigned classes' students,
   // but also filter the class list to those the coach is assigned to.
@@ -24,6 +29,20 @@ export default function CoachDashboardPage() {
   const selectedId = selState || visibleClasses[0]?.id || '';
   const selected = visibleClasses.find(c => c.id === selectedId);
   const roster = (students ?? []).filter(s => s.classIds.includes(selectedId));
+
+  const saveFee = async (classId: string) => {
+    const raw = feeDraft[classId];
+    if (raw == null || raw === '') return;
+    const fee = parseFloat(raw);
+    if (isNaN(fee) || fee < 0) return;
+    setFeeBusy(classId);
+    try {
+      await setClassFee(classId, fee);
+      setFeeSaved(classId);
+      setTimeout(() => setFeeSaved(''), 2000);
+      await refetchClasses();
+    } finally { setFeeBusy(''); }
+  };
 
   return (
     <div className="space-y-5 max-w-5xl mx-auto">
@@ -57,6 +76,36 @@ export default function CoachDashboardPage() {
               <p className="text-sm font-semibold text-blue-900">{selected.name}</p>
               <p className="text-xs text-blue-700 mt-0.5">{selected.dayOfWeek != null ? `${DAY_NAMES[selected.dayOfWeek]} ${selected.startTime ?? ''}–${selected.endTime ?? ''}` : selected.scheduleNote}</p>
               <p className="text-xs text-blue-600 mt-0.5">{roster.length} students</p>
+            </div>
+          )}
+
+          {selected && (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+              <h2 className="font-bold text-gray-900 flex items-center gap-2 mb-1"><DollarSign size={16} /> Monthly Fee — {selected.name}</h2>
+              <p className="text-xs text-gray-400 mb-4">You set the monthly fee for this class. It is used when the admin generates invoices, and shown to parents.</p>
+              <div className="flex items-end gap-3 flex-wrap">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Fee (RM / month)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-sm">RM</span>
+                    <input
+                      type="number" min="0"
+                      value={feeDraft[selected.id] ?? (selected.monthlyFeeOverride != null ? String(selected.monthlyFeeOverride) : '')}
+                      onChange={e => setFeeDraft({ ...feeDraft, [selected.id]: e.target.value })}
+                      placeholder="e.g. 60"
+                      className="w-40 border border-gray-200 rounded-lg pl-10 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                </div>
+                <Button onClick={() => saveFee(selected.id)} disabled={feeBusy === selected.id}>
+                  {feeBusy === selected.id ? 'Saving...' : 'Save Fee'}
+                </Button>
+                {feeSaved === selected.id && <span className="text-green-600 text-sm font-medium flex items-center gap-1 pb-2"><Check size={15} /> Saved</span>}
+              </div>
+              <p className="mt-3 text-sm">
+                Current fee: {selected.monthlyFeeOverride != null
+                  ? <span className="font-semibold text-gray-900">RM {selected.monthlyFeeOverride}/month</span>
+                  : <span className="text-orange-600 font-medium">not set yet — parents won&apos;t be billed until you set it</span>}
+              </p>
             </div>
           )}
 
