@@ -1,8 +1,12 @@
 'use client';
+import { useState } from 'react';
+import Link from 'next/link';
 import { Bell, Menu, LogOut, Shield, Dumbbell, Users, User } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { UserRole } from '@/lib/auth';
+import { useLive } from '@/lib/useLive';
+import { getNotifications, markNotificationRead } from '@/lib/db';
 
 const roleIcon: Record<UserRole, React.ReactNode> = {
   admin:   <Shield size={11} />,
@@ -24,6 +28,62 @@ const roleBadge: Record<UserRole, string> = {
   parent:  'bg-green-100 text-green-800',
   student: 'bg-purple-100 text-purple-800',
 };
+
+function timeAgo(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function NotificationBell() {
+  const { data: notifications, refetch } = useLive(getNotifications, ['notifications']);
+  const [open, setOpen] = useState(false);
+  const unread = (notifications ?? []).filter(n => !n.readAt);
+
+  const onOpen = () => setOpen(o => !o);
+  const readOne = async (id: string) => { await markNotificationRead(id); await refetch(); };
+
+  return (
+    <div className="relative">
+      <button onClick={onOpen} className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative">
+        <Bell size={18} className="text-gray-600" />
+        {unread.length > 0 && (
+          <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 bg-red-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center">
+            {unread.length > 9 ? '9+' : unread.length}
+          </span>
+        )}
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-white rounded-xl border border-gray-100 shadow-lg z-40">
+            <div className="px-4 py-3 border-b border-gray-50 font-bold text-sm text-gray-900">Notifications</div>
+            {(notifications ?? []).length === 0 && (
+              <div className="px-4 py-8 text-center text-gray-400 text-sm">No notifications yet.</div>
+            )}
+            {(notifications ?? []).map(n => (
+              <Link key={n.id} href={n.linkPath ?? '#'} onClick={() => { setOpen(false); if (!n.readAt) readOne(n.id); }}
+                className={`block px-4 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 ${!n.readAt ? 'bg-blue-50/50' : ''}`}>
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900">{n.title}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{n.body}</p>
+                    <p className="text-xs text-gray-300 mt-1">{timeAgo(n.createdAt)}</p>
+                  </div>
+                  {!n.readAt && <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1" />}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 export default function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
   const { currentUser, logout } = useAuth();
@@ -48,10 +108,7 @@ export default function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
       </div>
 
       <div className="flex items-center gap-2">
-        <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative">
-          <Bell size={18} className="text-gray-600" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-        </button>
+        {currentUser && <NotificationBell />}
 
         {currentUser ? (
           <div className="flex items-center gap-2">

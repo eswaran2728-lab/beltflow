@@ -4,7 +4,7 @@ import { supabase } from './supabase';
 import {
   Academy, Belt, Branch, ClassRow, Student, Guardian, ClassSession, AttendanceRow,
   Invoice, Payment, GradingEvent, GradingResult, Skill, StudentSkill, Tournament,
-  TournamentResult, StudentNote, AppNotification, Certificate,
+  TournamentResult, StudentNote, AppNotification, Certificate, Medal,
   AttendanceStatus, SkillLevel, GradingResultType, InvoiceStatus, PaymentMethod,
   ageFromDob, firstOfMonth,
 } from './types';
@@ -476,6 +476,12 @@ export async function getTournaments(): Promise<Tournament[]> {
   if (error) fail(error);
   return (data as Row[]).map(r => ({ id: r.id, name: r.name, eventDate: r.date ?? '', location: r.venue ?? '' }));
 }
+export async function addTournament(academyId: string, name: string, date: string, venue: string, organizer?: string) {
+  const { error } = await supabase.rpc('add_tournament', {
+    p_academy_id: academyId, p_name: name, p_date: date, p_venue: venue, p_organizer: organizer ?? null,
+  });
+  if (error) fail(error);
+}
 export async function getTournamentResults(studentId?: string): Promise<TournamentResult[]> {
   let q = supabase.from('tournament_results').select('*, students(full_name)');
   if (studentId) q = q.eq('student_id', studentId);
@@ -486,6 +492,15 @@ export async function getTournamentResults(studentId?: string): Promise<Tourname
     studentName: r.students?.full_name ?? '', eventCategory: r.event_category ?? '',
     medal: r.medal, points: r.points ?? 0,
   }));
+}
+export async function recordTournamentResult(
+  tournamentId: string, studentId: string, eventCategory: string, medal: Medal | '', points: number,
+) {
+  const { error } = await supabase.rpc('record_tournament_result', {
+    p_tournament_id: tournamentId, p_student_id: studentId,
+    p_event_category: eventCategory, p_medal: medal, p_points: points,
+  });
+  if (error) fail(error);
 }
 
 // ---------- Notes ----------
@@ -519,15 +534,41 @@ export async function markNotificationRead(id: string) {
 }
 
 // ---------- Certificates ----------
+function mapCertificate(r: Row): Certificate {
+  return {
+    id: r.id, studentId: r.student_id, type: r.type, title: r.title,
+    certNo: r.cert_no, verifyCode: r.verify_code, issuedAt: r.issued_at, pdfUrl: r.pdf_url,
+  };
+}
 export async function getCertificates(studentId?: string): Promise<Certificate[]> {
   let q = supabase.from('certificates').select('*');
   if (studentId) q = q.eq('student_id', studentId);
   const { data, error } = await q.order('issued_at', { ascending: false });
   if (error) fail(error);
-  return (data as Row[]).map(r => ({
-    id: r.id, studentId: r.student_id, type: r.type, title: r.title,
-    certNo: r.cert_no, verifyCode: r.verify_code, issuedAt: r.issued_at, pdfUrl: r.pdf_url,
-  }));
+  return (data as Row[]).map(mapCertificate);
+}
+export async function getCertificate(id: string): Promise<(Certificate & { studentName: string; academyName: string }) | null> {
+  const { data, error } = await supabase.from('certificates')
+    .select('*, students(full_name), academies(name)').eq('id', id).maybeSingle();
+  if (error) fail(error);
+  if (!data) return null;
+  const r = data as Row;
+  return { ...mapCertificate(r), studentName: r.students?.full_name ?? '', academyName: r.academies?.name ?? '' };
+}
+
+export interface VerifiedCertificate {
+  title: string; studentDisplay: string; academyName: string; issuedAt: string; certNo: string;
+}
+/** Public — anyone with the code can verify a certificate. No login required. */
+export async function verifyCertificate(code: string): Promise<VerifiedCertificate | null> {
+  const { data, error } = await supabase.rpc('verify_certificate', { code });
+  if (error) fail(error);
+  const row = (data as Row[])?.[0];
+  if (!row) return null;
+  return {
+    title: row.title, studentDisplay: row.student_display,
+    academyName: row.academy_name, issuedAt: row.issued_at, certNo: row.cert_no,
+  };
 }
 
 // ---------- Pending signups (admin approvals) ----------

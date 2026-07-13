@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Plus, Filter, CheckCircle, XCircle, DollarSign, Clock, AlertTriangle, MessageCircle, FileText } from 'lucide-react';
+import { Plus, Filter, CheckCircle, XCircle, DollarSign, Clock, AlertTriangle, MessageCircle, FileText, Download } from 'lucide-react';
 import InvoiceStatusBadge from '@/components/InvoiceStatusBadge';
 import Button from '@/components/Button';
 import Modal from '@/components/Modal';
@@ -13,6 +13,7 @@ import {
 } from '@/lib/db';
 import { Invoice, firstOfMonth, monthLabel } from '@/lib/types';
 import { waLink, overdueMessage } from '@/lib/wa';
+import { downloadCsv } from '@/lib/csv';
 
 export default function PaymentsPage() {
   const { currentUser } = useAuth();
@@ -92,7 +93,13 @@ export default function PaymentsPage() {
           <h1 className="text-2xl font-extrabold text-gray-900">Payments</h1>
           <p className="text-gray-500 text-sm mt-0.5">Invoices, cash approvals, and receipts</p>
         </div>
-        {isStaff && <Button onClick={() => setShowGen(true)} variant="primary"><Plus size={16} /> Generate Invoices</Button>}
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => downloadCsv('payments.csv', filtered.map(i => ({
+            Student: studentName(i.studentId), Month: monthLabel(i.billingMonth), Amount: i.net,
+            Discount: i.discount, Status: i.status,
+          })))} disabled={filtered.length === 0}><Download size={16} /> Export CSV</Button>
+          {isStaff && <Button onClick={() => setShowGen(true)} variant="primary"><Plus size={16} /> Generate Invoices</Button>}
+        </div>
       </div>
 
       {msg && <p className="text-sm bg-blue-50 border border-blue-100 text-blue-800 rounded-lg px-3 py-2">{msg}</p>}

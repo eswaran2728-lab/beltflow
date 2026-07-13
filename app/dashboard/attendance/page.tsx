@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, Clock, AlertTriangle, MessageCircle, Calendar } from 'lucide-react';
+import { Clock, AlertTriangle, MessageCircle, Calendar, Download } from 'lucide-react';
 import Badge from '@/components/Badge';
 import Button from '@/components/Button';
 import Link from 'next/link';
@@ -9,6 +9,7 @@ import { useLive } from '@/lib/useLive';
 import { getStudents, getClasses, getAtRiskMap, getGuardiansForStudent, getOrCreateSession, getAttendanceForSession, markAttendance } from '@/lib/db';
 import { AttendanceStatus, ATTENDANCE_LABEL, DAY_NAMES } from '@/lib/types';
 import { waLink, atRiskMessage } from '@/lib/wa';
+import { downloadCsv } from '@/lib/csv';
 
 const STATUS_STYLE: Record<AttendanceStatus, string> = {
   present: 'bg-green-100 text-green-700', absent: 'bg-red-100 text-red-700',
@@ -116,7 +117,12 @@ export default function AttendancePage() {
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
             <div className="p-4 border-b border-gray-50 flex items-center justify-between">
               <h2 className="font-bold text-gray-900">Students ({roster.length})</h2>
-              <Button size="sm" variant="secondary" onClick={() => setMarks(Object.fromEntries(roster.map(s => [s.id, 'present'])))}>All Present</Button>
+              <div className="flex gap-2">
+                <Button size="sm" variant="secondary" onClick={() => downloadCsv(`attendance-${cls?.name ?? 'class'}-${date}.csv`, roster.map(s => ({
+                  Student: s.fullName, Date: date, Status: marks[s.id] ?? 'present',
+                })))} disabled={roster.length === 0}><Download size={14} /> Export CSV</Button>
+                <Button size="sm" variant="secondary" onClick={() => setMarks(Object.fromEntries(roster.map(s => [s.id, 'present'])))}>All Present</Button>
+              </div>
             </div>
             <div className="divide-y divide-gray-50">
               {roster.map(s => (

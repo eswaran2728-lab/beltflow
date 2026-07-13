@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Plus, Search, Users } from 'lucide-react';
+import { Plus, Search, Users, Download } from 'lucide-react';
 import DataTable from '@/components/DataTable';
 import Badge from '@/components/Badge';
 import Modal from '@/components/Modal';
@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { useLive } from '@/lib/useLive';
 import { getStudents, getBelts, getClasses, addStudent } from '@/lib/db';
+import { downloadCsv } from '@/lib/csv';
 import { Student, Lifecycle, LIFECYCLE_LABEL } from '@/lib/types';
 
 const lifecycleColor: Record<Lifecycle, 'green' | 'gray' | 'red' | 'yellow'> = {
@@ -80,7 +81,13 @@ export default function StudentsPage() {
           <h1 className="text-2xl font-extrabold text-gray-900">Students</h1>
           <p className="text-gray-500 text-sm">{filtered.length} of {students?.length ?? 0} students</p>
         </div>
-        <Button onClick={() => setShowModal(true)} variant="primary"><Plus size={16} /> Add Student</Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => downloadCsv('students.csv', filtered.map(s => ({
+            Name: s.fullName, Age: s.age ?? '', Belt: s.beltName, Classes: s.classNames.join('; '),
+            Status: LIFECYCLE_LABEL[s.lifecycle], 'IC/MyKid': s.icOrMykid, 'Joined': s.joinedAt,
+          })))} disabled={filtered.length === 0}><Download size={16} /> Export CSV</Button>
+          <Button onClick={() => setShowModal(true)} variant="primary"><Plus size={16} /> Add Student</Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-3">
