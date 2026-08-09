@@ -1,9 +1,11 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff, UserPlus, Clock } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { getSignupOptions } from '@/lib/db';
+import { SignupOptions } from '@/lib/types';
 import { UserRole } from '@/lib/auth';
 
 const roles: { value: UserRole; label: string; desc: string }[] = [
@@ -16,24 +18,38 @@ export default function SignupPage() {
   const { signup } = useAuth();
   const router = useRouter();
   const [role, setRole] = useState<UserRole>('parent');
-  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', childName: '', assignedClass: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', childName: '', branchId: '', classId: '' });
   const [showPw, setShowPw] = useState(false);
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [options, setOptions] = useState<SignupOptions | null>(null);
+
+  useEffect(() => {
+    getSignupOptions()
+      .then(setOptions)
+      .catch(() => setOptions({ branches: [], classes: [] }));
+  }, []);
+
+  const branches = options?.branches ?? [];
+  // Only classes in the chosen branch, so the two can never disagree.
+  const classesInBranch = (options?.classes ?? []).filter(c => c.branchId === form.branchId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (form.password.length < 6) { setError('Password must be at least 6 characters.'); return; }
+    if (!form.branchId) { setError('Please choose the branch you are registering under.'); return; }
+    if (role !== 'coach' && !form.classId) { setError('Please choose a class.'); return; }
     if (!consent) { setError('Please agree to the Privacy Policy and Terms to continue.'); return; }
     setLoading(true);
     const result = await signup({
       name: form.name, email: form.email, password: form.password, role,
       phone: form.phone || undefined,
       childName: role === 'parent' ? form.childName : undefined,
-      assignedClass: role === 'coach' ? form.assignedClass : undefined,
+      branchId: form.branchId || undefined,
+      classId: form.classId || undefined,
     });
     setLoading(false);
     if (!result.success) { setError(result.error || 'Signup failed. Try again.'); return; }
@@ -134,14 +150,43 @@ export default function SignupPage() {
                   className="w-full border border-green-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white" />
               </div>
             )}
-            {role === 'coach' && (
-              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-                <label className="block text-sm font-medium text-blue-900 mb-1">Your Class / Branch</label>
-                <input type="text" value={form.assignedClass} onChange={e => setForm({...form, assignedClass: e.target.value})}
-                  placeholder="e.g. Junior A, Nilai Branch"
-                  className="w-full border border-blue-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-blue-900 mb-1">
+                  {role === 'parent' ? 'Child’s Branch' : 'Your Branch'}
+                </label>
+                <select
+                  value={form.branchId}
+                  // Changing branch clears the class, which belonged to the old one.
+                  onChange={e => setForm({ ...form, branchId: e.target.value, classId: '' })}
+                  required
+                  className="w-full border border-blue-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                  <option value="">{options === null ? 'Loading branches...' : 'Select branch...'}</option>
+                  {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
               </div>
-            )}
+              <div>
+                <label className="block text-sm font-medium text-blue-900 mb-1">
+                  {role === 'parent' ? 'Child’s Class' : 'Your Class'}
+                  {role === 'coach' && <span className="font-normal text-blue-700"> (optional)</span>}
+                </label>
+                <select value={form.classId} onChange={e => setForm({ ...form, classId: e.target.value })}
+                  disabled={!form.branchId}
+                  className="w-full border border-blue-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-gray-50 disabled:text-gray-400">
+                  <option value="">
+                    {!form.branchId ? 'Choose a branch first'
+                      : classesInBranch.length === 0 ? 'No classes in this branch yet'
+                      : 'Select class...'}
+                  </option>
+                  {classesInBranch.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              {options !== null && branches.length === 0 && (
+                <p className="text-xs text-blue-700">
+                  No branches have been set up yet. Ask the admin to add one before registering.
+                </p>
+              )}
+            </div>
 
             <label className="flex items-start gap-2.5 cursor-pointer">
               <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)}

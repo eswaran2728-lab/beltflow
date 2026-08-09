@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useLive } from '@/lib/useLive';
 import {
   getProfiles, getStudents, getGuardiansForStudent, setProfileStatus,
-  linkGuardian, linkStudentProfile, PendingProfile,
+  linkGuardian, linkStudentProfile, enrollStudentInClass, assignCoachIfNeeded, PendingProfile,
 } from '@/lib/db';
 import { Relationship } from '@/lib/types';
 
@@ -29,7 +29,17 @@ export default function ApprovalsPage() {
 
   const act = async (id: string, status: 'approved' | 'rejected') => {
     setBusy(id);
-    try { await setProfileStatus(id, status); await refetch(); } finally { setBusy(''); }
+    try {
+      await setProfileStatus(id, status);
+      // Approving a coach hands them the class they registered for; that is what
+      // scopes them to their branch, since coaches see students only through
+      // class_coaches -> enrollments.
+      const profile = all.find(p => p.id === id);
+      if (status === 'approved' && profile?.role === 'coach' && profile.classId) {
+        await assignCoachIfNeeded(profile.classId, profile.id);
+      }
+      await refetch();
+    } finally { setBusy(''); }
   };
 
   return (
@@ -72,7 +82,15 @@ export default function ApprovalsPage() {
                   <p className="text-sm text-gray-500 mt-0.5">{u.email}</p>
                   {u.phone && <p className="text-xs text-gray-400 mt-0.5">{u.phone}</p>}
                   {u.childName && <p className="text-xs text-blue-600 mt-1">Child: {u.childName}</p>}
-                  {u.assignedClass && <p className="text-xs text-blue-600 mt-1">Class: {u.assignedClass}</p>}
+                  {(u.branchName || u.className) ? (
+                    <p className="text-xs text-blue-600 mt-1">
+                      {[u.branchName, u.className].filter(Boolean).join(' · ')}
+                    </p>
+                  ) : u.assignedClass ? (
+                    <p className="text-xs text-gray-400 mt-1">Class (unlinked text): {u.assignedClass}</p>
+                  ) : (
+                    <p className="text-xs text-amber-600 mt-1">No branch chosen at registration</p>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => act(u.id, 'approved')} disabled={busy === u.id} className="flex items-center gap-1.5 bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-green-700 disabled:opacity-60"><CheckCircle size={15} />{busy === u.id ? '...' : 'Approve'}</button>
@@ -107,11 +125,19 @@ function ApprovedRow({ user, students, onRevoke, busy, onChanged }: {
   const [saving, setSaving] = useState(false);
   const roleColor: Record<string, 'blue' | 'green' | 'purple' | 'navy'> = { admin: 'navy', coach: 'blue', parent: 'green', student: 'purple' };
 
+  // Linking a person to a student record is also the moment that student joins
+  // the class chosen at registration — without the enrolment they belong to no
+  // branch and no coach can see them.
+  const enrollIfRegistered = async (studentId: string) => {
+    if (user.classId) await enrollStudentInClass(studentId, user.classId);
+  };
+
   const linkParent = async () => {
     if (!addStudentId) return;
     setSaving(true);
     try {
       await linkGuardian(user.id, addStudentId, rel, linked.length === 0);
+      await enrollIfRegistered(addStudentId);
       setLinked([...linked, students.find(s => s.id === addStudentId)?.fullName ?? '']);
       setAddStudentId('');
       onChanged();
@@ -121,8 +147,12 @@ function ApprovedRow({ user, students, onRevoke, busy, onChanged }: {
   const linkStudent = async () => {
     if (!addStudentId) return;
     setSaving(true);
-    try { await linkStudentProfile(addStudentId, user.id); setLinked([students.find(s => s.id === addStudentId)?.fullName ?? '']); onChanged(); }
-    finally { setSaving(false); }
+    try {
+      await linkStudentProfile(addStudentId, user.id);
+      await enrollIfRegistered(addStudentId);
+      setLinked([students.find(s => s.id === addStudentId)?.fullName ?? '']);
+      onChanged();
+    } finally { setSaving(false); }
   };
 
   const linkable = user.role === 'parent' || user.role === 'student';
@@ -132,7 +162,15 @@ function ApprovedRow({ user, students, onRevoke, busy, onChanged }: {
       <div>
         <div className="flex items-center gap-2"><p className="font-semibold text-gray-900 text-sm">{user.fullName}</p><Badge label={user.role} color={roleColor[user.role] || 'blue'} /></div>
         <p className="text-xs text-gray-400">{user.email}</p>
-        {linked.length > 0 && <p className="text-xs text-green-600 mt-1 flex items-center gap-1"><Link2 size={11} /> Linked: {linked.join(', ')}</p>}
+        {(user.branchName || user.className) && (
+          <p className="text-xs text-blue-600 mt-0.5">{[user.branchName, user.className].filter(Boolean).join(' · ')}</p>
+        )}
+        {linked.length > 0 && (
+          <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+            <Link2 size={11} /> Linked: {linked.join(', ')}
+            {user.className && ` — enrolled in ${user.className}`}
+          </p>
+        )}
       </div>
       <div className="flex items-center gap-2 flex-wrap">
         {linkable && (

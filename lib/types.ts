@@ -36,6 +36,17 @@ export interface Branch {
   address: string;
 }
 
+/**
+ * The branch/class pickers shown on the signup form. Registration happens while
+ * logged out, and RLS only exposes branches and classes to an approved user, so
+ * these come from the signup_options() function rather than the tables — it
+ * returns names and ids only, never addresses or class fees.
+ */
+export interface SignupOptions {
+  branches: { id: string; name: string }[];
+  classes: { id: string; name: string; branchId: string | null }[];
+}
+
 export interface ClassRow {
   id: string;
   branchId: string | null;

@@ -6,7 +6,7 @@ import {
   Invoice, Payment, GradingEvent, GradingResult, Skill, StudentSkill, Tournament,
   TournamentResult, StudentNote, AppNotification, Certificate, Medal,
   AttendanceStatus, SkillLevel, GradingResultType, InvoiceStatus, PaymentMethod,
-  ageFromDob, firstOfMonth,
+  SignupOptions, ageFromDob, firstOfMonth,
 } from './types';
 
 type Row = Record<string, any>;
@@ -48,6 +48,22 @@ export async function addBelt(academyId: string, name: string, colorHex: string,
 export async function deleteBelt(id: string) {
   const { error } = await supabase.from('belts').delete().eq('id', id);
   if (error) fail(error);
+}
+
+/**
+ * Branch and class choices for the signup form. Uses the signup_options()
+ * function because the visitor is not logged in yet and so cannot read the
+ * branches/classes tables directly.
+ */
+export async function getSignupOptions(): Promise<SignupOptions> {
+  const { data, error } = await supabase.rpc('signup_options');
+  if (error) fail(error);
+  const rows = (data as Row[]) ?? [];
+  return {
+    branches: rows.filter(r => r.kind === 'branch').map(r => ({ id: r.id, name: r.name })),
+    classes: rows.filter(r => r.kind === 'class')
+      .map(r => ({ id: r.id, name: r.name, branchId: r.branch_id ?? null })),
+  };
 }
 
 export async function getBranches(): Promise<Branch[]> {
@@ -575,11 +591,19 @@ export async function verifyCertificate(code: string): Promise<VerifiedCertifica
 export interface PendingProfile {
   id: string; fullName: string; email: string; phone: string | null;
   role: string; status: string; childName: string | null; assignedClass: string | null; createdAt: string;
+  /** Branch and class chosen at registration, resolved to real rows. */
+  branchId: string | null; branchName: string | null;
+  classId: string | null; className: string | null;
 }
 export async function getProfiles(): Promise<PendingProfile[]> {
-  const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*, branches(name), classes(name)')
+    .order('created_at', { ascending: false });
   if (error) fail(error);
   return (data as Row[]).map(r => ({
+    branchId: r.branch_id ?? null, branchName: r.branches?.name ?? null,
+    classId: r.class_id ?? null, className: r.classes?.name ?? null,
     id: r.id, fullName: r.full_name, email: r.email, phone: r.phone,
     role: r.role, status: r.status, childName: r.child_name, assignedClass: r.assigned_class, createdAt: r.created_at,
   }));
@@ -591,6 +615,28 @@ export async function setProfileStatus(id: string, status: 'approved' | 'rejecte
 export async function linkStudentProfile(studentId: string, profileId: string) {
   const { error } = await supabase.from('students').update({ profile_id: profileId }).eq('id', studentId);
   if (error) fail(error);
+}
+/**
+ * Put a student in a class, which is what actually places them under a branch —
+ * a coach sees a student only through class_coaches -> enrollments. Repeat calls
+ * are ignored so approving twice does not stack duplicate enrolments.
+ */
+export async function enrollStudentInClass(studentId: string, classId: string) {
+  const { data, error } = await supabase.from('enrollments')
+    .select('id').eq('student_id', studentId).eq('class_id', classId).is('ended_at', null).limit(1);
+  if (error) fail(error);
+  if ((data as Row[]).length > 0) return;
+  const { error: insertError } = await supabase.from('enrollments')
+    .insert({ student_id: studentId, class_id: classId });
+  if (insertError) fail(insertError);
+}
+/** Give a coach their registered class so branch scoping starts applying. */
+export async function assignCoachIfNeeded(classId: string, coachProfileId: string) {
+  const { data, error } = await supabase.from('class_coaches')
+    .select('class_id').eq('class_id', classId).eq('coach_profile_id', coachProfileId).limit(1);
+  if (error) fail(error);
+  if ((data as Row[]).length > 0) return;
+  await assignCoach(classId, coachProfileId);
 }
 export async function getCoachProfiles(): Promise<{ id: string; fullName: string }[]> {
   const { data, error } = await supabase.from('profiles').select('id, full_name').eq('role', 'coach').eq('status', 'approved');

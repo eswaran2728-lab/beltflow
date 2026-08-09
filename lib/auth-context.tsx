@@ -19,7 +19,10 @@ interface SignupData {
   role: UserRole;
   phone?: string;
   childName?: string;
-  assignedClass?: string;
+  /** Branch the registration belongs to. Validated server-side by the signup trigger. */
+  branchId?: string;
+  /** Class within that branch; what a student is ultimately enrolled into. */
+  classId?: string;
   preferredLanguage?: 'en' | 'ms' | 'ta';
 }
 
@@ -164,7 +167,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             role: data.role,
             phone: data.phone || null,
             child_name: data.childName || null,
-            assigned_class: data.assignedClass || null,
+            branch_id: data.branchId || null,
+            class_id: data.classId || null,
             preferred_language: data.preferredLanguage || 'en',
           },
         },
