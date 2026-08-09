@@ -1,7 +1,16 @@
 'use client';
 import { createContext, useContext, useCallback, useEffect, useState, ReactNode } from 'react';
-import { supabase } from './supabase';
+import { supabase, supabaseConfigured, SUPABASE_SETUP_MESSAGE } from './supabase';
 import { AuthUser, UserRole } from './auth';
+
+const NETWORK_ERROR_MESSAGE =
+  'Cannot reach the BeltFlow server. Check your internet connection — if it is ' +
+  'fine, the Supabase project this app points at is unavailable.';
+
+/** True for transport-level failures (project down, offline, DNS gone). */
+function isNetworkError(error: { message?: string; status?: number }): boolean {
+  return !error.status || /fetch|network/i.test(error.message ?? '');
+}
 
 interface SignupData {
   name: string;
@@ -96,9 +105,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadUser]);
 
   const login = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error || !data.user) {
-      return { success: false, error: error?.message || 'Wrong email or password.' };
+    if (!supabaseConfigured) return { success: false, error: SUPABASE_SETUP_MESSAGE };
+
+    let data: Awaited<ReturnType<typeof supabase.auth.signInWithPassword>>['data'];
+    let error: Awaited<ReturnType<typeof supabase.auth.signInWithPassword>>['error'];
+    try {
+      ({ data, error } = await supabase.auth.signInWithPassword({ email, password }));
+    } catch {
+      return { success: false, error: NETWORK_ERROR_MESSAGE };
+    }
+    if (error) {
+      // supabase-js reports an unreachable project as a retryable fetch error
+      // rather than throwing, and its message ("Failed to fetch") reads like a
+      // credentials problem. Say what it actually is.
+      return { success: false, error: isNetworkError(error) ? NETWORK_ERROR_MESSAGE : error.message };
+    }
+    if (!data.user) {
+      return { success: false, error: 'Wrong email or password.' };
     }
 
     const profile = await fetchProfile(data.user.id);
@@ -125,25 +148,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signup = async (data: SignupData) => {
+    if (!supabaseConfigured) return { success: false, error: SUPABASE_SETUP_MESSAGE };
+
     // Profile is created server-side by a database trigger; the role is
     // validated there and every new account starts as "pending".
-    const { data: authData, error } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-      options: {
-        data: {
-          full_name: data.name,
-          role: data.role,
-          phone: data.phone || null,
-          child_name: data.childName || null,
-          assigned_class: data.assignedClass || null,
-          preferred_language: data.preferredLanguage || 'en',
+    let authData: Awaited<ReturnType<typeof supabase.auth.signUp>>['data'];
+    let error: Awaited<ReturnType<typeof supabase.auth.signUp>>['error'];
+    try {
+      ({ data: authData, error } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            full_name: data.name,
+            role: data.role,
+            phone: data.phone || null,
+            child_name: data.childName || null,
+            assigned_class: data.assignedClass || null,
+            preferred_language: data.preferredLanguage || 'en',
+          },
         },
-      },
-    });
+      }));
+    } catch {
+      return { success: false, error: NETWORK_ERROR_MESSAGE };
+    }
 
-    if (error || !authData.user) {
-      return { success: false, error: error?.message || 'Signup failed.' };
+    if (error) {
+      return { success: false, error: isNetworkError(error) ? NETWORK_ERROR_MESSAGE : error.message };
+    }
+    if (!authData.user) {
+      return { success: false, error: 'Signup failed.' };
     }
 
     // Must wait for admin approval before using the app

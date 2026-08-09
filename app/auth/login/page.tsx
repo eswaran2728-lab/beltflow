@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { supabaseConfigured, SUPABASE_SETUP_MESSAGE } from '@/lib/supabase';
 import { ROLE_HOME } from '@/lib/auth';
 
 export default function LoginPage() {
@@ -38,6 +39,12 @@ export default function LoginPage() {
           <h1 className="text-2xl font-extrabold text-gray-900">Welcome to BeltFlow</h1>
           <p className="text-gray-500 text-sm mt-1">Sign in to your account</p>
         </div>
+
+        {!supabaseConfigured && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800 mb-4">
+            {SUPABASE_SETUP_MESSAGE}
+          </div>
+        )}
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
           <form onSubmit={handleSubmit} className="space-y-4">
