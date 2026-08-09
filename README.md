@@ -1,22 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+BeltFlow — student, attendance, grading and billing management for
+Persatuan Silambam Malaysia Daerah Sepang. Built with [Next.js](https://nextjs.org)
+and [Supabase](https://supabase.com).
 
 ## Getting Started
 
-First, run the development server:
+### 1. Connect a Supabase project
+
+The app has no database of its own — every page reads from Supabase, so it does
+nothing useful until this is set up. Copy the template and fill it in:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Both values come from your Supabase dashboard under **Project Settings → API**.
+They are public by design (they ship to the browser); access control is enforced
+server-side by Row Level Security, never by keeping them secret.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+There is deliberately **no hardcoded fallback project**. If these variables are
+missing the login page says so directly, rather than failing with a network
+error that looks like a wrong password.
+
+### 2. Run the dev server
+
+```bash
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+## Troubleshooting
+
+**"Cannot reach the BeltFlow server" when logging in.** The app cannot open a
+connection to Supabase at all. Most often the Supabase project has been
+**paused** — free-tier projects are paused automatically after a period of
+inactivity, and a paused project's hostname stops resolving in DNS, so the
+browser reports it as a failed fetch. Check the project's status in the Supabase
+dashboard and restore it if it shows as inactive. To confirm the cause:
+
+```bash
+getent hosts <your-project-ref>.supabase.co   # no output = project is paused or deleted
+```
+
+**"BeltFlow is not connected to a database."** `.env.local` is missing or
+incomplete. See step 1 above, then restart the dev server — Next.js only reads
+env files at startup.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
