@@ -72,12 +72,21 @@ export async function getClasses(): Promise<ClassRow[]> {
     .order('name');
   if (error) fail(error);
   return (data as Row[]).map(r => ({
-    id: r.id, branchId: r.branch_id, name: r.name,
+    id: r.id, branchId: r.branch_id, name: r.name, code: r.code,
     dayOfWeek: r.day_of_week, startTime: r.start_time, endTime: r.end_time,
     scheduleNote: r.schedule_note ?? '', monthlyFeeOverride: r.monthly_fee_override,
     coachIds: (r.class_coaches ?? []).map((c: Row) => c.coach_profile_id),
     coachNames: (r.class_coaches ?? []).map((c: Row) => c.profiles?.full_name).filter(Boolean),
   }));
+}
+/** Resolve a class registration code (given to parents/students by their coach) to a class + branch. Public. */
+export interface ResolvedClassCode { classId: string; className: string; branchId: string | null; branchName: string | null }
+export async function resolveClassCode(code: string): Promise<ResolvedClassCode | null> {
+  const { data, error } = await supabase.rpc('resolve_class_code', { p_code: code });
+  if (error) fail(error);
+  const row = (data as Row[])?.[0];
+  if (!row) return null;
+  return { classId: row.class_id, className: row.class_name, branchId: row.branch_id, branchName: row.branch_name };
 }
 export async function addClass(academyId: string, c: {
   name: string; branchId: string | null; dayOfWeek: number | null;

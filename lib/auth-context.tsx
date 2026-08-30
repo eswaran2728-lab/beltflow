@@ -11,6 +11,8 @@ interface SignupData {
   phone?: string;
   childName?: string;
   assignedClass?: string;
+  classId?: string;
+  branchId?: string | null;
   preferredLanguage?: 'en' | 'ms' | 'ta';
 }
 
@@ -137,6 +139,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           phone: data.phone || null,
           child_name: data.childName || null,
           assigned_class: data.assignedClass || null,
+          class_id: data.classId || null,
+          branch_id: data.branchId || null,
           preferred_language: data.preferredLanguage || 'en',
         },
       },

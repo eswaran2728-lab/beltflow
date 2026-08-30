@@ -2,9 +2,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Eye, EyeOff, UserPlus, Clock } from 'lucide-react';
+import { Eye, EyeOff, UserPlus, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { UserRole } from '@/lib/auth';
+import { resolveClassCode, ResolvedClassCode } from '@/lib/db';
 
 const roles: { value: UserRole; label: string; desc: string }[] = [
   { value: 'coach',   label: 'Coach / Master',     desc: 'Manage classes and students' },
@@ -16,24 +17,48 @@ export default function SignupPage() {
   const { signup } = useAuth();
   const router = useRouter();
   const [role, setRole] = useState<UserRole>('parent');
-  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', childName: '', assignedClass: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', childName: '', assignedClass: '', classCode: '' });
   const [showPw, setShowPw] = useState(false);
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [resolvedClass, setResolvedClass] = useState<ResolvedClassCode | null>(null);
+  const [checkingCode, setCheckingCode] = useState(false);
+  const [codeError, setCodeError] = useState('');
+
+  const needsClassCode = role === 'parent' || role === 'student';
+
+  const checkClassCode = async (code: string) => {
+    setResolvedClass(null);
+    setCodeError('');
+    if (!code.trim()) return;
+    setCheckingCode(true);
+    try {
+      const resolved = await resolveClassCode(code.trim());
+      if (resolved) setResolvedClass(resolved);
+      else setCodeError('No class found with that code. Check with your coach/master.');
+    } catch {
+      setCodeError('Could not verify that code. Try again.');
+    } finally {
+      setCheckingCode(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (form.password.length < 6) { setError('Password must be at least 6 characters.'); return; }
     if (!consent) { setError('Please agree to the Privacy Policy and Terms to continue.'); return; }
+    if (needsClassCode && !resolvedClass) { setError('Enter a valid Class Code from your coach/master before continuing.'); return; }
     setLoading(true);
     const result = await signup({
       name: form.name, email: form.email, password: form.password, role,
       phone: form.phone || undefined,
       childName: role === 'parent' ? form.childName : undefined,
       assignedClass: role === 'coach' ? form.assignedClass : undefined,
+      classId: resolvedClass?.classId,
+      branchId: resolvedClass?.branchId,
     });
     setLoading(false);
     if (!result.success) { setError(result.error || 'Signup failed. Try again.'); return; }
@@ -86,7 +111,7 @@ export default function SignupPage() {
                   <label key={r.value}
                     className={`cursor-pointer border-2 rounded-xl p-3 transition-all text-center ${role === r.value ? 'border-[#0f172a] bg-gray-50' : 'border-gray-100 hover:border-gray-200'}`}>
                     <input type="radio" name="role" value={r.value} checked={role === r.value}
-                      onChange={() => setRole(r.value)} className="hidden" />
+                      onChange={() => { setRole(r.value); setForm(f => ({...f, classCode: ''})); setResolvedClass(null); setCodeError(''); }} className="hidden" />
                     <p className="font-semibold text-gray-900 text-xs">{r.label}</p>
                     <p className="text-xs text-gray-400 mt-0.5">{r.desc}</p>
                   </label>
@@ -126,12 +151,32 @@ export default function SignupPage() {
               </div>
             </div>
 
-            {role === 'parent' && (
-              <div className="bg-green-50 border border-green-100 rounded-xl p-4">
-                <label className="block text-sm font-medium text-green-900 mb-1">Child&apos;s Name</label>
-                <input type="text" value={form.childName} onChange={e => setForm({...form, childName: e.target.value})}
-                  placeholder="Your child's full name"
-                  className="w-full border border-green-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white" />
+            {needsClassCode && (
+              <div className="bg-green-50 border border-green-100 rounded-xl p-4 space-y-3">
+                {role === 'parent' && (
+                  <div>
+                    <label className="block text-sm font-medium text-green-900 mb-1">Child&apos;s Name</label>
+                    <input type="text" value={form.childName} onChange={e => setForm({...form, childName: e.target.value})}
+                      placeholder="Your child's full name" required
+                      className="w-full border border-green-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white" />
+                  </div>
+                )}
+                <div>
+                  <label className="block text-sm font-medium text-green-900 mb-1">Class Code</label>
+                  <input type="text" value={form.classCode}
+                    onChange={e => { const v = e.target.value.toUpperCase(); setForm({...form, classCode: v}); checkClassCode(v); }}
+                    placeholder="Code given by your coach/master, e.g. JUN047" required
+                    className="w-full border border-green-200 rounded-xl px-3 py-2.5 text-sm uppercase focus:outline-none focus:ring-2 focus:ring-green-500 bg-white tracking-wide" />
+                  {checkingCode && <p className="text-xs text-gray-400 mt-1.5">Checking code...</p>}
+                  {!checkingCode && resolvedClass && (
+                    <p className="text-xs text-green-700 mt-1.5 flex items-center gap-1"><CheckCircle2 size={13} />
+                      {resolvedClass.className}{resolvedClass.branchName ? ` — ${resolvedClass.branchName}` : ''}
+                    </p>
+                  )}
+                  {!checkingCode && codeError && (
+                    <p className="text-xs text-red-600 mt-1.5 flex items-center gap-1"><XCircle size={13} /> {codeError}</p>
+                  )}
+                </div>
               </div>
             )}
             {role === 'coach' && (
@@ -157,7 +202,7 @@ export default function SignupPage() {
               <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600">{error}</div>
             )}
 
-            <button type="submit" disabled={loading}
+            <button type="submit" disabled={loading || checkingCode}
               className="w-full bg-[#0f172a] text-white font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors disabled:opacity-60">
               <UserPlus size={16} />
               {loading ? 'Submitting...' : 'Register — Pending Approval'}
