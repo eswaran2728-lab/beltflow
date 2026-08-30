@@ -40,6 +40,7 @@ export interface ClassRow {
   id: string;
   branchId: string | null;
   name: string;
+  code: string;
   dayOfWeek: number | null;
   startTime: string | null;
   endTime: string | null;

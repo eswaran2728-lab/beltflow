@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Save, Plus, Trash2, Building2, BookOpen, Award, Users } from 'lucide-react';
+import { Save, Plus, Trash2, Building2, BookOpen, Award, Users, Copy, Check } from 'lucide-react';
 import Button from '@/components/Button';
 import FormInput from '@/components/FormInput';
 import Badge from '@/components/Badge';
@@ -34,6 +34,11 @@ export default function SettingsPage() {
   const [newClass, setNewClass] = useState({ name: '', branchId: '', dayOfWeek: '2', startTime: '19:00', endTime: '21:00', fee: '' });
   const [newBelt, setNewBelt] = useState({ name: '', color: '#3B82F6' });
   const [newSkill, setNewSkill] = useState({ name: '', category: 'Foundation' });
+  const [copiedCode, setCopiedCode] = useState('');
+
+  const copyClassCode = (code: string) => {
+    navigator.clipboard.writeText(code).then(() => { setCopiedCode(code); setTimeout(() => setCopiedCode(''), 1500); });
+  };
 
   if (academy && form === null) setForm(academy);
 
@@ -92,7 +97,7 @@ export default function SettingsPage() {
 
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
           <h2 className="font-bold text-gray-900 mb-1 flex items-center gap-2"><Users size={16} /> Classes</h2>
-          <p className="text-xs text-gray-400 mb-4">Create classes and assign coaches. The assigned coach sets each class&apos;s monthly fee from the Coach dashboard.</p>
+          <p className="text-xs text-gray-400 mb-4">Create classes and assign coaches. Each class gets a Class Code — share it with parents/students so they register directly into this class. The assigned coach sets each class&apos;s monthly fee from the Coach dashboard.</p>
           <div className="space-y-3 mb-4">
             {(classes ?? []).map(c => (
               <div key={c.id} className="bg-gray-50 rounded-xl px-4 py-3">
@@ -100,6 +105,9 @@ export default function SettingsPage() {
                   <div>
                     <p className="font-semibold text-gray-900 text-sm">{c.name}</p>
                     <p className="text-xs text-gray-500">{c.dayOfWeek != null ? `${DAY_NAMES[c.dayOfWeek]} ${c.startTime ?? ''}–${c.endTime ?? ''}` : c.scheduleNote}{c.monthlyFeeOverride != null ? ` · RM${c.monthlyFeeOverride}/mo` : ' · fee not set'}</p>
+                    <button onClick={() => copyClassCode(c.code)} className="mt-1.5 inline-flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg px-2 py-1 text-xs font-mono font-bold text-gray-700 hover:border-blue-300">
+                      {c.code} {copiedCode === c.code ? <Check size={12} className="text-green-600" /> : <Copy size={12} className="text-gray-400" />}
+                    </button>
                   </div>
                   <div className="flex items-center gap-2">
                     {(branches ?? []).find(b => b.id === c.branchId) && <Badge label={branches!.find(b => b.id === c.branchId)!.name} color="blue" />}
