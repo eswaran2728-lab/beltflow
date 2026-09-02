@@ -20,10 +20,13 @@ jobs:
           distribution: 'temurin'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+          cache-disabled: false
 
-      - name: Build Android App Bundle (Release AAB)
-        run: ./gradlew :app:bundleRelease :app:assembleRelease --stacktrace
+      - name: Build Android App Bundle (Release AAB) & APK
+        run: gradle :app:bundleRelease :app:assembleRelease --stacktrace
 
       - name: Upload Release AAB (For Google Play Console)
         uses: actions/upload-artifact@v4
