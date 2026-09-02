@@ -25,17 +25,9 @@ jobs:
           gradle-version: '8.11.1'
           cache-disabled: false
 
-      - name: Generate Release Keystore
+      - name: Restore Release Keystore
         run: |
-          keytool -genkeypair -v \
-            -keystore release.keystore \
-            -alias beltflow \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -storepass beltflowpass \
-            -keypass beltflowpass \
-            -dname "CN=BeltFlow Academy, OU=Production, O=BeltFlow, L=San Francisco, ST=California, C=US"
+          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > release.keystore || base64 -d release.keystore.base64 > release.keystore
 
       - name: Build Android App Bundle (Release AAB) & APK
         env:
