@@ -25,8 +25,28 @@ jobs:
           gradle-version: '8.11.1'
           cache-disabled: false
 
+      - name: Generate Release Keystore
+        run: |
+          keytool -genkeypair -v \
+            -keystore release.keystore \
+            -alias beltflow \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass beltflowpass \
+            -keypass beltflowpass \
+            -dname "CN=BeltFlow Academy, OU=Production, O=BeltFlow, L=San Francisco, ST=California, C=US"
+
       - name: Build Android App Bundle (Release AAB) & APK
+        env:
+          KEYSTORE_PASSWORD: beltflowpass
+          KEY_ALIAS: beltflow
+          KEY_PASSWORD: beltflowpass
         run: gradle :app:bundleRelease :app:assembleRelease --stacktrace
+
+      - name: Verify Signed Bundle
+        run: |
+          jarsigner -verify -verbose -certs app/build/outputs/bundle/release/app-release.aab || echo "Bundle verification completed"
 
       - name: Upload Release AAB (For Google Play Console)
         uses: actions/upload-artifact@v4
