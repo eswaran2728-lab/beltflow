@@ -27,7 +27,12 @@ jobs:
 
       - name: Restore Release Keystore
         run: |
-          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > release.keystore || base64 -d release.keystore.base64 > release.keystore
+          if [ -n "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+          else
+            base64 -d release.keystore.base64 > release.keystore
+          fi
+          keytool -list -keystore release.keystore -storepass beltflowpass -alias beltflow
 
       - name: Build Android App Bundle (Release AAB) & APK
         env:
