@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BeltFlow — Martial Arts Academy Management (Android Native)
 
-## Getting Started
+BeltFlow is a full-featured martial arts academy management application built for Android using **Kotlin**, **Jetpack Compose (Material 3)**, and **Room Database**.
 
-First, run the development server:
+Originally imported from Next.js, this project has been completely rewritten as a native Android application, faithfully preserving and enhancing all core business features, role portals, grading workflows, sibling billing discounts, and certificate verification.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🥋 Core Ported Features & Modules
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Multi-Role Authentication & Portals**:
+   - **Admin Portal (Master Eswaran)**: Academy overview, KPI metrics, student retention risk alerts, pending account approvals, financial summaries.
+   - **Coach Portal (Master Ravi)**: Assigned martial arts classes, quick session attendance marker, pending cash approval sheet.
+   - **Parent Portal (Suresh Kumar)**: Multi-child switcher, attendance %, fee payment claims with cash proof submission, instructor observation notes.
+   - **Student Portal (Aryan Suresh)**: Belt milestone progress, technique syllabus mastery tracker, verifiable certificates & tournament medals gallery.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. **Student Bio & Lifecycle Tracking**:
+   - Comprehensive bio tracking: IC/MyKid number, DOB, age, gender, guardian details with WhatsApp integration, medical notes.
+   - Belt rank progression, assigned classes, and active/trial/frozen lifecycle management.
 
-## Learn More
+3. **Attendance & Retention Alerts**:
+   - Session roster marking with 4 status options: **Present**, **Late**, **Absent**, **Excused**.
+   - **At-Risk Detection**: Automatically identifies students with 3+ consecutive absences and provides 1-tap WhatsApp communication with parents.
 
-To learn more about Next.js, take a look at the following resources:
+4. **Fee Billing, Sibling Discounts & Official Receipts**:
+   - Monthly invoice generation with automated **10% Sibling Discount** for 2nd and subsequent enrolled siblings.
+   - Cash claim workflow with coach/admin verification.
+   - Sequential official receipt generation with formatted printable dialogs.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+5. **Belt Gradings & Examinations**:
+   - Examination event scheduler (Examiner, location, grading fees).
+   - Candidate registration (current belt $\rightarrow$ target belt).
+   - Scoring (Pass, Double Promotion, Retest, Fail) with **automatic belt promotion** and **instant digital certificate issuance**.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+6. **Curriculum & Technique Syllabus**:
+   - Categorized techniques: *Foundation*, *Weapons*, *Sparring*, *Forms*.
+   - 4-Tier mastery tracking: *Not Started*, *Learning*, *Good*, *Mastered*.
 
-## Deploy on Vercel
+7. **Tournaments & Medal Tally**:
+   - Medal registry (Gold 🥇, Silver 🥈, Bronze 🥉, Participation) with automatic tournament achievement certificates.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+8. **Public Certificate Verification**:
+   - Dedicated verification portal to validate authentic certificates by verification code (e.g., `BF-ORANGE-9821`).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## 🛠️ Technology Stack & Architecture
+
+- **UI**: Jetpack Compose, Material 3 Design System, Edge-to-Edge window insets.
+- **Architecture**: MVVM with Repository Pattern, Kotlin Coroutines, and reactive `StateFlow`/`Flow`.
+- **Data Persistence**: Room Database (`BeltFlowDatabase`) with automated sample data seeding.
+- **Navigation**: Navigation Compose with type-safe `@Serializable` routes.

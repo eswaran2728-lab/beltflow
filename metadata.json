@@ -1,0 +1,6 @@
+{
+  "name": "BeltFlow",
+  "description": "Martial arts academy management for students, attendance, belt grading, payments, curriculum, and tournaments",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
