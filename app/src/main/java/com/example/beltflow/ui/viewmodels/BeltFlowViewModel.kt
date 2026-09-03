@@ -97,6 +97,13 @@ class BeltFlowViewModel(private val repository: BeltFlowRepository) : ViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AdminDashboardUiState())
 
     // --- Authentication Actions ---
+    fun login(email: String, password: String, onComplete: (Result<AuthUser>) -> Unit) {
+        viewModelScope.launch {
+            val result = repository.login(email, password)
+            onComplete(result)
+        }
+    }
+
     fun loginAs(email: String, onComplete: (Boolean) -> Unit) {
         viewModelScope.launch {
             val success = repository.loginAs(email)
@@ -107,6 +114,7 @@ class BeltFlowViewModel(private val repository: BeltFlowRepository) : ViewModel(
     fun signup(
         fullName: String,
         email: String,
+        password: String,
         phone: String,
         role: UserRole,
         childName: String,
@@ -114,7 +122,7 @@ class BeltFlowViewModel(private val repository: BeltFlowRepository) : ViewModel(
         onResult: (Result<String>) -> Unit
     ) {
         viewModelScope.launch {
-            val result = repository.signupUser(fullName, email, phone, role, childName, classCode)
+            val result = repository.signupUser(fullName, email, password, phone, role, childName, classCode)
             onResult(result)
         }
     }

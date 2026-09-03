@@ -15,19 +15,91 @@ import java.util.UUID
 class BeltFlowRepository(private val dao: BeltFlowDao) {
 
     // --- Current Session User State (In-Memory Auth with Room Persistence) ---
-    private val _currentUser = MutableStateFlow<AuthUser?>(
-        AuthUser(
-            id = "prof_admin_1",
-            fullName = "Eswaran (Master / Founder)",
-            email = "eswaran2728@gmail.com",
-            role = UserRole.ADMIN,
-            status = ProfileStatus.APPROVED
-        )
-    )
+    private val _currentUser = MutableStateFlow<AuthUser?>(null)
     val currentUser: StateFlow<AuthUser?> = _currentUser.asStateFlow()
 
     fun setCurrentUser(user: AuthUser?) {
         _currentUser.value = user
+    }
+
+    suspend fun login(email: String, password: String): Result<AuthUser> = withContext(Dispatchers.IO) {
+        val cleanEmail = email.trim().lowercase(Locale.getDefault())
+        val cleanPassword = password.trim()
+
+        if (cleanEmail.isBlank()) {
+            return@withContext Result.failure(Exception("Please enter your email address."))
+        }
+        if (cleanPassword.isBlank()) {
+            return@withContext Result.failure(Exception("Please enter your password."))
+        }
+
+        // Dedicated Admin account handling for Master Eswaran
+        if (cleanEmail == "eswaran2728@gmail.com") {
+            if (cleanPassword == "Eswaran0321@") {
+                var admin = dao.getProfileByEmail("eswaran2728@gmail.com")
+                if (admin == null) {
+                    admin = ProfileEntity(
+                        id = "prof_admin_1",
+                        fullName = "Master Eswaran",
+                        email = "eswaran2728@gmail.com",
+                        phone = "+60 12-345 6789",
+                        role = UserRole.ADMIN,
+                        status = ProfileStatus.APPROVED,
+                        password = "Eswaran0321@"
+                    )
+                    dao.insertProfile(admin)
+                } else if (admin.role != UserRole.ADMIN || admin.password != "Eswaran0321@") {
+                    admin = admin.copy(
+                        fullName = "Master Eswaran",
+                        role = UserRole.ADMIN,
+                        status = ProfileStatus.APPROVED,
+                        password = "Eswaran0321@"
+                    )
+                    dao.insertProfile(admin)
+                }
+                val authUser = AuthUser(
+                    id = admin.id,
+                    fullName = admin.fullName,
+                    email = admin.email,
+                    role = UserRole.ADMIN,
+                    status = ProfileStatus.APPROVED
+                )
+                _currentUser.value = authUser
+                return@withContext Result.success(authUser)
+            } else {
+                return@withContext Result.failure(Exception("Incorrect password for Admin account."))
+            }
+        }
+
+        // General account lookup
+        val profile = dao.getProfileByEmail(email.trim())
+            ?: dao.getProfileByEmail(cleanEmail)
+            ?: return@withContext Result.failure(Exception("No account found for $email. Please register an account below."))
+
+        if (profile.password.isNotBlank() && profile.password != cleanPassword) {
+            return@withContext Result.failure(Exception("Incorrect password. Please try again."))
+        }
+
+        if (profile.status == ProfileStatus.PENDING) {
+            return@withContext Result.failure(Exception("Your account is awaiting approval from the academy administrator (Master Eswaran)."))
+        }
+
+        if (profile.status == ProfileStatus.REJECTED) {
+            return@withContext Result.failure(Exception("Your account application was rejected. Please contact the academy."))
+        }
+
+        val authUser = AuthUser(
+            id = profile.id,
+            fullName = profile.fullName,
+            email = profile.email,
+            role = profile.role,
+            status = profile.status,
+            childName = profile.childName,
+            assignedClass = profile.assignedClass,
+            studentId = profile.studentId
+        )
+        _currentUser.value = authUser
+        Result.success(authUser)
     }
 
     suspend fun loginAs(email: String): Boolean = withContext(Dispatchers.IO) {
@@ -48,12 +120,14 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
     suspend fun signupUser(
         fullName: String,
         email: String,
+        password: String,
         phone: String,
         role: UserRole,
         childName: String,
         classCode: String
     ): Result<String> = withContext(Dispatchers.IO) {
-        val existing = dao.getProfileByEmail(email)
+        val cleanEmail = email.trim().lowercase(Locale.getDefault())
+        val existing = dao.getProfileByEmail(email.trim()) ?: dao.getProfileByEmail(cleanEmail)
         if (existing != null) {
             return@withContext Result.failure(Exception("An account with this email already exists."))
         }
@@ -67,18 +141,19 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
         }
 
         // Default admin email is auto-approved, others are pending approval
-        val isAutoApproved = email.equals("eswaran2728@gmail.com", ignoreCase = true)
+        val isAutoApproved = cleanEmail == "eswaran2728@gmail.com"
         val status = if (isAutoApproved) ProfileStatus.APPROVED else ProfileStatus.PENDING
         val userRole = if (isAutoApproved) UserRole.ADMIN else role
 
         val newProfile = ProfileEntity(
             id = "prof_${UUID.randomUUID().toString().take(8)}",
-            fullName = fullName,
-            email = email,
-            phone = phone,
+            fullName = fullName.trim(),
+            email = email.trim(),
+            password = password.trim(),
+            phone = phone.trim(),
             role = userRole,
             status = status,
-            childName = childName,
+            childName = childName.trim(),
             assignedClass = assignedClassName
         )
         dao.insertProfile(newProfile)

@@ -35,7 +35,7 @@ import java.util.UUID
         TournamentResultEntity::class,
         CertificateEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class BeltFlowDatabase : RoomDatabase() {
@@ -53,6 +53,7 @@ abstract class BeltFlowDatabase : RoomDatabase() {
                     BeltFlowDatabase::class.java,
                     "beltflow_database"
                 )
+                    .fallbackToDestructiveMigration()
                     .addCallback(BeltFlowDatabaseCallback(scope))
                     .build()
                 INSTANCE = instance
@@ -72,6 +73,41 @@ abstract class BeltFlowDatabase : RoomDatabase() {
                 }
             }
         }
+
+        override fun onOpen(db: SupportSQLiteDatabase) {
+            super.onOpen(db)
+            INSTANCE?.let { database ->
+                scope.launch(Dispatchers.IO) {
+                    ensureAdminAccount(database.dao())
+                }
+            }
+        }
+    }
+}
+
+suspend fun ensureAdminAccount(dao: BeltFlowDao) {
+    val existingAdmin = dao.getProfileByEmail("eswaran2728@gmail.com")
+    if (existingAdmin == null) {
+        dao.insertProfile(
+            ProfileEntity(
+                id = "prof_admin_1",
+                fullName = "Master Eswaran",
+                email = "eswaran2728@gmail.com",
+                phone = "+60 12-345 6789",
+                role = UserRole.ADMIN,
+                status = ProfileStatus.APPROVED,
+                password = "Eswaran0321@"
+            )
+        )
+    } else if (existingAdmin.role != UserRole.ADMIN || existingAdmin.password != "Eswaran0321@") {
+        dao.insertProfile(
+            existingAdmin.copy(
+                fullName = "Master Eswaran",
+                role = UserRole.ADMIN,
+                status = ProfileStatus.APPROVED,
+                password = "Eswaran0321@"
+            )
+        )
     }
 }
 
@@ -94,11 +130,12 @@ suspend fun populateInitialData(dao: BeltFlowDao) {
     // 2. Profiles (Admin, Coach, Parent, Student, Pending Parent)
     val adminProfile = ProfileEntity(
         id = "prof_admin_1",
-        fullName = "Eswaran (Master / Founder)",
+        fullName = "Master Eswaran",
         email = "eswaran2728@gmail.com",
         phone = "+60 12-345 6789",
         role = UserRole.ADMIN,
-        status = ProfileStatus.APPROVED
+        status = ProfileStatus.APPROVED,
+        password = "Eswaran0321@"
     )
     val coachProfile = ProfileEntity(
         id = "prof_coach_1",

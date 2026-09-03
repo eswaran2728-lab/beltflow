@@ -46,7 +46,7 @@ fun BeltFlowNavGraph(viewModel: BeltFlowViewModel) {
 
     NavHost(
         navController = navController,
-        startDestination = Screen.AdminDashboard
+        startDestination = Screen.Auth
     ) {
         composable<Screen.Auth> {
             AuthScreen(

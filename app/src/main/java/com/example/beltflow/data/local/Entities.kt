@@ -17,6 +17,7 @@ data class ProfileEntity(
     val childName: String = "",
     val assignedClass: String = "",
     val studentId: String? = null,
+    val password: String = "",
     val createdAt: Long = System.currentTimeMillis()
 )
 

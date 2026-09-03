@@ -340,41 +340,34 @@ fun TopNavBar(
                     expanded = showUserMenu,
                     onDismissRequest = { showUserMenu = false }
                 ) {
-                    DropdownMenuItem(
-                        text = { Text("Switch to Master Eswaran (Admin)") },
-                        leadingIcon = { Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = AccentAmber700) },
-                        onClick = {
-                            showUserMenu = false
-                            onSwitchUser("eswaran2728@gmail.com")
+                    if (currentUser != null) {
+                        Column(
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp, vertical = 10.dp)
+                                .widthIn(min = 180.dp)
+                        ) {
+                            Text(
+                                text = currentUser.fullName,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = BrandNavy
+                            )
+                            Text(
+                                text = currentUser.email,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Slate500
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            StatusBadge(
+                                statusText = currentUser.role.label,
+                                backgroundColor = AccentAmber100,
+                                textColor = AccentAmber800
+                            )
                         }
-                    )
+                        HorizontalDivider()
+                    }
                     DropdownMenuItem(
-                        text = { Text("Switch to Master Ravi (Coach)") },
-                        leadingIcon = { Icon(Icons.Default.SportsMartialArts, contentDescription = null, tint = Sky600) },
-                        onClick = {
-                            showUserMenu = false
-                            onSwitchUser("ravi.silambam@gmail.com")
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Switch to Suresh Kumar (Parent)") },
-                        leadingIcon = { Icon(Icons.Default.FamilyRestroom, contentDescription = null, tint = Emerald600) },
-                        onClick = {
-                            showUserMenu = false
-                            onSwitchUser("suresh.parent@gmail.com")
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Switch to Aryan Suresh (Student)") },
-                        leadingIcon = { Icon(Icons.Default.School, contentDescription = null, tint = Purple600) },
-                        onClick = {
-                            showUserMenu = false
-                            onSwitchUser("aryan.suresh@gmail.com")
-                        }
-                    )
-                    HorizontalDivider()
-                    DropdownMenuItem(
-                        text = { Text("Sign Out / Switch Role Screen", color = Crimson600) },
+                        text = { Text("Sign Out", color = Crimson600, fontWeight = FontWeight.SemiBold) },
                         leadingIcon = { Icon(Icons.Default.Logout, contentDescription = null, tint = Crimson600) },
                         onClick = {
                             showUserMenu = false
