@@ -3,6 +3,7 @@
     <item
         android:width="66dp"
         android:height="66dp"
-        android:drawable="@drawable/beltflow_icon_1788326458650"
+        android:drawable="@drawable/beltflow_logo"
         android:gravity="center" />
 </layer-list>
+

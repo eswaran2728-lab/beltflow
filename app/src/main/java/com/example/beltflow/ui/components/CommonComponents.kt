@@ -1,5 +1,7 @@
 package com.example.beltflow.ui.components
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,6 +19,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -25,8 +28,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.example.beltflow.R
 import com.example.beltflow.data.model.*
 import com.example.beltflow.ui.theme.*
+
 
 fun parseHexColor(hex: String): Color {
     return try {
@@ -217,49 +222,118 @@ fun TopNavBar(
 ) {
     var showUserMenu by remember { mutableStateOf(false) }
 
-    TopAppBar(
-        title = {
-            Column {
+    Surface(
+        color = Color.White,
+        border = BorderStroke(1.dp, Slate200),
+        shadowElevation = 1.dp,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (onBack != null) {
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier.size(36.dp).testTag("nav_back_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = BrandNavy
+                    )
+                }
+                Spacer(modifier = Modifier.width(6.dp))
+            } else {
+                Image(
+                    painter = painterResource(id = R.drawable.beltflow_logo),
+                    contentDescription = "BeltFlow Mark",
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
+                    color = BrandNavy,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 if (currentUser != null) {
                     Text(
-                        text = "${currentUser.fullName} (${currentUser.role.label})",
+                        text = "${currentUser.fullName} • ${currentUser.role.label}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Gold500
+                        color = AccentAmber700,
+                        fontSize = 11.sp
                     )
-                }
-            }
-        },
-        navigationIcon = {
-            if (onBack != null) {
-                IconButton(onClick = onBack, modifier = Modifier.testTag("nav_back_button")) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                }
-            }
-        },
-        actions = {
-            if (onNavigateToSettings != null && currentUser?.role == UserRole.ADMIN) {
-                IconButton(onClick = onNavigateToSettings, modifier = Modifier.testTag("settings_button")) {
-                    Icon(Icons.Default.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onPrimary)
                 }
             }
 
+            // Notifications Bell
+            IconButton(
+                onClick = { /* notification badge */ },
+                modifier = Modifier.size(36.dp).testTag("notifications_bell_button")
+            ) {
+                Box {
+                    Icon(
+                        imageVector = Icons.Default.NotificationsNone,
+                        contentDescription = "Notifications",
+                        tint = BrandNavy,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(7.dp)
+                            .background(AccentAmber500, CircleShape)
+                            .align(Alignment.TopEnd)
+                    )
+                }
+            }
+
+            if (onNavigateToSettings != null && currentUser?.role == UserRole.ADMIN) {
+                IconButton(
+                    onClick = onNavigateToSettings,
+                    modifier = Modifier.size(36.dp).testTag("settings_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Settings",
+                        tint = Slate600,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            // User Switcher Profile Avatar
             Box {
                 IconButton(
                     onClick = { showUserMenu = true },
-                    modifier = Modifier.testTag("user_profile_menu_button")
+                    modifier = Modifier.size(36.dp).testTag("user_profile_menu_button")
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.AccountCircle,
-                        contentDescription = "User Switcher",
-                        tint = MaterialTheme.colorScheme.onPrimary
-                    )
+                    Surface(
+                        shape = CircleShape,
+                        color = AccentAmber100,
+                        border = BorderStroke(1.dp, AccentAmber300),
+                        modifier = Modifier.size(30.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = currentUser?.fullName?.split(" ")?.mapNotNull { it.firstOrNull() }?.take(2)?.joinToString("") ?: "ME",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = AccentAmber800,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
                 }
 
                 DropdownMenu(
@@ -268,7 +342,7 @@ fun TopNavBar(
                 ) {
                     DropdownMenuItem(
                         text = { Text("Switch to Master Eswaran (Admin)") },
-                        leadingIcon = { Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = Gold600) },
+                        leadingIcon = { Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = AccentAmber700) },
                         onClick = {
                             showUserMenu = false
                             onSwitchUser("eswaran2728@gmail.com")
@@ -309,15 +383,10 @@ fun TopNavBar(
                     )
                 }
             }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Navy800,
-            titleContentColor = Color.White,
-            navigationIconContentColor = Color.White,
-            actionIconContentColor = Color.White
-        )
-    )
+        }
+    }
 }
+
 
 @Composable
 fun CertificateDialog(

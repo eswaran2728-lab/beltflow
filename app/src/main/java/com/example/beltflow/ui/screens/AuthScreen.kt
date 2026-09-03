@@ -1,5 +1,6 @@
 package com.example.beltflow.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,10 +17,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.beltflow.R
 import com.example.beltflow.data.model.ProfileStatus
 import com.example.beltflow.data.model.UserRole
 import com.example.beltflow.ui.theme.*
@@ -74,15 +77,15 @@ fun AuthScreen(
             // App Emblem
             Surface(
                 shape = CircleShape,
-                color = Navy800,
-                modifier = Modifier.size(72.dp)
+                color = Color.White,
+                shadowElevation = 8.dp,
+                modifier = Modifier.size(88.dp)
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.SportsMartialArts,
-                        contentDescription = "BeltFlow Emblem",
-                        tint = Gold500,
-                        modifier = Modifier.size(44.dp)
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(6.dp)) {
+                    Image(
+                        painter = painterResource(id = R.drawable.beltflow_logo),
+                        contentDescription = "BeltFlow Logo",
+                        modifier = Modifier.fillMaxSize()
                     )
                 }
             }
