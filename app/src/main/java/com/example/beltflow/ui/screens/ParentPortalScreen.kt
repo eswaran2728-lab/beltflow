@@ -29,7 +29,8 @@ import com.example.beltflow.ui.viewmodels.BeltFlowViewModel
 fun ParentPortalScreen(
     viewModel: BeltFlowViewModel,
     onNavigateToVerifyCert: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onSwitchUser: ((String) -> Unit)? = null
 ) {
     val currentUser by viewModel.currentUser.collectAsState()
     val allStudents by viewModel.allStudents.collectAsState()
@@ -98,7 +99,13 @@ fun ParentPortalScreen(
             TopNavBar(
                 title = "Parent Portal",
                 currentUser = currentUser,
-                onSwitchUser = { email -> viewModel.loginAs(email) {} },
+                onSwitchUser = { email ->
+                    if (onSwitchUser != null) {
+                        onSwitchUser(email)
+                    } else {
+                        viewModel.loginAs(email) {}
+                    }
+                },
                 onLogout = onLogout
             )
         },

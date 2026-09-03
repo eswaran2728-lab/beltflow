@@ -165,6 +165,28 @@ fun BeltFlowNavGraph(viewModel: BeltFlowViewModel) {
             )
         }
 
+        val onRoleSwitch: (String) -> Unit = { email ->
+            viewModel.loginAs(email) {
+                when (email) {
+                    "eswaran2728@gmail.com" -> navController.navigate(Screen.AdminDashboard) {
+                        popUpTo(Screen.AdminDashboard) { inclusive = true }
+                    }
+                    "ravi.silambam@gmail.com" -> navController.navigate(Screen.CoachPortal) {
+                        popUpTo(Screen.AdminDashboard) { inclusive = false }
+                    }
+                    "suresh.parent@gmail.com" -> navController.navigate(Screen.ParentPortal) {
+                        popUpTo(Screen.AdminDashboard) { inclusive = false }
+                    }
+                    "aryan.suresh@gmail.com" -> navController.navigate(Screen.StudentPortal) {
+                        popUpTo(Screen.AdminDashboard) { inclusive = false }
+                    }
+                    else -> navController.navigate(Screen.AdminDashboard) {
+                        popUpTo(Screen.AdminDashboard) { inclusive = true }
+                    }
+                }
+            }
+        }
+
         composable<Screen.ParentPortal> {
             ParentPortalScreen(
                 viewModel = viewModel,
@@ -174,7 +196,8 @@ fun BeltFlowNavGraph(viewModel: BeltFlowViewModel) {
                     navController.navigate(Screen.Auth) {
                         popUpTo(0) { inclusive = true }
                     }
-                }
+                },
+                onSwitchUser = onRoleSwitch
             )
         }
 
@@ -192,7 +215,8 @@ fun BeltFlowNavGraph(viewModel: BeltFlowViewModel) {
                     navController.navigate(Screen.Auth) {
                         popUpTo(0) { inclusive = true }
                     }
-                }
+                },
+                onSwitchUser = onRoleSwitch
             )
         }
 
@@ -204,7 +228,8 @@ fun BeltFlowNavGraph(viewModel: BeltFlowViewModel) {
                     navController.navigate(Screen.Auth) {
                         popUpTo(0) { inclusive = true }
                     }
-                }
+                },
+                onSwitchUser = onRoleSwitch
             )
         }
 

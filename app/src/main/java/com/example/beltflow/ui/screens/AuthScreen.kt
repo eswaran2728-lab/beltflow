@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import com.example.beltflow.R
 import com.example.beltflow.data.model.ProfileStatus
 import com.example.beltflow.data.model.UserRole
+import com.example.beltflow.ui.components.BlueprintCard
 import com.example.beltflow.ui.theme.*
 import com.example.beltflow.ui.viewmodels.BeltFlowViewModel
 
@@ -62,24 +63,25 @@ fun AuthScreen(
     }
 
     Scaffold(
-        containerColor = Navy900
+        containerColor = BlueprintBg
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(24.dp),
+                .padding(horizontal = 24.dp, vertical = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // App Emblem
             Surface(
                 shape = CircleShape,
                 color = Color.White,
-                shadowElevation = 8.dp,
-                modifier = Modifier.size(88.dp)
+                shadowElevation = 3.dp,
+                border = androidx.compose.foundation.BorderStroke(1.dp, Slate200),
+                modifier = Modifier.size(80.dp)
             ) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(6.dp)) {
                     Image(
@@ -90,51 +92,74 @@ fun AuthScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             Text(
                 text = "BeltFlow",
-                style = MaterialTheme.typography.displayLarge,
+                style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = BrandNavy,
+                letterSpacing = 0.5.sp
             )
+
+            Spacer(modifier = Modifier.height(2.dp))
 
             Text(
                 text = "Martial Arts Academy & Belt Management",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Slate200,
+                color = Slate500,
                 textAlign = TextAlign.Center
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Fast Demo Role Switcher Card
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Navy800),
+            // Fast Demo Role Switcher Card in Blueprint style
+            BlueprintCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("fast_demo_login_card")
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "INSTANT DEMO SIGN-IN",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = AccentAmber700,
+                            letterSpacing = 0.8.sp
+                        )
+                        Surface(
+                            shape = CircleShape,
+                            color = AccentAmber100,
+                            modifier = Modifier.size(20.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Default.Bolt,
+                                    contentDescription = null,
+                                    tint = AccentAmber700,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                        }
+                    }
+
                     Text(
-                        text = "⚡ Instant Demo Sign-In",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Gold500
-                    )
-                    Text(
-                        text = "Select any authentic persona to explore its dedicated portal:",
+                        text = "Select any persona to immediately enter its portal:",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Slate200
+                        color = Slate500,
+                        modifier = Modifier.padding(top = 2.dp, bottom = 12.dp)
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
 
                     DemoAccountRow(
                         name = "Master Eswaran",
                         roleLabel = "Founder & Admin",
                         email = "eswaran2728@gmail.com",
-                        color = Gold500,
+                        color = AccentAmber700,
                         icon = Icons.Default.AdminPanelSettings,
                         isSelected = selectedDemoEmail == "eswaran2728@gmail.com",
                         onClick = {
@@ -201,36 +226,57 @@ fun AuthScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             // Toggle Tab: Sign In / Create Account
-            TabRow(
-                selectedTabIndex = if (isSignUp) 1 else 0,
-                containerColor = Navy800,
-                contentColor = Gold500,
-                indicator = {},
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-            ) {
-                Tab(
-                    selected = !isSignUp,
-                    onClick = { isSignUp = false; errorMessage = ""; successMessage = "" },
-                    text = { Text("Sign In", fontWeight = FontWeight.Bold, color = if (!isSignUp) Gold500 else Slate200) }
-                )
-                Tab(
-                    selected = isSignUp,
-                    onClick = { isSignUp = true; errorMessage = ""; successMessage = "" },
-                    text = { Text("Register Account", fontWeight = FontWeight.Bold, color = if (isSignUp) Gold500 else Slate200) }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Form Card
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Slate50),
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = Slate100,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(20.dp)) {
+                Row(modifier = Modifier.padding(4.dp)) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (!isSignUp) Color.White else Color.Transparent,
+                        shadowElevation = if (!isSignUp) 1.dp else 0.dp,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { isSignUp = false; errorMessage = ""; successMessage = "" }
+                            .padding(vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "Sign In",
+                            textAlign = TextAlign.Center,
+                            fontWeight = if (!isSignUp) FontWeight.Bold else FontWeight.Medium,
+                            color = if (!isSignUp) BrandNavy else Slate500,
+                            fontSize = 14.sp
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isSignUp) Color.White else Color.Transparent,
+                        shadowElevation = if (isSignUp) 1.dp else 0.dp,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { isSignUp = true; errorMessage = ""; successMessage = "" }
+                            .padding(vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "Register Account",
+                            textAlign = TextAlign.Center,
+                            fontWeight = if (isSignUp) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isSignUp) BrandNavy else Slate500,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Form Card in Blueprint style
+            BlueprintCard(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
                     if (errorMessage.isNotBlank()) {
                         Surface(
                             color = Crimson100,
@@ -287,11 +333,11 @@ fun AuthScreen(
                                     }
                                 }
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = Navy800),
-                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = BrandNavy),
+                            shape = RoundedCornerShape(8.dp),
                             modifier = Modifier.fillMaxWidth().testTag("login_submit_button")
                         ) {
-                            Text("Sign In with Email", modifier = Modifier.padding(vertical = 4.dp))
+                            Text("Sign In with Email", modifier = Modifier.padding(vertical = 4.dp), fontWeight = FontWeight.Bold)
                         }
                     } else {
                         // Registration Form
@@ -326,7 +372,7 @@ fun AuthScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        Text("Select Role:", style = MaterialTheme.typography.titleSmall, color = Navy800)
+                        Text("Select Role:", style = MaterialTheme.typography.titleSmall, color = BrandNavy, fontWeight = FontWeight.Bold)
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             listOf(UserRole.PARENT, UserRole.STUDENT, UserRole.COACH).forEach { role ->
                                 FilterChip(
@@ -390,27 +436,29 @@ fun AuthScreen(
                                     }
                                 }
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = Navy800),
-                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = BrandNavy),
+                            shape = RoundedCornerShape(8.dp),
                             modifier = Modifier.fillMaxWidth().testTag("signup_submit_button")
                         ) {
-                            Text("Submit Registration", modifier = Modifier.padding(vertical = 4.dp))
+                            Text("Submit Registration", modifier = Modifier.padding(vertical = 4.dp), fontWeight = FontWeight.Bold)
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
             // Public Verification link
             OutlinedButton(
                 onClick = onVerifyCertClick,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Slate200),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandNavy),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Slate300),
+                shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.fillMaxWidth().testTag("public_verify_cert_button")
             ) {
-                Icon(Icons.Default.Verified, contentDescription = null, tint = Gold500)
+                Icon(Icons.Default.Verified, contentDescription = null, tint = AccentAmber700)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Public Certificate Verification Portal")
+                Text("Public Certificate Verification Portal", fontWeight = FontWeight.Medium)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -420,23 +468,24 @@ fun AuthScreen(
     if (showPendingDialog) {
         AlertDialog(
             onDismissRequest = { showPendingDialog = false },
-            icon = { Icon(Icons.Default.HourglassEmpty, contentDescription = null, tint = Gold600, modifier = Modifier.size(40.dp)) },
-            title = { Text("Registration Submitted", textAlign = TextAlign.Center) },
+            icon = { Icon(Icons.Default.HourglassEmpty, contentDescription = null, tint = AccentAmber700, modifier = Modifier.size(40.dp)) },
+            title = { Text("Registration Submitted", textAlign = TextAlign.Center, color = BrandNavy, fontWeight = FontWeight.Bold) },
             text = {
                 Text(
                     "Your registration has been received and is currently pending review by the academy administrator (Master Eswaran). You will have full access once approved.",
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    color = Slate600
                 )
             },
             confirmButton = {
                 Button(
                     onClick = {
                         showPendingDialog = false
-                        // Automatically switch back to demo admin to let user explore immediately
                         viewModel.loginAs("eswaran2728@gmail.com") {
                             onAuthSuccess(UserRole.ADMIN)
                         }
-                    }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandNavy)
                 ) {
                     Text("Explore as Admin for Demo")
                 }
@@ -456,9 +505,12 @@ private fun DemoAccountRow(
     onClick: () -> Unit
 ) {
     Surface(
-        color = if (isSelected) Navy700 else Navy900,
-        shape = RoundedCornerShape(10.dp),
-        border = if (isSelected) androidx.compose.foundation.BorderStroke(1.5.dp, color) else null,
+        color = if (isSelected) BrandNavyTint else Color.White,
+        shape = RoundedCornerShape(8.dp),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (isSelected) AccentAmber700 else Slate200
+        ),
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
@@ -469,7 +521,7 @@ private fun DemoAccountRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
-                color = color.copy(alpha = 0.2f),
+                color = color.copy(alpha = 0.12f),
                 shape = CircleShape,
                 modifier = Modifier.size(36.dp)
             ) {
@@ -479,10 +531,19 @@ private fun DemoAccountRow(
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.White)
-                Text(text = roleLabel, style = MaterialTheme.typography.bodySmall, color = Slate200)
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = BrandNavy
+                )
+                Text(
+                    text = roleLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Slate500
+                )
             }
-            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Slate200)
+            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Slate400)
         }
     }
 }

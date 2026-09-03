@@ -26,7 +26,8 @@ import com.example.beltflow.ui.viewmodels.BeltFlowViewModel
 @Composable
 fun StudentPortalScreen(
     viewModel: BeltFlowViewModel,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onSwitchUser: ((String) -> Unit)? = null
 ) {
     val currentUser by viewModel.currentUser.collectAsState()
     val allStudents by viewModel.allStudents.collectAsState()
@@ -72,7 +73,13 @@ fun StudentPortalScreen(
             TopNavBar(
                 title = "Student Martial Arts Portal",
                 currentUser = currentUser,
-                onSwitchUser = { email -> viewModel.loginAs(email) {} },
+                onSwitchUser = { email ->
+                    if (onSwitchUser != null) {
+                        onSwitchUser(email)
+                    } else {
+                        viewModel.loginAs(email) {}
+                    }
+                },
                 onLogout = onLogout
             )
         },

@@ -29,7 +29,8 @@ fun CoachPortalScreen(
     onNavigateToGrading: () -> Unit,
     onNavigateToCurriculum: () -> Unit,
     onStudentClick: (String) -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onSwitchUser: ((String) -> Unit)? = null
 ) {
     val currentUser by viewModel.currentUser.collectAsState()
     val allClasses by viewModel.allClasses.collectAsState()
@@ -43,7 +44,13 @@ fun CoachPortalScreen(
             TopNavBar(
                 title = "Coach Portal",
                 currentUser = currentUser,
-                onSwitchUser = { email -> viewModel.loginAs(email) {} },
+                onSwitchUser = { email ->
+                    if (onSwitchUser != null) {
+                        onSwitchUser(email)
+                    } else {
+                        viewModel.loginAs(email) {}
+                    }
+                },
                 onLogout = onLogout
             )
         },
