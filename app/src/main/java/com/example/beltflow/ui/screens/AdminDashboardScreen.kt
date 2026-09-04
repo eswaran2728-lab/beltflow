@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.beltflow.R
+import com.example.beltflow.data.local.ProfileEntity
 import com.example.beltflow.data.model.*
 import com.example.beltflow.ui.components.*
 import com.example.beltflow.ui.theme.*
@@ -56,6 +57,7 @@ fun AdminDashboardScreen(
     val allInvoices by viewModel.allInvoices.collectAsState()
     val allGradings by viewModel.allGradingEvents.collectAsState()
     val allCertificates by viewModel.allCertificates.collectAsState()
+    val allProfiles by viewModel.allProfiles.collectAsState()
 
     var selectedTab by remember { mutableStateOf(BeltFlowTab.HOME) }
     var selectedCertificateForDialog by remember { mutableStateOf<CertificateDetail?>(null) }
@@ -100,6 +102,9 @@ fun AdminDashboardScreen(
                         stats = stats,
                         allStudents = allStudents,
                         allInvoices = allInvoices,
+                        allProfiles = allProfiles,
+                        onApproveProfile = { viewModel.approveProfile(it) },
+                        onRejectProfile = { viewModel.rejectProfile(it) },
                         onGoGrading = { selectedTab = BeltFlowTab.GRADING },
                         onGoCertificates = { selectedTab = BeltFlowTab.CERTIFICATES },
                         onGoStudents = { selectedTab = BeltFlowTab.STUDENTS },
@@ -148,6 +153,9 @@ private fun HomeTabContent(
     stats: com.example.beltflow.ui.viewmodels.AdminDashboardUiState,
     allStudents: List<StudentWithDetails>,
     allInvoices: List<InvoiceWithStudent>,
+    allProfiles: List<ProfileEntity>,
+    onApproveProfile: (String) -> Unit,
+    onRejectProfile: (String) -> Unit,
     onGoGrading: () -> Unit,
     onGoCertificates: () -> Unit,
     onGoStudents: () -> Unit,
@@ -162,6 +170,7 @@ private fun HomeTabContent(
     val overdueInvoices = allInvoices.filter {
         it.status == InvoiceStatus.OVERDUE || it.status == InvoiceStatus.UNPAID
     }.take(3)
+    val pendingProfiles = allProfiles.filter { it.status == ProfileStatus.PENDING }
 
     LazyColumn(
         modifier = Modifier
@@ -209,6 +218,23 @@ private fun HomeTabContent(
                         )
                     }
                 }
+            }
+        }
+
+        // Pending Registrations Section (High Priority for Master Eswaran)
+        if (pendingProfiles.isNotEmpty()) {
+            item {
+                PendingRegistrationsSection(
+                    pendingProfiles = pendingProfiles,
+                    onApprove = { id ->
+                        onApproveProfile(id)
+                        Toast.makeText(context, "User account approved & activated!", Toast.LENGTH_SHORT).show()
+                    },
+                    onReject = { id ->
+                        onRejectProfile(id)
+                        Toast.makeText(context, "Registration declined.", Toast.LENGTH_SHORT).show()
+                    }
+                )
             }
         }
 
@@ -986,3 +1012,201 @@ private fun OperationChip(
         }
     }
 }
+
+@Composable
+private fun PendingRegistrationsSection(
+    pendingProfiles: List<ProfileEntity>,
+    onApprove: (String) -> Unit,
+    onReject: (String) -> Unit
+) {
+    BlueprintCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("pending_approvals_card"),
+        backgroundColor = Color(0xFFFFFBEB),
+        borderColor = AccentAmber600
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = CircleShape,
+                        color = AccentAmber100,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.PersonAdd,
+                                contentDescription = null,
+                                tint = AccentAmber700,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "NEW USER REGISTRATIONS (${pendingProfiles.size})",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = AccentAmber800,
+                        letterSpacing = 0.6.sp
+                    )
+                }
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Crimson100,
+                    modifier = Modifier.padding(2.dp)
+                ) {
+                    Text(
+                        text = "Pending Approval",
+                        color = Crimson600,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
+            }
+
+            Text(
+                text = "The following users registered an account and need your approval to access the academy portal:",
+                style = MaterialTheme.typography.bodySmall,
+                color = Slate600,
+                modifier = Modifier.padding(top = 6.dp, bottom = 12.dp)
+            )
+
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                pendingProfiles.forEach { profile ->
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color.White,
+                        border = BorderStroke(1.dp, Slate200),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = profile.fullName,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = BrandNavy
+                                    )
+                                    Text(
+                                        text = profile.email,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Slate500
+                                    )
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = when (profile.role) {
+                                        UserRole.PARENT -> Emerald100
+                                        UserRole.STUDENT -> Purple100
+                                        UserRole.COACH -> Sky100
+                                        else -> AccentAmber100
+                                    }
+                                ) {
+                                    Text(
+                                        text = profile.role.label.split("/")[0].trim(),
+                                        color = when (profile.role) {
+                                            UserRole.PARENT -> Emerald800
+                                            UserRole.STUDENT -> Purple800
+                                            UserRole.COACH -> Sky800
+                                            else -> AccentAmber800
+                                        },
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+
+                            if (profile.phone.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Phone, contentDescription = null, tint = Slate400, modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(text = profile.phone, style = MaterialTheme.typography.bodySmall, color = Slate600)
+                                }
+                            }
+
+                            if (profile.role == UserRole.PARENT && profile.childName.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.ChildCare, contentDescription = null, tint = Emerald600, modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Child / Student: ${profile.childName}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Medium,
+                                        color = BrandNavy
+                                    )
+                                }
+                            }
+
+                            if (profile.assignedClass.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Class, contentDescription = null, tint = Sky600, modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Class: ${profile.assignedClass}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Slate600
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(
+                                    onClick = { onApprove(profile.id) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Emerald600),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(38.dp)
+                                        .testTag("approve_btn_${profile.id}")
+                                ) {
+                                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Accept User", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                }
+
+                                OutlinedButton(
+                                    onClick = { onReject(profile.id) },
+                                    border = BorderStroke(1.dp, Crimson600.copy(alpha = 0.5f)),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Crimson600),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier
+                                        .weight(0.7f)
+                                        .height(38.dp)
+                                        .testTag("reject_btn_${profile.id}")
+                                ) {
+                                    Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Decline", fontSize = 13.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+

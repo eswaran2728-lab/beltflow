@@ -44,9 +44,12 @@ val Gold100 = AccentAmber100
 val Crimson600 = Color(0xFFDC2626)
 val Crimson100 = Color(0xFFFEE2E2)
 val Emerald600 = Color(0xFF059669)
+val Emerald800 = Color(0xFF065F46)
 val Emerald100 = Color(0xFFD1FAE5)
 val Sky600 = Color(0xFF0284C7)
+val Sky800 = Color(0xFF075985)
 val Sky100 = Color(0xFFE0F2FE)
 val Purple600 = Color(0xFF7C3AED)
+val Purple800 = Color(0xFF5B21B6)
 val Purple100 = Color(0xFFF3E8FF)
 

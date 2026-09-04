@@ -1,5 +1,6 @@
 package com.example.beltflow.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.beltflow.data.local.AcademySettingsEntity
 import com.example.beltflow.data.local.BeltEntity
@@ -37,6 +39,7 @@ fun SettingsScreen(
     val allBelts by viewModel.allBelts.collectAsState()
     val allBranches by viewModel.allBranches.collectAsState()
     val allClasses by viewModel.allClasses.collectAsState()
+    val allProfiles by viewModel.allProfiles.collectAsState()
 
     var showAddBeltDialog by remember { mutableStateOf(false) }
     var showAddBranchDialog by remember { mutableStateOf(false) }
@@ -272,6 +275,154 @@ fun SettingsScreen(
                             }
                             IconButton(onClick = { viewModel.deleteClass(cls) }, modifier = Modifier.size(28.dp)) {
                                 Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = Crimson600, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+                }
+            }
+
+            // User Accounts & Registration Approvals
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        "Registered User Accounts (${allProfiles.size})",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Navy800
+                    )
+                    Text(
+                        "Manage logins and review registrations for coaches, parents, and students.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Slate600
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    allProfiles.forEach { profile ->
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Slate100.copy(alpha = 0.5f),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = profile.fullName,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = BrandNavy
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = when (profile.role) {
+                                                UserRole.ADMIN -> AccentAmber100
+                                                UserRole.COACH -> Sky100
+                                                UserRole.PARENT -> Emerald100
+                                                UserRole.STUDENT -> Purple100
+                                            }
+                                        ) {
+                                            Text(
+                                                text = profile.role.label.split("/")[0].trim(),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 10.sp,
+                                                color = when (profile.role) {
+                                                    UserRole.ADMIN -> AccentAmber800
+                                                    UserRole.COACH -> Sky800
+                                                    UserRole.PARENT -> Emerald800
+                                                    UserRole.STUDENT -> Purple800
+                                                },
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        text = profile.email,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Slate500
+                                    )
+                                }
+
+                                if (profile.role != UserRole.ADMIN) {
+                                    when (profile.status) {
+                                        ProfileStatus.PENDING -> {
+                                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                Button(
+                                                    onClick = { viewModel.approveProfile(profile.id) },
+                                                    colors = ButtonDefaults.buttonColors(containerColor = Emerald600),
+                                                    shape = RoundedCornerShape(6.dp),
+                                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                                    modifier = Modifier.height(32.dp)
+                                                ) {
+                                                    Text("Accept", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                }
+                                                OutlinedButton(
+                                                    onClick = { viewModel.rejectProfile(profile.id) },
+                                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Crimson600),
+                                                    border = BorderStroke(1.dp, Crimson600.copy(alpha = 0.5f)),
+                                                    shape = RoundedCornerShape(6.dp),
+                                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                                    modifier = Modifier.height(32.dp)
+                                                ) {
+                                                    Text("Decline", fontSize = 11.sp)
+                                                }
+                                            }
+                                        }
+                                        ProfileStatus.APPROVED -> {
+                                            Surface(
+                                                shape = RoundedCornerShape(6.dp),
+                                                color = Emerald100
+                                            ) {
+                                                Text(
+                                                    text = "Approved",
+                                                    color = Emerald800,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 11.sp,
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                                )
+                                            }
+                                        }
+                                        ProfileStatus.REJECTED -> {
+                                            Button(
+                                                onClick = { viewModel.approveProfile(profile.id) },
+                                                colors = ButtonDefaults.buttonColors(containerColor = AccentAmber700),
+                                                shape = RoundedCornerShape(6.dp),
+                                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                                modifier = Modifier.height(30.dp)
+                                            ) {
+                                                Text("Re-approve", fontSize = 11.sp)
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = AccentAmber100
+                                    ) {
+                                        Text(
+                                            text = "Admin",
+                                            color = AccentAmber800,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.sp,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

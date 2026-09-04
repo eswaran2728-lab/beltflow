@@ -178,6 +178,50 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
 
     suspend fun updateProfileStatus(profileId: String, status: ProfileStatus) = withContext(Dispatchers.IO) {
         dao.updateProfileStatus(profileId, status)
+        if (status == ProfileStatus.APPROVED) {
+            val profile = dao.getProfileById(profileId)
+            if (profile != null) {
+                if (profile.role == UserRole.STUDENT && profile.studentId == null) {
+                    val defaultBelt = dao.getAllBeltsDirect().firstOrNull()?.id
+                    val newStudentId = "std_${UUID.randomUUID().toString().take(8)}"
+                    val student = StudentEntity(
+                        id = newStudentId,
+                        fullName = profile.fullName,
+                        icOrMykid = "-",
+                        dateOfBirth = "-",
+                        gender = "-",
+                        beltId = defaultBelt,
+                        lifecycle = Lifecycle.ACTIVE,
+                        joinedAt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
+                        parentName = profile.fullName,
+                        parentPhone = profile.phone,
+                        medicalNotes = "Registered online",
+                        classIdsJson = "[]"
+                    )
+                    dao.insertStudent(student)
+                    dao.linkProfileToStudent(profileId, newStudentId)
+                } else if (profile.role == UserRole.PARENT && profile.childName.isNotBlank() && profile.studentId == null) {
+                    val defaultBelt = dao.getAllBeltsDirect().firstOrNull()?.id
+                    val newStudentId = "std_${UUID.randomUUID().toString().take(8)}"
+                    val student = StudentEntity(
+                        id = newStudentId,
+                        fullName = profile.childName,
+                        icOrMykid = "-",
+                        dateOfBirth = "-",
+                        gender = "-",
+                        beltId = defaultBelt,
+                        lifecycle = Lifecycle.ACTIVE,
+                        joinedAt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
+                        parentName = profile.fullName,
+                        parentPhone = profile.phone,
+                        medicalNotes = "Registered by parent",
+                        classIdsJson = "[]"
+                    )
+                    dao.insertStudent(student)
+                    dao.linkProfileToStudent(profileId, newStudentId)
+                }
+            }
+        }
     }
 
     suspend fun linkProfileToStudent(profileId: String, studentId: String) = withContext(Dispatchers.IO) {
