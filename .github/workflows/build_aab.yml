@@ -26,6 +26,7 @@ jobs:
           cache-disabled: false
 
       - name: Restore Release Keystore
+        working-directory: android
         run: |
           if [ -n "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" ]; then
             echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > release.keystore
@@ -35,6 +36,7 @@ jobs:
           keytool -list -keystore release.keystore -storepass beltflowpass -alias beltflow
 
       - name: Build Android App Bundle (Release AAB) & APK
+        working-directory: android
         env:
           KEYSTORE_PASSWORD: beltflowpass
           KEY_ALIAS: beltflow
@@ -42,6 +44,7 @@ jobs:
         run: gradle :app:bundleRelease :app:assembleRelease --stacktrace
 
       - name: Verify Signed Bundle
+        working-directory: android
         run: |
           jarsigner -verify -verbose -certs app/build/outputs/bundle/release/app-release.aab || echo "Bundle verification completed"
 
@@ -49,10 +52,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-release-aab
-          path: app/build/outputs/bundle/release/app-release.aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
 
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
           name: app-release-apk
-          path: app/build/outputs/apk/release/app-release.apk
+          path: android/app/build/outputs/apk/release/app-release.apk
