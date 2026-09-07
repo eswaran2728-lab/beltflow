@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.beltflow.data.model.CertificateDetail
+import com.example.beltflow.ui.components.beltFlowTextFieldColors
 import com.example.beltflow.ui.theme.*
 import com.example.beltflow.ui.viewmodels.BeltFlowViewModel
 import kotlinx.coroutines.launch
@@ -93,6 +94,7 @@ fun VerifyCertScreen(
                         placeholder = { Text("e.g. BF-ORANGE-9821, BF-YELLOW-1042") },
                         leadingIcon = { Icon(Icons.Default.VerifiedUser, contentDescription = null, tint = Gold600) },
                         singleLine = true,
+                        colors = beltFlowTextFieldColors(),
                         modifier = Modifier.fillMaxWidth().testTag("verify_code_input_field")
                     )
 

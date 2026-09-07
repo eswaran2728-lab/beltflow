@@ -630,12 +630,7 @@ private fun StudentsTabContent(
                 },
                 singleLine = true,
                 shape = RoundedCornerShape(8.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = AccentAmber700,
-                    unfocusedBorderColor = Slate200,
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White
-                ),
+                colors = beltFlowTextFieldColors(),
                 modifier = Modifier.fillMaxWidth()
             )
         }

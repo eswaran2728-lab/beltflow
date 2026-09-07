@@ -338,7 +338,8 @@ fun TopNavBar(
 
                 DropdownMenu(
                     expanded = showUserMenu,
-                    onDismissRequest = { showUserMenu = false }
+                    onDismissRequest = { showUserMenu = false },
+                    modifier = Modifier.background(Color.White)
                 ) {
                     if (currentUser != null) {
                         Column(
@@ -355,7 +356,7 @@ fun TopNavBar(
                             Text(
                                 text = currentUser.email,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Slate500
+                                color = Slate600
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             StatusBadge(
@@ -364,7 +365,7 @@ fun TopNavBar(
                                 textColor = AccentAmber800
                             )
                         }
-                        HorizontalDivider()
+                        HorizontalDivider(color = Slate200)
                     }
                     DropdownMenuItem(
                         text = { Text("Sign Out", color = Crimson600, fontWeight = FontWeight.SemiBold) },
@@ -486,11 +487,11 @@ fun CertificateDialog(
                 ) {
                     Column {
                         Text("Issue Date", style = MaterialTheme.typography.labelSmall, color = Slate600)
-                        Text(certificate.issuedAt, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                        Text(certificate.issuedAt, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = Slate900)
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         Text("Certificate No.", style = MaterialTheme.typography.labelSmall, color = Slate600)
-                        Text(certificate.certNo, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                        Text(certificate.certNo, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = Slate900)
                     }
                 }
 

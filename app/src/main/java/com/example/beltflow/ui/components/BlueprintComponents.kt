@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -250,4 +251,28 @@ fun BeltFlowBottomBar(
         }
     }
 }
+
+@Composable
+fun beltFlowTextFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedTextColor = Slate900,
+    unfocusedTextColor = Slate900,
+    focusedLabelColor = BrandNavy,
+    unfocusedLabelColor = Slate700,
+    focusedPlaceholderColor = Slate400,
+    unfocusedPlaceholderColor = Slate400,
+    focusedBorderColor = AccentAmber700,
+    unfocusedBorderColor = Slate300,
+    focusedLeadingIconColor = BrandNavy,
+    unfocusedLeadingIconColor = Slate500,
+    focusedTrailingIconColor = BrandNavy,
+    unfocusedTrailingIconColor = Slate500,
+    cursorColor = AccentAmber700,
+    focusedContainerColor = Color.White,
+    unfocusedContainerColor = Color.White,
+    errorContainerColor = Color.White,
+    errorTextColor = Crimson600,
+    errorLabelColor = Crimson600,
+    errorBorderColor = Crimson600
+)
+
 

@@ -30,6 +30,7 @@ import com.example.beltflow.R
 import com.example.beltflow.data.model.ProfileStatus
 import com.example.beltflow.data.model.UserRole
 import com.example.beltflow.ui.components.BlueprintCard
+import com.example.beltflow.ui.components.beltFlowTextFieldColors
 import com.example.beltflow.ui.theme.*
 import com.example.beltflow.ui.viewmodels.BeltFlowViewModel
 
@@ -142,8 +143,8 @@ fun AuthScreen(
                         Text(
                             text = "Sign In",
                             textAlign = TextAlign.Center,
-                            fontWeight = if (!isSignUp) FontWeight.Bold else FontWeight.Medium,
-                            color = if (!isSignUp) BrandNavy else Slate500,
+                            fontWeight = if (!isSignUp) FontWeight.Bold else FontWeight.SemiBold,
+                            color = if (!isSignUp) BrandNavy else Slate700,
                             fontSize = 15.sp
                         )
                     }
@@ -164,8 +165,8 @@ fun AuthScreen(
                         Text(
                             text = "Register Account",
                             textAlign = TextAlign.Center,
-                            fontWeight = if (isSignUp) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSignUp) BrandNavy else Slate500,
+                            fontWeight = if (isSignUp) FontWeight.Bold else FontWeight.SemiBold,
+                            color = if (isSignUp) BrandNavy else Slate700,
                             fontSize = 15.sp
                         )
                     }
@@ -258,6 +259,7 @@ fun AuthScreen(
                             leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                             singleLine = true,
+                            colors = beltFlowTextFieldColors(),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .testTag("login_email_input")
@@ -281,6 +283,7 @@ fun AuthScreen(
                             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                             singleLine = true,
+                            colors = beltFlowTextFieldColors(),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .testTag("login_password_input")
@@ -351,6 +354,7 @@ fun AuthScreen(
                             placeholder = { Text("e.g. Master Eswaran") },
                             leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
                             singleLine = true,
+                            colors = beltFlowTextFieldColors(),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .testTag("signup_name_input")
@@ -366,6 +370,7 @@ fun AuthScreen(
                             leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                             singleLine = true,
+                            colors = beltFlowTextFieldColors(),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .testTag("signup_email_input")
@@ -389,6 +394,7 @@ fun AuthScreen(
                             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                             singleLine = true,
+                            colors = beltFlowTextFieldColors(),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .testTag("signup_password_input")
@@ -404,6 +410,7 @@ fun AuthScreen(
                             leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                             singleLine = true,
+                            colors = beltFlowTextFieldColors(),
                             modifier = Modifier.fillMaxWidth()
                         )
 
@@ -424,7 +431,24 @@ fun AuthScreen(
                                 FilterChip(
                                     selected = selectedRole == role,
                                     onClick = { selectedRole = role },
-                                    label = { Text(role.label.split("/")[0].trim()) },
+                                    label = {
+                                        Text(
+                                            text = role.label.split("/")[0].trim(),
+                                            fontWeight = if (selectedRole == role) FontWeight.Bold else FontWeight.Medium
+                                        )
+                                    },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        containerColor = Color.White,
+                                        labelColor = Slate700,
+                                        selectedContainerColor = AccentAmber100,
+                                        selectedLabelColor = AccentAmber800
+                                    ),
+                                    border = FilterChipDefaults.filterChipBorder(
+                                        enabled = true,
+                                        selected = selectedRole == role,
+                                        borderColor = Slate300,
+                                        selectedBorderColor = AccentAmber600
+                                    ),
                                     modifier = Modifier.weight(1f).testTag("role_chip_${role.name}")
                                 )
                             }
@@ -439,6 +463,7 @@ fun AuthScreen(
                                 placeholder = { Text("e.g. Aryan Suresh") },
                                 leadingIcon = { Icon(Icons.Default.ChildCare, contentDescription = null) },
                                 singleLine = true,
+                                colors = beltFlowTextFieldColors(),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .testTag("signup_child_name_input")
@@ -452,9 +477,10 @@ fun AuthScreen(
                             onValueChange = { classCode = it },
                             label = { Text("Class Registration Code (Optional)") },
                             placeholder = { Text("e.g. NIL101, SEP202") },
-                            supportingText = { Text("Provided by your coach for auto-assignment") },
+                            supportingText = { Text("Provided by your coach for auto-assignment", color = Slate600) },
                             leadingIcon = { Icon(Icons.Default.QrCode, contentDescription = null) },
                             singleLine = true,
+                            colors = beltFlowTextFieldColors(),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .testTag("signup_class_code_input")
@@ -543,6 +569,9 @@ fun AuthScreen(
     if (showPendingDialog) {
         AlertDialog(
             onDismissRequest = { showPendingDialog = false },
+            containerColor = Color.White,
+            titleContentColor = BrandNavy,
+            textContentColor = Slate700,
             icon = {
                 Icon(
                     Icons.Default.HourglassEmpty,

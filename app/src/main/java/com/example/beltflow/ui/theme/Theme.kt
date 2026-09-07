@@ -8,48 +8,50 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 private val LightColorScheme = lightColorScheme(
-    primary = Navy800,
+    primary = BrandNavy,
     onPrimary = Color.White,
-    primaryContainer = Navy700,
-    onPrimaryContainer = Color.White,
-    secondary = Gold600,
+    primaryContainer = BrandNavyTint,
+    onPrimaryContainer = BrandNavy,
+    secondary = AccentAmber700,
     onSecondary = Color.White,
-    secondaryContainer = Gold100,
-    onSecondaryContainer = Gold600,
+    secondaryContainer = AccentAmber100,
+    onSecondaryContainer = AccentAmber800,
     tertiary = Crimson600,
-    background = Slate50,
-    onBackground = Slate800,
+    onTertiary = Color.White,
+    background = BlueprintBg,
+    onBackground = Slate900,
     surface = Color.White,
-    onSurface = Slate800,
+    onSurface = Slate900,
     surfaceVariant = Slate100,
     onSurfaceVariant = Slate700,
-    outline = Slate200,
-    outlineVariant = Slate100
+    outline = Slate300,
+    outlineVariant = Slate200
 )
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Gold500,
-    onPrimary = Navy900,
-    primaryContainer = Navy800,
-    onPrimaryContainer = Color.White,
-    secondary = Gold500,
-    onSecondary = Navy900,
-    secondaryContainer = Navy700,
-    onSecondaryContainer = Gold100,
+private val DarkColorScheme = lightColorScheme(
+    primary = BrandNavy,
+    onPrimary = Color.White,
+    primaryContainer = BrandNavyTint,
+    onPrimaryContainer = BrandNavy,
+    secondary = AccentAmber700,
+    onSecondary = Color.White,
+    secondaryContainer = AccentAmber100,
+    onSecondaryContainer = AccentAmber800,
     tertiary = Crimson600,
-    background = Navy900,
-    onBackground = Slate50,
-    surface = Navy800,
-    onSurface = Slate50,
-    surfaceVariant = Navy700,
-    onSurfaceVariant = Slate200,
-    outline = Slate700,
-    outlineVariant = Slate800
+    onTertiary = Color.White,
+    background = BlueprintBg,
+    onBackground = Slate900,
+    surface = Color.White,
+    onSurface = Slate900,
+    surfaceVariant = Slate100,
+    onSurfaceVariant = Slate700,
+    outline = Slate300,
+    outlineVariant = Slate200
 )
 
 @Composable
 fun BeltFlowTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
