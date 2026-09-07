@@ -36,17 +36,18 @@ fun ParentPortalScreen(
     val allStudents by viewModel.allStudents.collectAsState()
     val allInvoices by viewModel.allInvoices.collectAsState()
 
-    // Find children linked to this parent (by parent name or child ID)
+    // Find children linked to this parent (by parent name, child name, or phone)
     val parentChildren = remember(allStudents, currentUser) {
         val user = currentUser
         if (user != null) {
             allStudents.filter { s ->
-                s.parentName.contains("Suresh", ignoreCase = true) ||
-                        (user.linkedStudentId != null && s.id == user.linkedStudentId) ||
-                        s.parentPhone.contains(user.phone)
-            }.ifEmpty { allStudents.take(2) }
+                (user.linkedStudentId != null && s.id == user.linkedStudentId) ||
+                (user.childName.isNotBlank() && s.fullName.equals(user.childName, ignoreCase = true)) ||
+                (user.phone.isNotBlank() && s.parentPhone.isNotBlank() && s.parentPhone.contains(user.phone)) ||
+                (s.parentName.isNotBlank() && s.parentName.equals(user.fullName, ignoreCase = true))
+            }
         } else {
-            allStudents.take(2)
+            emptyList()
         }
     }
 

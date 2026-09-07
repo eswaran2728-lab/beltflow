@@ -262,4 +262,11 @@ interface BeltFlowDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCertificate(certificate: CertificateEntity)
+
+    // --- Legacy demo cleanup ---
+    @Query("DELETE FROM students WHERE id IN ('stud_1', 'stud_2', 'stud_3', 'stud_4', 'stud_5', 'stud_6') OR fullName IN ('Aryan Suresh', 'Tharun Kumar', 'Dhivya Letchumi', 'Harish Nair', 'Kaviarasan Mohan', 'Aiman Hakim')")
+    suspend fun deleteLegacyDemoStudents()
+
+    @Query("DELETE FROM profiles WHERE id IN ('prof_coach_1', 'prof_parent_1', 'prof_student_1', 'prof_parent_pending') OR email IN ('ravi.silambam@gmail.com', 'suresh.parent@gmail.com', 'aryan.suresh@gmail.com', 'kavitha.devi@gmail.com')")
+    suspend fun deleteLegacyDemoProfiles()
 }

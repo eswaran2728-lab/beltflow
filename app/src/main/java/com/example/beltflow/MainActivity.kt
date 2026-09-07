@@ -165,23 +165,40 @@ fun BeltFlowNavGraph(viewModel: BeltFlowViewModel) {
             )
         }
 
-        val onRoleSwitch: (String) -> Unit = { email ->
-            viewModel.loginAs(email) {
-                when (email) {
-                    "eswaran2728@gmail.com" -> navController.navigate(Screen.AdminDashboard) {
-                        popUpTo(Screen.AdminDashboard) { inclusive = true }
-                    }
-                    "ravi.silambam@gmail.com" -> navController.navigate(Screen.CoachPortal) {
-                        popUpTo(Screen.AdminDashboard) { inclusive = false }
-                    }
-                    "suresh.parent@gmail.com" -> navController.navigate(Screen.ParentPortal) {
-                        popUpTo(Screen.AdminDashboard) { inclusive = false }
-                    }
-                    "aryan.suresh@gmail.com" -> navController.navigate(Screen.StudentPortal) {
-                        popUpTo(Screen.AdminDashboard) { inclusive = false }
-                    }
-                    else -> navController.navigate(Screen.AdminDashboard) {
-                        popUpTo(Screen.AdminDashboard) { inclusive = true }
+        val onRoleSwitch: (String) -> Unit = { target ->
+            when (target) {
+                "coach" -> navController.navigate(Screen.CoachPortal) {
+                    popUpTo(Screen.AdminDashboard) { inclusive = false }
+                }
+                "parent" -> navController.navigate(Screen.ParentPortal) {
+                    popUpTo(Screen.AdminDashboard) { inclusive = false }
+                }
+                "student" -> navController.navigate(Screen.StudentPortal) {
+                    popUpTo(Screen.AdminDashboard) { inclusive = false }
+                }
+                "admin", "eswaran2728@gmail.com" -> navController.navigate(Screen.AdminDashboard) {
+                    popUpTo(Screen.AdminDashboard) { inclusive = true }
+                }
+                else -> {
+                    viewModel.loginAs(target) {
+                        val role = viewModel.currentUser.value?.role
+                        when (role) {
+                            UserRole.ADMIN -> navController.navigate(Screen.AdminDashboard) {
+                                popUpTo(Screen.AdminDashboard) { inclusive = true }
+                            }
+                            UserRole.COACH -> navController.navigate(Screen.CoachPortal) {
+                                popUpTo(Screen.AdminDashboard) { inclusive = false }
+                            }
+                            UserRole.PARENT -> navController.navigate(Screen.ParentPortal) {
+                                popUpTo(Screen.AdminDashboard) { inclusive = false }
+                            }
+                            UserRole.STUDENT -> navController.navigate(Screen.StudentPortal) {
+                                popUpTo(Screen.AdminDashboard) { inclusive = false }
+                            }
+                            else -> navController.navigate(Screen.AdminDashboard) {
+                                popUpTo(Screen.AdminDashboard) { inclusive = true }
+                            }
+                        }
                     }
                 }
             }

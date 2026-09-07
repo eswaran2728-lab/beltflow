@@ -32,13 +32,13 @@ fun StudentPortalScreen(
     val currentUser by viewModel.currentUser.collectAsState()
     val allStudents by viewModel.allStudents.collectAsState()
 
-    // Find Aryan Suresh or first student
+    // Select current user's student or active student
     val student = remember(allStudents, currentUser) {
         val user = currentUser
         if (user != null && user.studentId != null) {
             allStudents.find { it.id == user.studentId } ?: allStudents.firstOrNull()
         } else {
-            allStudents.find { it.fullName.contains("Aryan", ignoreCase = true) } ?: allStudents.firstOrNull()
+            allStudents.firstOrNull()
         }
     }
 

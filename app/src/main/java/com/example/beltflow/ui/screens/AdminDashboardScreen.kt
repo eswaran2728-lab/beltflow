@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.beltflow.R
@@ -72,10 +73,12 @@ fun AdminDashboardScreen(
                 currentUser = currentUser,
                 onSwitchUser = { email ->
                     viewModel.loginAs(email) {
-                        when (email) {
-                            "ravi.silambam@gmail.com" -> onNavigateToCoachPortal()
-                            "suresh.parent@gmail.com" -> onNavigateToParentPortal()
-                            "aryan.suresh@gmail.com" -> onNavigateToStudentPortal()
+                        val profile = viewModel.currentUser.value
+                        when (profile?.role) {
+                            UserRole.COACH -> onNavigateToCoachPortal()
+                            UserRole.PARENT -> onNavigateToParentPortal()
+                            UserRole.STUDENT -> onNavigateToStudentPortal()
+                            else -> {}
                         }
                     }
                 },
@@ -103,6 +106,7 @@ fun AdminDashboardScreen(
                         allStudents = allStudents,
                         allInvoices = allInvoices,
                         allProfiles = allProfiles,
+                        allCertificates = allCertificates,
                         onApproveProfile = { viewModel.approveProfile(it) },
                         onRejectProfile = { viewModel.rejectProfile(it) },
                         onGoGrading = { selectedTab = BeltFlowTab.GRADING },
@@ -154,6 +158,7 @@ private fun HomeTabContent(
     allStudents: List<StudentWithDetails>,
     allInvoices: List<InvoiceWithStudent>,
     allProfiles: List<ProfileEntity>,
+    allCertificates: List<CertificateDetail>,
     onApproveProfile: (String) -> Unit,
     onRejectProfile: (String) -> Unit,
     onGoGrading: () -> Unit,
@@ -413,72 +418,59 @@ private fun HomeTabContent(
             }
         }
 
-        // Needs Attention Section (Overdue Fees)
-        item {
-            Column {
-                Text(
-                    text = "NEEDS ATTENTION",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Slate500,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.8.sp,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+        // Needs Attention Section (Overdue Fees) - Only shown if real overdue invoices exist
+        if (overdueInvoices.isNotEmpty()) {
+            item {
+                Column {
+                    Text(
+                        text = "NEEDS ATTENTION",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Slate500,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.8.sp,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
 
-                val items = listOf(
-                    Triple("Wei Ling Tan", "RM 180 • 12d overdue", "+60123456789"),
-                    Triple("Dinesh Kumar", "RM 160 • 5d overdue", "+60198765432"),
-                    Triple("Siti Rahman", "RM 144 • 21d overdue", "+60133445566")
-                )
-
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items.forEach { (name, info, phone) ->
-                        BlueprintCard(modifier = Modifier.fillMaxWidth()) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = name,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        color = Slate900,
-                                        fontSize = 13.sp
-                                    )
-                                    Text(
-                                        text = info,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Slate500,
-                                        fontSize = 11.sp
-                                    )
-                                }
-
-                                OutlinedButton(
-                                    onClick = {
-                                        val cleanPhone = phone.replace("[^0-9]".toRegex(), "")
-                                        val msg = Uri.encode("Hello, this is Meridian Martial Arts. Gentle reminder regarding the outstanding academy fee for $name. Thank you!")
-                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$cleanPhone?text=$msg"))
-                                        try {
-                                            context.startActivity(intent)
-                                        } catch (e: Exception) {
-                                            Toast.makeText(context, "Reminder sent to $name", Toast.LENGTH_SHORT).show()
-                                        }
-                                    },
-                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                    shape = RoundedCornerShape(4.dp),
-                                    border = BorderStroke(1.dp, Slate300),
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandNavy),
-                                    modifier = Modifier.height(30.dp)
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        overdueInvoices.forEach { inv ->
+                            BlueprintCard(modifier = Modifier.fillMaxWidth()) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text(
-                                        text = "Remind",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontSize = 11.sp
-                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = inv.studentName,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium,
+                                            color = Slate900,
+                                            fontSize = 13.sp
+                                        )
+                                        Text(
+                                            text = "RM %.0f • %s (%s)".format(inv.netAmount, inv.status.name, inv.billingMonth),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Slate500,
+                                            fontSize = 11.sp
+                                        )
+                                    }
+
+                                    OutlinedButton(
+                                        onClick = onNavigateToBilling,
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                        shape = RoundedCornerShape(4.dp),
+                                        border = BorderStroke(1.dp, Slate300),
+                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandNavy),
+                                        modifier = Modifier.height(30.dp)
+                                    ) {
+                                        Text(
+                                            text = "View Fee",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontSize = 11.sp
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -487,8 +479,9 @@ private fun HomeTabContent(
             }
         }
 
-        // Certificate of Promotion Preview Card
+        // Digital Certificates Hub Card
         item {
+            val latestCert = allCertificates.firstOrNull()
             BlueprintCard(
                 onClick = onGoCertificates,
                 elevation = 2.dp,
@@ -501,7 +494,7 @@ private fun HomeTabContent(
                         verticalAlignment = Alignment.Top
                     ) {
                         Text(
-                            text = "CERTIFICATE OF PROMOTION",
+                            text = "DIGITAL CERTIFICATES",
                             style = MaterialTheme.typography.labelSmall,
                             color = AccentAmber700,
                             fontWeight = FontWeight.Bold,
@@ -513,23 +506,42 @@ private fun HomeTabContent(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Text(
-                        text = "ARYAN SURESH",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = BrandNavy,
-                        fontSize = 18.sp,
-                        letterSpacing = 0.5.sp
-                    )
+                    if (latestCert != null) {
+                        Text(
+                            text = latestCert.studentName.uppercase(),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = BrandNavy,
+                            fontSize = 18.sp,
+                            letterSpacing = 0.5.sp
+                        )
 
-                    Spacer(modifier = Modifier.height(2.dp))
+                        Spacer(modifier = Modifier.height(2.dp))
 
-                    Text(
-                        text = "Promoted to Green Belt • BF-GREEN-9821",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Slate600,
-                        fontSize = 12.sp
-                    )
+                        Text(
+                            text = "${latestCert.title} • ${latestCert.certNo}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Slate600,
+                            fontSize = 12.sp
+                        )
+                    } else {
+                        Text(
+                            text = "Official Certification System",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = BrandNavy,
+                            fontSize = 16.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(2.dp))
+
+                        Text(
+                            text = "Issue and verify student belt promotion certificates",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Slate600,
+                            fontSize = 12.sp
+                        )
+                    }
                 }
             }
         }
@@ -587,22 +599,10 @@ private fun StudentsTabContent(
     allStudents: List<StudentWithDetails>,
     onStudentClick: () -> Unit
 ) {
-    val sampleStudents = listOf(
-        Triple("Aryan Suresh", "Green", "Paid"),
-        Triple("Priya Nathan", "Blue", "Paid"),
-        Triple("Wei Ling Tan", "Orange", "Overdue"),
-        Triple("Kavi Selvam", "Brown", "Paid"),
-        Triple("Nadia Hassan", "White", "Paid"),
-        Triple("Dinesh Kumar", "Yellow", "Overdue"),
-        Triple("Farah Aziz", "Black", "Paid"),
-        Triple("Siti Rahman", "White", "Overdue"),
-        Triple("Ravi Chandran", "Green", "Paid"),
-        Triple("Jordan Lee", "Brown", "Paid")
-    )
-
-    val filtered = sampleStudents.filter {
-        it.first.contains(searchQuery, ignoreCase = true) ||
-        it.second.contains(searchQuery, ignoreCase = true)
+    val filtered = allStudents.filter {
+        it.fullName.contains(searchQuery, ignoreCase = true) ||
+        it.beltName.contains(searchQuery, ignoreCase = true) ||
+        it.parentName.contains(searchQuery, ignoreCase = true)
     }
 
     LazyColumn(
@@ -635,82 +635,149 @@ private fun StudentsTabContent(
             )
         }
 
-        // Students Roster List
-        items(filtered) { (name, belt, fee) ->
-            val initials = name.split(" ").mapNotNull { it.firstOrNull()?.toString() }.take(2).joinToString("")
-            val beltBg = when (belt) {
-                "Black" -> Slate900
-                "Brown" -> AccentAmber800
-                "Blue" -> Sky600
-                "Green" -> Emerald600
-                "Orange" -> AccentAmber500
-                "Yellow" -> AccentAmber300
-                else -> Slate200
-            }
-            val beltText = when (belt) {
-                "White", "Yellow" -> Slate900
-                else -> Color.White
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onStudentClick() }
-                    .padding(vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Circular Initials Avatar
-                Surface(
-                    shape = CircleShape,
-                    color = BrandNavyTint,
-                    modifier = Modifier.size(36.dp)
+        if (allStudents.isEmpty()) {
+            item {
+                BlueprintCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 20.dp)
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = BrandNavyTint,
+                            modifier = Modifier.size(56.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = BrandNavy,
+                                    modifier = Modifier.size(30.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(14.dp))
                         Text(
-                            text = initials,
-                            color = BrandNavy,
+                            text = "No Students Enrolled Yet",
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
+                            color = BrandNavy
                         )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Students registered via the academy portal or enrolled by Master Eswaran will appear here.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Slate600,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(18.dp))
+                        Button(
+                            onClick = onStudentClick,
+                            colors = ButtonDefaults.buttonColors(containerColor = BrandNavy),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Add / Manage Students", fontWeight = FontWeight.SemiBold, color = Color.White)
+                        }
                     }
                 }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = name,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = Slate900,
-                        fontSize = 14.sp
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        BeltFlowTag(
-                            text = belt,
-                            backgroundColor = beltBg,
-                            textColor = beltText
-                        )
-
-                        val isOverdue = fee == "Overdue"
-                        BeltFlowTag(
-                            text = fee,
-                            backgroundColor = if (isOverdue) Crimson100 else Slate100,
-                            textColor = if (isOverdue) Crimson600 else Slate700,
-                            borderColor = if (isOverdue) Crimson600 else null
-                        )
-                    }
-                }
-
-                Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    tint = Slate400,
-                    modifier = Modifier.size(18.dp)
-                )
             }
-            HorizontalDivider(color = Slate200.copy(alpha = 0.5f))
+        } else if (filtered.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No students matching \"$searchQuery\"",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Slate500
+                    )
+                }
+            }
+        } else {
+            // Students Roster List
+            items(filtered) { student ->
+                val initials = student.fullName.split(" ")
+                    .mapNotNull { it.firstOrNull()?.toString() }
+                    .take(2)
+                    .joinToString("")
+                    .ifEmpty { "ST" }
+
+                val beltHexColor = try {
+                    Color(android.graphics.Color.parseColor(student.beltColorHex))
+                } catch (_: Exception) {
+                    Slate200
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onStudentClick() }
+                        .padding(vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Circular Initials Avatar
+                    Surface(
+                        shape = CircleShape,
+                        color = BrandNavyTint,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = initials,
+                                color = BrandNavy,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = student.fullName,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = Slate900,
+                            fontSize = 14.sp
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            BeltFlowTag(
+                                text = student.beltName.ifEmpty { "White Belt" },
+                                backgroundColor = beltHexColor.copy(alpha = 0.25f),
+                                textColor = Slate900
+                            )
+
+                            val primaryClass = student.classNames.firstOrNull() ?: student.lifecycle.name
+                            BeltFlowTag(
+                                text = primaryClass,
+                                backgroundColor = Slate100,
+                                textColor = Slate700
+                            )
+                        }
+                    }
+
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = Slate400,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                HorizontalDivider(color = Slate200.copy(alpha = 0.5f))
+            }
         }
     }
 }
@@ -721,15 +788,6 @@ private fun GradingTabContent(
     allGradings: List<GradingEventWithRecords>,
     onNavigateToGradingDetails: () -> Unit
 ) {
-    val candidates = listOf(
-        Triple("Aryan Suresh", "Yellow", "Green"),
-        Triple("Priya Nathan", "Orange", "Blue"),
-        Triple("Kavi Selvam", "Blue", "Brown"),
-        Triple("Ravi Chandran", "Yellow", "Green"),
-        Triple("Jia Wen Ho", "White", "Yellow"),
-        Triple("Omar Farid", "Green", "Blue")
-    )
-
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -737,89 +795,117 @@ private fun GradingTabContent(
         contentPadding = PaddingValues(top = 16.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Event Blueprint Card
-        item {
-            BlueprintCard(
-                onClick = onNavigateToGradingDetails,
-                elevation = 2.dp,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Sep 20, 2026",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = BrandNavy,
-                        fontSize = 18.sp
-                    )
-                    Spacer(modifier = Modifier.height(3.dp))
-                    Text(
-                        text = "Central Dojang • Examiner Master Ravi",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Slate600,
-                        fontSize = 12.sp
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    BeltFlowTag(
-                        text = "18 candidates registered",
-                        backgroundColor = AccentAmber100,
-                        textColor = AccentAmber800
-                    )
-                }
-            }
-        }
-
-        // Candidates list
-        item {
-            Column {
-                Text(
-                    text = "CANDIDATES",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Slate500,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.8.sp,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-
-                candidates.forEach { (name, from, to) ->
-                    Row(
+        if (allGradings.isEmpty()) {
+            item {
+                BlueprintCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 20.dp)
+                ) {
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = BrandNavyTint,
+                            modifier = Modifier.size(56.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.MilitaryTech,
+                                    contentDescription = null,
+                                    tint = BrandNavy,
+                                    modifier = Modifier.size(30.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(14.dp))
                         Text(
-                            text = name,
+                            text = "No Grading Events Scheduled",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = BrandNavy
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Upcoming belt promotion examinations and registered candidates will appear here.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Slate600,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(18.dp))
+                        Button(
+                            onClick = onNavigateToGradingDetails,
+                            colors = ButtonDefaults.buttonColors(containerColor = BrandNavy),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Schedule Grading Exam", fontWeight = FontWeight.SemiBold, color = Color.White)
+                        }
+                    }
+                }
+            }
+        } else {
+            items(allGradings) { grading ->
+                BlueprintCard(
+                    onClick = onNavigateToGradingDetails,
+                    elevation = 2.dp,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = grading.eventDate,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = BrandNavy,
+                                fontSize = 16.sp
+                            )
+                            BeltFlowTag(
+                                text = if (grading.isCompleted) "Completed" else "Upcoming",
+                                backgroundColor = if (grading.isCompleted) Emerald100 else AccentAmber100,
+                                textColor = if (grading.isCompleted) Emerald800 else AccentAmber800
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = grading.name,
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
+                            fontWeight = FontWeight.SemiBold,
                             color = Slate900,
                             fontSize = 14.sp
                         )
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "${grading.location} • Examiner: ${grading.examiner}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Slate600,
+                            fontSize = 12.sp
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             BeltFlowTag(
-                                text = from,
+                                text = "${grading.candidateCount} Candidates",
                                 backgroundColor = Slate100,
                                 textColor = Slate700
                             )
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                contentDescription = null,
-                                tint = Slate400,
-                                modifier = Modifier.size(13.dp)
-                            )
-                            BeltFlowTag(
-                                text = to,
-                                backgroundColor = AccentAmber100,
-                                textColor = AccentAmber800
-                            )
+                            if (grading.isCompleted) {
+                                BeltFlowTag(
+                                    text = "${grading.passCount} Passed",
+                                    backgroundColor = Emerald100,
+                                    textColor = Emerald800
+                                )
+                            }
                         }
                     }
-                    HorizontalDivider(color = Slate200.copy(alpha = 0.5f))
                 }
             }
         }
@@ -831,46 +917,6 @@ private fun CertificatesTabContent(
     allCertificates: List<CertificateDetail>,
     onViewCertificate: (CertificateDetail) -> Unit
 ) {
-    val sampleCerts = listOf(
-        CertificateDetail(
-            id = "cert-1",
-            studentId = "stu-1",
-            studentName = "Aryan Suresh",
-            type = CertType.GRADING,
-            title = "Green Belt Promotion",
-            certNo = "BF-GREEN-9821",
-            verifyCode = "BF-GREEN-9821",
-            issuedAt = "Aug 14, 2026",
-            issuedBy = "Master Ravi",
-            academyName = "Meridian Martial Arts"
-        ),
-        CertificateDetail(
-            id = "cert-2",
-            studentId = "stu-2",
-            studentName = "Priya Nathan",
-            type = CertType.GRADING,
-            title = "Blue Belt Promotion",
-            certNo = "BF-BLUE-4410",
-            verifyCode = "BF-BLUE-4410",
-            issuedAt = "Aug 14, 2026",
-            issuedBy = "Master Ravi",
-            academyName = "Meridian Martial Arts"
-        ),
-        CertificateDetail(
-            id = "cert-3",
-            studentId = "stu-3",
-            studentName = "Kavi Selvam",
-            type = CertType.GRADING,
-            title = "Brown Belt Promotion",
-            certNo = "BF-BROWN-2207",
-            verifyCode = "BF-BROWN-2207",
-            issuedAt = "Jul 2, 2026",
-            issuedBy = "Master Eswaran",
-            academyName = "Meridian Martial Arts"
-        )
-    )
-
-    val certsToDisplay = if (allCertificates.isNotEmpty()) allCertificates else sampleCerts
     val context = LocalContext.current
 
     LazyColumn(
@@ -880,92 +926,138 @@ private fun CertificatesTabContent(
         contentPadding = PaddingValues(top = 16.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        items(certsToDisplay) { cert ->
-            BlueprintCard(
-                elevation = 2.dp,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(18.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Top
+        if (allCertificates.isEmpty()) {
+            item {
+                BlueprintCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 20.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = BrandNavyTint,
+                            modifier = Modifier.size(56.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.WorkspacePremium,
+                                    contentDescription = null,
+                                    tint = BrandNavy,
+                                    modifier = Modifier.size(30.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(14.dp))
                         Text(
-                            text = "CERTIFICATE OF PROMOTION",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = AccentAmber700,
+                            text = "No Certificates Issued Yet",
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.8.sp,
-                            fontSize = 10.sp
+                            color = BrandNavy
                         )
-                        OfficialSealBadge(text = "OFF")
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Text(
-                        text = cert.studentName.uppercase(),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = BrandNavy,
-                        fontSize = 19.sp,
-                        letterSpacing = 0.5.sp
-                    )
-
-                    Spacer(modifier = Modifier.height(2.dp))
-
-                    Text(
-                        text = "Promoted to ${cert.title}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Slate600,
-                        fontSize = 12.sp
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-                    HorizontalDivider(color = Slate200)
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
+                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = cert.issuedAt,
+                            text = "Official digital certificates for belt promotion or tournament awards will be listed here.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Slate500,
-                            fontSize = 11.sp
-                        )
-                        Text(
-                            text = cert.verifyCode,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Slate500,
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 11.sp
+                            color = Slate600,
+                            textAlign = TextAlign.Center
                         )
                     }
+                }
+            }
+        } else {
+            items(allCertificates) { cert ->
+                BlueprintCard(
+                    elevation = 2.dp,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Text(
+                                text = "CERTIFICATE OF PROMOTION",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = AccentAmber700,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.8.sp,
+                                fontSize = 10.sp
+                            )
+                            OfficialSealBadge(text = "OFF")
+                        }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
 
-                    OutlinedButton(
-                        onClick = { onViewCertificate(cert) },
-                        shape = RoundedCornerShape(6.dp),
-                        border = BorderStroke(1.dp, Slate300),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandNavy),
-                        modifier = Modifier.fillMaxWidth().height(38.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Download,
-                            contentDescription = "Download",
-                            tint = BrandNavy,
-                            modifier = Modifier.size(15.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Download PDF / Verify",
-                            style = MaterialTheme.typography.labelMedium,
+                            text = cert.studentName.uppercase(),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = BrandNavy,
+                            fontSize = 19.sp,
+                            letterSpacing = 0.5.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(2.dp))
+
+                        Text(
+                            text = "Promoted to ${cert.title}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Slate600,
                             fontSize = 12.sp
                         )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+                        HorizontalDivider(color = Slate200)
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = cert.issuedAt,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Slate500,
+                                fontSize = 11.sp
+                            )
+                            Text(
+                                text = cert.verifyCode,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Slate500,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 11.sp
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        OutlinedButton(
+                            onClick = { onViewCertificate(cert) },
+                            shape = RoundedCornerShape(6.dp),
+                            border = BorderStroke(1.dp, Slate300),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandNavy),
+                            modifier = Modifier.fillMaxWidth().height(38.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Download,
+                                contentDescription = "Download",
+                                tint = BrandNavy,
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Download PDF / Verify",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontSize = 12.sp
+                            )
+                        }
                     }
                 }
             }

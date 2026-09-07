@@ -460,7 +460,7 @@ fun AuthScreen(
                                 value = childName,
                                 onValueChange = { childName = it },
                                 label = { Text("Child's Full Name") },
-                                placeholder = { Text("e.g. Aryan Suresh") },
+                                placeholder = { Text("e.g. Student's Full Name") },
                                 leadingIcon = { Icon(Icons.Default.ChildCare, contentDescription = null) },
                                 singleLine = true,
                                 colors = beltFlowTextFieldColors(),
