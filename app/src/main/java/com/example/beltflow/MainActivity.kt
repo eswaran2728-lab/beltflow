@@ -59,7 +59,7 @@ fun BeltFlowNavGraph(viewModel: BeltFlowViewModel) {
                         UserRole.ADMIN_PERSATUAN -> navController.navigate(Screen.AdminDashboard) {
                             popUpTo(Screen.Auth) { inclusive = true }
                         }
-                        UserRole.MASTER -> navController.navigate(Screen.CoachPortal) {
+                        UserRole.MASTER -> navController.navigate(Screen.MasterPortal) {
                             popUpTo(Screen.Auth) { inclusive = true }
                         }
                         UserRole.PARENT -> navController.navigate(Screen.ParentPortal) {
@@ -91,7 +91,7 @@ fun BeltFlowNavGraph(viewModel: BeltFlowViewModel) {
                         when (role) {
                             UserRole.SUPER_ADMIN -> navController.navigate(Screen.SuperAdminDashboard)
                             UserRole.ADMIN_PERSATUAN -> navController.navigate(Screen.AdminDashboard)
-                            UserRole.MASTER -> navController.navigate(Screen.CoachPortal)
+                            UserRole.MASTER -> navController.navigate(Screen.MasterPortal)
                             UserRole.PARENT -> navController.navigate(Screen.ParentPortal)
                             UserRole.STUDENT -> navController.navigate(Screen.StudentPortal)
                             else -> navController.navigate(Screen.AdminDashboard)
@@ -113,7 +113,7 @@ fun BeltFlowNavGraph(viewModel: BeltFlowViewModel) {
                 onNavigateToCertificates = { navController.navigate(Screen.Certificates) },
                 onNavigateToSettings = { navController.navigate(Screen.Settings) },
                 onNavigateToParentPortal = { navController.navigate(Screen.ParentPortal) },
-                onNavigateToCoachPortal = { navController.navigate(Screen.CoachPortal) },
+                onNavigateToCoachPortal = { navController.navigate(Screen.MasterPortal) },
                 onNavigateToStudentPortal = { navController.navigate(Screen.StudentPortal) },
                 onLogout = {
                     viewModel.logout()
@@ -203,7 +203,7 @@ fun BeltFlowNavGraph(viewModel: BeltFlowViewModel) {
                     UserRole.ADMIN_PERSATUAN -> navController.navigate(Screen.AdminDashboard) {
                         popUpTo(Screen.Auth) { inclusive = false }
                     }
-                    UserRole.MASTER -> navController.navigate(Screen.CoachPortal) {
+                    UserRole.MASTER -> navController.navigate(Screen.MasterPortal) {
                         popUpTo(Screen.Auth) { inclusive = false }
                     }
                     UserRole.PARENT -> navController.navigate(Screen.ParentPortal) {
@@ -233,12 +233,35 @@ fun BeltFlowNavGraph(viewModel: BeltFlowViewModel) {
             )
         }
 
-        composable<Screen.CoachPortal> {
-            CoachPortalScreen(
+        composable<Screen.MasterPortal> {
+            MasterPortalScreen(
                 viewModel = viewModel,
                 onNavigateToAttendance = { navController.navigate(Screen.Attendance) },
                 onNavigateToGrading = { navController.navigate(Screen.Grading) },
                 onNavigateToCurriculum = { navController.navigate(Screen.Curriculum) },
+                onNavigateToTournaments = { navController.navigate(Screen.Tournaments) },
+                onNavigateToCertificates = { navController.navigate(Screen.Certificates) },
+                onStudentClick = { studentId ->
+                    navController.navigate(Screen.StudentDetail(studentId))
+                },
+                onLogout = {
+                    viewModel.logout()
+                    navController.navigate(Screen.Auth) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onSwitchUser = onRoleSwitch
+            )
+        }
+
+        composable<Screen.CoachPortal> {
+            MasterPortalScreen(
+                viewModel = viewModel,
+                onNavigateToAttendance = { navController.navigate(Screen.Attendance) },
+                onNavigateToGrading = { navController.navigate(Screen.Grading) },
+                onNavigateToCurriculum = { navController.navigate(Screen.Curriculum) },
+                onNavigateToTournaments = { navController.navigate(Screen.Tournaments) },
+                onNavigateToCertificates = { navController.navigate(Screen.Certificates) },
                 onStudentClick = { studentId ->
                     navController.navigate(Screen.StudentDetail(studentId))
                 },

@@ -88,65 +88,67 @@ abstract class BeltFlowDatabase : RoomDatabase() {
 }
 
 suspend fun ensureAdminAccount(dao: BeltFlowDao) {
-    // 1. Ensure Super Admin Account (Admin BeltFlow)
-    val superAdmin = dao.getProfileByEmail("superadmin@beltflow.my")
-    if (superAdmin == null) {
-        val salt = com.example.beltflow.data.security.SecurityUtils.generateSalt()
-        dao.insertProfile(
-            ProfileEntity(
-                id = "prof_super_admin",
-                fullName = "Admin BeltFlow (Super Admin)",
-                email = "superadmin@beltflow.my",
-                phone = "+60 12-000 0000",
-                role = UserRole.SUPER_ADMIN,
-                status = ProfileStatus.APPROVED,
-                organizationId = null,
-                password = com.example.beltflow.data.security.SecurityUtils.hashPassword("BeltFlow2026@", salt),
-                passwordSalt = salt
-            )
+    // 1. Ensure Super Admin Account (eswaran2728@gmail.com)
+    val superAdmin = dao.getProfileByEmail("eswaran2728@gmail.com")
+    val saltSuper = if (superAdmin?.passwordSalt?.isNotBlank() == true) superAdmin.passwordSalt else com.example.beltflow.data.security.SecurityUtils.generateSalt()
+    dao.insertProfile(
+        ProfileEntity(
+            id = superAdmin?.id ?: "prof_super_eswaran",
+            fullName = "Master Eswaran (Super Admin)",
+            email = "eswaran2728@gmail.com",
+            phone = "+60 12-345 6789",
+            role = UserRole.SUPER_ADMIN,
+            status = ProfileStatus.APPROVED,
+            organizationId = null,
+            password = com.example.beltflow.data.security.SecurityUtils.hashPassword("Eswaran0321@", saltSuper),
+            passwordSalt = saltSuper
         )
-    }
+    )
 
-    // 2. Ensure Admin Persatuan Account (Master Eswaran)
-    val adminPersatuan = dao.getProfileByEmail("eswaran2728@gmail.com")
-    if (adminPersatuan == null) {
-        val salt = com.example.beltflow.data.security.SecurityUtils.generateSalt()
-        dao.insertProfile(
-            ProfileEntity(
-                id = "prof_admin_eswaran",
-                fullName = "Master Eswaran",
-                email = "eswaran2728@gmail.com",
-                phone = "+60 12-345 6789",
-                role = UserRole.ADMIN_PERSATUAN,
-                status = ProfileStatus.APPROVED,
-                organizationId = "persatuan_selangor",
-                password = com.example.beltflow.data.security.SecurityUtils.hashPassword("Eswaran0321@", salt),
-                passwordSalt = salt
-            )
+    // 2. Ensure Admin Persatuan Account (persatuansilambamdaerahsepang@gmail.com - Mahagurusrisarumugam)
+    val adminPersatuan = dao.getProfileByEmail("persatuansilambamdaerahsepang@gmail.com")
+    val saltAdmin = if (adminPersatuan?.passwordSalt?.isNotBlank() == true) adminPersatuan.passwordSalt else com.example.beltflow.data.security.SecurityUtils.generateSalt()
+    dao.insertProfile(
+        ProfileEntity(
+            id = adminPersatuan?.id ?: "prof_admin_sepang",
+            fullName = "Mahaguru Sri Sarumugam (Admin Persatuan)",
+            email = "persatuansilambamdaerahsepang@gmail.com",
+            phone = "+60 12-345 6789",
+            role = UserRole.ADMIN_PERSATUAN,
+            status = ProfileStatus.APPROVED,
+            organizationId = "persatuan_sepang",
+            password = com.example.beltflow.data.security.SecurityUtils.hashPassword("Mahagurusrisarumugam", saltAdmin),
+            passwordSalt = saltAdmin
         )
-    } else if (adminPersatuan.role != UserRole.ADMIN_PERSATUAN || adminPersatuan.passwordSalt.isBlank()) {
-        val salt = if (adminPersatuan.passwordSalt.isNotBlank()) adminPersatuan.passwordSalt else com.example.beltflow.data.security.SecurityUtils.generateSalt()
-        dao.insertProfile(
-            adminPersatuan.copy(
-                fullName = "Master Eswaran",
-                role = UserRole.ADMIN_PERSATUAN,
-                status = ProfileStatus.APPROVED,
-                organizationId = "persatuan_selangor",
-                password = com.example.beltflow.data.security.SecurityUtils.hashPassword("Eswaran0321@", salt),
-                passwordSalt = salt
-            )
+    )
+
+    // 3. Ensure Master Persatuan Account (master.silambamsepang@gmail.com - Mahagurusrisarumugam)
+    val masterSepang = dao.getProfileByEmail("master.silambamsepang@gmail.com")
+    val saltMaster = if (masterSepang?.passwordSalt?.isNotBlank() == true) masterSepang.passwordSalt else com.example.beltflow.data.security.SecurityUtils.generateSalt()
+    dao.insertProfile(
+        ProfileEntity(
+            id = masterSepang?.id ?: "prof_master_sepang",
+            fullName = "Master Silambam (Sepang)",
+            email = "master.silambamsepang@gmail.com",
+            phone = "+60 12-345 6780",
+            role = UserRole.MASTER,
+            status = ProfileStatus.APPROVED,
+            organizationId = "persatuan_sepang",
+            assignedClass = "cls_junior_green",
+            password = com.example.beltflow.data.security.SecurityUtils.hashPassword("Mahagurusrisarumugam", saltMaster),
+            passwordSalt = saltMaster
         )
-    }
+    )
 }
 
 suspend fun populateInitialData(dao: BeltFlowDao) {
     // 1. Persatuan Organizations
-    val persatuanSelangor = PersatuanEntity(
-        id = "persatuan_selangor",
-        name = "Persatuan Taekwondo Selangor",
+    val persatuanSepang = PersatuanEntity(
+        id = "persatuan_sepang",
+        name = "Persatuan Silambam Daerah Sepang",
         logoUrl = "beltflow-logo.png",
-        phone = "+60 3-8706 1122",
-        email = "admin@selangortkd.org",
+        phone = "+60 12-345 6789",
+        email = "persatuansilambamdaerahsepang@gmail.com",
         address = "Kompleks Sukan Daerah Sepang, Selangor",
         registrationNo = "PPM-014-10-12052021",
         status = ProfileStatus.APPROVED,
@@ -156,196 +158,122 @@ suspend fun populateInitialData(dao: BeltFlowDao) {
         monthlyFee = 399.0,
         platformChargeRatePercent = 8.0
     )
-    dao.insertPersatuan(persatuanSelangor)
+    dao.insertPersatuan(persatuanSepang)
 
     // 2. Academy Settings
     dao.saveAcademySettings(
         AcademySettingsEntity(
             id = "academy_main",
-            organizationId = "persatuan_selangor",
-            name = "Persatuan Taekwondo Selangor",
-            description = "Martial Arts & Belt Progression Operations",
-            martialArtStyle = "Taekwondo & Karate",
+            organizationId = "persatuan_sepang",
+            name = "Persatuan Silambam Daerah Sepang",
+            description = "Silambam Martial Arts Academy & Belt Progression Operations",
+            martialArtStyle = "Silambam Nillaikalakki & Porr Silambam",
             phone = "+60 12-345 6789",
-            email = "admin@selangortkd.org",
-            address = "Sepang Martial Arts Center, Selangor",
+            email = "persatuansilambamdaerahsepang@gmail.com",
+            address = "Kompleks Sukan Daerah Sepang, Selangor",
             defaultMonthlyFee = 80.0,
-            prefix = "BF"
+            siblingDiscountPercent = 10.0,
+            prefix = "PSMDS"
         )
     )
 
-    // 3. User Profiles for all Roles with Salted Passwords
+    // 3. User Profiles for Fixed Roles (Super Admin, Admin Persatuan, Master Persatuan)
     val saltSuper = com.example.beltflow.data.security.SecurityUtils.generateSalt()
     val superAdmin = ProfileEntity(
-        id = "prof_super_admin",
-        fullName = "Admin BeltFlow (Super Admin)",
-        email = "superadmin@beltflow.my",
-        phone = "+60 12-000 0000",
+        id = "prof_super_eswaran",
+        fullName = "Master Eswaran (Super Admin)",
+        email = "eswaran2728@gmail.com",
+        phone = "+60 12-345 6789",
         role = UserRole.SUPER_ADMIN,
         status = ProfileStatus.APPROVED,
         organizationId = null,
-        password = com.example.beltflow.data.security.SecurityUtils.hashPassword("BeltFlow2026@", saltSuper),
+        password = com.example.beltflow.data.security.SecurityUtils.hashPassword("Eswaran0321@", saltSuper),
         passwordSalt = saltSuper
     )
 
     val saltAdmin = com.example.beltflow.data.security.SecurityUtils.generateSalt()
     val adminPersatuan = ProfileEntity(
-        id = "prof_admin_eswaran",
-        fullName = "Master Eswaran",
-        email = "eswaran2728@gmail.com",
+        id = "prof_admin_sepang",
+        fullName = "Mahaguru Sri Sarumugam (Admin Persatuan)",
+        email = "persatuansilambamdaerahsepang@gmail.com",
         phone = "+60 12-345 6789",
         role = UserRole.ADMIN_PERSATUAN,
         status = ProfileStatus.APPROVED,
-        organizationId = "persatuan_selangor",
-        password = com.example.beltflow.data.security.SecurityUtils.hashPassword("Eswaran0321@", saltAdmin),
+        organizationId = "persatuan_sepang",
+        password = com.example.beltflow.data.security.SecurityUtils.hashPassword("Mahagurusrisarumugam", saltAdmin),
         passwordSalt = saltAdmin
     )
 
-    val saltRavi = com.example.beltflow.data.security.SecurityUtils.generateSalt()
-    val masterRavi = ProfileEntity(
-        id = "prof_master_ravi",
-        fullName = "Master Ravi",
-        email = "master.ravi@selangortkd.org",
-        phone = "+60 16-222 3344",
+    val saltMaster = com.example.beltflow.data.security.SecurityUtils.generateSalt()
+    val masterSepang = ProfileEntity(
+        id = "prof_master_sepang",
+        fullName = "Master Silambam (Sepang)",
+        email = "master.silambamsepang@gmail.com",
+        phone = "+60 12-345 6780",
         role = UserRole.MASTER,
         status = ProfileStatus.APPROVED,
-        organizationId = "persatuan_selangor",
-        assignedClass = "Junior Green Belt Class",
-        password = com.example.beltflow.data.security.SecurityUtils.hashPassword("MasterRavi2026@", saltRavi),
-        passwordSalt = saltRavi
-    )
-
-    val saltSuresh = com.example.beltflow.data.security.SecurityUtils.generateSalt()
-    val parentSuresh = ProfileEntity(
-        id = "prof_parent_suresh",
-        fullName = "Suresh Kumar",
-        email = "suresh.parent@gmail.com",
-        phone = "+60 12-888 9900",
-        role = UserRole.PARENT,
-        status = ProfileStatus.APPROVED,
-        organizationId = "persatuan_selangor",
-        childName = "Aryan Suresh",
-        password = com.example.beltflow.data.security.SecurityUtils.hashPassword("ParentSuresh2026@", saltSuresh),
-        passwordSalt = saltSuresh
-    )
-
-    val saltAryan = com.example.beltflow.data.security.SecurityUtils.generateSalt()
-    val studentAryan = ProfileEntity(
-        id = "prof_student_aryan",
-        fullName = "Aryan Suresh",
-        email = "aryan.student@gmail.com",
-        phone = "+60 12-888 9901",
-        role = UserRole.STUDENT,
-        status = ProfileStatus.APPROVED,
-        organizationId = "persatuan_selangor",
-        studentId = "stud_aryan_1",
-        password = com.example.beltflow.data.security.SecurityUtils.hashPassword("StudentAryan2026@", saltAryan),
-        passwordSalt = saltAryan
+        organizationId = "persatuan_sepang",
+        assignedClass = "cls_junior_green",
+        password = com.example.beltflow.data.security.SecurityUtils.hashPassword("Mahagurusrisarumugam", saltMaster),
+        passwordSalt = saltMaster
     )
 
     dao.insertProfile(superAdmin)
     dao.insertProfile(adminPersatuan)
-    dao.insertProfile(masterRavi)
-    dao.insertProfile(parentSuresh)
-    dao.insertProfile(studentAryan)
+    dao.insertProfile(masterSepang)
 
     // 4. Belt Syllabus
     val belts = listOf(
-        BeltEntity("belt_1", "persatuan_selangor", "White Belt", "#E2E8F0", 1),
-        BeltEntity("belt_2", "persatuan_selangor", "Yellow Belt", "#FACC15", 2),
-        BeltEntity("belt_3", "persatuan_selangor", "Orange Belt", "#FB923C", 3),
-        BeltEntity("belt_4", "persatuan_selangor", "Green Belt", "#22C55E", 4),
-        BeltEntity("belt_5", "persatuan_selangor", "Blue Belt", "#3B82F6", 5),
-        BeltEntity("belt_6", "persatuan_selangor", "Brown Belt", "#854D0E", 6),
-        BeltEntity("belt_7", "persatuan_selangor", "Black Belt 1st Dan", "#0F172A", 7)
+        BeltEntity("belt_1", "persatuan_sepang", "White Belt", "#E2E8F0", 1),
+        BeltEntity("belt_2", "persatuan_sepang", "Yellow Belt", "#FACC15", 2),
+        BeltEntity("belt_3", "persatuan_sepang", "Orange Belt", "#FB923C", 3),
+        BeltEntity("belt_4", "persatuan_sepang", "Green Belt", "#22C55E", 4),
+        BeltEntity("belt_5", "persatuan_sepang", "Blue Belt", "#3B82F6", 5),
+        BeltEntity("belt_6", "persatuan_sepang", "Brown Belt", "#854D0E", 6),
+        BeltEntity("belt_7", "persatuan_sepang", "Black Belt 1st Dan", "#0F172A", 7)
     )
     belts.forEach { dao.insertBelt(it) }
 
     // 5. Branches & Classes
-    val branchCentral = BranchEntity("br_central", "persatuan_selangor", "Central Dojang", "Shah Alam Sports Complex", "+60 3-5511 2233")
-    val branchRiverside = BranchEntity("br_riverside", "persatuan_selangor", "Riverside Branch", "Jalan Riverside 4, Klang", "+60 3-3322 4455")
+    val branchCentral = BranchEntity("br_central", "persatuan_sepang", "Kompleks Sukan Sepang Dojo", "Shah Alam & Sepang Sports Complex", "+60 3-5511 2233")
+    val branchRiverside = BranchEntity("br_riverside", "persatuan_sepang", "Cyberjaya Silambam Center", "Jalan Teknokrat 4, Cyberjaya", "+60 3-3322 4455")
     dao.insertBranch(branchCentral)
     dao.insertBranch(branchRiverside)
 
     val classJunior = ClassEntity(
         id = "cls_junior_green",
-        organizationId = "persatuan_selangor",
+        organizationId = "persatuan_sepang",
         branchId = "br_central",
-        name = "Junior Green Belt Class",
-        code = "JGR101",
+        name = "Junior Silambam Class",
+        code = "SIL101",
         dayOfWeek = 6,
         startTime = "18:00",
         endTime = "19:30",
         scheduleNote = "Mon & Wed 6:00 PM - 7:30 PM",
         monthlyFeeOverride = 180.0,
-        mainMasterId = "prof_admin_eswaran",
-        coachName = "Master Eswaran"
+        mainMasterId = "prof_master_sepang",
+        coachName = "Master Silambam (Sepang)"
     )
     val classSenior = ClassEntity(
         id = "cls_senior_sparring",
-        organizationId = "persatuan_selangor",
+        organizationId = "persatuan_sepang",
         branchId = "br_central",
-        name = "Senior Blue & Brown Sparring",
+        name = "Senior Porr Silambam Sparring",
         code = "SSP202",
         dayOfWeek = 7,
         startTime = "19:30",
         endTime = "21:00",
         scheduleNote = "Tue & Thu 7:30 PM - 9:00 PM",
         monthlyFeeOverride = 200.0,
-        mainMasterId = "prof_master_ravi",
-        coachName = "Master Ravi"
+        mainMasterId = "prof_master_sepang",
+        coachName = "Master Silambam (Sepang)"
     )
     dao.insertClass(classJunior)
     dao.insertClass(classSenior)
 
     // Master Class Assignments
-    dao.insertClassMasterCrossRef(ClassMasterCrossRefEntity("cls_junior_green", "prof_admin_eswaran", true))
-    dao.insertClassMasterCrossRef(ClassMasterCrossRefEntity("cls_junior_green", "prof_master_ravi", false))
-    dao.insertClassMasterCrossRef(ClassMasterCrossRefEntity("cls_senior_sparring", "prof_master_ravi", true))
-
-    // 6. Student Records
-    val student1 = StudentEntity(
-        id = "stud_aryan_1",
-        organizationId = "persatuan_selangor",
-        profileId = "prof_student_aryan",
-        fullName = "Aryan Suresh",
-        icOrMykid = "120814-10-5541",
-        dateOfBirth = "2012-08-14",
-        gender = "Male",
-        beltId = "belt_4",
-        lifecycle = Lifecycle.ACTIVE,
-        joinedAt = "2024-03-01",
-        parentName = "Suresh Kumar",
-        parentPhone = "+60 12-888 9900",
-        parentProfileId = "prof_parent_suresh",
-        medicalNotes = "None",
-        classIdsJson = "[\"cls_junior_green\"]"
-    )
-    dao.insertStudent(student1)
-
-    // 7. Parent-Child 3-Way Approved Link
-    val link = ParentChildLinkEntity(
-        id = "link_suresh_aryan",
-        organizationId = "persatuan_selangor",
-        parentProfileId = "prof_parent_suresh",
-        studentId = "stud_aryan_1",
-        status = LinkApprovalStatus.APPROVED,
-        studentApproved = true,
-        masterApproved = true,
-        adminApproved = true
-    )
-    dao.insertParentChildLink(link)
-
-    // 8. Digital Certificate
-    val cert = CertificateEntity(
-        id = "cert_green_9821",
-        studentId = "stud_aryan_1",
-        type = CertType.GRADING,
-        title = "Green Belt (4th Gup) Promotion",
-        certNo = "BF-GREEN-9821",
-        verifyCode = "BF-GREEN-9821",
-        issuedAt = "2026-08-14",
-        issuedBy = "Master Eswaran (Chief Examiner)"
-    )
-    dao.insertCertificate(cert)
+    dao.insertClassMasterCrossRef(ClassMasterCrossRefEntity("cls_junior_green", "prof_master_sepang", true))
+    dao.insertClassMasterCrossRef(ClassMasterCrossRefEntity("cls_senior_sparring", "prof_master_sepang", true))
+    dao.insertClassMasterCrossRef(ClassMasterCrossRefEntity("cls_junior_green", "prof_admin_sepang", false))
+    dao.insertClassMasterCrossRef(ClassMasterCrossRefEntity("cls_senior_sparring", "prof_admin_sepang", false))
 }

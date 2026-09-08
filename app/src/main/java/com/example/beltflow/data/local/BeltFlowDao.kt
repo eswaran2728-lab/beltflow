@@ -150,14 +150,26 @@ interface BeltFlowDao {
     suspend fun deleteClass(classEntity: ClassEntity)
 
     // --- Class Master CrossRef ---
+    @Query("SELECT * FROM class_master_cross_ref")
+    fun getAllClassMasterCrossRefs(): Flow<List<ClassMasterCrossRefEntity>>
+
+    @Query("SELECT * FROM class_master_cross_ref")
+    suspend fun getAllClassMasterCrossRefsDirect(): List<ClassMasterCrossRefEntity>
+
     @Query("SELECT * FROM class_master_cross_ref WHERE classId = :classId")
     suspend fun getMastersForClass(classId: String): List<ClassMasterCrossRefEntity>
+
+    @Query("SELECT * FROM class_master_cross_ref WHERE masterProfileId = :masterProfileId")
+    suspend fun getClassesForMasterDirect(masterProfileId: String): List<ClassMasterCrossRefEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertClassMasterCrossRef(crossRef: ClassMasterCrossRefEntity)
 
     @Delete
     suspend fun deleteClassMasterCrossRef(crossRef: ClassMasterCrossRefEntity)
+
+    @Query("DELETE FROM class_master_cross_ref WHERE classId = :classId AND masterProfileId = :masterProfileId")
+    suspend fun removeMasterFromClass(classId: String, masterProfileId: String)
 
     // --- Students ---
     @Query("SELECT * FROM students ORDER BY fullName ASC")

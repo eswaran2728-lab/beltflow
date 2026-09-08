@@ -280,6 +280,97 @@ fun AuthScreen(
                                 Text("Sign In", fontSize = 15.sp, fontWeight = FontWeight.Bold)
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // Fixed Administrator & Master Quick Access
+                        Text(
+                            text = "Fixed Accounts Quick Sign-In:",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Slate500
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            // Super Admin
+                            Surface(
+                                color = Slate50,
+                                shape = RoundedCornerShape(8.dp),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Slate200),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        email = "eswaran2728@gmail.com"
+                                        password = "password"
+                                    }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = Crimson600, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("Super Admin (BeltFlow Platform)", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Slate800)
+                                        Text("eswaran2728@gmail.com", style = MaterialTheme.typography.bodySmall, color = Slate500, fontSize = 11.sp)
+                                    }
+                                    Text("Tap to fill", style = MaterialTheme.typography.labelSmall, color = BrandNavy, fontWeight = FontWeight.Medium)
+                                }
+                            }
+
+                            // Admin Persatuan Sepang
+                            Surface(
+                                color = Slate50,
+                                shape = RoundedCornerShape(8.dp),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Slate200),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        email = "persatuansilambamdaerahsepang@gmail.com"
+                                        password = "Mahagurusrisarumugam"
+                                    }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.MilitaryTech, contentDescription = null, tint = AccentAmber600, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("Admin Persatuan Silambam Daerah Sepang", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Slate800)
+                                        Text("persatuansilambamdaerahsepang@gmail.com", style = MaterialTheme.typography.bodySmall, color = Slate500, fontSize = 11.sp)
+                                    }
+                                    Text("Tap to fill", style = MaterialTheme.typography.labelSmall, color = BrandNavy, fontWeight = FontWeight.Medium)
+                                }
+                            }
+
+                            // Master Persatuan Sepang
+                            Surface(
+                                color = Slate50,
+                                shape = RoundedCornerShape(8.dp),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Slate200),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        email = "master.silambamsepang@gmail.com"
+                                        password = "Mahagurusrisarumugam"
+                                    }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.SportsMartialArts, contentDescription = null, tint = Indigo600, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("Master Silambam (Persatuan Sepang)", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Slate800)
+                                        Text("master.silambamsepang@gmail.com", style = MaterialTheme.typography.bodySmall, color = Slate500, fontSize = 11.sp)
+                                    }
+                                    Text("Tap to fill", style = MaterialTheme.typography.labelSmall, color = BrandNavy, fontWeight = FontWeight.Medium)
+                                }
+                            }
+                        }
                     } else {
                         // Registration Form
                         Text(
@@ -431,6 +522,8 @@ fun AuthScreen(
                                         isLoading = false
                                         result.onSuccess {
                                             if (email.trim().equals("eswaran2728@gmail.com", ignoreCase = true)) {
+                                                onAuthSuccess(UserRole.SUPER_ADMIN)
+                                            } else if (email.trim().equals("persatuansilambamdaerahsepang@gmail.com", ignoreCase = true)) {
                                                 onAuthSuccess(UserRole.ADMIN_PERSATUAN)
                                             } else {
                                                 showPendingDialog = true

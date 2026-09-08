@@ -12,8 +12,8 @@ data class PersatuanEntity(
     val name: String,
     val logoUrl: String = "",
     val phone: String = "+60 12-345 6789",
-    val email: String = "admin@persatuan.org",
-    val address: String = "Central Dojang Headquarters, Selangor",
+    val email: String = "persatuansilambamdaerahsepang@gmail.com",
+    val address: String = "Kompleks Sukan Daerah Sepang, Selangor",
     val registrationNo: String = "PPM-014-10-12052021",
     val status: ProfileStatus = ProfileStatus.APPROVED,
     val subscriptionPlan: SubscriptionPlan = SubscriptionPlan.GROWTH,
@@ -31,7 +31,7 @@ data class ProfileEntity(
     val phone: String = "",
     val role: UserRole,
     val status: ProfileStatus,
-    val organizationId: String? = "persatuan_selangor",
+    val organizationId: String? = "persatuan_sepang",
     val childName: String = "",
     val assignedClass: String = "",
     val studentId: String? = null,
@@ -43,16 +43,16 @@ data class ProfileEntity(
 @Entity(tableName = "academy_settings")
 data class AcademySettingsEntity(
     @PrimaryKey val id: String = "academy_main",
-    val organizationId: String = "persatuan_selangor",
-    val name: String = "Persatuan Taekwondo Selangor",
-    val description: String = "Martial Arts & Belt Progression Platform",
-    val martialArtStyle: String = "Taekwondo & Karate",
+    val organizationId: String = "persatuan_sepang",
+    val name: String = "Persatuan Silambam Daerah Sepang",
+    val description: String = "Traditional Martial Arts & Belt Progression Platform",
+    val martialArtStyle: String = "Silambam Nillaikalakki & Porr Silambam",
     val phone: String = "+60 12-345 6789",
-    val email: String = "admin@selangortkd.org",
-    val address: String = "Sepang Martial Arts Center, Selangor",
+    val email: String = "persatuansilambamdaerahsepang@gmail.com",
+    val address: String = "Kompleks Sukan Daerah Sepang, Selangor",
     val defaultMonthlyFee: Double = 80.0,
     val siblingDiscountPercent: Double = 10.0,
-    val prefix: String = "BF"
+    val prefix: String = "PSMDS"
 )
 
 @Entity(tableName = "belts")

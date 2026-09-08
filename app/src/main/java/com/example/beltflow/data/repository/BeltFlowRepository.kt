@@ -154,7 +154,7 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
             val defaultBelt = dao.getAllBeltsDirect().firstOrNull()?.id ?: "belt_1"
             val studentEntity = StudentEntity(
                 id = studentId,
-                organizationId = "persatuan_selangor",
+                organizationId = "persatuan_sepang",
                 profileId = profileId,
                 fullName = fullName,
                 beltId = defaultBelt,
@@ -179,7 +179,7 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
             phone = phone,
             role = role,
             status = initialStatus,
-            organizationId = "persatuan_selangor",
+            organizationId = "persatuan_sepang",
             childName = childName,
             assignedClass = assignedClass,
             studentId = studentId,
@@ -194,13 +194,41 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
         dao.updateProfileStatus(profileId, status)
     }
 
+    // --- Master Class Management (Main Master Controls) ---
+    val allClassMasterCrossRefs: Flow<List<ClassMasterCrossRefEntity>> = dao.getAllClassMasterCrossRefs()
+
+    suspend fun addMasterToClass(classId: String, masterProfileId: String, isMainMaster: Boolean = false) = withContext(Dispatchers.IO) {
+        dao.insertClassMasterCrossRef(ClassMasterCrossRefEntity(classId, masterProfileId, isMainMaster))
+    }
+
+    suspend fun removeMasterFromClass(classId: String, masterProfileId: String) = withContext(Dispatchers.IO) {
+        dao.removeMasterFromClass(classId, masterProfileId)
+    }
+
+    suspend fun setMainMasterForClass(classId: String, newMainMasterId: String) = withContext(Dispatchers.IO) {
+        val crossRefs = dao.getMastersForClass(classId)
+        crossRefs.forEach { cr ->
+            dao.insertClassMasterCrossRef(cr.copy(isMainMaster = cr.masterProfileId == newMainMasterId))
+        }
+        val targetClass = dao.getAllClassesDirect().find { it.id == classId }
+        val newMasterProfile = dao.getProfileById(newMainMasterId)
+        if (targetClass != null && newMasterProfile != null) {
+            dao.updateClass(
+                targetClass.copy(
+                    mainMasterId = newMainMasterId,
+                    coachName = newMasterProfile.fullName
+                )
+            )
+        }
+    }
+
     // --- Parent-Child 3-Way Approval Links ---
     val allParentChildLinks: Flow<List<ParentChildLinkEntity>> = dao.getAllParentChildLinks()
 
     suspend fun requestParentChildLink(parentProfileId: String, studentId: String) = withContext(Dispatchers.IO) {
         val link = ParentChildLinkEntity(
             id = "link_${UUID.randomUUID().toString().take(8)}",
-            organizationId = "persatuan_selangor",
+            organizationId = "persatuan_sepang",
             parentProfileId = parentProfileId,
             studentId = studentId,
             status = LinkApprovalStatus.PENDING_STUDENT,
@@ -241,6 +269,11 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
         )
     }
 
+    suspend fun rejectParentChildLink(linkId: String) = withContext(Dispatchers.IO) {
+        val link = dao.getParentChildLinkById(linkId) ?: return@withContext
+        dao.updateParentChildLink(link.copy(status = LinkApprovalStatus.REJECTED))
+    }
+
     fun getLinkedStudentsForParent(parentProfileId: String): Flow<List<StudentWithDetails>> {
         return combine(
             dao.getApprovedLinksForParent(parentProfileId),
@@ -266,7 +299,42 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
     }
 
     suspend fun approveClassTransferStep(transferId: String, isNewMaster: Boolean) = withContext(Dispatchers.IO) {
-        // Transfer approval logic
+        val transfers = dao.getAllClassTransfers().firstOrNull() ?: emptyList()
+        val tr = transfers.find { it.id == transferId } ?: return@withContext
+        val oldApp = if (!isNewMaster) true else tr.oldMasterApproved
+        val newApp = if (isNewMaster) true else tr.newMasterApproved
+
+        if (oldApp && newApp) {
+            dao.updateClassTransfer(
+                tr.copy(
+                    oldMasterApproved = true,
+                    newMasterApproved = true,
+                    status = ClassTransferStatus.APPROVED
+                )
+            )
+            val student = dao.getStudentById(tr.studentId)
+            if (student != null) {
+                dao.updateStudent(
+                    student.copy(
+                        classIdsJson = "[\"${tr.newClassId}\"]"
+                    )
+                )
+            }
+        } else {
+            dao.updateClassTransfer(
+                tr.copy(
+                    oldMasterApproved = oldApp,
+                    newMasterApproved = newApp,
+                    status = if (!oldApp) ClassTransferStatus.PENDING_OLD_MASTER else ClassTransferStatus.PENDING_NEW_MASTER
+                )
+            )
+        }
+    }
+
+    suspend fun rejectClassTransfer(transferId: String) = withContext(Dispatchers.IO) {
+        val transfers = dao.getAllClassTransfers().firstOrNull() ?: emptyList()
+        val tr = transfers.find { it.id == transferId } ?: return@withContext
+        dao.updateClassTransfer(tr.copy(status = ClassTransferStatus.REJECTED))
     }
 
     // --- Audit Logs ---
@@ -285,7 +353,7 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
         dao.insertAuditLog(
             AuditLogEntity(
                 id = "log_${UUID.randomUUID().toString().take(8)}",
-                organizationId = "persatuan_selangor",
+                organizationId = "persatuan_sepang",
                 actorId = actorId,
                 actorName = actorName,
                 actorRole = actorRole,
@@ -317,6 +385,7 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
         dao.insertAnnouncement(
             AnnouncementEntity(
                 id = "anc_${UUID.randomUUID().toString().take(8)}",
+                organizationId = "persatuan_sepang",
                 authorId = authorId,
                 authorName = authorName,
                 authorRole = authorRole,
@@ -326,6 +395,18 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
                 status = status
             )
         )
+    }
+
+    suspend fun approveAnnouncement(announcementId: String) = withContext(Dispatchers.IO) {
+        val announcements = dao.getAllAnnouncements().firstOrNull() ?: emptyList()
+        val anc = announcements.find { it.id == announcementId } ?: return@withContext
+        dao.updateAnnouncement(anc.copy(status = AnnouncementStatus.PUBLISHED))
+    }
+
+    suspend fun rejectAnnouncement(announcementId: String) = withContext(Dispatchers.IO) {
+        val announcements = dao.getAllAnnouncements().firstOrNull() ?: emptyList()
+        val anc = announcements.find { it.id == announcementId } ?: return@withContext
+        dao.updateAnnouncement(anc.copy(status = AnnouncementStatus.REJECTED))
     }
 
     // --- Settings & Belts & Branches & Classes ---
@@ -339,7 +420,7 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
     }
 
     suspend fun addBelt(name: String, colorHex: String, sortOrder: Int) = withContext(Dispatchers.IO) {
-        dao.insertBelt(BeltEntity("belt_${UUID.randomUUID().toString().take(6)}", "persatuan_selangor", name, colorHex, sortOrder))
+        dao.insertBelt(BeltEntity("belt_${UUID.randomUUID().toString().take(6)}", "persatuan_sepang", name, colorHex, sortOrder))
     }
 
     suspend fun deleteBelt(belt: BeltEntity) = withContext(Dispatchers.IO) {
@@ -347,7 +428,7 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
     }
 
     suspend fun addBranch(name: String, address: String, phone: String) = withContext(Dispatchers.IO) {
-        dao.insertBranch(BranchEntity("br_${UUID.randomUUID().toString().take(6)}", "persatuan_selangor", name, address, phone))
+        dao.insertBranch(BranchEntity("br_${UUID.randomUUID().toString().take(6)}", "persatuan_sepang", name, address, phone))
     }
 
     suspend fun deleteBranch(branch: BranchEntity) = withContext(Dispatchers.IO) {
@@ -367,7 +448,7 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
         val classId = "cls_${UUID.randomUUID().toString().take(6)}"
         val newClass = ClassEntity(
             id = classId,
-            organizationId = "persatuan_selangor",
+            organizationId = "persatuan_sepang",
             branchId = branchId,
             name = name,
             code = code,

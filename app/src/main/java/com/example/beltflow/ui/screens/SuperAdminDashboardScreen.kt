@@ -114,14 +114,7 @@ fun SuperAdminDashboardScreen(
                                 modifier = Modifier.weight(1f),
                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706))
                             ) {
-                                Text("🥋 Master", fontSize = 11.sp)
-                            }
-                            Button(
-                                onClick = { onSwitchUser("student") },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669))
-                            ) {
-                                Text("👤 Student", fontSize = 11.sp)
+                                Text("🥋 Master Sepang", fontSize = 11.sp)
                             }
                         }
                     }

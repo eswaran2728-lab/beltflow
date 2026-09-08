@@ -46,6 +46,9 @@ sealed interface Screen {
     data object CoachPortal : Screen
 
     @Serializable
+    data object MasterPortal : Screen
+
+    @Serializable
     data object StudentPortal : Screen
 
     @Serializable

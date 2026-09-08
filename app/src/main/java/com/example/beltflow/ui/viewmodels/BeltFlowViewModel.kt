@@ -219,11 +219,9 @@ class BeltFlowViewModel(private val repository: BeltFlowRepository) : ViewModel(
     fun loginAs(target: String, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
             val profile = when (target.lowercase(Locale.getDefault())) {
-                "super_admin", "superadmin" -> daoGetProfileByEmail("superadmin@beltflow.my")
-                "admin", "admin_persatuan" -> daoGetProfileByEmail("eswaran2728@gmail.com")
-                "coach", "master" -> daoGetProfileByEmail("master.ravi@selangortkd.org")
-                "parent" -> daoGetProfileByEmail("suresh.parent@gmail.com")
-                "student" -> daoGetProfileByEmail("aryan.student@gmail.com")
+                "super_admin", "superadmin" -> daoGetProfileByEmail("eswaran2728@gmail.com")
+                "admin", "admin_persatuan" -> daoGetProfileByEmail("persatuansilambamdaerahsepang@gmail.com")
+                "coach", "master" -> daoGetProfileByEmail("master.silambamsepang@gmail.com")
                 else -> daoGetProfileByEmail(target)
             }
             if (profile != null) {
@@ -280,6 +278,29 @@ class BeltFlowViewModel(private val repository: BeltFlowRepository) : ViewModel(
         }
     }
 
+    // --- Master Class Instructor Management (Main Master Controls) ---
+    val allClassMasterCrossRefs = repository.allClassMasterCrossRefs.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
+    )
+
+    fun addMasterToClass(classId: String, masterProfileId: String, isMainMaster: Boolean = false) {
+        viewModelScope.launch {
+            repository.addMasterToClass(classId, masterProfileId, isMainMaster)
+        }
+    }
+
+    fun removeMasterFromClass(classId: String, masterProfileId: String) {
+        viewModelScope.launch {
+            repository.removeMasterFromClass(classId, masterProfileId)
+        }
+    }
+
+    fun setMainMasterForClass(classId: String, newMainMasterId: String) {
+        viewModelScope.launch {
+            repository.setMainMasterForClass(classId, newMainMasterId)
+        }
+    }
+
     // --- Parent Child Links ---
     fun requestParentChildLink(studentId: String) {
         val parentId = currentUser.value?.id ?: return
@@ -292,6 +313,35 @@ class BeltFlowViewModel(private val repository: BeltFlowRepository) : ViewModel(
         val role = currentUser.value?.role ?: return
         viewModelScope.launch {
             repository.approveParentChildLinkStep(linkId, role)
+        }
+    }
+
+    fun rejectParentChildLink(linkId: String) {
+        viewModelScope.launch {
+            repository.rejectParentChildLink(linkId)
+        }
+    }
+
+    // --- Class Transfers ---
+    val allClassTransfers = repository.allClassTransfers.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
+    )
+
+    fun requestClassTransfer(studentId: String, oldClassId: String, newClassId: String) {
+        viewModelScope.launch {
+            repository.requestClassTransfer(studentId, oldClassId, newClassId)
+        }
+    }
+
+    fun approveClassTransferStep(transferId: String, isNewMaster: Boolean) {
+        viewModelScope.launch {
+            repository.approveClassTransferStep(transferId, isNewMaster)
+        }
+    }
+
+    fun rejectClassTransfer(transferId: String) {
+        viewModelScope.launch {
+            repository.rejectClassTransfer(transferId)
         }
     }
 
@@ -641,6 +691,18 @@ class BeltFlowViewModel(private val repository: BeltFlowRepository) : ViewModel(
         val user = currentUser.value ?: return
         viewModelScope.launch {
             repository.addAnnouncement(user.id, user.fullName, user.role, title, content, classId)
+        }
+    }
+
+    fun approveAnnouncement(announcementId: String) {
+        viewModelScope.launch {
+            repository.approveAnnouncement(announcementId)
+        }
+    }
+
+    fun rejectAnnouncement(announcementId: String) {
+        viewModelScope.launch {
+            repository.rejectAnnouncement(announcementId)
         }
     }
 
