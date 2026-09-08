@@ -268,6 +268,9 @@ interface BeltFlowDao {
     @Query("SELECT * FROM grading_records WHERE studentId = :studentId")
     fun getGradingRecordsForStudent(studentId: String): Flow<List<GradingRecordEntity>>
 
+    @Query("SELECT * FROM grading_records WHERE id = :id LIMIT 1")
+    suspend fun getGradingRecordById(id: String): GradingRecordEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertGradingRecord(record: GradingRecordEntity)
 

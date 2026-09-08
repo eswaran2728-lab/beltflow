@@ -772,11 +772,12 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
                 studentId = r.studentId,
                 studentName = st?.fullName ?: "Student",
                 fromBeltName = r.fromBeltId?.let { beltsMap[it]?.name } ?: "Current Belt",
+                toBeltName = r.toBeltId?.let { beltsMap[it]?.name } ?: "Target Belt",
                 fromBeltColorHex = r.fromBeltId?.let { beltsMap[it]?.colorHex } ?: "#94A3B8",
-                targetBeltName = r.toBeltId?.let { beltsMap[it]?.name } ?: "Target Belt",
-                targetBeltColorHex = r.toBeltId?.let { beltsMap[it]?.colorHex } ?: "#3B82F6",
+                toBeltColorHex = r.toBeltId?.let { beltsMap[it]?.colorHex } ?: "#3B82F6",
+                toBeltId = r.toBeltId,
                 result = r.result,
-                scoreNotes = r.scoreNotes
+                notes = r.notes
             )
         }
     }
@@ -806,13 +807,16 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
         result: GradingResultType,
         notes: String
     ) = withContext(Dispatchers.IO) {
+        val existing = dao.getGradingRecordById(recordId)
         val record = GradingRecordEntity(
             id = recordId,
             gradingEventId = eventId,
             studentId = studentId,
-            toBeltId = toBeltId,
+            fromBeltId = existing?.fromBeltId,
+            toBeltId = toBeltId ?: existing?.toBeltId,
             result = result,
-            scoreNotes = notes
+            notes = notes,
+            gradedAt = System.currentTimeMillis()
         )
         dao.updateGradingRecord(record)
 
@@ -918,7 +922,36 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
     }
 
     // --- Tournaments ---
-    val allTournaments: Flow<List<TournamentEntity>> = dao.getAllTournaments()
+    val allTournaments: Flow<List<TournamentDetail>> = combine(
+        dao.getAllTournaments(),
+        dao.getAllTournamentResults(),
+        dao.getAllStudents()
+    ) { tournaments, results, students ->
+        val studentsMap = students.associateBy { it.id }
+        val resultsByTourn = results.groupBy { it.tournamentId }
+        tournaments.map { t ->
+            val tournResults = resultsByTourn[t.id].orEmpty().map { r ->
+                TournamentResultDetail(
+                    id = r.id,
+                    tournamentId = r.tournamentId,
+                    studentId = r.studentId,
+                    studentName = studentsMap[r.studentId]?.fullName ?: "Student",
+                    eventCategory = r.eventCategory,
+                    medal = r.medal,
+                    points = r.points,
+                    notes = r.notes
+                )
+            }
+            TournamentDetail(
+                id = t.id,
+                name = t.name,
+                eventDate = t.eventDate,
+                location = t.location,
+                organizer = t.organizer,
+                results = tournResults
+            )
+        }
+    }
 
     suspend fun addTournament(name: String, eventDate: String, location: String, organizer: String) = withContext(Dispatchers.IO) {
         dao.insertTournament(

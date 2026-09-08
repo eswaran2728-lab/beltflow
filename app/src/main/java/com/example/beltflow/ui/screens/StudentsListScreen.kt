@@ -210,14 +210,13 @@ fun StudentsListScreen(
             belts = allBelts,
             classes = allClasses,
             onDismiss = { showAddStudentDialog = false },
-            onSave = { name, ic, dob, gender, beltId, lifecycle, parentName, parentPhone, medNotes, classIds ->
+            onSave = { name, ic, dob, gender, beltId, _, parentName, parentPhone, medNotes, classIds ->
                 viewModel.registerStudent(
                     fullName = name,
                     icOrMykid = ic,
                     dateOfBirth = dob,
                     gender = gender,
                     beltId = beltId,
-                    lifecycle = lifecycle,
                     parentName = parentName,
                     parentPhone = parentPhone,
                     medicalNotes = medNotes,

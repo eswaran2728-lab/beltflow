@@ -398,7 +398,7 @@ fun SettingsScreen(
                                                 )
                                             }
                                         }
-                                        ProfileStatus.REJECTED -> {
+                                        ProfileStatus.REJECTED, ProfileStatus.DISABLED -> {
                                             Button(
                                                 onClick = { viewModel.approveProfile(profile.id) },
                                                 colors = ButtonDefaults.buttonColors(containerColor = AccentAmber700),

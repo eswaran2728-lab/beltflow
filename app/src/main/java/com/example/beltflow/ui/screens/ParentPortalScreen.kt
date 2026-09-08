@@ -242,6 +242,7 @@ fun ParentPortalScreen(
                                         InvoiceStatus.UNPAID -> Crimson100 to Crimson600
                                         InvoiceStatus.OVERDUE -> Crimson100 to Crimson600
                                         InvoiceStatus.WAIVED -> Slate200 to Slate700
+                                        InvoiceStatus.CANCELLED -> Slate200 to Slate600
                                     }
                                     StatusBadge(statusText = inv.status.label, backgroundColor = bg, textColor = txt)
                                 }
