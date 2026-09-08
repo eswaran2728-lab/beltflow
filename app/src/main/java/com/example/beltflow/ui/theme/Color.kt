@@ -52,4 +52,5 @@ val Sky100 = Color(0xFFE0F2FE)
 val Purple600 = Color(0xFF7C3AED)
 val Purple800 = Color(0xFF5B21B6)
 val Purple100 = Color(0xFFF3E8FF)
+val Indigo600 = Color(0xFF4F46E5)
 
