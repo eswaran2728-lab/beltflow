@@ -40,6 +40,8 @@ fun GradingScreen(
     var showRegisterCandidateDialog by remember { mutableStateOf(false) }
     var selectedCandidateForScoring by remember { mutableStateOf<GradingCandidateDetail?>(null) }
 
+    val canManage = currentUser?.role == UserRole.ADMIN_PERSATUAN || currentUser?.role == UserRole.MASTER || currentUser?.role == UserRole.SUPER_ADMIN
+
     Scaffold(
         topBar = {
             TopNavBar(
@@ -51,7 +53,7 @@ fun GradingScreen(
             )
         },
         floatingActionButton = {
-            if (currentUser?.role == UserRole.ADMIN || currentUser?.role == UserRole.COACH) {
+            if (canManage) {
                 FloatingActionButton(
                     onClick = { showCreateEventDialog = true },
                     containerColor = Navy800,
@@ -99,7 +101,7 @@ fun GradingScreen(
         GradingCandidatesSheet(
             event = eventItem,
             viewModel = viewModel,
-            canManage = currentUser?.role == UserRole.ADMIN || currentUser?.role == UserRole.COACH,
+            canManage = canManage,
             onDismiss = { selectedEventForCandidates = null },
             onRegisterNew = { showRegisterCandidateDialog = true },
             onScoreCandidate = { candidate ->

@@ -75,7 +75,7 @@ fun AdminDashboardScreen(
                     viewModel.loginAs(email) {
                         val profile = viewModel.currentUser.value
                         when (profile?.role) {
-                            UserRole.COACH -> onNavigateToCoachPortal()
+                            UserRole.MASTER -> onNavigateToCoachPortal()
                             UserRole.PARENT -> onNavigateToParentPortal()
                             UserRole.STUDENT -> onNavigateToStudentPortal()
                             else -> {}
@@ -1198,7 +1198,8 @@ private fun PendingRegistrationsSection(
                                     color = when (profile.role) {
                                         UserRole.PARENT -> Emerald100
                                         UserRole.STUDENT -> Purple100
-                                        UserRole.COACH -> Sky100
+                                        UserRole.MASTER -> Sky100
+                                        UserRole.SUPER_ADMIN -> Crimson100
                                         else -> AccentAmber100
                                     }
                                 ) {
@@ -1207,7 +1208,8 @@ private fun PendingRegistrationsSection(
                                         color = when (profile.role) {
                                             UserRole.PARENT -> Emerald800
                                             UserRole.STUDENT -> Purple800
-                                            UserRole.COACH -> Sky800
+                                            UserRole.MASTER -> Sky800
+                                            UserRole.SUPER_ADMIN -> Crimson600
                                             else -> AccentAmber800
                                         },
                                         style = MaterialTheme.typography.labelSmall,

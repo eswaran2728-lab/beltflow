@@ -43,6 +43,8 @@ fun TournamentsScreen(
     val silverCount = allResults.count { it.medal == Medal.SILVER }
     val bronzeCount = allResults.count { it.medal == Medal.BRONZE }
 
+    val canManage = currentUser?.role == UserRole.ADMIN_PERSATUAN || currentUser?.role == UserRole.MASTER || currentUser?.role == UserRole.SUPER_ADMIN
+
     Scaffold(
         topBar = {
             TopNavBar(
@@ -54,7 +56,7 @@ fun TournamentsScreen(
             )
         },
         floatingActionButton = {
-            if (currentUser?.role == UserRole.ADMIN || currentUser?.role == UserRole.COACH) {
+            if (canManage) {
                 FloatingActionButton(
                     onClick = { showAddTournamentDialog = true },
                     containerColor = Navy800,
@@ -117,7 +119,7 @@ fun TournamentsScreen(
                 items(allTournaments, key = { it.id }) { t ->
                     TournamentCard(
                         tournament = t,
-                        canManage = currentUser?.role == UserRole.ADMIN || currentUser?.role == UserRole.COACH,
+                        canManage = canManage,
                         onRecordMedal = { selectedTournamentForMedal = t }
                     )
                 }

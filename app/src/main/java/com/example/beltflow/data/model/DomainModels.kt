@@ -6,6 +6,7 @@ data class AuthUser(
     val email: String,
     val role: UserRole,
     val status: ProfileStatus,
+    val organizationId: String? = "persatuan_selangor",
     val phone: String = "",
     val childName: String = "",
     val assignedClass: String = "",
@@ -16,6 +17,7 @@ data class AuthUser(
 
 data class StudentWithDetails(
     val id: String,
+    val organizationId: String? = "persatuan_selangor",
     val fullName: String,
     val icOrMykid: String,
     val dateOfBirth: String,
@@ -38,6 +40,7 @@ data class StudentWithDetails(
 
 data class ClassWithBranch(
     val id: String,
+    val organizationId: String? = "persatuan_selangor",
     val branchId: String?,
     val branchName: String,
     val name: String,
@@ -47,6 +50,7 @@ data class ClassWithBranch(
     val endTime: String,
     val scheduleNote: String,
     val monthlyFee: Double,
+    val mainMasterId: String? = null,
     val coachName: String,
     val enrolledStudentCount: Int = 0
 ) {
@@ -147,5 +151,17 @@ data class CertificateDetail(
     val verifyCode: String,
     val issuedAt: String,
     val issuedBy: String,
-    val academyName: String = "Persatuan Silambam Malaysia Daerah Sepang"
+    val academyName: String = "Persatuan Taekwondo Selangor"
+)
+
+data class ParentChildLinkDetail(
+    val id: String,
+    val parentProfileId: String,
+    val parentName: String,
+    val studentId: String,
+    val studentName: String,
+    val status: LinkApprovalStatus,
+    val studentApproved: Boolean,
+    val masterApproved: Boolean,
+    val adminApproved: Boolean
 )

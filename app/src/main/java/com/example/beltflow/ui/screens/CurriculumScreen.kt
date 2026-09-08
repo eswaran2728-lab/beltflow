@@ -54,6 +54,8 @@ fun CurriculumScreen(
         selectedCategory == "All" || s.category.equals(selectedCategory, ignoreCase = true)
     }
 
+    val canManage = currentUser?.role == UserRole.ADMIN_PERSATUAN || currentUser?.role == UserRole.MASTER || currentUser?.role == UserRole.SUPER_ADMIN
+
     Scaffold(
         topBar = {
             TopNavBar(
@@ -65,7 +67,7 @@ fun CurriculumScreen(
             )
         },
         floatingActionButton = {
-            if (currentUser?.role == UserRole.ADMIN || currentUser?.role == UserRole.COACH) {
+            if (canManage) {
                 FloatingActionButton(
                     onClick = { showAddSkillDialog = true },
                     containerColor = Navy800,
@@ -86,7 +88,7 @@ fun CurriculumScreen(
                 .padding(padding)
         ) {
             // Student Assessment Selector (if coach/admin)
-            if (currentUser?.role == UserRole.ADMIN || currentUser?.role == UserRole.COACH) {
+            if (canManage) {
                 item {
                     Text("Assess Student Progress:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Slate700)
                     Spacer(modifier = Modifier.height(6.dp))
@@ -123,7 +125,7 @@ fun CurriculumScreen(
                 CurriculumSkillCard(
                     skill = skill,
                     currentLevel = currentLevel,
-                    canEdit = (currentUser?.role == UserRole.ADMIN || currentUser?.role == UserRole.COACH) && selectedStudentId != null,
+                    canEdit = canManage && selectedStudentId != null,
                     onLevelChange = { newLevel ->
                         selectedStudentId?.let { stId ->
                             viewModel.updateStudentSkill(stId, skill.id, newLevel)

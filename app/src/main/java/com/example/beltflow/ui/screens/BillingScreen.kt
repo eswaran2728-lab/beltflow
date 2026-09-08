@@ -51,6 +51,8 @@ fun BillingScreen(
     val totalPending = filteredInvoices.filter { it.status == InvoiceStatus.UNPAID || it.status == InvoiceStatus.PENDING_APPROVAL }.sumOf { it.netAmount }
     val totalOverdue = filteredInvoices.filter { it.status == InvoiceStatus.OVERDUE }.sumOf { it.netAmount }
 
+    val canManage = currentUser?.role == UserRole.ADMIN_PERSATUAN || currentUser?.role == UserRole.MASTER || currentUser?.role == UserRole.SUPER_ADMIN
+
     Scaffold(
         topBar = {
             TopNavBar(
@@ -62,7 +64,7 @@ fun BillingScreen(
             )
         },
         floatingActionButton = {
-            if (currentUser?.role == UserRole.ADMIN || currentUser?.role == UserRole.COACH) {
+            if (canManage) {
                 FloatingActionButton(
                     onClick = { showGenerateDialog = true },
                     containerColor = Navy800,
@@ -162,7 +164,7 @@ fun BillingScreen(
                 items(filteredInvoices, key = { it.id }) { inv ->
                     InvoiceRowCard(
                         invoice = inv,
-                        canManage = currentUser?.role == UserRole.ADMIN || currentUser?.role == UserRole.COACH,
+                        canManage = canManage,
                         onRecordPayment = { selectedInvoiceForPayment = inv },
                         onViewReceipt = { payment -> selectedReceiptForView = inv to payment }
                     )

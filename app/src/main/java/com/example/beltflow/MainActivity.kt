@@ -53,10 +53,13 @@ fun BeltFlowNavGraph(viewModel: BeltFlowViewModel) {
                 viewModel = viewModel,
                 onAuthSuccess = { role ->
                     when (role) {
-                        UserRole.ADMIN -> navController.navigate(Screen.AdminDashboard) {
+                        UserRole.SUPER_ADMIN -> navController.navigate(Screen.SuperAdminDashboard) {
                             popUpTo(Screen.Auth) { inclusive = true }
                         }
-                        UserRole.COACH -> navController.navigate(Screen.CoachPortal) {
+                        UserRole.ADMIN_PERSATUAN -> navController.navigate(Screen.AdminDashboard) {
+                            popUpTo(Screen.Auth) { inclusive = true }
+                        }
+                        UserRole.MASTER -> navController.navigate(Screen.CoachPortal) {
                             popUpTo(Screen.Auth) { inclusive = true }
                         }
                         UserRole.PARENT -> navController.navigate(Screen.ParentPortal) {
@@ -69,6 +72,31 @@ fun BeltFlowNavGraph(viewModel: BeltFlowViewModel) {
                 },
                 onVerifyCertClick = {
                     navController.navigate(Screen.VerifyCert)
+                }
+            )
+        }
+
+        composable<Screen.SuperAdminDashboard> {
+            SuperAdminDashboardScreen(
+                viewModel = viewModel,
+                onLogout = {
+                    viewModel.logout()
+                    navController.navigate(Screen.Auth) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onSwitchUser = { target ->
+                    viewModel.loginAs(target) {
+                        val role = viewModel.currentUser.value?.role
+                        when (role) {
+                            UserRole.SUPER_ADMIN -> navController.navigate(Screen.SuperAdminDashboard)
+                            UserRole.ADMIN_PERSATUAN -> navController.navigate(Screen.AdminDashboard)
+                            UserRole.MASTER -> navController.navigate(Screen.CoachPortal)
+                            UserRole.PARENT -> navController.navigate(Screen.ParentPortal)
+                            UserRole.STUDENT -> navController.navigate(Screen.StudentPortal)
+                            else -> navController.navigate(Screen.AdminDashboard)
+                        }
+                    }
                 }
             )
         }
@@ -166,39 +194,26 @@ fun BeltFlowNavGraph(viewModel: BeltFlowViewModel) {
         }
 
         val onRoleSwitch: (String) -> Unit = { target ->
-            when (target) {
-                "coach" -> navController.navigate(Screen.CoachPortal) {
-                    popUpTo(Screen.AdminDashboard) { inclusive = false }
-                }
-                "parent" -> navController.navigate(Screen.ParentPortal) {
-                    popUpTo(Screen.AdminDashboard) { inclusive = false }
-                }
-                "student" -> navController.navigate(Screen.StudentPortal) {
-                    popUpTo(Screen.AdminDashboard) { inclusive = false }
-                }
-                "admin", "eswaran2728@gmail.com" -> navController.navigate(Screen.AdminDashboard) {
-                    popUpTo(Screen.AdminDashboard) { inclusive = true }
-                }
-                else -> {
-                    viewModel.loginAs(target) {
-                        val role = viewModel.currentUser.value?.role
-                        when (role) {
-                            UserRole.ADMIN -> navController.navigate(Screen.AdminDashboard) {
-                                popUpTo(Screen.AdminDashboard) { inclusive = true }
-                            }
-                            UserRole.COACH -> navController.navigate(Screen.CoachPortal) {
-                                popUpTo(Screen.AdminDashboard) { inclusive = false }
-                            }
-                            UserRole.PARENT -> navController.navigate(Screen.ParentPortal) {
-                                popUpTo(Screen.AdminDashboard) { inclusive = false }
-                            }
-                            UserRole.STUDENT -> navController.navigate(Screen.StudentPortal) {
-                                popUpTo(Screen.AdminDashboard) { inclusive = false }
-                            }
-                            else -> navController.navigate(Screen.AdminDashboard) {
-                                popUpTo(Screen.AdminDashboard) { inclusive = true }
-                            }
-                        }
+            viewModel.loginAs(target) {
+                val role = viewModel.currentUser.value?.role
+                when (role) {
+                    UserRole.SUPER_ADMIN -> navController.navigate(Screen.SuperAdminDashboard) {
+                        popUpTo(Screen.Auth) { inclusive = false }
+                    }
+                    UserRole.ADMIN_PERSATUAN -> navController.navigate(Screen.AdminDashboard) {
+                        popUpTo(Screen.Auth) { inclusive = false }
+                    }
+                    UserRole.MASTER -> navController.navigate(Screen.CoachPortal) {
+                        popUpTo(Screen.Auth) { inclusive = false }
+                    }
+                    UserRole.PARENT -> navController.navigate(Screen.ParentPortal) {
+                        popUpTo(Screen.Auth) { inclusive = false }
+                    }
+                    UserRole.STUDENT -> navController.navigate(Screen.StudentPortal) {
+                        popUpTo(Screen.Auth) { inclusive = false }
+                    }
+                    else -> navController.navigate(Screen.AdminDashboard) {
+                        popUpTo(Screen.Auth) { inclusive = false }
                     }
                 }
             }

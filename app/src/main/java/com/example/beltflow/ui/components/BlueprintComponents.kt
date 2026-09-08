@@ -14,17 +14,49 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.beltflow.data.model.UserRole
 import com.example.beltflow.ui.theme.*
 
+@Composable
+fun RoleBadge(
+    role: UserRole,
+    modifier: Modifier = Modifier
+) {
+    val (bgColor, textColor, labelText) = when (role) {
+        UserRole.SUPER_ADMIN -> Triple(Color(0xFFFEE2E2), Color(0xFFDC2626), "SUPER ADMIN")
+        UserRole.ADMIN_PERSATUAN -> Triple(Color(0xFFDBEAFE), Color(0xFF2563EB), "ADMIN PERSATUAN")
+        UserRole.MASTER -> Triple(Color(0xFFFEF3C7), Color(0xFFD97706), "MASTER")
+        UserRole.STUDENT -> Triple(Color(0xFFD1FAE5), Color(0xFF059669), "STUDENT")
+        UserRole.PARENT -> Triple(Color(0xFFF3E8FF), Color(0xFF7C3AED), "PARENT")
+    }
+
+    Surface(
+        color = bgColor,
+        shape = RoundedCornerShape(4.dp),
+        border = BorderStroke(1.dp, textColor.copy(alpha = 0.3f)),
+        modifier = modifier
+    ) {
+        Text(
+            text = labelText,
+            color = textColor,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.5.sp,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+        )
+    }
+}
 
 /**
  * Blueprint card with technical corner markers matching the BeltFlow Claude design.
@@ -128,7 +160,7 @@ fun BlueprintCard(
 }
 
 /**
- * Clean badge tag matching the Claude design system (.tag .tag-accent, .tag-neutral, .tag-outline)
+ * Clean badge tag matching the design system (.tag .tag-accent, .tag-neutral, .tag-outline)
  */
 @Composable
 fun BeltFlowTag(
@@ -144,20 +176,16 @@ fun BeltFlowTag(
         border = borderColor?.let { BorderStroke(1.dp, it) },
         modifier = modifier
     ) {
-        androidx.compose.material3.Text(
+        Text(
             text = text,
             color = textColor,
             style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
-            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+            fontWeight = FontWeight.Medium,
             modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
         )
     }
 }
 
-/**
- * The 4 primary mobile tabs from the BeltFlow Claude design specification:
- * Home (Dashboard), Students (Roster), Grading (Belt Exams), Certificates (Promotion)
- */
 enum class BeltFlowTab(val label: String) {
     HOME("Home"),
     STUDENTS("Students"),
@@ -165,9 +193,6 @@ enum class BeltFlowTab(val label: String) {
     CERTIFICATES("Certificates")
 }
 
-/**
- * Circular Official Seal Badge ("OFF" / "OFFICIAL") matching the Certificate of Promotion cards.
- */
 @Composable
 fun OfficialSealBadge(
     text: String = "OFF",
@@ -181,20 +206,17 @@ fun OfficialSealBadge(
         modifier = modifier.size(28.dp)
     ) {
         Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
-            androidx.compose.material3.Text(
+            Text(
                 text = text,
                 color = accentColor,
                 fontSize = 8.sp,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                fontWeight = FontWeight.Bold,
                 letterSpacing = 0.5.sp
             )
         }
     }
 }
 
-/**
- * Bottom navigation bar styled with exact Lucide/Claude aesthetic and amber highlights.
- */
 @Composable
 fun BeltFlowBottomBar(
     currentTab: BeltFlowTab,
@@ -239,11 +261,11 @@ fun BeltFlowBottomBar(
                         modifier = Modifier.size(22.dp)
                     )
                     Spacer(modifier = Modifier.height(2.dp))
-                    androidx.compose.material3.Text(
+                    Text(
                         text = tab.label,
                         color = color,
                         style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
-                        fontWeight = if (isSelected) androidx.compose.ui.text.font.FontWeight.SemiBold else androidx.compose.ui.text.font.FontWeight.Normal,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                         fontSize = 11.sp
                     )
                 }
@@ -274,5 +296,3 @@ fun beltFlowTextFieldColors() = OutlinedTextFieldDefaults.colors(
     errorLabelColor = Crimson600,
     errorBorderColor = Crimson600
 )
-
-

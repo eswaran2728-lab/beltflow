@@ -27,7 +27,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.beltflow.R
-import com.example.beltflow.data.model.ProfileStatus
 import com.example.beltflow.data.model.UserRole
 import com.example.beltflow.ui.components.BlueprintCard
 import com.example.beltflow.ui.components.beltFlowTextFieldColors
@@ -59,127 +58,113 @@ fun AuthScreen(
     val currentUser by viewModel.currentUser.collectAsState()
 
     LaunchedEffect(currentUser) {
-        val user = currentUser
-        if (user != null) {
-            if (user.status == ProfileStatus.APPROVED) {
-                onAuthSuccess(user.role)
-            } else if (user.status == ProfileStatus.PENDING) {
-                showPendingDialog = true
-            }
+        currentUser?.let { user ->
+            onAuthSuccess(user.role)
         }
     }
 
-    Scaffold(
-        containerColor = BlueprintBg
-    ) { padding ->
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Slate900),
+        contentAlignment = Alignment.Center
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // App Emblem
+            // App Branding Header
+            Spacer(modifier = Modifier.height(24.dp))
             Surface(
+                color = AccentAmber500,
                 shape = CircleShape,
-                color = Color.White,
-                shadowElevation = 3.dp,
-                border = androidx.compose.foundation.BorderStroke(1.dp, Slate200),
-                modifier = Modifier.size(88.dp)
+                modifier = Modifier.size(72.dp)
             ) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(6.dp)) {
-                    Image(
-                        painter = painterResource(id = R.drawable.beltflow_logo),
-                        contentDescription = "BeltFlow Logo",
-                        modifier = Modifier.fillMaxSize()
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Default.Shield,
+                        contentDescription = null,
+                        tint = Slate900,
+                        modifier = Modifier.size(40.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "BeltFlow",
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-                color = BrandNavy,
-                letterSpacing = 0.5.sp
+                text = "BELTFLOW",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Black,
+                color = Color.White,
+                letterSpacing = 3.sp
             )
-
-            Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = "Martial Arts Academy & Belt Management",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Slate500,
-                textAlign = TextAlign.Center
+                text = "Martial Arts Academy Operations",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = AccentAmber300,
+                letterSpacing = 1.sp,
+                modifier = Modifier.padding(bottom = 24.dp)
             )
 
-            Spacer(modifier = Modifier.height(28.dp))
-
-            // Toggle Tab: Sign In / Register Account
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = Slate100,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(modifier = Modifier.padding(4.dp)) {
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = if (!isSignUp) Color.White else Color.Transparent,
-                        shadowElevation = if (!isSignUp) 2.dp else 0.dp,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable {
-                                isSignUp = false
-                                errorMessage = ""
-                                successMessage = ""
-                            }
-                            .padding(vertical = 10.dp)
-                    ) {
-                        Text(
-                            text = "Sign In",
-                            textAlign = TextAlign.Center,
-                            fontWeight = if (!isSignUp) FontWeight.Bold else FontWeight.SemiBold,
-                            color = if (!isSignUp) BrandNavy else Slate700,
-                            fontSize = 15.sp
-                        )
-                    }
-
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = if (isSignUp) Color.White else Color.Transparent,
-                        shadowElevation = if (isSignUp) 2.dp else 0.dp,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable {
-                                isSignUp = true
-                                errorMessage = ""
-                                successMessage = ""
-                            }
-                            .padding(vertical = 10.dp)
-                    ) {
-                        Text(
-                            text = "Register Account",
-                            textAlign = TextAlign.Center,
-                            fontWeight = if (isSignUp) FontWeight.Bold else FontWeight.SemiBold,
-                            color = if (isSignUp) BrandNavy else Slate700,
-                            fontSize = 15.sp
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Form Card
+            // Auth Container Card
             BlueprintCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(20.dp)) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp)
+                ) {
+                    // Auth Mode Switcher Tabs
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Slate100)
+                            .padding(4.dp)
+                    ) {
+                        Surface(
+                            color = if (!isSignUp) Color.White else Color.Transparent,
+                            shape = RoundedCornerShape(6.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { isSignUp = false; errorMessage = "" }
+                        ) {
+                            Text(
+                                text = "Sign In",
+                                modifier = Modifier.padding(vertical = 10.dp),
+                                textAlign = TextAlign.Center,
+                                fontWeight = if (!isSignUp) FontWeight.Bold else FontWeight.Medium,
+                                color = if (!isSignUp) BrandNavy else Slate600
+                            )
+                        }
+
+                        Surface(
+                            color = if (isSignUp) Color.White else Color.Transparent,
+                            shape = RoundedCornerShape(6.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { isSignUp = true; errorMessage = "" }
+                        ) {
+                            Text(
+                                text = "Register",
+                                modifier = Modifier.padding(vertical = 10.dp),
+                                textAlign = TextAlign.Center,
+                                fontWeight = if (isSignUp) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isSignUp) BrandNavy else Slate600
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
                     if (errorMessage.isNotBlank()) {
                         Surface(
                             color = Crimson100,
@@ -208,34 +193,6 @@ fun AuthScreen(
                         }
                     }
 
-                    if (successMessage.isNotBlank()) {
-                        Surface(
-                            color = Emerald100,
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 14.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.CheckCircleOutline,
-                                    contentDescription = null,
-                                    tint = Emerald600,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = successMessage,
-                                    color = Emerald600,
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-                        }
-                    }
-
                     if (!isSignUp) {
                         // Sign In Form
                         Text(
@@ -245,7 +202,7 @@ fun AuthScreen(
                             color = BrandNavy
                         )
                         Text(
-                            text = "Enter your academy credentials to sign in",
+                            text = "Enter your credentials to sign in",
                             style = MaterialTheme.typography.bodySmall,
                             color = Slate500,
                             modifier = Modifier.padding(bottom = 16.dp)
@@ -260,9 +217,7 @@ fun AuthScreen(
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                             singleLine = true,
                             colors = beltFlowTextFieldColors(),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("login_email_input")
+                            modifier = Modifier.fillMaxWidth()
                         )
 
                         Spacer(modifier = Modifier.height(14.dp))
@@ -276,7 +231,7 @@ fun AuthScreen(
                                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                     Icon(
                                         imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                        contentDescription = if (passwordVisible) "Hide password" else "Show password"
+                                        contentDescription = null
                                     )
                                 }
                             },
@@ -284,9 +239,7 @@ fun AuthScreen(
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                             singleLine = true,
                             colors = beltFlowTextFieldColors(),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("login_password_input")
+                            modifier = Modifier.fillMaxWidth()
                         )
 
                         Spacer(modifier = Modifier.height(20.dp))
@@ -305,7 +258,7 @@ fun AuthScreen(
                                         result.onSuccess { user ->
                                             onAuthSuccess(user.role)
                                         }.onFailure { err ->
-                                            errorMessage = err.message ?: "Sign in failed. Please check credentials."
+                                            errorMessage = err.message ?: "Sign in failed."
                                         }
                                     }
                                 }
@@ -316,7 +269,6 @@ fun AuthScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(50.dp)
-                                .testTag("login_submit_button")
                         ) {
                             if (isLoading) {
                                 CircularProgressIndicator(
@@ -325,11 +277,7 @@ fun AuthScreen(
                                     strokeWidth = 2.dp
                                 )
                             } else {
-                                Text(
-                                    "Sign In",
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                Text("Sign In", fontSize = 15.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     } else {
@@ -341,7 +289,7 @@ fun AuthScreen(
                             color = BrandNavy
                         )
                         Text(
-                            text = "Register as a Parent, Student, or Coach",
+                            text = "Register as a Parent, Student, or Master",
                             style = MaterialTheme.typography.bodySmall,
                             color = Slate500,
                             modifier = Modifier.padding(bottom = 16.dp)
@@ -355,9 +303,7 @@ fun AuthScreen(
                             leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
                             singleLine = true,
                             colors = beltFlowTextFieldColors(),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("signup_name_input")
+                            modifier = Modifier.fillMaxWidth()
                         )
 
                         Spacer(modifier = Modifier.height(12.dp))
@@ -371,9 +317,7 @@ fun AuthScreen(
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                             singleLine = true,
                             colors = beltFlowTextFieldColors(),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("signup_email_input")
+                            modifier = Modifier.fillMaxWidth()
                         )
 
                         Spacer(modifier = Modifier.height(12.dp))
@@ -387,7 +331,7 @@ fun AuthScreen(
                                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                     Icon(
                                         imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                        contentDescription = if (passwordVisible) "Hide password" else "Show password"
+                                        contentDescription = null
                                     )
                                 }
                             },
@@ -395,9 +339,7 @@ fun AuthScreen(
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                             singleLine = true,
                             colors = beltFlowTextFieldColors(),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("signup_password_input")
+                            modifier = Modifier.fillMaxWidth()
                         )
 
                         Spacer(modifier = Modifier.height(12.dp))
@@ -427,7 +369,7 @@ fun AuthScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            listOf(UserRole.PARENT, UserRole.STUDENT, UserRole.COACH).forEach { role ->
+                            listOf(UserRole.PARENT, UserRole.STUDENT, UserRole.MASTER).forEach { role ->
                                 FilterChip(
                                     selected = selectedRole == role,
                                     onClick = { selectedRole = role },
@@ -449,7 +391,7 @@ fun AuthScreen(
                                         borderColor = Slate300,
                                         selectedBorderColor = AccentAmber600
                                     ),
-                                    modifier = Modifier.weight(1f).testTag("role_chip_${role.name}")
+                                    modifier = Modifier.weight(1f)
                                 )
                             }
                         }
@@ -464,27 +406,9 @@ fun AuthScreen(
                                 leadingIcon = { Icon(Icons.Default.ChildCare, contentDescription = null) },
                                 singleLine = true,
                                 colors = beltFlowTextFieldColors(),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .testTag("signup_child_name_input")
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        OutlinedTextField(
-                            value = classCode,
-                            onValueChange = { classCode = it },
-                            label = { Text("Class Registration Code (Optional)") },
-                            placeholder = { Text("e.g. NIL101, SEP202") },
-                            supportingText = { Text("Provided by your coach for auto-assignment", color = Slate600) },
-                            leadingIcon = { Icon(Icons.Default.QrCode, contentDescription = null) },
-                            singleLine = true,
-                            colors = beltFlowTextFieldColors(),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("signup_class_code_input")
-                        )
 
                         Spacer(modifier = Modifier.height(20.dp))
 
@@ -495,19 +419,19 @@ fun AuthScreen(
                                 } else {
                                     isLoading = true
                                     errorMessage = ""
-                                    viewModel.signup(
+                                    viewModel.registerUser(
                                         fullName = fullName.trim(),
                                         email = email.trim(),
-                                        password = password.trim(),
                                         phone = phone.trim(),
                                         role = selectedRole,
                                         childName = childName.trim(),
-                                        classCode = classCode.trim()
+                                        assignedClass = classCode.trim(),
+                                        password = password.trim()
                                     ) { result ->
                                         isLoading = false
                                         result.onSuccess {
                                             if (email.trim().equals("eswaran2728@gmail.com", ignoreCase = true)) {
-                                                onAuthSuccess(UserRole.ADMIN)
+                                                onAuthSuccess(UserRole.ADMIN_PERSATUAN)
                                             } else {
                                                 showPendingDialog = true
                                                 successMessage = "Account submitted for approval."
@@ -524,7 +448,6 @@ fun AuthScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(50.dp)
-                                .testTag("signup_submit_button")
                         ) {
                             if (isLoading) {
                                 CircularProgressIndicator(
@@ -533,11 +456,7 @@ fun AuthScreen(
                                     strokeWidth = 2.dp
                                 )
                             } else {
-                                Text(
-                                    "Register Account",
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                Text("Register Account", fontSize = 15.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -549,15 +468,14 @@ fun AuthScreen(
             // Public Verification link
             OutlinedButton(
                 onClick = onVerifyCertClick,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandNavy),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Slate300),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Slate600),
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp)
-                    .testTag("public_verify_cert_button")
             ) {
-                Icon(Icons.Default.Verified, contentDescription = null, tint = AccentAmber700)
+                Icon(Icons.Default.Verified, contentDescription = null, tint = AccentAmber300)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Public Certificate Verification Portal", fontWeight = FontWeight.Medium)
             }
@@ -581,32 +499,23 @@ fun AuthScreen(
                 )
             },
             title = {
-                Text(
-                    "Registration Submitted",
-                    textAlign = TextAlign.Center,
-                    color = BrandNavy,
-                    fontWeight = FontWeight.Bold
-                )
+                Text("Registration Submitted", textAlign = TextAlign.Center, fontWeight = FontWeight.Bold)
             },
             text = {
                 Text(
-                    "Your registration has been submitted and is awaiting approval by the academy administrator (Master Eswaran). You will be notified once activated.",
+                    "Your registration has been submitted and is awaiting approval by the academy administrator. You will be notified once activated.",
                     textAlign = TextAlign.Center,
                     color = Slate600
                 )
             },
             confirmButton = {
                 Button(
-                    onClick = {
-                        showPendingDialog = false
-                        isSignUp = false
-                    },
+                    onClick = { showPendingDialog = false; isSignUp = false },
                     colors = ButtonDefaults.buttonColors(containerColor = BrandNavy)
                 ) {
-                    Text("Return to Sign In")
+                    Text("OK, Back to Sign In")
                 }
             }
         )
     }
 }
-

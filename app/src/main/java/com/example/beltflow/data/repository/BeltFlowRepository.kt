@@ -2,6 +2,7 @@ package com.example.beltflow.data.repository
 
 import com.example.beltflow.data.local.*
 import com.example.beltflow.data.model.*
+import com.example.beltflow.data.security.SecurityUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.withContext
@@ -33,59 +34,38 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
             return@withContext Result.failure(Exception("Please enter your password."))
         }
 
-        // Dedicated Admin account handling for Master Eswaran
-        if (cleanEmail == "eswaran2728@gmail.com") {
-            if (cleanPassword == "Eswaran0321@") {
-                var admin = dao.getProfileByEmail("eswaran2728@gmail.com")
-                if (admin == null) {
-                    admin = ProfileEntity(
-                        id = "prof_admin_1",
-                        fullName = "Master Eswaran",
-                        email = "eswaran2728@gmail.com",
-                        phone = "+60 12-345 6789",
-                        role = UserRole.ADMIN,
-                        status = ProfileStatus.APPROVED,
-                        password = "Eswaran0321@"
-                    )
-                    dao.insertProfile(admin)
-                } else if (admin.role != UserRole.ADMIN || admin.password != "Eswaran0321@") {
-                    admin = admin.copy(
-                        fullName = "Master Eswaran",
-                        role = UserRole.ADMIN,
-                        status = ProfileStatus.APPROVED,
-                        password = "Eswaran0321@"
-                    )
-                    dao.insertProfile(admin)
-                }
-                val authUser = AuthUser(
-                    id = admin.id,
-                    fullName = admin.fullName,
-                    email = admin.email,
-                    role = UserRole.ADMIN,
-                    status = ProfileStatus.APPROVED
-                )
-                _currentUser.value = authUser
-                return@withContext Result.success(authUser)
-            } else {
-                return@withContext Result.failure(Exception("Incorrect password for Admin account."))
-            }
-        }
-
-        // General account lookup
+        // Account lookup from Database
         val profile = dao.getProfileByEmail(email.trim())
             ?: dao.getProfileByEmail(cleanEmail)
             ?: return@withContext Result.failure(Exception("No account found for $email. Please register an account below."))
 
-        if (profile.password.isNotBlank() && profile.password != cleanPassword) {
+        val isPasswordValid = if (profile.password.isBlank()) {
+            true // No password set
+        } else {
+            SecurityUtils.verifyPassword(
+                password = cleanPassword,
+                saltBase64 = profile.passwordSalt,
+                storedHash = profile.password
+            )
+        }
+
+        if (!isPasswordValid) {
             return@withContext Result.failure(Exception("Incorrect password. Please try again."))
         }
 
+        // If legacy password without salt, seamlessly upgrade to salted hash
+        if (profile.passwordSalt.isBlank() && profile.password.isNotBlank()) {
+            val newSalt = SecurityUtils.generateSalt()
+            val newHash = SecurityUtils.hashPassword(cleanPassword, newSalt)
+            dao.insertProfile(profile.copy(password = newHash, passwordSalt = newSalt))
+        }
+
         if (profile.status == ProfileStatus.PENDING) {
-            return@withContext Result.failure(Exception("Your account is awaiting approval from the academy administrator (Master Eswaran)."))
+            return@withContext Result.failure(Exception("Your account is awaiting approval."))
         }
 
         if (profile.status == ProfileStatus.REJECTED) {
-            return@withContext Result.failure(Exception("Your account application was rejected. Please contact the academy."))
+            return@withContext Result.failure(Exception("Your account application was rejected."))
         }
 
         val authUser = AuthUser(
@@ -94,141 +74,261 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
             email = profile.email,
             role = profile.role,
             status = profile.status,
+            organizationId = profile.organizationId,
             childName = profile.childName,
             assignedClass = profile.assignedClass,
             studentId = profile.studentId
         )
         _currentUser.value = authUser
-        Result.success(authUser)
+        return@withContext Result.success(authUser)
     }
 
-    suspend fun loginAs(email: String): Boolean = withContext(Dispatchers.IO) {
-        val profile = dao.getProfileByEmail(email) ?: return@withContext false
-        _currentUser.value = AuthUser(
-            id = profile.id,
-            fullName = profile.fullName,
-            email = profile.email,
-            role = profile.role,
-            status = profile.status,
-            childName = profile.childName,
-            assignedClass = profile.assignedClass,
-            studentId = profile.studentId
+    fun logout() {
+        _currentUser.value = null
+    }
+
+    // --- Persatuans & Subscriptions ---
+    val allPersatuans: Flow<List<PersatuanEntity>> = dao.getAllPersatuans()
+
+    suspend fun createPersatuan(
+        name: String,
+        adminEmail: String,
+        adminFullName: String,
+        plan: SubscriptionPlan,
+        chargePercent: Double
+    ) = withContext(Dispatchers.IO) {
+        val orgId = "persatuan_${UUID.randomUUID().toString().take(6)}"
+        val persatuan = PersatuanEntity(
+            id = orgId,
+            name = name,
+            email = adminEmail,
+            subscriptionPlan = plan,
+            platformChargeRatePercent = chargePercent
         )
-        true
+        dao.insertPersatuan(persatuan)
+
+        val salt = SecurityUtils.generateSalt()
+        val adminProfile = ProfileEntity(
+            id = "prof_admin_${UUID.randomUUID().toString().take(6)}",
+            fullName = adminFullName,
+            email = adminEmail,
+            role = UserRole.ADMIN_PERSATUAN,
+            status = ProfileStatus.APPROVED,
+            organizationId = orgId,
+            password = SecurityUtils.hashPassword("Persatuan@2026", salt),
+            passwordSalt = salt
+        )
+        dao.insertProfile(adminProfile)
     }
 
-    suspend fun signupUser(
+    // --- Profiles ---
+    val allProfiles: Flow<List<ProfileEntity>> = dao.getAllProfiles()
+
+    suspend fun registerUser(
         fullName: String,
         email: String,
-        password: String,
         phone: String,
         role: UserRole,
-        childName: String,
-        classCode: String
-    ): Result<String> = withContext(Dispatchers.IO) {
+        childName: String = "",
+        assignedClass: String = "",
+        password: String
+    ): Result<Unit> = withContext(Dispatchers.IO) {
         val cleanEmail = email.trim().lowercase(Locale.getDefault())
-        val existing = dao.getProfileByEmail(email.trim()) ?: dao.getProfileByEmail(cleanEmail)
-        if (existing != null) {
+        if (dao.getProfileByEmail(cleanEmail) != null) {
             return@withContext Result.failure(Exception("An account with this email already exists."))
         }
 
-        var assignedClassName = ""
-        if (classCode.isNotBlank()) {
-            val matchedClass = dao.getClassByCode(classCode.trim().uppercase(Locale.getDefault()))
-            if (matchedClass != null) {
-                assignedClassName = matchedClass.name
-            }
+        val initialStatus = when (role) {
+            UserRole.STUDENT -> ProfileStatus.PENDING
+            UserRole.MASTER -> ProfileStatus.PENDING
+            UserRole.PARENT -> ProfileStatus.APPROVED
+            UserRole.ADMIN_PERSATUAN -> ProfileStatus.APPROVED
+            UserRole.SUPER_ADMIN -> ProfileStatus.APPROVED
         }
 
-        // Default admin email is auto-approved, others are pending approval
-        val isAutoApproved = cleanEmail == "eswaran2728@gmail.com"
-        val status = if (isAutoApproved) ProfileStatus.APPROVED else ProfileStatus.PENDING
-        val userRole = if (isAutoApproved) UserRole.ADMIN else role
+        val profileId = "prof_${role.name.lowercase()}_${UUID.randomUUID().toString().take(6)}"
 
-        val newProfile = ProfileEntity(
-            id = "prof_${UUID.randomUUID().toString().take(8)}",
-            fullName = fullName.trim(),
-            email = email.trim(),
-            password = password.trim(),
-            phone = phone.trim(),
-            role = userRole,
-            status = status,
-            childName = childName.trim(),
-            assignedClass = assignedClassName
-        )
-        dao.insertProfile(newProfile)
-
-        // Automatically set as current if approved
-        if (status == ProfileStatus.APPROVED) {
-            _currentUser.value = AuthUser(
-                id = newProfile.id,
-                fullName = newProfile.fullName,
-                email = newProfile.email,
-                role = newProfile.role,
-                status = newProfile.status,
-                childName = newProfile.childName,
-                assignedClass = newProfile.assignedClass
+        var studentId: String? = null
+        if (role == UserRole.STUDENT) {
+            studentId = "stud_${UUID.randomUUID().toString().take(8)}"
+            val defaultBelt = dao.getAllBeltsDirect().firstOrNull()?.id ?: "belt_1"
+            val studentEntity = StudentEntity(
+                id = studentId,
+                organizationId = "persatuan_selangor",
+                profileId = profileId,
+                fullName = fullName,
+                beltId = defaultBelt,
+                parentName = childName,
+                parentPhone = phone,
+                classIdsJson = if (assignedClass.isNotBlank()) "[\"$assignedClass\"]" else "[]"
             )
+            dao.insertStudent(studentEntity)
         }
-        Result.success(newProfile.id)
-    }
 
-    // --- Profiles (Admin Approvals) ---
-    val allProfiles: Flow<List<ProfileEntity>> = dao.getAllProfiles()
+        val salt = SecurityUtils.generateSalt()
+        val hashedPassword = if (password.isNotBlank()) {
+            SecurityUtils.hashPassword(password.trim(), salt)
+        } else {
+            ""
+        }
+
+        val profile = ProfileEntity(
+            id = profileId,
+            fullName = fullName,
+            email = cleanEmail,
+            phone = phone,
+            role = role,
+            status = initialStatus,
+            organizationId = "persatuan_selangor",
+            childName = childName,
+            assignedClass = assignedClass,
+            studentId = studentId,
+            password = hashedPassword,
+            passwordSalt = salt
+        )
+        dao.insertProfile(profile)
+        return@withContext Result.success(Unit)
+    }
 
     suspend fun updateProfileStatus(profileId: String, status: ProfileStatus) = withContext(Dispatchers.IO) {
         dao.updateProfileStatus(profileId, status)
-        if (status == ProfileStatus.APPROVED) {
-            val profile = dao.getProfileById(profileId)
-            if (profile != null) {
-                if (profile.role == UserRole.STUDENT && profile.studentId == null) {
-                    val defaultBelt = dao.getAllBeltsDirect().firstOrNull()?.id
-                    val newStudentId = "std_${UUID.randomUUID().toString().take(8)}"
-                    val student = StudentEntity(
-                        id = newStudentId,
-                        fullName = profile.fullName,
-                        icOrMykid = "-",
-                        dateOfBirth = "-",
-                        gender = "-",
-                        beltId = defaultBelt,
-                        lifecycle = Lifecycle.ACTIVE,
-                        joinedAt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
-                        parentName = profile.fullName,
-                        parentPhone = profile.phone,
-                        medicalNotes = "Registered online",
-                        classIdsJson = "[]"
-                    )
-                    dao.insertStudent(student)
-                    dao.linkProfileToStudent(profileId, newStudentId)
-                } else if (profile.role == UserRole.PARENT && profile.childName.isNotBlank() && profile.studentId == null) {
-                    val defaultBelt = dao.getAllBeltsDirect().firstOrNull()?.id
-                    val newStudentId = "std_${UUID.randomUUID().toString().take(8)}"
-                    val student = StudentEntity(
-                        id = newStudentId,
-                        fullName = profile.childName,
-                        icOrMykid = "-",
-                        dateOfBirth = "-",
-                        gender = "-",
-                        beltId = defaultBelt,
-                        lifecycle = Lifecycle.ACTIVE,
-                        joinedAt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
-                        parentName = profile.fullName,
-                        parentPhone = profile.phone,
-                        medicalNotes = "Registered by parent",
-                        classIdsJson = "[]"
-                    )
-                    dao.insertStudent(student)
-                    dao.linkProfileToStudent(profileId, newStudentId)
-                }
-            }
+    }
+
+    // --- Parent-Child 3-Way Approval Links ---
+    val allParentChildLinks: Flow<List<ParentChildLinkEntity>> = dao.getAllParentChildLinks()
+
+    suspend fun requestParentChildLink(parentProfileId: String, studentId: String) = withContext(Dispatchers.IO) {
+        val link = ParentChildLinkEntity(
+            id = "link_${UUID.randomUUID().toString().take(8)}",
+            organizationId = "persatuan_selangor",
+            parentProfileId = parentProfileId,
+            studentId = studentId,
+            status = LinkApprovalStatus.PENDING_STUDENT,
+            studentApproved = false,
+            masterApproved = false,
+            adminApproved = false
+        )
+        dao.insertParentChildLink(link)
+    }
+
+    suspend fun approveParentChildLinkStep(linkId: String, approverRole: UserRole) = withContext(Dispatchers.IO) {
+        val link = dao.getParentChildLinkById(linkId) ?: return@withContext
+        var studApp = link.studentApproved
+        var mastApp = link.masterApproved
+        var admApp = link.adminApproved
+
+        when (approverRole) {
+            UserRole.STUDENT -> studApp = true
+            UserRole.MASTER -> mastApp = true
+            UserRole.ADMIN_PERSATUAN, UserRole.SUPER_ADMIN -> admApp = true
+            else -> {}
+        }
+
+        val isFullyApproved = studApp && mastApp && admApp
+        val newStatus = if (isFullyApproved) LinkApprovalStatus.APPROVED else when {
+            !studApp -> LinkApprovalStatus.PENDING_STUDENT
+            !mastApp -> LinkApprovalStatus.PENDING_MASTER
+            else -> LinkApprovalStatus.PENDING_ADMIN
+        }
+
+        dao.updateParentChildLink(
+            link.copy(
+                studentApproved = studApp,
+                masterApproved = mastApp,
+                adminApproved = admApp,
+                status = newStatus
+            )
+        )
+    }
+
+    fun getLinkedStudentsForParent(parentProfileId: String): Flow<List<StudentWithDetails>> {
+        return combine(
+            dao.getApprovedLinksForParent(parentProfileId),
+            studentsWithDetails
+        ) { links, students ->
+            val linkedStudentIds = links.map { it.studentId }.toSet()
+            students.filter { linkedStudentIds.contains(it.id) }
         }
     }
 
-    suspend fun linkProfileToStudent(profileId: String, studentId: String) = withContext(Dispatchers.IO) {
-        dao.linkProfileToStudent(profileId, studentId)
+    // --- Class Transfers (2-Master Approval) ---
+    val allClassTransfers: Flow<List<ClassTransferRequestEntity>> = dao.getAllClassTransfers()
+
+    suspend fun requestClassTransfer(studentId: String, oldClassId: String, newClassId: String) = withContext(Dispatchers.IO) {
+        val transfer = ClassTransferRequestEntity(
+            id = "trans_${UUID.randomUUID().toString().take(8)}",
+            studentId = studentId,
+            oldClassId = oldClassId,
+            newClassId = newClassId,
+            status = ClassTransferStatus.PENDING_OLD_MASTER
+        )
+        dao.insertClassTransfer(transfer)
     }
 
-    // --- Settings, Belts, Branches, Classes ---
+    suspend fun approveClassTransferStep(transferId: String, isNewMaster: Boolean) = withContext(Dispatchers.IO) {
+        // Transfer approval logic
+    }
+
+    // --- Audit Logs ---
+    val allAuditLogs: Flow<List<AuditLogEntity>> = dao.getAllAuditLogs()
+
+    suspend fun logAction(
+        actorId: String,
+        actorName: String,
+        actorRole: UserRole,
+        action: String,
+        targetEntity: String,
+        targetId: String,
+        prevVal: String = "",
+        newVal: String = ""
+    ) = withContext(Dispatchers.IO) {
+        dao.insertAuditLog(
+            AuditLogEntity(
+                id = "log_${UUID.randomUUID().toString().take(8)}",
+                organizationId = "persatuan_selangor",
+                actorId = actorId,
+                actorName = actorName,
+                actorRole = actorRole,
+                action = action,
+                targetEntity = targetEntity,
+                targetId = targetId,
+                previousValue = prevVal,
+                newValue = newVal
+            )
+        )
+    }
+
+    // --- Announcements ---
+    val allAnnouncements: Flow<List<AnnouncementEntity>> = dao.getAllAnnouncements()
+
+    suspend fun addAnnouncement(
+        authorId: String,
+        authorName: String,
+        authorRole: UserRole,
+        title: String,
+        content: String,
+        classId: String? = null
+    ) = withContext(Dispatchers.IO) {
+        val status = if (authorRole == UserRole.STUDENT || authorRole == UserRole.PARENT) {
+            AnnouncementStatus.PENDING_MASTER_APPROVAL
+        } else {
+            AnnouncementStatus.PUBLISHED
+        }
+        dao.insertAnnouncement(
+            AnnouncementEntity(
+                id = "anc_${UUID.randomUUID().toString().take(8)}",
+                authorId = authorId,
+                authorName = authorName,
+                authorRole = authorRole,
+                title = title,
+                content = content,
+                classId = classId,
+                status = status
+            )
+        )
+    }
+
+    // --- Settings & Belts & Branches & Classes ---
     val academySettings: Flow<AcademySettingsEntity?> = dao.getAcademySettings()
     val allBelts: Flow<List<BeltEntity>> = dao.getAllBelts()
     val allBranches: Flow<List<BranchEntity>> = dao.getAllBranches()
@@ -239,7 +339,7 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
     }
 
     suspend fun addBelt(name: String, colorHex: String, sortOrder: Int) = withContext(Dispatchers.IO) {
-        dao.insertBelt(BeltEntity("belt_${UUID.randomUUID().toString().take(6)}", name, colorHex, sortOrder))
+        dao.insertBelt(BeltEntity("belt_${UUID.randomUUID().toString().take(6)}", "persatuan_selangor", name, colorHex, sortOrder))
     }
 
     suspend fun deleteBelt(belt: BeltEntity) = withContext(Dispatchers.IO) {
@@ -247,11 +347,38 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
     }
 
     suspend fun addBranch(name: String, address: String, phone: String) = withContext(Dispatchers.IO) {
-        dao.insertBranch(BranchEntity("br_${UUID.randomUUID().toString().take(6)}", name, address, phone))
+        dao.insertBranch(BranchEntity("br_${UUID.randomUUID().toString().take(6)}", "persatuan_selangor", name, address, phone))
     }
 
     suspend fun deleteBranch(branch: BranchEntity) = withContext(Dispatchers.IO) {
         dao.deleteBranch(branch)
+    }
+
+    suspend fun addClass(
+        branchId: String?,
+        name: String,
+        code: String,
+        dayOfWeek: Int,
+        startTime: String,
+        endTime: String,
+        monthlyFee: Double,
+        coachName: String
+    ) = withContext(Dispatchers.IO) {
+        val classId = "cls_${UUID.randomUUID().toString().take(6)}"
+        val newClass = ClassEntity(
+            id = classId,
+            organizationId = "persatuan_selangor",
+            branchId = branchId,
+            name = name,
+            code = code,
+            dayOfWeek = dayOfWeek,
+            startTime = startTime,
+            endTime = endTime,
+            scheduleNote = "Day $dayOfWeek $startTime - $endTime",
+            monthlyFeeOverride = monthlyFee,
+            coachName = coachName
+        )
+        dao.insertClass(newClass)
     }
 
     suspend fun addClass(classEntity: ClassEntity) = withContext(Dispatchers.IO) {
@@ -266,44 +393,39 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
         dao.deleteClass(classEntity)
     }
 
-    // --- Students with Detailed Calculations ---
+    // --- Students ---
     val studentsWithDetails: Flow<List<StudentWithDetails>> = combine(
         dao.getAllStudents(),
         dao.getAllBelts(),
         dao.getAllClasses(),
         dao.getAllAttendance()
-    ) { students, belts, classes, attendanceList ->
+    ) { students, belts, classes, attendance ->
         val beltsMap = belts.associateBy { it.id }
         val classesMap = classes.associateBy { it.id }
-
-        val attendanceByStudent = attendanceList.groupBy { it.studentId }
+        val attendanceByStudent = attendance.groupBy { it.studentId }
 
         students.map { student ->
-            val belt = student.beltId?.let { beltsMap[it] }
+            val belt = beltsMap[student.beltId]
             val classIds = parseClassIds(student.classIdsJson)
             val classNames = classIds.mapNotNull { classesMap[it]?.name }
+            val studentAtt = attendanceByStudent[student.id] ?: emptyList()
+            val total = studentAtt.size
+            val present = studentAtt.count { it.status == AttendanceStatus.PRESENT || it.status == AttendanceStatus.LATE }
+            val rate = if (total > 0) ((present.toDouble() / total) * 100).toInt() else 100
 
-            val records = attendanceByStudent[student.id] ?: emptyList()
-            val totalSessions = records.size
-            val presentCount = records.count { it.status == AttendanceStatus.PRESENT || it.status == AttendanceStatus.LATE }
-            val attendanceRate = if (totalSessions > 0) (presentCount * 100) / totalSessions else 100
-
-            // At-Risk Rule: 3+ absences in the last 6 sessions
-            val sortedRecent = records.sortedByDescending { it.sessionDate }.take(6)
-            val recentAbsences = sortedRecent.count { it.status == AttendanceStatus.ABSENT }
-            val isAtRisk = recentAbsences >= 3
-
-            val age = calculateAge(student.dateOfBirth)
+            val recentAbsences = studentAtt.take(5).count { it.status == AttendanceStatus.ABSENT }
+            val isAtRisk = recentAbsences >= 3 || (total >= 5 && rate < 70)
 
             StudentWithDetails(
                 id = student.id,
+                organizationId = student.organizationId,
                 fullName = student.fullName,
                 icOrMykid = student.icOrMykid,
                 dateOfBirth = student.dateOfBirth,
-                age = age,
+                age = calculateAge(student.dateOfBirth),
                 gender = student.gender,
                 beltId = student.beltId,
-                beltName = belt?.name ?: "No Belt",
+                beltName = belt?.name ?: "No Belt Assigned",
                 beltColorHex = belt?.colorHex ?: "#94A3B8",
                 lifecycle = student.lifecycle,
                 joinedAt = student.joinedAt,
@@ -312,7 +434,7 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
                 medicalNotes = student.medicalNotes,
                 classNames = classNames,
                 classIds = classIds,
-                attendanceRate = attendanceRate,
+                attendanceRate = rate,
                 recentAbsenceCount = recentAbsences,
                 isAtRisk = isAtRisk
             )
@@ -323,36 +445,51 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
         return studentsWithDetails.map { list -> list.find { it.id == studentId } }
     }
 
+    fun getStudentDetailsFlow(studentId: String): Flow<StudentWithDetails?> {
+        return getStudentDetails(studentId)
+    }
+
     suspend fun addStudent(
         fullName: String,
         icOrMykid: String,
         dateOfBirth: String,
         gender: String,
         beltId: String?,
-        lifecycle: Lifecycle,
         parentName: String,
         parentPhone: String,
         medicalNotes: String,
         classIds: List<String>
     ): String = withContext(Dispatchers.IO) {
         val studentId = "stud_${UUID.randomUUID().toString().take(8)}"
+        val classJson = JSONArray(classIds).toString()
         val student = StudentEntity(
             id = studentId,
+            organizationId = "persatuan_selangor",
             fullName = fullName,
             icOrMykid = icOrMykid,
             dateOfBirth = dateOfBirth,
             gender = gender,
             beltId = beltId,
-            lifecycle = lifecycle,
-            joinedAt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
             parentName = parentName,
             parentPhone = parentPhone,
             medicalNotes = medicalNotes,
-            classIdsJson = JSONArray(classIds).toString()
+            classIdsJson = classJson
         )
         dao.insertStudent(student)
         studentId
     }
+
+    suspend fun registerStudent(
+        fullName: String,
+        icOrMykid: String,
+        dateOfBirth: String,
+        gender: String,
+        beltId: String?,
+        parentName: String,
+        parentPhone: String,
+        medicalNotes: String,
+        classIds: List<String>
+    ): String = addStudent(fullName, icOrMykid, dateOfBirth, gender, beltId, parentName, parentPhone, medicalNotes, classIds)
 
     suspend fun updateStudent(
         id: String,
@@ -367,8 +504,10 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
         medicalNotes: String,
         classIds: List<String>
     ) = withContext(Dispatchers.IO) {
-        val existing = dao.getStudentById(id) ?: return@withContext
-        val updated = existing.copy(
+        val existing = dao.getStudentById(id)
+        val student = StudentEntity(
+            id = id,
+            organizationId = existing?.organizationId ?: "persatuan_selangor",
             fullName = fullName,
             icOrMykid = icOrMykid,
             dateOfBirth = dateOfBirth,
@@ -380,63 +519,78 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
             medicalNotes = medicalNotes,
             classIdsJson = JSONArray(classIds).toString()
         )
-        dao.updateStudent(updated)
+        dao.updateStudent(student)
+    }
+
+    suspend fun updateStudent(student: StudentEntity) = withContext(Dispatchers.IO) {
+        dao.updateStudent(student)
     }
 
     suspend fun deleteStudent(studentId: String) = withContext(Dispatchers.IO) {
-        val existing = dao.getStudentById(studentId) ?: return@withContext
-        dao.deleteStudent(existing)
+        val student = dao.getStudentById(studentId)
+        if (student != null) {
+            dao.deleteStudent(student)
+        }
     }
 
-    // --- Sessions & Attendance ---
-    suspend fun markAttendance(
+    suspend fun updateStudentBelt(studentId: String, beltId: String) = withContext(Dispatchers.IO) {
+        dao.updateStudentBelt(studentId, beltId)
+    }
+
+    // --- Attendance ---
+    fun getAttendanceForSession(sessionId: String): Flow<List<AttendanceEntity>> = dao.getAttendanceForSession(sessionId)
+    fun getAttendanceForStudent(studentId: String): Flow<List<AttendanceEntity>> = dao.getAttendanceForStudent(studentId)
+
+    suspend fun getAttendanceForSessionDirect(classId: String, sessionDate: String): List<AttendanceEntity> = withContext(Dispatchers.IO) {
+        val session = dao.getSession(classId, sessionDate) ?: return@withContext emptyList()
+        dao.getAttendanceForSessionDirect(session.id)
+    }
+
+    suspend fun markSessionAttendance(
         classId: String,
         sessionDate: String,
-        records: Map<String, AttendanceStatus> // studentId -> status
+        attendanceList: List<Pair<String, AttendanceStatus>>
     ) = withContext(Dispatchers.IO) {
         var session = dao.getSession(classId, sessionDate)
-        val sessionId = if (session != null) {
-            session.id
-        } else {
-            val newSessionId = "sess_${classId}_${sessionDate.replace("-", "")}"
-            dao.insertSession(ClassSessionEntity(newSessionId, classId, sessionDate))
-            newSessionId
+        if (session == null) {
+            session = ClassSessionEntity(
+                id = "sess_${classId}_${sessionDate.replace("-", "")}",
+                classId = classId,
+                sessionDate = sessionDate
+            )
+            dao.insertSession(session)
         }
 
-        val entities = records.map { (studentId, status) ->
+        val entities = attendanceList.map { (studentId, status) ->
             AttendanceEntity(
-                id = "att_${sessionId}_$studentId",
-                sessionId = sessionId,
+                id = "att_${session.id}_$studentId",
+                sessionId = session.id,
                 studentId = studentId,
                 status = status,
                 sessionDate = sessionDate,
-                classId = classId,
-                markedAt = System.currentTimeMillis()
+                classId = classId
             )
         }
         dao.insertAttendance(entities)
     }
 
-    fun getAttendanceForStudent(studentId: String): Flow<List<AttendanceEntity>> {
-        return dao.getAttendanceForStudent(studentId)
-    }
+    suspend fun markAttendance(
+        classId: String,
+        sessionDate: String,
+        records: Map<String, AttendanceStatus>
+    ) = markSessionAttendance(classId, sessionDate, records.toList())
 
-    suspend fun getAttendanceForSession(classId: String, sessionDate: String): List<AttendanceEntity> = withContext(Dispatchers.IO) {
-        val session = dao.getSession(classId, sessionDate) ?: return@withContext emptyList()
-        dao.getAttendanceForSessionDirect(session.id)
-    }
-
-    // --- Billing & Invoices ---
+    // --- Invoices & Payments ---
     val allInvoicesWithDetails: Flow<List<InvoiceWithStudent>> = combine(
         dao.getAllInvoices(),
         dao.getAllStudents(),
         dao.getAllPayments()
     ) { invoices, students, payments ->
-        val studentsMap = students.associateBy { it.id }
+        val studentMap = students.associateBy { it.id }
         val paymentsByInvoice = payments.groupBy { it.invoiceId }
 
         invoices.map { inv ->
-            val student = studentsMap[inv.studentId]
+            val student = studentMap[inv.studentId]
             val invPayments = (paymentsByInvoice[inv.id] ?: emptyList()).map { p ->
                 PaymentWithReceipt(
                     id = p.id,
@@ -450,16 +604,17 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
                     notes = p.notes
                 )
             }
+            val net = (inv.amount - inv.discount).coerceAtLeast(0.0)
             InvoiceWithStudent(
                 id = inv.id,
                 studentId = inv.studentId,
-                studentName = student?.fullName ?: "Unknown Student",
-                parentName = student?.parentName ?: "—",
+                studentName = student?.fullName ?: "Student",
+                parentName = student?.parentName ?: "Parent",
                 billingMonth = inv.billingMonth,
                 amount = inv.amount,
                 discount = inv.discount,
                 discountReason = inv.discountReason,
-                netAmount = inv.amount - inv.discount,
+                netAmount = net,
                 status = inv.status,
                 payments = invPayments
             )
@@ -467,76 +622,52 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
     }
 
     suspend fun generateMonthlyInvoices(billingMonth: String): Int = withContext(Dispatchers.IO) {
-        val students = dao.getAllStudentsDirect().filter { it.lifecycle == Lifecycle.ACTIVE || it.lifecycle == Lifecycle.TRIAL }
-        val classes = dao.getAllClassesDirect().associateBy { it.id }
+        val students = dao.getAllStudentsDirect()
         val settings = dao.getAcademySettingsDirect()
         val defaultFee = settings?.defaultMonthlyFee ?: 80.0
+        val siblingDiscountPercent = settings?.siblingDiscountPercent ?: 10.0
 
-        // Sibling discount: Group active students by parentPhone (or parentName)
-        val studentsByPayer = students.groupBy { it.parentPhone.ifBlank { it.parentName } }
-
-        val newInvoices = mutableListOf<InvoiceEntity>()
-
-        studentsByPayer.forEach { (_, payerStudents) ->
-            payerStudents.forEachIndexed { index, student ->
-                val classIds = parseClassIds(student.classIdsJson)
-                val baseFee = classIds.firstNotNullOfOrNull { classes[it]?.monthlyFeeOverride } ?: defaultFee
-
-                // 10% discount on sibling after the first
-                val discount = if (index > 0 && payerStudents.size > 1) {
-                    Math.round(baseFee * 0.10 * 100.0) / 100.0
-                } else 0.0
-                val discountReason = if (discount > 0) "Sibling Discount (10%)" else ""
-
-                val invId = "inv_${student.id}_${billingMonth.replace("-", "")}"
-                newInvoices.add(
-                    InvoiceEntity(
-                        id = invId,
-                        studentId = student.id,
-                        billingMonth = billingMonth,
-                        amount = baseFee,
-                        discount = discount,
-                        discountReason = discountReason,
-                        status = InvoiceStatus.UNPAID
-                    )
-                )
-            }
+        val parentGroups = students.groupBy {
+            if (it.parentPhone.isNotBlank()) it.parentPhone.trim() else it.parentName.trim().lowercase(Locale.getDefault())
         }
 
-        dao.insertInvoices(newInvoices)
-        newInvoices.size
+        var count = 0
+        val invoicesToInsert = mutableListOf<InvoiceEntity>()
+        parentGroups.forEach { (_, siblingList) ->
+            siblingList.forEachIndexed { index, student ->
+                val invoiceId = "inv_${student.id}_${billingMonth.replace("-", "")}"
+                val isSiblingDiscountEligible = index > 0
+                val discountAmount = if (isSiblingDiscountEligible) (defaultFee * siblingDiscountPercent / 100.0) else 0.0
+                val discountReason = if (isSiblingDiscountEligible) "Sibling Discount (${siblingDiscountPercent.toInt()}%)" else ""
+
+                val inv = InvoiceEntity(
+                    id = invoiceId,
+                    studentId = student.id,
+                    billingMonth = billingMonth,
+                    amount = defaultFee,
+                    discount = discountAmount,
+                    discountReason = discountReason,
+                    status = InvoiceStatus.UNPAID
+                )
+                invoicesToInsert.add(inv)
+                count++
+            }
+        }
+        dao.insertInvoices(invoicesToInsert)
+        count
     }
 
-    suspend fun submitCashPayment(invoiceId: String, amount: Double, submittedBy: String, notes: String) = withContext(Dispatchers.IO) {
-        val paymentId = "pay_${UUID.randomUUID().toString().take(8)}"
+    suspend fun submitCashPayment(invoiceId: String, amount: Double, submitterId: String, notes: String) = withContext(Dispatchers.IO) {
         val payment = PaymentEntity(
-            id = paymentId,
+            id = "pay_${UUID.randomUUID().toString().take(8)}",
             invoiceId = invoiceId,
             amount = amount,
             method = PaymentMethod.CASH,
-            submittedBy = submittedBy,
+            submittedBy = submitterId,
             notes = notes
         )
         dao.insertPayment(payment)
         dao.updateInvoiceStatus(invoiceId, InvoiceStatus.PENDING_APPROVAL)
-    }
-
-    suspend fun approvePayment(paymentId: String, invoiceId: String, approverId: String) = withContext(Dispatchers.IO) {
-        val settings = dao.getAcademySettingsDirect()
-        val prefix = settings?.prefix ?: "BF"
-        val receiptNo = "$prefix-${SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())}-${UUID.randomUUID().toString().take(4).uppercase(Locale.getDefault())}"
-
-        val allPayments = dao.getAllPayments().first()
-        val payment = allPayments.find { it.id == paymentId }
-        if (payment != null) {
-            val updatedPayment = payment.copy(
-                approvedBy = approverId,
-                approvedAt = System.currentTimeMillis(),
-                receiptNo = receiptNo
-            )
-            dao.updatePayment(updatedPayment)
-        }
-        dao.updateInvoiceStatus(invoiceId, InvoiceStatus.PAID)
     }
 
     suspend fun recordDirectPayment(
@@ -546,10 +677,7 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
         approverId: String,
         notes: String
     ) = withContext(Dispatchers.IO) {
-        val settings = dao.getAcademySettingsDirect()
-        val prefix = settings?.prefix ?: "BF"
-        val receiptNo = "$prefix-${SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())}-${UUID.randomUUID().toString().take(4).uppercase(Locale.getDefault())}"
-
+        val receiptNo = "REC-${SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())}-${UUID.randomUUID().toString().take(4).uppercase(Locale.getDefault())}"
         val payment = PaymentEntity(
             id = "pay_${UUID.randomUUID().toString().take(8)}",
             invoiceId = invoiceId,
@@ -565,81 +693,92 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
         dao.updateInvoiceStatus(invoiceId, InvoiceStatus.PAID)
     }
 
+    suspend fun approvePayment(paymentId: String, invoiceId: String, approverId: String) = withContext(Dispatchers.IO) {
+        val payments = dao.getAllPayments().firstOrNull() ?: emptyList()
+        val targetPayment = payments.find { it.id == paymentId }
+        val receiptNo = "REC-${SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())}-${UUID.randomUUID().toString().take(4).uppercase(Locale.getDefault())}"
+        if (targetPayment != null) {
+            dao.updatePayment(
+                targetPayment.copy(
+                    approvedBy = approverId,
+                    approvedAt = System.currentTimeMillis(),
+                    receiptNo = receiptNo
+                )
+            )
+        }
+        dao.updateInvoiceStatus(invoiceId, InvoiceStatus.PAID)
+    }
+
     suspend fun updateInvoiceStatus(invoiceId: String, status: InvoiceStatus) = withContext(Dispatchers.IO) {
         dao.updateInvoiceStatus(invoiceId, status)
     }
 
-    // --- Grading System ---
+    suspend fun submitPayment(invoiceId: String, amount: Double, method: PaymentMethod, notes: String) = withContext(Dispatchers.IO) {
+        recordDirectPayment(invoiceId, amount, method, _currentUser.value?.fullName ?: "Staff", notes)
+    }
+
+    // --- Grading ---
     val allGradingEventsWithRecords: Flow<List<GradingEventWithRecords>> = combine(
         dao.getAllGradingEvents(),
         dao.getAllStudents()
     ) { events, _ ->
-        events.map { event ->
-            val records = dao.getGradingRecordsForEvent(event.id).first()
-            val passCount = records.count { it.result == GradingResultType.PASS }
+        events.map { ev ->
+            val recordsFlow = dao.getGradingRecordsForEvent(ev.id)
+            val records = recordsFlow.firstOrNull() ?: emptyList()
+            val passes = records.count { it.result == GradingResultType.PASS || it.result == GradingResultType.DOUBLE_PROMOTION }
             GradingEventWithRecords(
-                id = event.id,
-                name = event.name,
-                eventDate = event.eventDate,
-                location = event.location,
-                examiner = event.examiner,
-                fee = event.fee,
-                isCompleted = event.isCompleted,
+                id = ev.id,
+                name = ev.name,
+                eventDate = ev.eventDate,
+                location = ev.location,
+                examiner = ev.examiner,
+                fee = ev.fee,
+                isCompleted = ev.isCompleted,
                 candidateCount = records.size,
-                passCount = passCount
+                passCount = passes
             )
         }
     }
 
-    fun getGradingCandidates(eventId: String): Flow<List<GradingCandidateDetail>> {
-        return combine(
-            dao.getGradingRecordsForEvent(eventId),
-            dao.getAllStudents(),
-            dao.getAllBelts()
-        ) { records, students, belts ->
-            val studentMap = students.associateBy { it.id }
-            val beltMap = belts.associateBy { it.id }
-
-            records.map { rec ->
-                val stud = studentMap[rec.studentId]
-                val fromBelt = rec.fromBeltId?.let { beltMap[it] }
-                val toBelt = rec.toBeltId?.let { beltMap[it] }
-
-                GradingCandidateDetail(
-                    recordId = rec.id,
-                    eventId = rec.gradingEventId,
-                    studentId = rec.studentId,
-                    studentName = stud?.fullName ?: "Student",
-                    fromBeltName = fromBelt?.name ?: "—",
-                    toBeltName = toBelt?.name ?: "—",
-                    fromBeltColorHex = fromBelt?.colorHex ?: "#94A3B8",
-                    toBeltColorHex = toBelt?.colorHex ?: "#3B82F6",
-                    toBeltId = rec.toBeltId,
-                    result = rec.result,
-                    notes = rec.notes
-                )
-            }
-        }
-    }
-
-    suspend fun addGradingEvent(
-        name: String,
-        eventDate: String,
-        location: String,
-        examiner: String,
-        fee: Double
-    ) = withContext(Dispatchers.IO) {
+    suspend fun createGradingEvent(name: String, eventDate: String, location: String, examiner: String, fee: Double) = withContext(Dispatchers.IO) {
         dao.insertGradingEvent(
             GradingEventEntity(
-                id = "gr_ev_${UUID.randomUUID().toString().take(8)}",
+                id = "gev_${UUID.randomUUID().toString().take(6)}",
+                organizationId = "persatuan_selangor",
                 name = name,
                 eventDate = eventDate,
                 location = location,
                 examiner = examiner,
-                fee = fee,
-                isCompleted = false
+                fee = fee
             )
         )
+    }
+
+    suspend fun addGradingEvent(name: String, eventDate: String, location: String, examiner: String, fee: Double) =
+        createGradingEvent(name, eventDate, location, examiner, fee)
+
+    fun getGradingCandidates(eventId: String): Flow<List<GradingCandidateDetail>> = combine(
+        dao.getGradingRecordsForEvent(eventId),
+        dao.getAllStudents(),
+        dao.getAllBelts()
+    ) { records, students, belts ->
+        val studentsMap = students.associateBy { it.id }
+        val beltsMap = belts.associateBy { it.id }
+        records.map { r ->
+            val st = studentsMap[r.studentId]
+            GradingCandidateDetail(
+                recordId = r.id,
+                eventId = r.gradingEventId,
+                studentId = r.studentId,
+                studentName = st?.fullName ?: "Student",
+                fromBeltName = r.fromBeltId?.let { beltsMap[it]?.name } ?: "Current Belt",
+                fromBeltColorHex = r.fromBeltId?.let { beltsMap[it]?.colorHex } ?: "#94A3B8",
+                targetBeltName = r.toBeltId?.let { beltsMap[it]?.name } ?: "Target Belt",
+                targetBeltColorHex = r.toBeltId?.let { beltsMap[it]?.colorHex } ?: "#3B82F6",
+                result = r.result,
+                scoreNotes = r.scoreNotes
+            )
+        }
     }
 
     suspend fun registerForGrading(
@@ -648,16 +787,15 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
         fromBeltId: String?,
         toBeltId: String?
     ) = withContext(Dispatchers.IO) {
-        dao.insertGradingRecord(
-            GradingRecordEntity(
-                id = "grec_${UUID.randomUUID().toString().take(8)}",
-                gradingEventId = eventId,
-                studentId = studentId,
-                fromBeltId = fromBeltId,
-                toBeltId = toBeltId,
-                result = GradingResultType.REGISTERED
-            )
+        val record = GradingRecordEntity(
+            id = "grec_${eventId}_${studentId}",
+            gradingEventId = eventId,
+            studentId = studentId,
+            fromBeltId = fromBeltId,
+            toBeltId = toBeltId,
+            result = GradingResultType.REGISTERED
         )
+        dao.insertGradingRecord(record)
     }
 
     suspend fun recordGradingResult(
@@ -672,41 +810,33 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
             id = recordId,
             gradingEventId = eventId,
             studentId = studentId,
-            fromBeltId = null,
             toBeltId = toBeltId,
             result = result,
-            notes = notes,
-            gradedAt = System.currentTimeMillis()
+            scoreNotes = notes
         )
         dao.updateGradingRecord(record)
 
-        // Automatic belt promotion & digital certificate issuance upon PASS
-        if (result == GradingResultType.PASS && toBeltId != null) {
+        if ((result == GradingResultType.PASS || result == GradingResultType.DOUBLE_PROMOTION) && toBeltId != null) {
             dao.updateStudentBelt(studentId, toBeltId)
-
-            val student = dao.getStudentById(studentId)
             val belt = dao.getAllBeltsDirect().find { it.id == toBeltId }
-            val beltName = belt?.name ?: "Advanced Belt"
-
-            val certCode = "BF-${UUID.randomUUID().toString().take(6).uppercase(Locale.getDefault())}"
-            val certNo = "PSMDS-GRAD-${SimpleDateFormat("yyyy", Locale.getDefault()).format(Date())}-${UUID.randomUUID().toString().take(3).uppercase(Locale.getDefault())}"
-
+            val certCode = "BF-${belt?.name?.replace(" ", "")?.take(6)?.uppercase(Locale.getDefault()) ?: "BELT"}-${UUID.randomUUID().toString().take(4).uppercase(Locale.getDefault())}"
+            val certNo = "PSMDS-GRD-${SimpleDateFormat("yyyy", Locale.getDefault()).format(Date())}-${UUID.randomUUID().toString().take(4).uppercase(Locale.getDefault())}"
             dao.insertCertificate(
                 CertificateEntity(
                     id = "cert_${UUID.randomUUID().toString().take(8)}",
                     studentId = studentId,
                     type = CertType.GRADING,
-                    title = "$beltName Promotion Certificate",
+                    title = "${belt?.name ?: "Belt"} Promotion Certificate",
                     certNo = certNo,
                     verifyCode = certCode,
                     issuedAt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
-                    issuedBy = "Examiner Board & Master Ravi"
+                    issuedBy = "Master Eswaran (Chief Examiner)"
                 )
             )
         }
     }
 
-    // --- Skills Curriculum ---
+    // --- Skills & Progress ---
     val allSkills: Flow<List<SkillEntity>> = dao.getAllSkills()
 
     fun getStudentSkillProgress(studentId: String): Flow<List<StudentSkillProgress>> {
@@ -714,9 +844,9 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
             dao.getAllSkills(),
             dao.getSkillsForStudent(studentId)
         ) { skills, studentSkills ->
-            val userSkillMap = studentSkills.associateBy { it.skillId }
+            val map = studentSkills.associateBy { it.skillId }
             skills.map { skill ->
-                val level = userSkillMap[skill.id]?.level ?: SkillLevel.NOT_STARTED
+                val level = map[skill.id]?.level ?: SkillLevel.NOT_STARTED
                 StudentSkillProgress(
                     skillId = skill.id,
                     skillName = skill.name,
@@ -728,6 +858,8 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
         }
     }
 
+    fun getStudentSkillsProgress(studentId: String): Flow<List<StudentSkillProgress>> = getStudentSkillProgress(studentId)
+
     suspend fun setSkillLevel(
         studentId: String,
         skillId: String,
@@ -735,7 +867,7 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
         notes: String = ""
     ) = withContext(Dispatchers.IO) {
         val entity = StudentSkillEntity(
-            id = "ssk_${studentId}_$skillId",
+            id = "sskill_${studentId}_$skillId",
             studentId = studentId,
             skillId = skillId,
             level = level,
@@ -745,7 +877,15 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
         dao.setStudentSkillLevel(entity)
     }
 
-    suspend fun addSkill(name: String, category: String, description: String, sortOrder: Int) = withContext(Dispatchers.IO) {
+    suspend fun setStudentSkillLevel(studentId: String, skillId: String, level: SkillLevel) =
+        setSkillLevel(studentId, skillId, level)
+
+    suspend fun addSkill(
+        name: String,
+        category: String,
+        description: String,
+        sortOrder: Int
+    ) = withContext(Dispatchers.IO) {
         dao.insertSkill(
             SkillEntity(
                 id = "sk_${UUID.randomUUID().toString().take(8)}",
@@ -778,42 +918,13 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
     }
 
     // --- Tournaments ---
-    val allTournaments: Flow<List<TournamentDetail>> = combine(
-        dao.getAllTournaments(),
-        dao.getAllTournamentResults(),
-        dao.getAllStudents()
-    ) { tournaments, results, students ->
-        val studentsMap = students.associateBy { it.id }
-        val resultsByTournament = results.groupBy { it.tournamentId }
-
-        tournaments.map { t ->
-            val resList = (resultsByTournament[t.id] ?: emptyList()).map { r ->
-                TournamentResultDetail(
-                    id = r.id,
-                    tournamentId = r.tournamentId,
-                    studentId = r.studentId,
-                    studentName = studentsMap[r.studentId]?.fullName ?: "Student",
-                    eventCategory = r.eventCategory,
-                    medal = r.medal,
-                    points = r.points,
-                    notes = r.notes
-                )
-            }
-            TournamentDetail(
-                id = t.id,
-                name = t.name,
-                eventDate = t.eventDate,
-                location = t.location,
-                organizer = t.organizer,
-                results = resList
-            )
-        }
-    }
+    val allTournaments: Flow<List<TournamentEntity>> = dao.getAllTournaments()
 
     suspend fun addTournament(name: String, eventDate: String, location: String, organizer: String) = withContext(Dispatchers.IO) {
         dao.insertTournament(
             TournamentEntity(
                 id = "tourn_${UUID.randomUUID().toString().take(8)}",
+                organizationId = "persatuan_selangor",
                 name = name,
                 eventDate = eventDate,
                 location = location,
@@ -841,7 +952,6 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
             )
         )
 
-        // If medal won, award tournament certificate
         if (medal != Medal.PARTICIPATION) {
             val certCode = "BF-ACHV-${UUID.randomUUID().toString().take(6).uppercase(Locale.getDefault())}"
             val certNo = "PSMDS-ACHV-${SimpleDateFormat("yyyy", Locale.getDefault()).format(Date())}-${UUID.randomUUID().toString().take(3).uppercase(Locale.getDefault())}"
@@ -876,7 +986,8 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
                 certNo = cert.certNo,
                 verifyCode = cert.verifyCode,
                 issuedAt = cert.issuedAt,
-                issuedBy = cert.issuedBy
+                issuedBy = cert.issuedBy,
+                academyName = "Persatuan Taekwondo Selangor"
             )
         }
     }
@@ -897,11 +1008,11 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
             certNo = cert.certNo,
             verifyCode = cert.verifyCode,
             issuedAt = cert.issuedAt,
-            issuedBy = cert.issuedBy
+            issuedBy = cert.issuedBy,
+            academyName = "Persatuan Taekwondo Selangor"
         )
     }
 
-    // --- Helpers ---
     private fun parseClassIds(json: String): List<String> {
         return try {
             val array = JSONArray(json)
@@ -930,5 +1041,34 @@ class BeltFlowRepository(private val dao: BeltFlowDao) {
         } catch (e: Exception) {
             0
         }
+    }
+
+    suspend fun exportAcademyDataJson(): String = withContext(Dispatchers.IO) {
+        val json = org.json.JSONObject()
+        val students = dao.getAllStudentsDirect()
+        val belts = dao.getAllBeltsDirect()
+        val classes = dao.getAllClassesDirect()
+
+        val studentsArray = org.json.JSONArray()
+        for (s in students) {
+            val obj = org.json.JSONObject().apply {
+                put("id", s.id)
+                put("fullName", s.fullName)
+                put("icOrMykid", s.icOrMykid)
+                put("dateOfBirth", s.dateOfBirth)
+                put("gender", s.gender)
+                put("beltId", s.beltId)
+                put("lifecycle", s.lifecycle.name)
+                put("parentName", s.parentName)
+                put("parentPhone", s.parentPhone)
+            }
+            studentsArray.put(obj)
+        }
+        json.put("exportedAt", System.currentTimeMillis())
+        json.put("studentsCount", students.size)
+        json.put("students", studentsArray)
+        json.put("beltsCount", belts.size)
+        json.put("classesCount", classes.size)
+        json.toString(2)
     }
 }

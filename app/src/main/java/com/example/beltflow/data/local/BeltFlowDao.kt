@@ -7,9 +7,25 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface BeltFlowDao {
 
+    // --- Persatuans ---
+    @Query("SELECT * FROM persatuans ORDER BY name ASC")
+    fun getAllPersatuans(): Flow<List<PersatuanEntity>>
+
+    @Query("SELECT * FROM persatuans WHERE id = :id LIMIT 1")
+    suspend fun getPersatuanById(id: String): PersatuanEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPersatuan(persatuan: PersatuanEntity)
+
+    @Update
+    suspend fun updatePersatuan(persatuan: PersatuanEntity)
+
     // --- Profiles ---
     @Query("SELECT * FROM profiles ORDER BY createdAt DESC")
     fun getAllProfiles(): Flow<List<ProfileEntity>>
+
+    @Query("SELECT * FROM profiles WHERE organizationId = :orgId ORDER BY createdAt DESC")
+    fun getProfilesForOrganization(orgId: String): Flow<List<ProfileEntity>>
 
     @Query("SELECT * FROM profiles WHERE id = :id LIMIT 1")
     suspend fun getProfileById(id: String): ProfileEntity?
@@ -28,6 +44,55 @@ interface BeltFlowDao {
 
     @Query("UPDATE profiles SET studentId = :studentId WHERE id = :profileId")
     suspend fun linkProfileToStudent(profileId: String, studentId: String)
+
+    // --- Parent Child Links (3-Way Approval) ---
+    @Query("SELECT * FROM parent_child_links ORDER BY createdAt DESC")
+    fun getAllParentChildLinks(): Flow<List<ParentChildLinkEntity>>
+
+    @Query("SELECT * FROM parent_child_links WHERE parentProfileId = :parentProfileId AND status = 'APPROVED'")
+    fun getApprovedLinksForParent(parentProfileId: String): Flow<List<ParentChildLinkEntity>>
+
+    @Query("SELECT * FROM parent_child_links WHERE id = :id LIMIT 1")
+    suspend fun getParentChildLinkById(id: String): ParentChildLinkEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertParentChildLink(link: ParentChildLinkEntity)
+
+    @Update
+    suspend fun updateParentChildLink(link: ParentChildLinkEntity)
+
+    // --- Class Transfers (2-Master Approval) ---
+    @Query("SELECT * FROM class_transfers ORDER BY createdAt DESC")
+    fun getAllClassTransfers(): Flow<List<ClassTransferRequestEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertClassTransfer(transfer: ClassTransferRequestEntity)
+
+    @Update
+    suspend fun updateClassTransfer(transfer: ClassTransferRequestEntity)
+
+    // --- Audit Logs ---
+    @Query("SELECT * FROM audit_logs ORDER BY timestamp DESC")
+    fun getAllAuditLogs(): Flow<List<AuditLogEntity>>
+
+    @Query("SELECT * FROM audit_logs WHERE organizationId = :orgId ORDER BY timestamp DESC")
+    fun getAuditLogsForOrganization(orgId: String): Flow<List<AuditLogEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAuditLog(log: AuditLogEntity)
+
+    // --- Announcements ---
+    @Query("SELECT * FROM announcements ORDER BY createdAt DESC")
+    fun getAllAnnouncements(): Flow<List<AnnouncementEntity>>
+
+    @Query("SELECT * FROM announcements WHERE status = 'PUBLISHED' ORDER BY createdAt DESC")
+    fun getPublishedAnnouncements(): Flow<List<AnnouncementEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAnnouncement(announcement: AnnouncementEntity)
+
+    @Update
+    suspend fun updateAnnouncement(announcement: AnnouncementEntity)
 
     // --- Settings ---
     @Query("SELECT * FROM academy_settings LIMIT 1")
@@ -83,6 +148,16 @@ interface BeltFlowDao {
 
     @Delete
     suspend fun deleteClass(classEntity: ClassEntity)
+
+    // --- Class Master CrossRef ---
+    @Query("SELECT * FROM class_master_cross_ref WHERE classId = :classId")
+    suspend fun getMastersForClass(classId: String): List<ClassMasterCrossRefEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertClassMasterCrossRef(crossRef: ClassMasterCrossRefEntity)
+
+    @Delete
+    suspend fun deleteClassMasterCrossRef(crossRef: ClassMasterCrossRefEntity)
 
     // --- Students ---
     @Query("SELECT * FROM students ORDER BY fullName ASC")
@@ -262,11 +337,4 @@ interface BeltFlowDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCertificate(certificate: CertificateEntity)
-
-    // --- Legacy demo cleanup ---
-    @Query("DELETE FROM students WHERE id IN ('stud_1', 'stud_2', 'stud_3', 'stud_4', 'stud_5', 'stud_6') OR fullName IN ('Aryan Suresh', 'Tharun Kumar', 'Dhivya Letchumi', 'Harish Nair', 'Kaviarasan Mohan', 'Aiman Hakim')")
-    suspend fun deleteLegacyDemoStudents()
-
-    @Query("DELETE FROM profiles WHERE id IN ('prof_coach_1', 'prof_parent_1', 'prof_student_1', 'prof_parent_pending') OR email IN ('ravi.silambam@gmail.com', 'suresh.parent@gmail.com', 'aryan.suresh@gmail.com', 'kavitha.devi@gmail.com')")
-    suspend fun deleteLegacyDemoProfiles()
 }

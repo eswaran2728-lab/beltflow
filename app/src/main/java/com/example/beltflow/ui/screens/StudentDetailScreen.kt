@@ -169,7 +169,8 @@ fun StudentDetailScreen(
                                 Icon(Icons.Default.Send, contentDescription = "WhatsApp", tint = Emerald600)
                             }
 
-                            if (currentUser?.role == UserRole.ADMIN || currentUser?.role == UserRole.COACH) {
+                            val canManage = currentUser?.role == UserRole.ADMIN_PERSATUAN || currentUser?.role == UserRole.MASTER || currentUser?.role == UserRole.SUPER_ADMIN
+                            if (canManage) {
                                 IconButton(
                                     onClick = { showEditDialog = true },
                                     modifier = Modifier.size(36.dp).testTag("edit_student_button")
@@ -204,12 +205,13 @@ fun StudentDetailScreen(
             }
 
             // Tab Content
+            val canManage = currentUser?.role == UserRole.ADMIN_PERSATUAN || currentUser?.role == UserRole.MASTER || currentUser?.role == UserRole.SUPER_ADMIN
             when (selectedTab) {
                 0 -> StudentBioTab(student = s)
                 1 -> StudentAttendanceTab(attendanceList = attendanceList)
                 2 -> StudentSkillsTab(
                     skills = skillsProgress,
-                    canEdit = currentUser?.role == UserRole.ADMIN || currentUser?.role == UserRole.COACH,
+                    canEdit = canManage,
                     onUpdateLevel = { skillId, level ->
                         viewModel.updateStudentSkill(s.id, skillId, level)
                     }
@@ -221,7 +223,7 @@ fun StudentDetailScreen(
                 )
                 5 -> StudentNotesTab(
                     notes = notes,
-                    canAdd = currentUser?.role == UserRole.ADMIN || currentUser?.role == UserRole.COACH,
+                    canAdd = canManage,
                     onAddNoteClick = { showAddNoteDialog = true }
                 )
             }

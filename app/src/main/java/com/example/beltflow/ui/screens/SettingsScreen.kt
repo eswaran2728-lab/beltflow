@@ -328,8 +328,9 @@ fun SettingsScreen(
                                         Surface(
                                             shape = RoundedCornerShape(6.dp),
                                             color = when (profile.role) {
-                                                UserRole.ADMIN -> AccentAmber100
-                                                UserRole.COACH -> Sky100
+                                                UserRole.SUPER_ADMIN -> Crimson100
+                                                UserRole.ADMIN_PERSATUAN -> AccentAmber100
+                                                UserRole.MASTER -> Sky100
                                                 UserRole.PARENT -> Emerald100
                                                 UserRole.STUDENT -> Purple100
                                             }
@@ -340,8 +341,9 @@ fun SettingsScreen(
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 10.sp,
                                                 color = when (profile.role) {
-                                                    UserRole.ADMIN -> AccentAmber800
-                                                    UserRole.COACH -> Sky800
+                                                    UserRole.SUPER_ADMIN -> Crimson600
+                                                    UserRole.ADMIN_PERSATUAN -> AccentAmber800
+                                                    UserRole.MASTER -> Sky800
                                                     UserRole.PARENT -> Emerald800
                                                     UserRole.STUDENT -> Purple800
                                                 },
@@ -356,7 +358,7 @@ fun SettingsScreen(
                                     )
                                 }
 
-                                if (profile.role != UserRole.ADMIN) {
+                                if (profile.role != UserRole.SUPER_ADMIN && profile.role != UserRole.ADMIN_PERSATUAN) {
                                     when (profile.status) {
                                         ProfileStatus.PENDING -> {
                                             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {

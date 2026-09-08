@@ -298,7 +298,7 @@ fun TopNavBar(
                 }
             }
 
-            if (onNavigateToSettings != null && currentUser?.role == UserRole.ADMIN) {
+            if (onNavigateToSettings != null && (currentUser?.role == UserRole.ADMIN_PERSATUAN || currentUser?.role == UserRole.SUPER_ADMIN)) {
                 IconButton(
                     onClick = onNavigateToSettings,
                     modifier = Modifier.size(36.dp).testTag("settings_button")

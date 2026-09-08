@@ -7,6 +7,9 @@ sealed interface Screen {
     data object Auth : Screen
 
     @Serializable
+    data object SuperAdminDashboard : Screen
+
+    @Serializable
     data object AdminDashboard : Screen
 
     @Serializable
