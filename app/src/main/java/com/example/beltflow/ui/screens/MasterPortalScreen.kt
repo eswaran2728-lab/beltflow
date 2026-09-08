@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.beltflow.data.local.*
 import com.example.beltflow.data.model.*
 import com.example.beltflow.ui.components.*
 import com.example.beltflow.ui.theme.*
@@ -1284,42 +1285,51 @@ private fun MasterSkillsContent(
                     Column(modifier = Modifier.padding(14.dp)) {
                         Text("Assessing ${st.fullName} (${st.beltName})", fontWeight = FontWeight.Bold, color = BrandNavy)
                         Spacer(modifier = Modifier.height(10.dp))
-                        skills.forEach { sk ->
-                            var currentLevel by remember { mutableStateOf(SkillLevel.GOOD) }
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 6.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(sk.name, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
-                                    Text("Category: ${sk.category}", style = MaterialTheme.typography.bodySmall, color = Slate500)
-                                }
-
-                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    listOf(SkillLevel.LEARNING, SkillLevel.GOOD, SkillLevel.MASTERED).forEach { lvl ->
-                                        Button(
-                                            onClick = {
-                                                currentLevel = lvl
-                                                onUpdateSkill(st.id, sk.id, lvl, "Assessed by Master")
-                                            },
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = if (currentLevel == lvl) Emerald600 else Slate100,
-                                                contentColor = if (currentLevel == lvl) Color.White else Slate700
-                                            ),
-                                            shape = RoundedCornerShape(6.dp),
-                                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
-                                        ) {
-                                            Text(lvl.label.take(4), fontSize = 10.sp)
-                                        }
-                                    }
-                                }
-                            }
+                        for (sk in skills) {
+                            SkillAssessmentItemRow(sk = sk, studentId = st.id, onUpdateSkill = onUpdateSkill)
                             HorizontalDivider(color = Slate100)
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SkillAssessmentItemRow(
+    sk: SkillEntity,
+    studentId: String,
+    onUpdateSkill: (studentId: String, skillId: String, level: SkillLevel, notes: String) -> Unit
+) {
+    var currentLevel by remember { mutableStateOf(SkillLevel.GOOD) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(sk.name, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+            Text("Category: ${sk.category}", style = MaterialTheme.typography.bodySmall, color = Slate500)
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            for (lvl in listOf(SkillLevel.LEARNING, SkillLevel.GOOD, SkillLevel.MASTERED)) {
+                Button(
+                    onClick = {
+                        currentLevel = lvl
+                        onUpdateSkill(studentId, sk.id, lvl, "Assessed by Master")
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (currentLevel == lvl) Emerald600 else Slate100,
+                        contentColor = if (currentLevel == lvl) Color.White else Slate700
+                    ),
+                    shape = RoundedCornerShape(6.dp),
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(lvl.label.take(4), fontSize = 10.sp)
                 }
             }
         }
@@ -1599,7 +1609,7 @@ private fun AddMasterToClassDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Select Master to assign:", style = MaterialTheme.typography.labelMedium)
-                availableMasters.forEach { m ->
+                for (m in availableMasters) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -1721,7 +1731,7 @@ private fun QuickSkillRateDialog(
 
                 Text("Proficiency Level:", style = MaterialTheme.typography.labelMedium)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf(SkillLevel.LEARNING, SkillLevel.GOOD, SkillLevel.MASTERED).forEach { lvl ->
+                    for (lvl in listOf(SkillLevel.LEARNING, SkillLevel.GOOD, SkillLevel.MASTERED)) {
                         FilterChip(
                             selected = selectedLevel == lvl,
                             onClick = { selectedLevel = lvl },
