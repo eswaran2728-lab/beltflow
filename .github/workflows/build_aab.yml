@@ -37,12 +37,19 @@ jobs:
           fi
           keytool -list -keystore release.keystore -storepass beltflowpass -alias beltflow
 
-      - name: Build Android App Bundle (Release AAB) & APK
+      - name: Build Android App Bundle (Release AAB)
         env:
           KEYSTORE_PASSWORD: beltflowpass
           KEY_ALIAS: beltflow
           KEY_PASSWORD: beltflowpass
-        run: gradle :app:bundleRelease :app:assembleRelease --stacktrace
+        run: gradle :app:bundleRelease --stacktrace --info
+
+      - name: Build Release APK
+        env:
+          KEYSTORE_PASSWORD: beltflowpass
+          KEY_ALIAS: beltflow
+          KEY_PASSWORD: beltflowpass
+        run: gradle :app:assembleRelease --stacktrace --info
 
       - name: Verify Signed Bundle
         run: |
