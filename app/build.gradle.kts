@@ -22,8 +22,7 @@ android {
 
     signingConfigs {
         create("release") {
-            val keystoreFile = rootProject.file("release.keystore")
-            storeFile = if (keystoreFile.exists()) keystoreFile else file("../release.keystore")
+            storeFile = rootProject.file("release.keystore")
             storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "beltflowpass"
             keyAlias = System.getenv("KEY_ALIAS") ?: "beltflow"
             keyPassword = System.getenv("KEY_PASSWORD") ?: "beltflowpass"
