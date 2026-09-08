@@ -35,7 +35,8 @@ jobs:
             echo "Generating self-signed release keystore for CI build..."
             keytool -genkeypair -v -keystore release.keystore -storepass beltflowpass -alias beltflow -keypass beltflowpass -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=BeltFlow, OU=BeltFlow, O=BeltFlow, L=Sepang, ST=Selangor, C=MY"
           fi
-          keytool -list -keystore release.keystore -storepass beltflowpass -alias beltflow
+      - name: Generate Gradle Wrapper
+        run: gradle wrapper --gradle-version 8.11.1
 
       - name: Build Android App Bundle (Release AAB)
         env:
@@ -43,7 +44,7 @@ jobs:
           KEY_ALIAS: beltflow
           KEY_PASSWORD: beltflowpass
         run: |
-          gradle :app:bundleRelease --stacktrace
+          ./gradlew :app:bundleRelease --stacktrace --no-daemon
 
       - name: Build Release APK
         env:
@@ -51,7 +52,7 @@ jobs:
           KEY_ALIAS: beltflow
           KEY_PASSWORD: beltflowpass
         run: |
-          gradle :app:assembleRelease --stacktrace
+          ./gradlew :app:assembleRelease --stacktrace --no-daemon
 
       - name: Verify Signed Bundle
         run: |
