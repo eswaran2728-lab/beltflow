@@ -8,12 +8,12 @@ plugins {
 
 android {
     namespace = "com.example.beltflow"
-    compileSdk = 36
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.eswaran.beltflow"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 35
         versionCode = 10
         versionName = "1.0.9"
 
