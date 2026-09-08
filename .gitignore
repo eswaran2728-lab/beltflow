@@ -6,7 +6,6 @@ build/
 app/build/
 *.aab
 *.keystore
-*.keystore.base64
 node_modules/
 .next/
 out/
