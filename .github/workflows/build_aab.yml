@@ -8,10 +8,14 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -35,24 +39,32 @@ jobs:
             echo "Generating self-signed release keystore for CI build..."
             keytool -genkeypair -v -keystore release.keystore -storepass beltflowpass -alias beltflow -keypass beltflowpass -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=BeltFlow, OU=BeltFlow, O=BeltFlow, L=Sepang, ST=Selangor, C=MY"
           fi
+
       - name: Generate Gradle Wrapper
         run: gradle wrapper --gradle-version 8.11.1
 
-      - name: Build Android App Bundle (Release AAB)
+      - name: Build Android App Bundle and Release APK
         env:
           KEYSTORE_PASSWORD: beltflowpass
           KEY_ALIAS: beltflow
           KEY_PASSWORD: beltflowpass
         run: |
-          ./gradlew :app:bundleRelease --stacktrace --no-daemon
-
-      - name: Build Release APK
-        env:
-          KEYSTORE_PASSWORD: beltflowpass
-          KEY_ALIAS: beltflow
-          KEY_PASSWORD: beltflowpass
-        run: |
-          ./gradlew :app:assembleRelease --stacktrace --no-daemon
+          set +e
+          ./gradlew :app:bundleRelease :app:assembleRelease --stacktrace --info > gradle_build.log 2>&1
+          BUILD_STATUS=$?
+          if [ $BUILD_STATUS -ne 0 ]; then
+            echo "Build failed with exit code $BUILD_STATUS"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git checkout --orphan ci-debug-log || git checkout -B ci-debug-log
+            git rm -rf . || true
+            cp gradle_build.log build_output.txt
+            git add build_output.txt
+            git commit -m "ci: capture build error log"
+            git push origin HEAD:ci-debug-log --force || true
+            tail -n 100 gradle_build.log
+            exit 1
+          fi
 
       - name: Verify Signed Bundle
         run: |
