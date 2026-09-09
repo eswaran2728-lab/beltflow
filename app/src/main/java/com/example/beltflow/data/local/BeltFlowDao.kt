@@ -39,6 +39,9 @@ interface BeltFlowDao {
     @Update
     suspend fun updateProfile(profile: ProfileEntity)
 
+    @Query("DELETE FROM profiles WHERE email = :email OR id = :id")
+    suspend fun deleteProfile(id: String, email: String)
+
     @Query("UPDATE profiles SET status = :status WHERE id = :id")
     suspend fun updateProfileStatus(id: String, status: ProfileStatus)
 

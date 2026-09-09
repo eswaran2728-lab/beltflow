@@ -221,7 +221,6 @@ class BeltFlowViewModel(private val repository: BeltFlowRepository) : ViewModel(
             val profile = when (target.lowercase(Locale.getDefault())) {
                 "super_admin", "superadmin" -> daoGetProfileByEmail("eswaran2728@gmail.com")
                 "admin", "admin_persatuan" -> daoGetProfileByEmail("persatuansilambamdaerahsepang@gmail.com")
-                "coach", "master" -> daoGetProfileByEmail("master.silambamsepang@gmail.com")
                 else -> daoGetProfileByEmail(target)
             }
             if (profile != null) {

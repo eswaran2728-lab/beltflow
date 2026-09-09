@@ -122,23 +122,8 @@ suspend fun ensureAdminAccount(dao: BeltFlowDao) {
         )
     )
 
-    // 3. Ensure Master Persatuan Account (master.silambamsepang@gmail.com - Mahagurusrisarumugam)
-    val masterSepang = dao.getProfileByEmail("master.silambamsepang@gmail.com")
-    val saltMaster = if (masterSepang?.passwordSalt?.isNotBlank() == true) masterSepang.passwordSalt else com.example.beltflow.data.security.SecurityUtils.generateSalt()
-    dao.insertProfile(
-        ProfileEntity(
-            id = masterSepang?.id ?: "prof_master_sepang",
-            fullName = "Master Silambam (Sepang)",
-            email = "master.silambamsepang@gmail.com",
-            phone = "+60 12-345 6780",
-            role = UserRole.MASTER,
-            status = ProfileStatus.APPROVED,
-            organizationId = "persatuan_sepang",
-            assignedClass = "cls_junior_green",
-            password = com.example.beltflow.data.security.SecurityUtils.hashPassword("Mahagurusrisarumugam", saltMaster),
-            passwordSalt = saltMaster
-        )
-    )
+    // 3. Clean up any leftover demo Master / Coach profile (Real masters will register/login)
+    dao.deleteProfile("prof_master_sepang", "master.silambamsepang@gmail.com")
 }
 
 suspend fun populateInitialData(dao: BeltFlowDao) {
@@ -177,7 +162,7 @@ suspend fun populateInitialData(dao: BeltFlowDao) {
         )
     )
 
-    // 3. User Profiles for Fixed Roles (Super Admin, Admin Persatuan, Master Persatuan)
+    // 3. User Profiles for Real Roles (Super Admin, Admin Persatuan)
     val saltSuper = com.example.beltflow.data.security.SecurityUtils.generateSalt()
     val superAdmin = ProfileEntity(
         id = "prof_super_eswaran",
@@ -204,23 +189,8 @@ suspend fun populateInitialData(dao: BeltFlowDao) {
         passwordSalt = saltAdmin
     )
 
-    val saltMaster = com.example.beltflow.data.security.SecurityUtils.generateSalt()
-    val masterSepang = ProfileEntity(
-        id = "prof_master_sepang",
-        fullName = "Master Silambam (Sepang)",
-        email = "master.silambamsepang@gmail.com",
-        phone = "+60 12-345 6780",
-        role = UserRole.MASTER,
-        status = ProfileStatus.APPROVED,
-        organizationId = "persatuan_sepang",
-        assignedClass = "cls_junior_green",
-        password = com.example.beltflow.data.security.SecurityUtils.hashPassword("Mahagurusrisarumugam", saltMaster),
-        passwordSalt = saltMaster
-    )
-
     dao.insertProfile(superAdmin)
     dao.insertProfile(adminPersatuan)
-    dao.insertProfile(masterSepang)
 
     // 4. Belt Syllabus
     val belts = listOf(

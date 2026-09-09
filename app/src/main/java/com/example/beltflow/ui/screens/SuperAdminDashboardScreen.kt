@@ -80,47 +80,6 @@ fun SuperAdminDashboardScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Role Switcher Bar
-            item {
-                BlueprintCard(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            "ROLE SWITCHER (DEMO CONTROL)",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Button(
-                                onClick = { onSwitchUser("super_admin") },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                            ) {
-                                Text("👑 Super Admin", fontSize = 11.sp)
-                            }
-                            Button(
-                                onClick = { onSwitchUser("admin") },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                            ) {
-                                Text("🏛️ Admin Persatuan", fontSize = 11.sp)
-                            }
-                            Button(
-                                onClick = { onSwitchUser("coach") },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706))
-                            ) {
-                                Text("🥋 Master Sepang", fontSize = 11.sp)
-                            }
-                        }
-                    }
-                }
-            }
-
             // Platform Stats Row
             item {
                 Text(

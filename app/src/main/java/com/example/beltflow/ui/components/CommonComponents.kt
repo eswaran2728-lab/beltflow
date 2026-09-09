@@ -368,37 +368,6 @@ fun TopNavBar(
                         HorizontalDivider(color = Slate200)
                     }
 
-                    Text(
-                        "Switch Workspace:",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Slate500,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
-                    )
-
-                    DropdownMenuItem(
-                        text = { Text("👑 Super Admin (BeltFlow)", fontSize = 13.sp) },
-                        onClick = {
-                            showUserMenu = false
-                            onSwitchUser("super_admin")
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("🏛️ Admin Persatuan (Sepang)", fontSize = 13.sp) },
-                        onClick = {
-                            showUserMenu = false
-                            onSwitchUser("admin")
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("🥋 Master (Persatuan Sepang)", fontSize = 13.sp) },
-                        onClick = {
-                            showUserMenu = false
-                            onSwitchUser("coach")
-                        }
-                    )
-
-                    HorizontalDivider(color = Slate200)
-
                     DropdownMenuItem(
                         text = { Text("Sign Out", color = Crimson600, fontWeight = FontWeight.SemiBold) },
                         leadingIcon = { Icon(Icons.Default.Logout, contentDescription = null, tint = Crimson600) },
