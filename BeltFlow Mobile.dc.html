@@ -1,6 +1,5 @@
-<!DOCTYPE html>
-<html>
-<head>
+<!-- BeltFlow Native Mobile (Pro UI/UX) -->
+<!DOCTYPE html><html><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="./support.js"></script>
@@ -8,180 +7,214 @@
 <body>
 <x-dc>
 
-<helmet>
+<helmet><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
 <link rel="stylesheet" href="_ds/industry-9952df84-df83-446d-b055-1795314437a3/styles.css">
 <script src="_ds/industry-9952df84-df83-446d-b055-1795314437a3/_ds_bundle.js"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root{
-  /* brand override: navy + amber, sampled from the BeltFlow mark */
-  --brand-navy:#123a5e; --brand-navy-deep:#0d2b47; --brand-navy-tint:#e7edf2;
-  --color-accent:#f2941c; --color-accent-100:#fdf1e2; --color-accent-200:#fbe0bd;
-  --color-accent-300:#f7c880; --color-accent-400:#f3ab48; --color-accent-500:#f2941c;
-  --color-accent-600:#d97e0f; --color-accent-700:#a8620d; --color-accent-800:#7a480a; --color-accent-900:#4a2c06;
-  --color-accent-2:#f2941c; --color-accent-2-100:#fdf1e2; --color-accent-2-200:#fbe0bd; --color-accent-2-300:#f7c880;
-  --color-accent-2-400:#f3ab48; --color-accent-2-500:#f2941c; --color-accent-2-600:#d97e0f;
-  --color-accent-2-700:#a8620d; --color-accent-2-800:#7a480a; --color-accent-2-900:#4a2c06;
+  --brand-navy:#0d2b47;
+  --brand-navy-light:#123a5e;
+  --brand-navy-tint:#eaf1f7;
+  --color-accent:#f2941c;
+  --color-accent-soft:#fff7ed;
+  --color-accent-border:#fed7aa;
+  --bf-green:#10b981;
+  --bf-red:#ef4444;
 }
-body{margin:0;display:flex;justify-content:center;padding:32px 0;background:var(--color-neutral-200)}
-.bf-tab{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;cursor:pointer;padding:6px 0}
+body{
+  margin:0;
+  display:flex;
+  justify-content:center;
+  padding:24px 0;
+  background:#0f172a;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+}
+.bf-m-tab{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:3px;
+  flex:1;
+  cursor:pointer;
+  padding:8px 0 4px;
+}
+.belt-tag-mini{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  font-size:10px;
+  font-weight:700;
+  padding:2px 7px;
+  border-radius:4px;
+}
+.card-mini{
+  background:#fff;
+  border:1px solid #e2e8f0;
+  border-radius:12px;
+  padding:14px;
+  box-shadow:0 1px 2px rgba(0,0,0,.03);
+}
 </style>
-</helmet>
+<style>
+body, button, input, select, textarea, .btn, .belt-tag-mini, .card-mini, .bf-m-tab, h1, h2, h3, h4, h5, h6, span, div, a {
+  font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+</style></helmet>
 
 <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ 390 }}" height="{{ 844 }}" hint-size="390,844">
-  <div style="height:100%;display:flex;flex-direction:column;background:var(--color-bg);font-family:var(--font-body);color:var(--color-text)">
+  <div style="height:100%;display:flex;flex-direction:column;background:#f8fafc;color:#0f172a">
 
-    <div style="padding:56px 20px 12px;display:flex;align-items:center;gap:8px;flex:none">
-      
-      <img src="./pasted-1788411545196-0-mtl223yv-uwhs.png" alt="pasted-1788411545196-0" width="1536" height="1024" style="max-width: 100%; height: 28px; display: block; object-fit: cover; width: 44px; aspect-ratio: 1536 / 1024">
-      <span style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--brand-navy)">BeltFlow</span><i data-lucide="bell" style="width:18px;height:18px;margin-left:auto;color:var(--brand-navy)"></i>
+    <!-- Top App Bar -->
+    <div style="padding:52px 18px 12px;background:var(--brand-navy);color:#fff;display:flex;align-items:center;justify-content:space-between;flex:none">
+      <div style="display:flex;align-items:center;gap:8px">
+        <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDfAdt-7U6QJHjwU2bZ2awglhwxr_rmOdqblkXhpz97oG3kSzRFGI9G9Nji_jLsof87kvxSnp333Nf0kycp_VlgPCtIcKdPRFaCaa99M0VdSJf-jwxXqCuuGRO09AU_vkzVS1P98kfeUHs61IW9lkhQhglp_Hi0TTuE7N-5RCXsNwHCy8agLFYmf6v3lxPl8nGj2ujiqNyhzt_a0UcfuYqZzw8_rddd20XP58iJuWAISyzjat7n7mHYCf42l5l15xK_ew" alt="BeltFlow" style="height:26px;width:auto;border-radius:4px;background:#fff;padding:2px">
+        <span style="font-weight:800;font-size:16px;letter-spacing:.02em" class="">BELTFLOW</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:10px;font-weight:600;padding:3px 8px;border-radius:12px;background:rgba(242,148,28,.25);color:var(--color-accent)" class="">CENTRAL DOJANG</span>
+        <i data-lucide="bell" style="width:18px;height:18px;color:#fff"></i>
+      </div>
     </div>
 
-    <div style="flex:1;overflow:auto;padding:4px 20px 20px">
+    <!-- Active View Selector (Coach on Mat vs Student/Parent) -->
+    <div style="padding:8px 18px;background:var(--brand-navy-light);display:flex;gap:6px">
+      <button type="button" class="btn btn-sm" style="flex:1;font-size:11px;font-weight:600;padding:4px 0;background:{{ roleCoachBg }};color:{{ roleCoachColor }};border:none;border-radius:6px" onclick="{{ setRoleCoach }}">🥋 Coach on Mat</button>
+      <button type="button" class="btn btn-sm" style="flex:1;font-size:11px;font-weight:600;padding:4px 0;background:{{ roleStudentBg }};color:{{ roleStudentColor }};border:none;border-radius:6px" onclick="{{ setRoleStudent }}">👤 Student &amp; Parent</button>
+    </div>
 
-      <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
-      <div style="display:flex;flex-direction:column;gap:16px">
-        <div>
-          <div style="font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Good morning</div>
-          <div style="font-family:var(--font-heading);font-weight:600;font-size:20px;text-transform:uppercase;color:var(--brand-navy)">Meridian Martial Arts</div>
-        </div>
+    <!-- Main Scrollable Feed -->
+    <div style="flex:1;overflow-y:auto;padding:16px 18px">
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <sc-for list="{{ stats }}" as="st" hint-placeholder-count="4">
-            <div class="blueprint" style="padding:12px">
-              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <div style="font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--color-accent-700)">{{ st.label }}</div>
-              <div style="font-family:var(--font-heading);font-weight:600;font-size:22px;margin-top:2px;color:var(--brand-navy)">{{ st.value }}</div>
-            </div>
-          </sc-for>
-        </div>
-
-        <div>
-          <div style="font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:8px">Today</div>
-          <div class="blueprint" style="padding:14px;display:flex;align-items:center;gap:12px">
-            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-            <div style="width:38px;height:38px;flex:none;border-radius:50%;background:var(--color-accent-100);color:var(--color-accent-700);display:flex;align-items:center;justify-content:center"><i data-lucide="award" style="width:18px;height:18px"></i></div>
-            <div style="min-width:0">
-              <div style="font-size:14px;font-weight:500">Belt Grading — Central Dojang</div>
-              <div style="font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Sep 20 · 18 candidates registered</div>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <div style="font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:8px">Needs attention</div>
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <sc-for list="{{ overdue }}" as="o" hint-placeholder-count="3">
-              <div class="blueprint" style="padding:12px;display:flex;align-items:center;justify-content:space-between;gap:10px">
-                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-                <div style="min-width:0">
-                  <div style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ o.name }}</div>
-                  <div style="font-size:11px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">{{ o.amount }} · {{ o.days }}d overdue</div>
-                </div>
-                <button type="button" class="btn btn-ghost" style="font-size:12px;flex:none">Remind</button>
-              </div>
-            </sc-for>
-          </div>
-        </div>
-
-        <div class="blueprint elev-sm" style="padding:16px;cursor:pointer" onClick="{{ goCertificates }}">
-          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-            <span style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600">Certificate of Promotion</span>
-            <div style="width:26px;height:26px;border:1px solid var(--color-accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:6px;color:var(--color-accent-700);font-weight:600">OFF</div>
-          </div>
-          <div style="font-family:var(--font-heading);font-weight:600;font-size:18px;text-transform:uppercase;color:var(--brand-navy)">Aryan Suresh</div>
-          <div style="font-size:12px;color:color-mix(in srgb, var(--color-text) 65%, transparent)">Promoted to Green Belt · BF-GREEN-9821</div>
-        </div>
-      </div>
-      </sc-if>
-
-      <sc-if value="{{ isStudents }}" hint-placeholder-val="{{ false }}">
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <input class="input" type="text" placeholder="Search students">
-        <div style="display:flex;flex-direction:column;gap:2px">
-          <sc-for list="{{ roster }}" as="s" hint-placeholder-count="8">
-            <div style="display:flex;align-items:center;gap:12px;padding:10px 2px;border-bottom:1px solid color-mix(in srgb, var(--color-text) 8%, transparent)">
-              <div style="width:36px;height:36px;flex:none;border-radius:50%;background:var(--brand-navy-tint);color:var(--brand-navy);display:flex;align-items:center;justify-content:center;font-family:var(--font-heading);font-weight:600;font-size:12px">{{ s.initials }}</div>
-              <div style="flex:1;min-width:0">
-                <div style="font-size:14px">{{ s.name }}</div>
-                <div style="display:flex;gap:6px;margin-top:3px"><span class="{{ s.beltTagClass }}">{{ s.belt }}</span><span class="{{ s.feeTagClass }}">{{ s.feeStatus }}</span></div>
-              </div>
-              <i data-lucide="chevron-right" style="width:16px;height:16px;color:color-mix(in srgb, var(--color-text) 40%, transparent);flex:none"></i>
-            </div>
-          </sc-for>
-        </div>
-      </div>
-      </sc-if>
-
-      <sc-if value="{{ isGrading }}" hint-placeholder-val="{{ false }}">
-      <div style="display:flex;flex-direction:column;gap:16px">
-        <div class="blueprint elev-sm" style="padding:14px">
-          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-          <div style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--brand-navy)">Sep 20, 2026</div>
-          <div style="font-size:12px;color:color-mix(in srgb, var(--color-text) 60%, transparent);margin-top:2px">Central Dojang · Examiner Master Ravi</div>
-          <span class="tag tag-accent" style="margin-top:8px;display:inline-flex">18 candidates</span>
-        </div>
-        <div>
-          <div style="font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:8px">Candidates</div>
-          <div style="display:flex;flex-direction:column;gap:2px">
-            <sc-for list="{{ candidates }}" as="c" hint-placeholder-count="6">
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 2px;border-bottom:1px solid color-mix(in srgb, var(--color-text) 8%, transparent)">
-                <div style="font-size:14px">{{ c.name }}</div>
-                <div style="display:flex;align-items:center;gap:6px;flex:none">
-                  <span class="tag tag-neutral">{{ c.from }}</span>
-                  <i data-lucide="arrow-right" style="width:12px;height:12px;color:color-mix(in srgb, var(--color-text) 45%, transparent)"></i>
-                  <span class="tag tag-accent">{{ c.to }}</span>
-                </div>
-              </div>
-            </sc-for>
-          </div>
-        </div>
-      </div>
-      </sc-if>
-
-      <sc-if value="{{ isCertificates }}" hint-placeholder-val="{{ false }}">
+      <!-- ================= COACH MOBILE VIEW ================= -->
+      <sc-if value="{{ isCoachMode }}" hint-placeholder-val="{{ true }}">
       <div style="display:flex;flex-direction:column;gap:14px">
-        <sc-for list="{{ certificates }}" as="cert" hint-placeholder-count="3">
-          <div class="blueprint elev-md" style="padding:18px;display:flex;flex-direction:column;gap:10px">
-            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-            <div style="display:flex;justify-content:space-between;align-items:flex-start">
-              <span style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600">Certificate of Promotion</span>
-              <div style="width:30px;height:30px;border:1px solid var(--color-accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--color-accent-700);font-weight:600">OFF</div>
-            </div>
-            <div>
-              <div style="font-family:var(--font-heading);font-weight:600;font-size:19px;text-transform:uppercase;color:var(--brand-navy)">{{ cert.student }}</div>
-              <div style="font-size:12px;color:color-mix(in srgb, var(--color-text) 65%, transparent);margin-top:2px">Promoted to {{ cert.belt }}</div>
-            </div>
-            <div style="height:1px;background:var(--color-divider)"></div>
-            <div style="display:flex;justify-content:space-between;font-size:10px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">
-              <span>{{ cert.date }}</span><span>{{ cert.code }}</span>
-            </div>
-            <button type="button" class="btn btn-secondary btn-block" style="margin-top:2px"><i data-lucide="download" style="width:14px;height:14px"></i>Download PDF</button>
+        
+        <!-- Live Class Card -->
+        <div style="background:var(--brand-navy);color:#fff;border-radius:14px;padding:16px;position:relative;overflow:hidden">
+          <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--color-accent);text-transform:uppercase" class="">Active Mat Session</div>
+          <div style="font-size:18px;font-weight:800;margin-top:2px" class="">Sparring &amp; Poomsae</div>
+          <div style="font-size:12px;color:#94a3b8;margin-top:2px" class="">Mon 6:00 PM · 18 Enrolled</div>
+          <div style="display:flex;gap:8px;margin-top:14px">
+            <button type="button" class="btn" style="flex:1;background:var(--color-accent);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;padding:8px 0">1-Tap Roster Check</button>
           </div>
-        </sc-for>
+        </div>
+
+        <!-- 3+ Absences Alert with WhatsApp CTA -->
+        <div style="background:#fff1f2;border:1px solid #fecdd3;border-radius:12px;padding:12px 14px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <i data-lucide="alert-circle" style="width:16px;height:16px;color:#e11d48"></i>
+            <span style="font-size:12px;font-weight:700;color:#9f1239" class="">2 At-Risk Students (3+ missed)</span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid #ffe4e6">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#0f172a" class="">Wei Ling Tan</div>
+              <div style="font-size:10px;color:#e11d48" class="">3 classes absent</div>
+            </div>
+            <a href="https://wa.me/60129876543" class="btn btn-sm" style="background:#10b981;color:#fff;font-size:11px;padding:4px 10px;border-radius:6px;text-decoration:none;display:inline-flex;align-items:center;gap:4px">
+              <i data-lucide="message-circle" style="width:12px;height:12px"></i> Ping Parent
+            </a>
+          </div>
+        </div>
+
+        <!-- Trainee Quick Attendance List -->
+        <div>
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:8px" class="">Today's Mat Attendance</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <sc-for list="{{ coachTrainees }}" as="t" hint-placeholder-count="4">
+              <div class="card-mini" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="width:34px;height:34px;border-radius:50%;background:var(--brand-navy-tint);color:var(--brand-navy);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px" class="">{{ t.init }}</div>
+                  <div>
+                    <div style="font-size:13px;font-weight:700" class="">{{ t.name }}</div>
+                    <span class="belt-tag-mini" style="background:#e2e8f0;color:#334155">{{ t.belt }}</span>
+                  </div>
+                </div>
+                <div style="display:flex;gap:4px">
+                  <button type="button" class="btn btn-sm" style="background:#dcfce7;color:#15803d;border:none;font-size:11px;padding:4px 8px;border-radius:6px;font-weight:700">Present</button>
+                  <button type="button" class="btn btn-sm" style="background:#f1f5f9;color:#64748b;border:none;font-size:11px;padding:4px 8px;border-radius:6px">Late</button>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+      </div>
+      </sc-if>
+
+      <!-- ================= STUDENT / PARENT MOBILE VIEW ================= -->
+      <sc-if value="{{ isStudentMode }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        
+        <!-- Student Identity Card -->
+        <div class="card-mini" style="display:flex;align-items:center;gap:12px">
+          <div style="width:48px;height:48px;border-radius:50%;background:var(--brand-navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px" class="">AS</div>
+          <div style="flex:1">
+            <div style="font-size:15px;font-weight:800;color:var(--brand-navy)" class="">Aryan Suresh</div>
+            <div style="font-size:11px;color:#64748b" class="">Central Dojang · Master Ravi</div>
+            <div style="margin-top:4px"><span class="belt-tag-mini" style="background:#dcfce7;color:#15803d">Green Belt (4th Gup)</span></div>
+          </div>
+        </div>
+
+        <!-- Sibling Discount Banner -->
+        <div style="background:var(--color-accent-soft);border:1px solid var(--color-accent-border);border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#9a3412" class="">10% Sibling Discount Applied</div>
+            <div style="font-size:10px;color:#c2410c" class="">Enrolled with brother (Dev Suresh)</div>
+          </div>
+          <span style="font-size:12px;font-weight:800;color:var(--brand-navy)" class="">-RM 18/mo</span>
+        </div>
+
+        <!-- Verified Digital Certificate Card -->
+        <div style="background:#fff;border:2px solid var(--color-accent);border-radius:14px;padding:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="font-size:10px;font-weight:800;color:var(--color-accent);text-transform:uppercase;letter-spacing:.06em" class="">Digital Certificate</span>
+            <span style="font-size:9px;font-weight:700;background:#dcfce7;color:#15803d;padding:2px 6px;border-radius:4px" class="">QR VERIFIED</span>
+          </div>
+          <div style="font-size:16px;font-weight:800;color:var(--brand-navy)" class="">Promotion to Green Belt</div>
+          <div style="font-size:11px;color:#64748b;margin:2px 0 10px" class="">Issued Aug 14, 2026 · BF-GREEN-9821</div>
+          <button type="button" class="btn" style="width:100%;background:var(--brand-navy);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;padding:8px 0;display:flex;align-items:center;justify-content:center;gap:6px">
+            <i data-lucide="download" style="width:14px;height:14px"></i> Download PDF Certificate
+          </button>
+        </div>
+
+        <!-- Technique Checklist -->
+        <div class="card-mini">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div style="font-size:12px;font-weight:700;color:var(--brand-navy)" class="">Blue Belt Syllabus</div>
+            <span style="font-size:11px;font-weight:700;color:#15803d" class="">4/5 Ready</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:12px">
+            <div style="display:flex;align-items:center;gap:6px" class=""><i data-lucide="check-circle" style="width:14px;height:14px;color:#10b981"></i> Taegeuk Sam Jang</div>
+            <div style="display:flex;align-items:center;gap:6px" class=""><i data-lucide="check-circle" style="width:14px;height:14px;color:#10b981"></i> Turning Kick Combos</div>
+            <div style="display:flex;align-items:center;gap:6px" class=""><i data-lucide="check-circle" style="width:14px;height:14px;color:#10b981"></i> One-Step Sparring</div>
+            <div style="display:flex;align-items:center;gap:6px" class=""><i data-lucide="clock" style="width:14px;height:14px;color:#d97706"></i> Board Breaking (Kyokpa)</div>
+          </div>
+        </div>
+
       </div>
       </sc-if>
 
     </div>
 
-    <div style="flex:none;display:flex;padding:6px 8px 22px;border-top:1px solid var(--color-divider);background:var(--color-surface)">
-      <div class="bf-tab" onClick="{{ goHome }}">
-        <i data-lucide="layout-dashboard" style="width:20px;height:20px;color:{{ homeColor }}"></i>
-        <span style="font-size:10px;color:{{ homeColor }}">Home</span>
+    <!-- Bottom Navigation Tabs -->
+    <div style="flex:none;display:flex;padding:4px 10px 24px;border-top:1px solid #e2e8f0;background:#fff">
+      <div class="bf-m-tab">
+        <i data-lucide="layout-dashboard" style="width:18px;height:18px;color:var(--color-accent)"></i>
+        <span style="font-size:10px;font-weight:600;color:var(--color-accent)" class="">Today</span>
       </div>
-      <div class="bf-tab" onClick="{{ goStudents }}">
-        <i data-lucide="users" style="width:20px;height:20px;color:{{ studentsColor }}"></i>
-        <span style="font-size:10px;color:{{ studentsColor }}">Students</span>
+      <div class="bf-m-tab">
+        <i data-lucide="users" style="width:18px;height:18px;color:#94a3b8"></i>
+        <span style="font-size:10px;color:#94a3b8" class="">Students</span>
       </div>
-      <div class="bf-tab" onClick="{{ goGrading }}">
-        <i data-lucide="award" style="width:20px;height:20px;color:{{ gradingColor }}"></i>
-        <span style="font-size:10px;color:{{ gradingColor }}">Grading</span>
+      <div class="bf-m-tab">
+        <i data-lucide="award" style="width:18px;height:18px;color:#94a3b8"></i>
+        <span style="font-size:10px;color:#94a3b8" class="">Grading</span>
       </div>
-      <div class="bf-tab" onClick="{{ goCertificates }}">
-        <i data-lucide="file-badge-2" style="width:20px;height:20px;color:{{ certificatesColor }}"></i>
-        <span style="font-size:10px;color:{{ certificatesColor }}">Certificates</span>
+      <div class="bf-m-tab">
+        <i data-lucide="credit-card" style="width:18px;height:18px;color:#94a3b8"></i>
+        <span style="font-size:10px;color:#94a3b8" class="">Fees</span>
       </div>
     </div>
 
@@ -189,57 +222,40 @@ body{margin:0;display:flex;justify-content:center;padding:32px 0;background:var(
 </x-import>
 
 </x-dc>
-<script type="text/x-dc" data-dc-script>
+<script type="text/x-dc" data-dc-script="">
 class Component extends DCLogic {
-  state = { tab: 'home' };
+  state = { viewRole: 'coach' }; // 'coach' | 'student'
+
   componentDidMount() { this.icons(); }
   componentDidUpdate() { this.icons(); }
   icons() { if (window.lucide) window.lucide.createIcons(); }
 
   renderVals() {
-    const tab = this.state.tab;
-    const color = (t) => tab === t ? 'var(--color-accent-700)' : 'color-mix(in srgb, var(--color-text) 50%, transparent)';
-    const beltTag = (belt) => belt === 'Black' ? 'tag tag-outline' : (belt === 'White' || belt === 'Yellow' ? 'tag tag-neutral' : 'tag tag-accent');
-    const feeTag = (status) => status === 'Overdue' ? 'tag tag-outline' : 'tag tag-neutral';
-    const initials = (name) => name.split(' ').map(w => w[0]).slice(0,2).join('');
-
-    const rosterRaw = [
-      ['Aryan Suresh','Green','Paid'], ['Priya Nathan','Blue','Paid'], ['Wei Ling Tan','Orange','Overdue'],
-      ['Kavi Selvam','Brown','Paid'], ['Nadia Hassan','White','Paid'], ['Dinesh Kumar','Yellow','Overdue'],
-      ['Farah Aziz','Black','Paid'], ['Siti Rahman','White','Overdue'],
-    ].map(r => ({ name: r[0], initials: initials(r[0]), belt: r[1], beltTagClass: beltTag(r[1]), feeStatus: r[2], feeTagClass: feeTag(r[2]) }));
-
+    const vr = this.state.viewRole;
     return {
-      isHome: tab === 'home', isStudents: tab === 'students', isGrading: tab === 'grading', isCertificates: tab === 'certificates',
-      goHome: () => this.setState({ tab: 'home' }),
-      goStudents: () => this.setState({ tab: 'students' }),
-      goGrading: () => this.setState({ tab: 'grading' }),
-      goCertificates: () => this.setState({ tab: 'certificates' }),
-      homeColor: color('home'), studentsColor: color('students'), gradingColor: color('grading'), certificatesColor: color('certificates'),
+      isCoachMode: vr === 'coach',
+      isStudentMode: vr === 'student',
 
-      stats: [
-        { label: 'Students', value: '184' }, { label: 'Gradings', value: '12' },
-        { label: 'Overdue', value: 'RM 3,240' }, { label: 'Retention', value: '92%' },
-      ],
-      overdue: [
-        { name: 'Wei Ling Tan', amount: 'RM 180', days: 12 },
-        { name: 'Dinesh Kumar', amount: 'RM 160', days: 5 },
-        { name: 'Siti Rahman', amount: 'RM 144', days: 21 },
-      ],
-      roster: rosterRaw,
-      candidates: [
-        { name: 'Aryan Suresh', from: 'Yellow', to: 'Green' }, { name: 'Priya Nathan', from: 'Orange', to: 'Blue' },
-        { name: 'Kavi Selvam', from: 'Blue', to: 'Brown' }, { name: 'Ravi Chandran', from: 'Yellow', to: 'Green' },
-        { name: 'Jia Wen Ho', from: 'White', to: 'Yellow' }, { name: 'Omar Farid', from: 'Green', to: 'Blue' },
-      ],
-      certificates: [
-        { student: 'Aryan Suresh', belt: 'Green Belt', date: 'Aug 14, 2026', code: 'BF-GREEN-9821' },
-        { student: 'Priya Nathan', belt: 'Blue Belt', date: 'Aug 14, 2026', code: 'BF-BLUE-4410' },
-        { student: 'Kavi Selvam', belt: 'Brown Belt', date: 'Jul 2, 2026', code: 'BF-BROWN-2207' },
-      ],
+      roleCoachBg: vr === 'coach' ? '#f2941c' : 'transparent',
+      roleCoachColor: vr === 'coach' ? '#fff' : '#94a3b8',
+      roleStudentBg: vr === 'student' ? '#f2941c' : 'transparent',
+      roleStudentColor: vr === 'student' ? '#fff' : '#94a3b8',
+
+      setRoleCoach: () => this.setState({ viewRole: 'coach' }),
+      setRoleStudent: () => this.setState({ viewRole: 'student' }),
+
+      coachTrainees: [
+        { name: 'Aryan Suresh', belt: 'Green', init: 'AS' },
+        { name: 'Priya Nathan', belt: 'Blue', init: 'PN' },
+        { name: 'Wei Ling Tan', belt: 'Orange', init: 'WL' },
+        { name: 'Kavi Selvam', belt: 'Brown', init: 'KS' }
+      ]
     };
   }
 }
 </script>
-</body>
-</html>
+
+
+
+
+</body></html>

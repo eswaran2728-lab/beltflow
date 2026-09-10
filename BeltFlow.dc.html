@@ -1,3 +1,4 @@
+<!-- BeltFlow Web Hub (Pro UI/UX) -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -14,566 +15,650 @@
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-body{margin:0}
-a{color:var(--color-accent-700);text-decoration:none}
-a:hover{color:var(--color-accent)}
-.bf-tbl-wrap{overflow-x:auto}
-.role-badge{font-size:11px;font-weight:600;letter-spacing:.05em;padding:3px 8px;border-radius:3px;text-transform:uppercase}
-.badge-superadmin{background:rgba(220,38,38,.12);color:#dc2626;border:1px solid rgba(220,38,38,.3)}
-.badge-persatuan{background:rgba(37,99,235,.12);color:#2563eb;border:1px solid rgba(37,99,235,.3)}
-.badge-coach{background:rgba(217,119,6,.12);color:#d97706;border:1px solid rgba(217,119,6,.3)}
-.badge-student{background:rgba(16,185,129,.12);color:#059669;border:1px solid rgba(16,185,129,.3)}
+:root{
+  --bf-navy:#0d2b47;
+  --bf-navy-light:#123a5e;
+  --bf-navy-surface:#091e32;
+  --bf-amber:#f2941c;
+  --bf-amber-hover:#d97e0f;
+  --bf-amber-soft:#fff7ed;
+  --bf-slate:#f8fafc;
+  --bf-card-bg:#ffffff;
+  --bf-border:#e2e8f0;
+  --bf-text-main:#0f172a;
+  --bf-text-muted:#64748b;
+  --bf-success:#10b981;
+  --bf-danger:#ef4444;
+}
+body{
+  margin:0;
+  background:#f1f5f9;
+  color:var(--bf-text-main);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.bf-container{max-width:1380px;margin:0 auto;padding:0 24px}
+.bf-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:9999px;font-size:11px;font-weight:600;letter-spacing:.02em}
+.bf-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:9px 16px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;transition:all .15s ease;border:none}
+.bf-btn-primary{background:var(--bf-amber);color:#fff}
+.bf-btn-primary:hover{background:var(--bf-amber-hover)}
+.bf-btn-navy{background:var(--bf-navy);color:#fff}
+.bf-btn-navy:hover{background:var(--bf-navy-light)}
+.bf-btn-outline{background:#fff;border:1px solid var(--bf-border);color:var(--bf-text-main)}
+.bf-btn-outline:hover{background:#f8fafc;border-color:#cbd5e1}
+.bf-btn-sm{padding:5px 10px;font-size:11px;border-radius:6px}
+.bf-card{background:var(--bf-card-bg);border:1px solid var(--bf-border);border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.bf-nav-item{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--bf-text-muted);transition:all .12s}
+.bf-nav-item:hover{color:var(--bf-navy);background:#f1f5f9}
+.bf-nav-item.active{color:var(--bf-navy);background:#e2e8f0;font-weight:600}
+.bf-tbl{width:100%;border-collapse:collapse;text-align:left;font-size:13px}
+.bf-tbl th{padding:12px 14px;background:#f8fafc;color:var(--bf-text-muted);font-weight:600;border-bottom:1px solid var(--bf-border);text-transform:uppercase;font-size:11px;letter-spacing:.04em}
+.bf-tbl td{padding:13px 14px;border-bottom:1px solid var(--bf-border);vertical-align:middle}
+.bf-tbl tr:hover td{background:#fafafa}
+.belt-badge{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:11px;padding:3px 10px;border-radius:6px}
+.belt-white{background:#f1f5f9;color:#475569;border:1px solid #cbd5e1}
+.belt-yellow{background:#fef9c3;color:#854d0e;border:1px solid #fef08a}
+.belt-green{background:#dcfce7;color:#166534;border:1px solid #bbf7d0}
+.belt-blue{background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe}
+.belt-brown{background:#faebd7;color:#78350f;border:1px solid #fcd34d}
+.belt-black{background:#0f172a;color:#f8fafc;border:1px solid #334155}
 </style>
 </helmet>
 
-<div style="min-height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);position:relative">
+<div style="min-height:100vh;display:flex;flex-direction:column">
 
-  <!-- TOP ROLE SWITCHER HEADER -->
-  <div style="position:sticky;top:0;z-index:1000;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 20px;background:var(--color-neutral-100);border-bottom:1px solid var(--color-divider);flex-wrap:wrap">
-    <div style="display:flex;align-items:center;gap:8px">
-      <span style="font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--color-accent-800)"><i data-lucide="shield-half" style="width:16px;height:16px;vertical-align:-2px;margin-right:4px"></i>BELTFLOW</span>
-      <span class="tag tag-outline" style="font-size:10px">Role Architecture</span>
-    </div>
-    
-    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-      <span style="font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 60%, transparent);margin-right:4px">Switch Role View:</span>
-      <button type="button" class="{{ btnLandingClass }}" style="font-size:12px;padding:5px 10px" onClick="{{ toLanding }}">🌐 Marketing Site</button>
-      <button type="button" class="{{ btnAdminBeltflowClass }}" style="font-size:12px;padding:5px 10px" onClick="{{ toAdminBeltflow }}">👑 Admin BeltFlow</button>
-      <button type="button" class="{{ btnAdminPersatuanClass }}" style="font-size:12px;padding:5px 10px" onClick="{{ toAdminPersatuan }}">🏛️ Admin Persatuan</button>
-      <button type="button" class="{{ btnCoachClass }}" style="font-size:12px;padding:5px 10px" onClick="{{ toCoach }}">🥋 Coach / Master</button>
-      <button type="button" class="{{ btnStudentClass }}" style="font-size:12px;padding:5px 10px" onClick="{{ toStudent }}">👤 Students / Parents</button>
-    </div>
-  </div>
-
-  <!-- 1. PUBLIC MARKETING SITE -->
-  <sc-if value="{{ isLanding }}" hint-placeholder-val="{{ true }}">
-  <div>
-    <nav class="nav" style="border-bottom:1px solid var(--color-divider)">
-      <span class="nav-brand"><i data-lucide="shield-half" style="width:20px;height:20px;vertical-align:-4px;margin-right:6px"></i>BeltFlow</span>
-      <a href="#features">Features</a>
-      <a href="#proof">Persatuan Partners</a>
-      <a href="#pricing">Pricing</a>
-      <button type="button" class="btn btn-secondary" onClick="{{ toAdminBeltflow }}">Platform Demo</button>
-      <button type="button" class="btn btn-primary" onClick="{{ toAdminPersatuan }}">Admin Persatuan Portal</button>
-    </nav>
-
-    <section style="background:var(--color-accent-900);color:var(--color-bg);--color-divider:rgba(255,255,255,.18);padding:88px 0 72px">
-      <div style="max-width:1180px;margin:0 auto;padding:0 32px">
-        <span style="display:block;font-size:13px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;color:var(--color-accent-300);margin-bottom:16px">Multi-Tenant Martial Arts & Sports Operations</span>
-        <h1 style="font-family:var(--font-heading);font-weight:600;font-size:clamp(38px,5.5vw,64px);line-height:1.05;letter-spacing:.005em;text-transform:uppercase;margin:0;max-width:18ch">Unified platform for Admin BeltFlow, Persatuans, Coaches & Parents</h1>
-        <p style="font-size:18px;line-height:1.6;max-width:58ch;color:rgba(242,242,243,.82);margin:24px 0 0">Streamline martial arts association governance, financial movement, coach class monitoring, belt gradings, and student-parent portals in one unified ecosystem.</p>
-        <div style="display:flex;gap:12px;margin-top:32px;flex-wrap:wrap">
-          <button type="button" class="btn btn-primary" style="padding:12px 22px;font-size:15px" onClick="{{ toAdminPersatuan }}">Enter Persatuan Dashboard</button>
-          <button type="button" class="btn btn-secondary" style="padding:12px 22px;font-size:15px;border-color:rgba(255,255,255,.35);color:var(--color-bg)" onClick="{{ toAdminBeltflow }}">Super Admin Portal</button>
+  <!-- TOP BRAND & MULTI-ROLE SWITCHER BAR -->
+  <header style="background:var(--bf-navy);color:#fff;border-bottom:1px solid rgba(255,255,255,.1);position:sticky;top:0;z-index:900">
+    <div style="padding:10px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCx37_vo8BeMTLBtjYj-sSHlmCjNW1KFp7HxCpoSSPch6uxZLEA4llUfGHrb_8z3EnvqJHxLao0hOslJoKaxtmM4cHFirqIygoKd8Vh-MQg1Y6pbMYFuNEHVj6mrv1DhdfaXrgo5dumyBPCM_E0vtsH93pYZTMzN23L3lk1v6m1pDmdzj1xclP3C_pVch0dbunEc4gKib_fDRDTRX0xcsdcs3siWL6aL-5FnRJ_-REs8B1E94I4Ac_Aa4twF4lO1dtXIw" alt="BeltFlow" style="height:32px;width:auto;border-radius:4px;background:#fff;padding:2px">
+        <div>
+          <div style="font-weight:800;font-size:17px;letter-spacing:.02em;display:flex;align-items:center;gap:6px">
+            BELTFLOW <span style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(242,148,28,.2);color:var(--bf-amber)">MANAGEMENT OS</span>
+          </div>
+          <div style="font-size:11px;color:#94a3b8">Multi-Role Martial Arts Academy Platform</div>
         </div>
       </div>
-    </section>
 
-    <section id="features" style="padding:80px 0">
-      <div style="max-width:1180px;margin:0 auto;padding:0 32px">
-        <span style="display:block;font-size:13px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;color:var(--color-accent-700);margin-bottom:10px">4-Tier Architecture</span>
-        <h2 style="font-size:34px;margin:0 0 40px;text-transform:uppercase">Tailored experience for every role</h2>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:24px">
-          <div class="blueprint" style="padding:24px;cursor:pointer" onClick="{{ toAdminBeltflow }}">
-            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-            <span class="role-badge badge-superadmin" style="display:inline-block;margin-bottom:12px">Level 1</span>
-            <h3 style="font-size:18px;margin:0 0 8px;text-transform:uppercase">Admin BeltFlow</h3>
-            <p style="font-size:13px;line-height:1.6;color:color-mix(in srgb, var(--color-text) 75%, transparent);margin:0">Create Persatuan Admins, configure platform fee charges, and oversee platform-wide growth.</p>
-          </div>
-          <div class="blueprint" style="padding:24px;cursor:pointer" onClick="{{ toAdminPersatuan }}">
-            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-            <span class="role-badge badge-persatuan" style="display:inline-block;margin-bottom:12px">Level 2</span>
-            <h3 style="font-size:18px;margin:0 0 8px;text-transform:uppercase">Admin Persatuan</h3>
-            <p style="font-size:13px;line-height:1.6;color:color-mix(in srgb, var(--color-text) 75%, transparent);margin:0">Monitor association movement, income analytics, coach rosters, and multi-branch operations.</p>
-          </div>
-          <div class="blueprint" style="padding:24px;cursor:pointer" onClick="{{ toCoach }}">
-            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-            <span class="role-badge badge-coach" style="display:inline-block;margin-bottom:12px">Level 3</span>
-            <h3 style="font-size:18px;margin:0 0 8px;text-transform:uppercase">Coach / Master</h3>
-            <p style="font-size:13px;line-height:1.6;color:color-mix(in srgb, var(--color-text) 75%, transparent);margin:0">Monitor class details, mark attendance, evaluate trainee skills, and recommend grading candidates.</p>
-          </div>
-          <div class="blueprint" style="padding:24px;cursor:pointer" onClick="{{ toStudent }}">
-            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-            <span class="role-badge badge-student" style="display:inline-block;margin-bottom:12px">Level 4</span>
-            <h3 style="font-size:18px;margin:0 0 8px;text-transform:uppercase">Students / Parents</h3>
-            <p style="font-size:13px;line-height:1.6;color:color-mix(in srgb, var(--color-text) 75%, transparent);margin:0">View personal or child student profile, belt progression history, verifiable digital certificates, and fees.</p>
-          </div>
+      <!-- Quick Role Mode Switcher -->
+      <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.08);padding:4px;border-radius:10px">
+        <span style="font-size:11px;color:#94a3b8;margin:0 8px">Role Portal:</span>
+        <button type="button" class="bf-btn bf-btn-sm {{ roleSuperClass }}" onClick="{{ setRoleSuper }}">👑 Admin BeltFlow</button>
+        <button type="button" class="bf-btn bf-btn-sm {{ rolePersatuanClass }}" onClick="{{ setRolePersatuan }}">🏛️ Admin Persatuan</button>
+        <button type="button" class="bf-btn bf-btn-sm {{ roleCoachClass }}" onClick="{{ setRoleCoach }}">🥋 Coach / Master</button>
+        <button type="button" class="bf-btn bf-btn-sm {{ roleStudentClass }}" onClick="{{ setRoleStudent }}">👤 Student & Parent</button>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="text-align:right">
+          <div style="font-size:12px;font-weight:600">{{ activeUserName }}</div>
+          <div style="font-size:10px;color:var(--bf-amber)">{{ activeRoleLabel }}</div>
         </div>
+        <div style="width:34px;height:34px;border-radius:50%;background:var(--bf-amber);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">{{ activeUserInitials }}</div>
       </div>
-    </section>
-  </div>
-  </sc-if>
+    </div>
+  </header>
 
-  <!-- 2. APPLICATION / DASHBOARD SHELL -->
-  <sc-if value="{{ isDashboard }}" hint-placeholder-val="{{ false }}">
-  <div style="display:flex;min-height:calc(100vh - 46px)">
+  <!-- BODY CONTENT AREA -->
+  <div style="display:flex;flex:1;min-height:calc(100vh - 61px)">
 
-    <!-- ROLE 1: ADMIN BELTFLOW (SUPER ADMIN) -->
-    <sc-if value="{{ isRoleAdminBeltflow }}" hint-placeholder-val="{{ false }}">
-    <aside style="width:240px;flex:none;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;background:var(--color-surface)">
-      <div style="padding:20px 18px;border-bottom:1px solid var(--color-divider);background:rgba(220,38,38,.04)">
-        <span class="role-badge badge-superadmin" style="margin-bottom:6px;display:inline-block">SUPER ADMIN</span>
-        <div style="font-family:var(--font-heading);font-weight:600;font-size:16px">Admin BeltFlow</div>
+    <!-- SIDE NAVIGATION -->
+    <aside style="width:250px;background:#fff;border-right:1px solid var(--bf-border);padding:20px 14px;display:flex;flex-direction:column;justify-content:space-between">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <div style="padding:0 8px 10px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--bf-text-muted)">
+          {{ activeRoleLabel }} Navigation
+        </div>
+
+        <!-- Super Admin Nav -->
+        <sc-if value="{{ isSuper }}" hint-placeholder-val="{{ true }}">
+          <div class="bf-nav-item {{ navOverviewClass }}" onClick="{{ setTabOverview }}"><i data-lucide="layout-dashboard" style="width:16px;height:16px"></i>Global KPIs</div>
+          <div class="bf-nav-item {{ navPersatuansClass }}" onClick="{{ setTabPersatuans }}"><i data-lucide="building-2" style="width:16px;height:16px"></i>Persatuans (14)</div>
+          <div class="bf-nav-item {{ navChargesClass }}" onClick="{{ setTabCharges }}"><i data-lucide="percent" style="width:16px;height:16px"></i>SaaS Charges & Fee Cuts</div>
+          <div class="bf-nav-item {{ navAuditClass }}" onClick="{{ setTabAudit }}"><i data-lucide="shield-alert" style="width:16px;height:16px"></i>Audit & Compliance</div>
+        </sc-if>
+
+        <!-- Persatuan Admin Nav -->
+        <sc-if value="{{ isPersatuan }}" hint-placeholder-val="{{ false }}">
+          <div class="bf-nav-item {{ navOverviewClass }}" onClick="{{ setTabOverview }}"><i data-lucide="trending-up" style="width:16px;height:16px"></i>Income & Movement</div>
+          <div class="bf-nav-item {{ navDojangsClass }}" onClick="{{ setTabDojangs }}"><i data-lucide="map-pin" style="width:16px;height:16px"></i>Branch Dojangs (4)</div>
+          <div class="bf-nav-item {{ navCoachesClass }}" onClick="{{ setTabCoaches }}"><i data-lucide="user-check" style="width:16px;height:16px"></i>Coach Roster (6)</div>
+          <div class="bf-nav-item {{ navGradingsClass }}" onClick="{{ setTabGradings }}"><i data-lucide="award" style="width:16px;height:16px"></i>Grading Calendar</div>
+          <div class="bf-nav-item {{ navFeesClass }}" onClick="{{ setTabFees }}"><i data-lucide="receipt" style="width:16px;height:16px"></i>Sibling Fee Rules</div>
+        </sc-if>
+
+        <!-- Coach Nav -->
+        <sc-if value="{{ isCoach }}" hint-placeholder-val="{{ false }}">
+          <div class="bf-nav-item {{ navOverviewClass }}" onClick="{{ setTabOverview }}"><i data-lucide="calendar" style="width:16px;height:16px"></i>Assigned Classes</div>
+          <div class="bf-nav-item {{ navAttendanceClass }}" onClick="{{ setTabAttendance }}"><i data-lucide="check-circle" style="width:16px;height:16px"></i>Quick Attendance</div>
+          <div class="bf-nav-item {{ navRetentionClass }}" onClick="{{ setTabRetention }}"><i data-lucide="phone-call" style="width:16px;height:16px"></i>At-Risk Retention (3+)</div>
+          <div class="bf-nav-item {{ navExamsClass }}" onClick="{{ setTabExams }}"><i data-lucide="medal" style="width:16px;height:16px"></i>Grading Recommendations</div>
+        </sc-if>
+
+        <!-- Student & Parent Nav -->
+        <sc-if value="{{ isStudent }}" hint-placeholder-val="{{ false }}">
+          <div class="bf-nav-item {{ navOverviewClass }}" onClick="{{ setTabOverview }}"><i data-lucide="user" style="width:16px;height:16px"></i>Student Profile</div>
+          <div class="bf-nav-item {{ navSyllabusClass }}" onClick="{{ setTabSyllabus }}"><i data-lucide="book-open" style="width:16px;height:16px"></i>Technique Syllabus</div>
+          <div class="bf-nav-item {{ navCertsClass }}" onClick="{{ setTabCerts }}"><i data-lucide="file-badge" style="width:16px;height:16px"></i>Verified Certificates</div>
+          <div class="bf-nav-item {{ navBillingClass }}" onClick="{{ setTabBilling }}"><i data-lucide="credit-card" style="width:16px;height:16px"></i>Invoices & Receipts</div>
+        </sc-if>
       </div>
-      <nav style="flex:1;padding:12px 0;display:flex;flex-direction:column;gap:2px">
-        <div style="{{ navStyleOverview }}" onClick="{{ setTabOverview }}"><i data-lucide="layout-dashboard" style="width:17px;height:17px"></i>Platform Overview</div>
-        <div style="{{ navStylePersatuans }}" onClick="{{ setTabPersatuans }}"><i data-lucide="building-2" style="width:17px;height:17px"></i>Persatuan Directory</div>
-        <div style="{{ navStyleCharges }}" onClick="{{ setTabCharges }}"><i data-lucide="calculator" style="width:17px;height:17px"></i>Persatuan Charges</div>
-        <div style="{{ navStyleGlobalStats }}" onClick="{{ setTabGlobalStats }}"><i data-lucide="globe" style="width:17px;height:17px"></i>Global Financials</div>
-      </nav>
-      <div style="padding:16px 18px;border-top:1px solid var(--color-divider);font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">
-        BeltFlow Platform Control v2.4
+
+      <!-- Quick Platform Badge -->
+      <div style="padding:14px;background:#f8fafc;border-radius:8px;border:1px solid var(--bf-border)">
+        <div style="font-size:11px;font-weight:700;color:var(--bf-navy);margin-bottom:4px">BeltFlow Core Engine</div>
+        <div style="font-size:11px;color:var(--bf-text-muted);line-height:1.4">10% Automated Sibling Discount · QR Cert Validator · Offline Cache</div>
       </div>
     </aside>
 
-    <main style="flex:1;min-width:0;display:flex;flex-direction:column;background:var(--color-bg)">
-      <div style="padding:18px 32px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;justify-content:space-between">
-        <div>
-          <h1 style="font-size:22px;margin:0;text-transform:uppercase">Admin BeltFlow — Super Admin Control</h1>
-          <span style="font-size:12px;color:color-mix(in srgb, var(--color-text) 60%, transparent)">Provision Persatuan Admins, set billing charges, & monitor global SaaS operations</span>
-        </div>
-        <button type="button" class="btn btn-primary" onClick="{{ setTabPersatuans }}"><i data-lucide="plus" style="width:15px;height:15px"></i>+ Create Persatuan Admin</button>
-      </div>
+    <!-- MAIN CONTENT PANE -->
+    <main style="flex:1;padding:28px 32px;overflow-y:auto">
 
-      <div style="padding:28px 32px;flex:1;overflow:auto">
-        <!-- Overview Tab -->
-        <sc-if value="{{ isTabOverview }}" hint-placeholder-val="{{ true }}">
-        <div style="display:flex;flex-direction:column;gap:24px">
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px">
-            <div class="blueprint elev-sm" style="padding:18px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <div style="font-size:11px;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:6px">Active Persatuans</div>
-              <div style="font-family:var(--font-heading);font-size:30px;font-weight:600">14</div>
-              <div style="font-size:12px;color:color-mix(in srgb, var(--color-text) 60%, transparent);margin-top:4px">Across 6 States</div>
+      <!-- ================= 1. ADMIN BELTFLOW VIEW ================= -->
+      <sc-if value="{{ isSuper }}" hint-placeholder-val="{{ true }}">
+        <div>
+          <!-- Header -->
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:24px">
+            <div>
+              <span class="bf-pill" style="background:#fee2e2;color:#991b1b;margin-bottom:6px">SUPER ADMIN LEVEL 1</span>
+              <h1 style="font-size:24px;font-weight:800;color:var(--bf-navy);margin:0">Platform Overview & Persatuan Directory</h1>
+              <p style="margin:4px 0 0;font-size:13px;color:var(--bf-text-muted)">Configure tenant fee models, review all state persatuan revenues, and monitor active SaaS health.</p>
             </div>
-            <div class="blueprint elev-sm" style="padding:18px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <div style="font-size:11px;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:6px">Total Platform Income</div>
-              <div style="font-family:var(--font-heading);font-size:30px;font-weight:600">RM 184,500</div>
-              <div style="font-size:12px;color:color-mix(in srgb, var(--color-text) 60%, transparent);margin-top:4px">Processed this month</div>
+            <button type="button" class="bf-btn bf-btn-primary" onClick="{{ openAddPersatuanModal }}">
+              <i data-lucide="plus" style="width:15px;height:15px"></i> Provision New Persatuan
+            </button>
+          </div>
+
+          <!-- KPI Cards -->
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
+            <div class="bf-card" style="padding:18px">
+              <div style="font-size:11px;font-weight:700;color:var(--bf-text-muted);text-transform:uppercase">Active Persatuans</div>
+              <div style="font-size:28px;font-weight:800;color:var(--bf-navy);margin-top:6px">14</div>
+              <div style="font-size:12px;color:var(--bf-success);margin-top:4px;display:flex;align-items:center;gap:4px">
+                <i data-lucide="arrow-up-right" style="width:13px;height:13px"></i> +2 onboarded this month
+              </div>
             </div>
-            <div class="blueprint elev-sm" style="padding:18px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <div style="font-size:11px;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:6px">BeltFlow Charges Revenue</div>
-              <div style="font-family:var(--font-heading);font-size:30px;font-weight:600">RM 14,760</div>
-              <div style="font-size:12px;color:#10b981;margin-top:4px">+12.4% vs last mo</div>
+            <div class="bf-card" style="padding:18px">
+              <div style="font-size:11px;font-weight:700;color:var(--bf-text-muted);text-transform:uppercase">Global Students Active</div>
+              <div style="font-size:28px;font-weight:800;color:var(--bf-navy);margin-top:6px">3,120</div>
+              <div style="font-size:12px;color:var(--bf-text-muted);margin-top:4px">Across 42 Dojangs</div>
             </div>
-            <div class="blueprint elev-sm" style="padding:18px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <div style="font-size:11px;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:6px">Total Registered Students</div>
-              <div style="font-family:var(--font-heading);font-size:30px;font-weight:600">2,840</div>
-              <div style="font-size:12px;color:color-mix(in srgb, var(--color-text) 60%, transparent);margin-top:4px">Active members</div>
+            <div class="bf-card" style="padding:18px">
+              <div style="font-size:11px;font-weight:700;color:var(--bf-text-muted);text-transform:uppercase">Total GMV Processed</div>
+              <div style="font-size:28px;font-weight:800;color:var(--bf-navy);margin-top:6px">RM 218,400</div>
+              <div style="font-size:12px;color:var(--bf-success);margin-top:4px">+14.6% vs last cycle</div>
+            </div>
+            <div class="bf-card" style="padding:18px;border-left:4px solid var(--bf-amber)">
+              <div style="font-size:11px;font-weight:700;color:var(--bf-amber-hover);text-transform:uppercase">BeltFlow Revenue Cut</div>
+              <div style="font-size:28px;font-weight:800;color:var(--bf-navy);margin-top:6px">RM 17,472</div>
+              <div style="font-size:12px;color:var(--bf-text-muted);margin-top:4px">Blended 8.0% take rate</div>
             </div>
           </div>
 
-          <div class="card blueprint elev-sm">
-            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-              <div class="card-title">Persatuan Organizations & Provisioned Admins</div>
-              <button type="button" class="btn btn-secondary" style="font-size:12px">+ Add Persatuan</button>
+          <!-- Persatuan Management Table -->
+          <div class="bf-card" style="padding:20px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+              <div>
+                <h3 style="margin:0;font-size:16px;font-weight:700;color:var(--bf-navy)">State Persatuans & Fee Configurations</h3>
+                <div style="font-size:12px;color:var(--bf-text-muted)">Configure revenue splits, transaction fee overrides, and credentials.</div>
+              </div>
+              <input type="text" placeholder="Search Persatuan..." style="padding:6px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:12px;width:200px">
             </div>
-            <div class="bf-tbl-wrap">
-            <table class="table">
-              <thead><tr><th>Persatuan Name</th><th>Assigned Admin</th><th>Fee Charge Model</th><th>Active Students</th><th>Status</th><th>Action</th></tr></thead>
+
+            <table class="bf-tbl">
+              <thead>
+                <tr>
+                  <th>Persatuan Entity</th>
+                  <th>Admin Contact</th>
+                  <th>Registered Dojangs</th>
+                  <th>Students</th>
+                  <th>Fee Charge Model</th>
+                  <th>MTD Flow</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
               <tbody>
-                <sc-for list="{{ persatuansList }}" as="p" hint-placeholder-count="4">
+                <sc-for list="{{ persatuanMasterList }}" as="p" hint-placeholder-count="4">
                   <tr>
-                    <td><strong>{{ p.name }}</strong></td>
-                    <td>{{ p.adminEmail }}</td>
-                    <td><span class="tag tag-accent">{{ p.chargeRate }}</span></td>
+                    <td>
+                      <div style="font-weight:700;color:var(--bf-navy)">{{ p.name }}</div>
+                      <div style="font-size:11px;color:var(--bf-text-muted)">{{ p.state }}</div>
+                    </td>
+                    <td>
+                      <div>{{ p.admin }}</div>
+                      <div style="font-size:11px;color:var(--bf-text-muted)">{{ p.email }}</div>
+                    </td>
+                    <td><strong>{{ p.dojangs }}</strong> branches</td>
                     <td>{{ p.students }}</td>
-                    <td><span class="tag tag-neutral">{{ p.status }}</span></td>
-                    <td><button type="button" class="btn btn-ghost" style="font-size:11px">Edit Charges</button></td>
+                    <td><span class="bf-pill" style="background:#e0f2fe;color:#0369a1">{{ p.chargeRate }}</span></td>
+                    <td><strong style="color:var(--bf-navy)">{{ p.mtdIncome }}</strong></td>
+                    <td><span class="bf-pill" style="background:#dcfce7;color:#15803d">Active</span></td>
+                    <td>
+                      <button type="button" class="bf-btn bf-btn-outline bf-btn-sm">Configure</button>
+                    </td>
                   </tr>
                 </sc-for>
               </tbody>
             </table>
-            </div>
           </div>
         </div>
-        </sc-if>
+      </sc-if>
 
-        <!-- Persatuans Tab -->
-        <sc-if value="{{ isTabPersatuans }}" hint-placeholder-val="{{ false }}">
-        <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:24px">
-          <div class="card blueprint elev-sm">
-            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-            <div class="card-title" style="margin-bottom:14px">Create New Persatuan Organization</div>
-            <div class="field" style="margin-bottom:12px"><label>Persatuan Full Name</label><input class="input" type="text" placeholder="e.g. Persatuan Taekwondo Negeri Kedah"></div>
-            <div class="field" style="margin-bottom:12px"><label>Assign Persatuan Admin Email</label><input class="input" type="email" placeholder="admin@kedah-taekwondo.org"></div>
-            <div class="field" style="margin-bottom:12px"><label>Initial Password</label><input class="input" type="password" value="Persatuan@2026"></div>
-            <div class="field" style="margin-bottom:14px">
-              <label>BeltFlow Charges Model</label>
-              <select class="input">
-                <option>8.0% Platform Cut per transaction (Standard)</option>
-                <option>6.5% Platform Cut per transaction (Volume Discount)</option>
-                <option>RM 499 / Month Flat Subscription SaaS</option>
-              </select>
-            </div>
-            <button type="button" class="btn btn-primary btn-block">Provision Persatuan & Send Invite</button>
-          </div>
-
-          <div class="card blueprint elev-sm">
-            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-            <div class="card-title">Role Capabilities — Admin BeltFlow</div>
-            <ul style="font-size:13px;line-height:1.8;padding-left:18px;margin-top:12px;color:color-mix(in srgb, var(--color-text) 80%, transparent)">
-              <li>Create and manage root Persatuan Organization accounts.</li>
-              <li>Provision Persatuan Admin login credentials.</li>
-              <li>Configure custom platform charges, transaction cuts, and billing rates per Persatuan.</li>
-              <li>View consolidated multi-association revenue analytics across all regions.</li>
-            </ul>
-          </div>
-        </div>
-        </sc-if>
-      </div>
-    </main>
-    </sc-if>
-
-
-    <!-- ROLE 2: ADMIN PERSATUAN (ASSOCIATION ADMIN) -->
-    <sc-if value="{{ isRoleAdminPersatuan }}" hint-placeholder-val="{{ false }}">
-    <aside style="width:240px;flex:none;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;background:var(--color-surface)">
-      <div style="padding:20px 18px;border-bottom:1px solid var(--color-divider);background:rgba(37,99,235,.04)">
-        <span class="role-badge badge-persatuan" style="margin-bottom:6px;display:inline-block">PERSATUAN ADMIN</span>
-        <div style="font-family:var(--font-heading);font-weight:600;font-size:15px">Persatuan Taekwondo Selangor</div>
-      </div>
-      <nav style="flex:1;padding:12px 0;display:flex;flex-direction:column;gap:2px">
-        <div style="{{ navStyleOverview }}" onClick="{{ setTabOverview }}"><i data-lucide="trending-up" style="width:17px;height:17px"></i>Movement Income</div>
-        <div style="{{ navStyleCoaches }}" onClick="{{ setTabCoaches }}"><i data-lucide="user-check" style="width:17px;height:17px"></i>Coaches & Masters</div>
-        <div style="{{ navStyleStudents }}" onClick="{{ setTabStudents }}"><i data-lucide="users" style="width:17px;height:17px"></i>Association Roster</div>
-        <div style="{{ navStyleGrading }}" onClick="{{ setTabGrading }}"><i data-lucide="award" style="width:17px;height:17px"></i>Grading Events</div>
-        <div style="{{ navStyleFees }}" onClick="{{ setTabFees }}"><i data-lucide="banknote" style="width:17px;height:17px"></i>Fee Management</div>
-      </nav>
-      <div style="padding:16px 18px;border-top:1px solid var(--color-divider);font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">
-        BeltFlow Fee Cut: <strong>8.0%</strong>
-      </div>
-    </aside>
-
-    <main style="flex:1;min-width:0;display:flex;flex-direction:column;background:var(--color-bg)">
-      <div style="padding:18px 32px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;justify-content:space-between">
+      <!-- ================= 2. ADMIN PERSATUAN VIEW ================= -->
+      <sc-if value="{{ isPersatuan }}" hint-placeholder-val="{{ false }}">
         <div>
-          <h1 style="font-size:22px;margin:0;text-transform:uppercase">Admin Persatuan — Movement & Income Monitoring</h1>
-          <span style="font-size:12px;color:color-mix(in srgb, var(--color-text) 60%, transparent)">Monitor all Persatuan movement, financial revenue, coaches, and grading operations</span>
-        </div>
-        <div style="display:flex;gap:8px">
-          <button type="button" class="btn btn-secondary" style="font-size:13px"><i data-lucide="download" style="width:14px;height:14px"></i>Export Income Statement</button>
-          <button type="button" class="btn btn-primary" onClick="{{ setTabCoaches }}"><i data-lucide="plus" style="width:14px;height:14px"></i>+ Assign Coach</button>
-        </div>
-      </div>
-
-      <div style="padding:28px 32px;flex:1;overflow:auto">
-        <sc-if value="{{ isTabOverview }}" hint-placeholder-val="{{ true }}">
-        <div style="display:flex;flex-direction:column;gap:24px">
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px">
-            <div class="blueprint elev-sm" style="padding:18px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <div style="font-size:11px;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:6px">Total Movement Income</div>
-              <div style="font-family:var(--font-heading);font-size:30px;font-weight:600">RM 24,800</div>
-              <div style="font-size:12px;color:#10b981;margin-top:4px">+8.2% this month</div>
+          <!-- Header -->
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:24px">
+            <div>
+              <span class="bf-pill" style="background:#dbeafe;color:#1e40af;margin-bottom:6px">PERSATUAN ADMIN LEVEL 2</span>
+              <h1 style="font-size:24px;font-weight:800;color:var(--bf-navy);margin:0">Persatuan Taekwondo Negeri Selangor — Operations</h1>
+              <p style="margin:4px 0 0;font-size:13px;color:var(--bf-text-muted)">Track gross fee intake, sibling discounts granted, coach payroll, and scheduled grading sessions.</p>
             </div>
-            <div class="blueprint elev-sm" style="padding:18px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <div style="font-size:11px;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:6px">BeltFlow Platform Charge (8%)</div>
-              <div style="font-family:var(--font-heading);font-size:30px;font-weight:600">RM 1,984</div>
-              <div style="font-size:12px;color:color-mix(in srgb, var(--color-text) 60%, transparent);margin-top:4px">Auto-deducted cut</div>
-            </div>
-            <div class="blueprint elev-sm" style="padding:18px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <div style="font-size:11px;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:6px">Net Persatuan Funds</div>
-              <div style="font-family:var(--font-heading);font-size:30px;font-weight:600">RM 22,816</div>
-              <div style="font-size:12px;color:#10b981;margin-top:4px">Available balance</div>
-            </div>
-            <div class="blueprint elev-sm" style="padding:18px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <div style="font-size:11px;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:6px">Active Dojang Branches</div>
-              <div style="font-family:var(--font-heading);font-size:30px;font-weight:600">4</div>
-              <div style="font-size:12px;color:color-mix(in srgb, var(--color-text) 60%, transparent);margin-top:4px">640 Total Students</div>
+            <div style="display:flex;gap:10px">
+              <button type="button" class="bf-btn bf-btn-outline"><i data-lucide="download" style="width:14px;height:14px"></i>Export Bank CSV</button>
+              <button type="button" class="bf-btn bf-btn-navy"><i data-lucide="calendar-plus" style="width:14px;height:14px"></i>+ New Grading Event</button>
             </div>
           </div>
 
-          <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:20px">
-            <div class="card blueprint elev-sm">
-              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <div class="card-kicker">Persatuan Financial Movement</div>
-              <div class="card-title" style="margin-bottom:6px">Monthly Income Breakdown</div>
-              <svg viewBox="0 0 480 160" style="width:100%;height:160px">
-                <polyline points="0,110 80,95 160,85 240,70 320,60 400,45 480,35" fill="none" stroke="#2563eb" stroke-width="2.5"></polyline>
-                <circle cx="480" cy="35" r="4" fill="#2563eb"></circle>
-                <line x1="0" y1="150" x2="480" y2="150" stroke="var(--color-divider)" stroke-width="1"></line>
-              </svg>
-              <div style="display:flex;justify-content:space-between;font-size:11px;color:color-mix(in srgb, var(--color-text) 55%, transparent)"><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span></div>
+          <!-- Financial Health Breakdown -->
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
+            <div class="bf-card" style="padding:18px">
+              <div style="font-size:11px;font-weight:700;color:var(--bf-text-muted);text-transform:uppercase">Gross Tuition Collected</div>
+              <div style="font-size:28px;font-weight:800;color:var(--bf-navy);margin-top:6px">RM 48,200</div>
+              <div style="font-size:12px;color:var(--bf-success);margin-top:4px">94% Collection Rate</div>
             </div>
-
-            <div class="card blueprint elev-sm">
-              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <div class="card-title" style="margin-bottom:12px">Coaches & Instructors</div>
-              <div style="display:flex;flex-direction:column;gap:10px">
-                <sc-for list="{{ coachesList }}" as="ch" hint-placeholder-count="4">
-                  <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid color-mix(in srgb, var(--color-text) 8%, transparent)">
-                    <div>
-                      <div style="font-weight:600;font-size:13px">{{ ch.name }}</div>
-                      <div style="font-size:11px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">{{ ch.branch }} · {{ ch.students }} Students</div>
-                    </div>
-                    <span class="tag tag-accent">{{ ch.roleTitle }}</span>
-                  </div>
-                </sc-for>
-              </div>
+            <div class="bf-card" style="padding:18px">
+              <div style="font-size:11px;font-weight:700;color:var(--bf-text-muted);text-transform:uppercase">Sibling Discounts (10%)</div>
+              <div style="font-size:28px;font-weight:800;color:#d97706;margin-top:6px">RM 3,140</div>
+              <div style="font-size:12px;color:var(--bf-text-muted);margin-top:4px">38 Eligible Families</div>
             </div>
-          </div>
-        </div>
-        </sc-if>
-      </div>
-    </main>
-    </sc-if>
-
-
-    <!-- ROLE 3: COACH / MASTER (INSTRUCTOR LEVEL) -->
-    <sc-if value="{{ isRoleCoach }}" hint-placeholder-val="{{ false }}">
-    <aside style="width:240px;flex:none;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;background:var(--color-surface)">
-      <div style="padding:20px 18px;border-bottom:1px solid var(--color-divider);background:rgba(217,119,6,.04)">
-        <span class="role-badge badge-coach" style="margin-bottom:6px;display:inline-block">COACH / MASTER</span>
-        <div style="font-family:var(--font-heading);font-weight:600;font-size:15px">Master Eswaran</div>
-        <div style="font-size:11px;color:color-mix(in srgb, var(--color-text) 60%, transparent)">Head Instructor — Central Dojang</div>
-      </div>
-      <nav style="flex:1;padding:12px 0;display:flex;flex-direction:column;gap:2px">
-        <div style="{{ navStyleOverview }}" onClick="{{ setTabOverview }}"><i data-lucide="calendar" style="width:17px;height:17px"></i>My Classes</div>
-        <div style="{{ navStyleAttendance }}" onClick="{{ setTabAttendance }}"><i data-lucide="check-square" style="width:17px;height:17px"></i>Class Attendance</div>
-        <div style="{{ navStyleGradingScoring }}" onClick="{{ setTabGradingScoring }}"><i data-lucide="clipboard-check" style="width:17px;height:17px"></i>Grading Candidates</div>
-      </nav>
-    </aside>
-
-    <main style="flex:1;min-width:0;display:flex;flex-direction:column;background:var(--color-bg)">
-      <div style="padding:18px 32px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;justify-content:space-between">
-        <div>
-          <h1 style="font-size:22px;margin:0;text-transform:uppercase">Coach / Master Portal — Class Details</h1>
-          <span style="font-size:12px;color:color-mix(in srgb, var(--color-text) 60%, transparent)">Monitor class details, mark attendance, and evaluate candidates for belt promotion</span>
-        </div>
-        <button type="button" class="btn btn-primary"><i data-lucide="user-plus" style="width:14px;height:14px"></i>+ Add Trainee</button>
-      </div>
-
-      <div style="padding:28px 32px;flex:1;overflow:auto">
-        <sc-if value="{{ isTabOverview }}" hint-placeholder-val="{{ true }}">
-        <div style="display:flex;flex-direction:column;gap:24px">
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
-            <div class="blueprint elev-sm" style="padding:18px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <div style="font-size:11px;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:6px">Active Classes Under Me</div>
-              <div style="font-family:var(--font-heading);font-size:30px;font-weight:600">3 Classes</div>
-              <div style="font-size:12px;color:color-mix(in srgb, var(--color-text) 60%, transparent);margin-top:4px">48 Active Trainees</div>
+            <div class="bf-card" style="padding:18px">
+              <div style="font-size:11px;font-weight:700;color:var(--bf-text-muted);text-transform:uppercase">BeltFlow Cut (8%)</div>
+              <div style="font-size:28px;font-weight:800;color:var(--bf-text-muted);margin-top:6px">RM 3,856</div>
+              <div style="font-size:12px;color:var(--bf-text-muted);margin-top:4px">Auto-invoiced</div>
             </div>
-            <div class="blueprint elev-sm" style="padding:18px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <div style="font-size:11px;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:6px">Next Class Session</div>
-              <div style="font-family:var(--font-heading);font-size:24px;font-weight:600">Today 7:30 PM</div>
-              <div style="font-size:12px;color:#d97706;margin-top:4px">Junior Green/Blue Belt Sparring</div>
-            </div>
-            <div class="blueprint elev-sm" style="padding:18px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <div style="font-size:11px;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:6px">Grading Candidates Flagged</div>
-              <div style="font-family:var(--font-heading);font-size:30px;font-weight:600">8 Trainees</div>
-              <div style="font-size:12px;color:#10b981;margin-top:4px">Ready for Sep 20 Exam</div>
+            <div class="bf-card" style="padding:18px;border-left:4px solid var(--bf-success)">
+              <div style="font-size:11px;font-weight:700;color:#15803d;text-transform:uppercase">Net Association Treasury</div>
+              <div style="font-size:28px;font-weight:800;color:var(--bf-navy);margin-top:6px">RM 41,204</div>
+              <div style="font-size:12px;color:var(--bf-success);margin-top:4px">Disbursable to Dojangs</div>
             </div>
           </div>
 
-          <div class="card blueprint elev-sm">
-            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-            <div class="card-title" style="margin-bottom:14px">My Assigned Class Schedules & Details</div>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px">
-              <sc-for list="{{ coachClasses }}" as="cls" hint-placeholder-count="3">
-                <div class="blueprint" style="padding:16px;background:var(--color-surface)">
-                  <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-                  <span class="tag tag-accent" style="margin-bottom:8px;display:inline-block">{{ cls.schedule }}</span>
-                  <h4 style="margin:4px 0;font-size:16px">{{ cls.className }}</h4>
-                  <div style="font-size:12px;color:color-mix(in srgb, var(--color-text) 65%, transparent)">Venue: {{ cls.venue }}</div>
-                  <div style="font-size:12px;font-weight:600;margin-top:8px;color:var(--color-accent-800)">{{ cls.traineeCount }} Trainees Enrolled</div>
+          <!-- Dojang & Coach Table -->
+          <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:20px">
+            <div class="bf-card" style="padding:20px">
+              <h3 style="margin:0 0 14px;font-size:16px;font-weight:700;color:var(--bf-navy)">Branch Dojang Performance</h3>
+              <table class="bf-tbl">
+                <thead>
+                  <tr>
+                    <th>Branch Dojang</th>
+                    <th>Head Coach</th>
+                    <th>Students</th>
+                    <th>Attendance %</th>
+                    <th>Monthly Income</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Central Dojang (HQ)</strong><br><span style="font-size:11px;color:var(--bf-text-muted)">Petaling Jaya</span></td>
+                    <td>Master Ravi</td>
+                    <td>184</td>
+                    <td><span class="bf-pill" style="background:#dcfce7;color:#15803d">94%</span></td>
+                    <td>RM 18,400</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Riverside Dojang</strong><br><span style="font-size:11px;color:var(--bf-text-muted)">Shah Alam</span></td>
+                    <td>Master Eswaran</td>
+                    <td>142</td>
+                    <td><span class="bf-pill" style="background:#dcfce7;color:#15803d">91%</span></td>
+                    <td>RM 14,200</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Subang Jaya Academy</strong><br><span style="font-size:11px;color:var(--bf-text-muted)">Subang</span></td>
+                    <td>Coach Sarah</td>
+                    <td>98</td>
+                    <td><span class="bf-pill" style="background:#fef9c3;color:#854d0e">86%</span></td>
+                    <td>RM 9,800</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Klang Martial Hub</strong><br><span style="font-size:11px;color:var(--bf-text-muted)">Bandar Bukit Tinggi</span></td>
+                    <td>Coach Lim</td>
+                    <td>68</td>
+                    <td><span class="bf-pill" style="background:#fee2e2;color:#991b1b">78%</span></td>
+                    <td>RM 5,800</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Upcoming Grading Exam Panel -->
+            <div class="bf-card" style="padding:20px;display:flex;flex-direction:column;justify-content:space-between">
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                  <h3 style="margin:0;font-size:16px;font-weight:700;color:var(--bf-navy)">Q3 Belt Grading</h3>
+                  <span class="bf-pill" style="background:var(--bf-amber-soft);color:var(--bf-amber-hover)">Sep 20, 2026</span>
                 </div>
-              </sc-for>
+                <div style="font-size:13px;color:var(--bf-text-muted);margin-bottom:16px">Central Dojang Arena · Examiner: Master Ravi</div>
+                
+                <div style="display:flex;flex-direction:column;gap:10px">
+                  <div style="display:flex;justify-content:space-between;font-size:12px;padding:8px;background:#f8fafc;border-radius:6px">
+                    <span>Approved Candidates:</span>
+                    <strong>46 Students</strong>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;font-size:12px;padding:8px;background:#f8fafc;border-radius:6px">
+                    <span>Grading Fee Pool:</span>
+                    <strong>RM 4,600</strong>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;font-size:12px;padding:8px;background:#f8fafc;border-radius:6px">
+                    <span>Certificates Ready to Issue:</span>
+                    <strong>46 Digital Hashes</strong>
+                  </div>
+                </div>
+              </div>
+
+              <button type="button" class="bf-btn bf-btn-navy" style="width:100%;margin-top:20px">
+                Open Grading Scoring Sheet
+              </button>
             </div>
           </div>
         </div>
-        </sc-if>
-      </div>
-    </main>
-    </sc-if>
+      </sc-if>
 
-
-    <!-- ROLE 4: STUDENTS / PARENTS (MEMBER / GUARDIAN PORTAL) -->
-    <sc-if value="{{ isRoleStudent }}" hint-placeholder-val="{{ false }}">
-    <aside style="width:240px;flex:none;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;background:var(--color-surface)">
-      <div style="padding:20px 18px;border-bottom:1px solid var(--color-divider);background:rgba(16,185,129,.04)">
-        <span class="role-badge badge-student" style="margin-bottom:6px;display:inline-block">STUDENT / PARENT</span>
-        <div style="font-family:var(--font-heading);font-weight:600;font-size:15px">Aryan Suresh</div>
-        <div style="font-size:11px;color:color-mix(in srgb, var(--color-text) 60%, transparent)">Guardian: Suresh Kumar</div>
-      </div>
-      <nav style="flex:1;padding:12px 0;display:flex;flex-direction:column;gap:2px">
-        <div style="{{ navStyleOverview }}" onClick="{{ setTabOverview }}"><i data-lucide="user" style="width:17px;height:17px"></i>My Student Profile</div>
-        <div style="{{ navStyleCertificates }}" onClick="{{ setTabCertificates }}"><i data-lucide="file-badge-2" style="width:17px;height:17px"></i>Digital Certificates</div>
-        <div style="{{ navStyleFeePortal }}" onClick="{{ setTabFeePortal }}"><i data-lucide="credit-card" style="width:17px;height:17px"></i>Fee Payments</div>
-      </nav>
-    </aside>
-
-    <main style="flex:1;min-width:0;display:flex;flex-direction:column;background:var(--color-bg)">
-      <div style="padding:18px 32px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;justify-content:space-between">
+      <!-- ================= 3. COACH / MASTER VIEW ================= -->
+      <sc-if value="{{ isCoach }}" hint-placeholder-val="{{ false }}">
         <div>
-          <h1 style="font-size:22px;margin:0;text-transform:uppercase">Student & Parent Portal</h1>
-          <span style="font-size:12px;color:color-mix(in srgb, var(--color-text) 60%, transparent)">Track belt progression, view official digital certificates, & pay monthly fees</span>
-        </div>
-        <span class="tag tag-accent" style="font-size:12px">Green Belt (4th Gup)</span>
-      </div>
+          <!-- Header -->
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:24px">
+            <div>
+              <span class="bf-pill" style="background:#fef3c7;color:#92400e;margin-bottom:6px">COACH / MASTER LEVEL 3</span>
+              <h1 style="font-size:24px;font-weight:800;color:var(--bf-navy);margin:0">Master Eswaran — Active Class Sessions</h1>
+              <p style="margin:4px 0 0;font-size:13px;color:var(--bf-text-muted)">Mark rapid attendance on the mat, monitor retention dropoff risk, and recommend grading candidates.</p>
+            </div>
+            <button type="button" class="bf-btn bf-btn-primary">
+              <i data-lucide="check-square" style="width:15px;height:15px"></i> Mark Today's Session
+            </button>
+          </div>
 
-      <div style="padding:28px 32px;flex:1;overflow:auto">
-        <sc-if value="{{ isTabOverview }}" hint-placeholder-val="{{ true }}">
-        <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:24px">
-          <div class="card blueprint elev-sm">
-            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-            <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
-              <div style="width:54px;height:54px;border-radius:50%;background:#10b981;color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--font-heading);font-weight:700;font-size:20px">AS</div>
+          <!-- Retention Warning Banner -->
+          <div style="background:#fff1f2;border:1px solid #fecdd3;padding:16px 20px;border-radius:10px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="width:36px;height:36px;border-radius:50%;background:#e11d48;color:#fff;display:flex;align-items:center;justify-content:center"><i data-lucide="alert-triangle" style="width:18px;height:18px"></i></div>
               <div>
-                <h3 style="margin:0;font-size:20px">Aryan Suresh</h3>
-                <div style="font-size:13px;color:color-mix(in srgb, var(--color-text) 65%, transparent)">Persatuan Taekwondo Selangor — Central Dojang</div>
-                <div style="font-size:12px;margin-top:2px">Instructor: <strong>Master Eswaran</strong></div>
+                <div style="font-weight:700;color:#9f1239;font-size:14px">Retention Alert: 2 Students have 3+ consecutive absences</div>
+                <div style="font-size:12px;color:#be123c">Immediate WhatsApp intervention recommended to prevent membership churn.</div>
               </div>
             </div>
+            <div style="display:flex;gap:8px">
+              <button type="button" class="bf-btn bf-btn-outline bf-btn-sm" style="background:#fff">View At-Risk Roster</button>
+            </div>
+          </div>
+
+          <!-- Attendance Sheet Widget -->
+          <div class="bf-card" style="padding:20px;margin-bottom:24px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+              <div>
+                <h3 style="margin:0;font-size:16px;font-weight:700;color:var(--bf-navy)">Live Session Roster — Green & Blue Belt Sparring</h3>
+                <div style="font-size:12px;color:var(--bf-text-muted)">Today, 6:00 PM - 7:30 PM · Central Dojang Mat 1</div>
+              </div>
+              <div style="display:flex;gap:6px">
+                <span class="bf-pill" style="background:#dcfce7;color:#15803d">16 Present</span>
+                <span class="bf-pill" style="background:#fee2e2;color:#991b1b">2 Absent</span>
+              </div>
+            </div>
+
+            <table class="bf-tbl">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Current Belt</th>
+                  <th>Monthly Attendance</th>
+                  <th>Consecutive Absences</th>
+                  <th>Session Status</th>
+                  <th>One-Tap WhatsApp</th>
+                </tr>
+              </thead>
+              <tbody>
+                <sc-for list="{{ coachStudentRoster }}" as="cs" hint-placeholder-count="5">
+                  <tr>
+                    <td>
+                      <div style="font-weight:700;color:var(--bf-navy)">{{ cs.name }}</div>
+                      <div style="font-size:11px;color:var(--bf-text-muted)">Guardian: {{ cs.guardian }}</div>
+                    </td>
+                    <td><span class="{{ cs.beltBadgeClass }}">{{ cs.belt }}</span></td>
+                    <td>{{ cs.attendanceRate }}</td>
+                    <td>
+                      <sc-if value="{{ cs.isAtRisk }}" hint-placeholder-val="{{ false }}">
+                        <span class="bf-pill" style="background:#fee2e2;color:#991b1b">⚠️ {{ cs.absences }} in a row</span>
+                      </sc-if>
+                      <sc-if value="{{ cs.isSafe }}" hint-placeholder-val="{{ true }}">
+                        <span style="color:var(--bf-text-muted);font-size:12px">0 missed</span>
+                      </sc-if>
+                    </td>
+                    <td>
+                      <span class="bf-pill" style="background:#dcfce7;color:#15803d">Present</span>
+                    </td>
+                    <td>
+                      <a href="{{ cs.waLink }}" class="bf-btn bf-btn-outline bf-btn-sm" style="color:#059669;border-color:#a7f3d0">
+                        <i data-lucide="message-circle" style="width:13px;height:13px"></i> WhatsApp Parent
+                      </a>
+                    </td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ================= 4. STUDENT & PARENT VIEW ================= -->
+      <sc-if value="{{ isStudent }}" hint-placeholder-val="{{ false }}">
+        <div>
+          <!-- Header -->
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:24px">
+            <div>
+              <span class="bf-pill" style="background:#dcfce7;color:#15803d;margin-bottom:6px">STUDENT & PARENT PORTAL LEVEL 4</span>
+              <h1 style="font-size:24px;font-weight:800;color:var(--bf-navy);margin:0">Aryan Suresh — Member Portal</h1>
+              <p style="margin:4px 0 0;font-size:13px;color:var(--bf-text-muted)">Track syllabus progress, download officially verified grading certificates, and review invoices.</p>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="bf-pill" style="background:#f1f5f9;color:var(--bf-text-muted)">Guardian: Suresh Kumar</span>
+              <button type="button" class="bf-btn bf-btn-primary"><i data-lucide="credit-card" style="width:14px;height:14px"></i>Pay Fee (RM 162)</button>
+            </div>
+          </div>
+
+          <!-- Student Profile & Belt Journey -->
+          <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:24px;margin-bottom:24px">
             
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;background:var(--color-surface);padding:14px;border:1px solid var(--color-divider)">
+            <!-- Left: Bio & Rank Card -->
+            <div class="bf-card" style="padding:22px;display:flex;flex-direction:column;justify-content:space-between">
               <div>
-                <div style="font-size:11px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Current Rank</div>
-                <div style="font-weight:600;font-size:14px;color:#10b981">Green Belt</div>
-              </div>
-              <div>
-                <div style="font-size:11px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Attendance Rate</div>
-                <div style="font-weight:600;font-size:14px">94% (32/34)</div>
-              </div>
-              <div>
-                <div style="font-size:11px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Next Exam</div>
-                <div style="font-weight:600;font-size:14px;color:var(--color-accent-800)">Sep 20, 2026</div>
-              </div>
-            </div>
-          </div>
+                <div style="display:flex;align-items:center;gap:16px;margin-bottom:18px">
+                  <div style="width:64px;height:64px;border-radius:50%;background:var(--bf-navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800">AS</div>
+                  <div>
+                    <h2 style="margin:0;font-size:20px;font-weight:800;color:var(--bf-navy)">Aryan Suresh</h2>
+                    <div style="font-size:12px;color:var(--bf-text-muted);margin-top:2px">MyKid: 130822-10-5591 · Age 13</div>
+                    <div style="margin-top:6px"><span class="belt-badge belt-green">🥋 Green Belt (4th Gup)</span></div>
+                  </div>
+                </div>
 
-          <!-- Digital Certificate View -->
-          <div class="blueprint elev-md" style="padding:22px">
-            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
-              <span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600">Official Certificate</span>
-              <div style="width:34px;height:34px;border:1px solid var(--color-accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;text-align:center;color:var(--color-accent-700);font-weight:600">VERIFIED</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:14px;background:#f8fafc;border-radius:8px">
+                  <div>
+                    <div style="font-size:11px;color:var(--bf-text-muted)">Academy Dojang</div>
+                    <div style="font-weight:700;font-size:13px;color:var(--bf-navy)">Central Dojang</div>
+                  </div>
+                  <div>
+                    <div style="font-size:11px;color:var(--bf-text-muted)">Head Master</div>
+                    <div style="font-weight:700;font-size:13px;color:var(--bf-navy)">Master Ravi</div>
+                  </div>
+                  <div>
+                    <div style="font-size:11px;color:var(--bf-text-muted)">Attendance</div>
+                    <div style="font-weight:700;font-size:13px;color:var(--bf-success)">94% (32/34)</div>
+                  </div>
+                  <div>
+                    <div style="font-size:11px;color:var(--bf-text-muted)">Sibling Discount</div>
+                    <div style="font-weight:700;font-size:13px;color:var(--bf-amber)">10% Applied (2nd child)</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Official Verifiable Certificate Preview -->
+              <div style="border:2px dashed var(--bf-amber);padding:18px;border-radius:10px;background:var(--bf-amber-soft);margin-top:20px">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                  <div>
+                    <div style="font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--bf-amber-hover);text-transform:uppercase">Official Verifiable Certificate</div>
+                    <div style="font-size:15px;font-weight:800;color:var(--bf-navy);margin-top:2px">PROMOTION TO GREEN BELT</div>
+                  </div>
+                  <span class="bf-pill" style="background:#fff;border:1px solid var(--bf-amber);color:var(--bf-amber-hover)">AUTHENTIC</span>
+                </div>
+                <div style="font-size:11px;color:var(--bf-text-muted);margin:8px 0">Issued Aug 14, 2026 · Examiner: Master Ravi</div>
+                <div style="font-family:monospace;font-size:12px;font-weight:700;color:var(--bf-navy);background:#fff;padding:6px 10px;border-radius:4px;border:1px solid #fed7aa;display:inline-block">
+                  BF-GREEN-9821
+                </div>
+                <button type="button" class="bf-btn bf-btn-outline bf-btn-sm" style="width:100%;margin-top:12px;background:#fff">
+                  <i data-lucide="download" style="width:13px;height:13px"></i> Download PDF Certificate
+                </button>
+              </div>
             </div>
-            <div style="font-family:var(--font-heading);font-size:22px;font-weight:600;text-transform:uppercase">Aryan Suresh</div>
-            <div style="font-size:13px;color:color-mix(in srgb, var(--color-text) 65%, transparent);margin-top:2px">Promoted to Green Belt</div>
-            <div style="height:1px;background:var(--color-divider);margin:14px 0"></div>
-            <div style="display:flex;justify-content:space-between;font-size:11px;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:12px">
-              <span>Issued Aug 14, 2026</span><span>BF-GREEN-9821</span>
+
+            <!-- Right: Technique Syllabus Mastery -->
+            <div class="bf-card" style="padding:22px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <div>
+                  <h3 style="margin:0;font-size:16px;font-weight:700;color:var(--bf-navy)">Syllabus Mastery — Blue Belt Readiness</h3>
+                  <div style="font-size:12px;color:var(--bf-text-muted)">Target Belt Exam: Sep 20, 2026</div>
+                </div>
+                <span class="bf-pill" style="background:#dcfce7;color:#15803d">4 of 5 Mastered</span>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div style="padding:12px;border:1px solid var(--bf-border);border-radius:8px;display:flex;align-items:center;justify-content:space-between">
+                  <div>
+                    <div style="font-weight:700;font-size:13px">Taegeuk Sam Jang (Pattern 3)</div>
+                    <div style="font-size:11px;color:var(--bf-text-muted)">Forms & Poomsae</div>
+                  </div>
+                  <span class="bf-pill" style="background:#dcfce7;color:#15803d">Mastered (A)</span>
+                </div>
+                <div style="padding:12px;border:1px solid var(--bf-border);border-radius:8px;display:flex;align-items:center;justify-content:space-between">
+                  <div>
+                    <div style="font-weight:700;font-size:13px">Dollyo Chagi (Turning Kick) Combo</div>
+                    <div style="font-size:11px;color:var(--bf-text-muted)">Sparring Technique</div>
+                  </div>
+                  <span class="bf-pill" style="background:#dcfce7;color:#15803d">Mastered (A)</span>
+                </div>
+                <div style="padding:12px;border:1px solid var(--bf-border);border-radius:8px;display:flex;align-items:center;justify-content:space-between">
+                  <div>
+                    <div style="font-weight:700;font-size:13px">One-Step Sparring (Hanbon Kyorugi)</div>
+                    <div style="font-size:11px;color:var(--bf-text-muted)">Self Defense</div>
+                  </div>
+                  <span class="bf-pill" style="background:#dcfce7;color:#15803d">Mastered (B+)</span>
+                </div>
+                <div style="padding:12px;border:1px solid var(--bf-border);border-radius:8px;display:flex;align-items:center;justify-content:space-between">
+                  <div>
+                    <div style="font-weight:700;font-size:13px">Board Breaking (Kyokpa) — Side Kick</div>
+                    <div style="font-size:11px;color:var(--bf-text-muted)">Power Demonstration</div>
+                  </div>
+                  <span class="bf-pill" style="background:#fef9c3;color:#854d0e">In Progress</span>
+                </div>
+              </div>
             </div>
-            <button type="button" class="btn btn-secondary btn-block"><i data-lucide="download" style="width:14px;height:14px"></i>Download Certificate PDF</button>
+
           </div>
         </div>
-        </sc-if>
-      </div>
-    </main>
-    </sc-if>
+      </sc-if>
 
+    </main>
   </div>
-  </sc-if>
 
 </div>
 
 </x-dc>
 <script type="text/x-dc" data-dc-script>
 class Component extends DCLogic {
-  state = { 
-    view: 'dashboard', 
-    role: 'admin_beltflow',
-    tab: 'overview' 
+  state = {
+    role: 'super', // 'super' | 'persatuan' | 'coach' | 'student'
+    tab: 'overview'
   };
 
   componentDidMount() { this.icons(); }
   componentDidUpdate() { this.icons(); }
   icons() { if (window.lucide) window.lucide.createIcons(); }
 
-  navStyle(active) {
-    return 'display:flex;align-items:center;gap:12px;padding:11px 18px;cursor:pointer;font-size:14px;border-left:2px solid ' +
-      (active ? 'var(--color-accent)' : 'transparent') +
-      ';color:' + (active ? 'var(--color-accent-800)' : 'var(--color-text)') +
-      ';background:' + (active ? 'var(--color-accent-100)' : 'transparent') +
-      ';opacity:' + (active ? '1' : '.75') + ';font-weight:' + (active ? '500' : '400');
-  }
-
   renderVals() {
-    const s = this.state;
-    const tab = s.tab;
-    const role = s.role;
+    const r = this.state.role;
+    const t = this.state.tab;
+
+    const userMap = {
+      super: { name: 'SuperAdmin Eswaran', label: 'Admin BeltFlow', initials: 'BF' },
+      persatuan: { name: 'Datuk Ir. Azman', label: 'Admin Persatuan (Selangor)', initials: 'PTS' },
+      coach: { name: 'Master Eswaran', label: 'Senior Examiner / Coach', initials: 'ME' },
+      student: { name: 'Aryan Suresh', label: 'Student / Parent (Suresh K.)', initials: 'AS' }
+    };
+
+    const navClass = (targetTab) => (t === targetTab ? 'active' : '');
 
     return {
-      view: s.view, tab, role,
-      isLanding: s.view === 'landing', 
-      isDashboard: s.view === 'dashboard',
+      isSuper: r === 'super',
+      isPersatuan: r === 'persatuan',
+      isCoach: r === 'coach',
+      isStudent: r === 'student',
 
-      // Role Checkers
-      isRoleAdminBeltflow: s.view === 'dashboard' && role === 'admin_beltflow',
-      isRoleAdminPersatuan: s.view === 'dashboard' && role === 'admin_persatuan',
-      isRoleCoach: s.view === 'dashboard' && role === 'coach',
-      isRoleStudent: s.view === 'dashboard' && role === 'student',
+      activeUserName: userMap[r].name,
+      activeRoleLabel: userMap[r].label,
+      activeUserInitials: userMap[r].initials,
 
-      // Button active styles for top bar
-      btnLandingClass: s.view === 'landing' ? 'btn btn-primary' : 'btn btn-secondary',
-      btnAdminBeltflowClass: (s.view === 'dashboard' && role === 'admin_beltflow') ? 'btn btn-primary' : 'btn btn-secondary',
-      btnAdminPersatuanClass: (s.view === 'dashboard' && role === 'admin_persatuan') ? 'btn btn-primary' : 'btn btn-secondary',
-      btnCoachClass: (s.view === 'dashboard' && role === 'coach') ? 'btn btn-primary' : 'btn btn-secondary',
-      btnStudentClass: (s.view === 'dashboard' && role === 'student') ? 'btn btn-primary' : 'btn btn-secondary',
+      roleSuperClass: r === 'super' ? 'bf-btn-primary' : 'bf-btn-outline',
+      rolePersatuanClass: r === 'persatuan' ? 'bf-btn-primary' : 'bf-btn-outline',
+      roleCoachClass: r === 'coach' ? 'bf-btn-primary' : 'bf-btn-outline',
+      roleStudentClass: r === 'student' ? 'bf-btn-primary' : 'bf-btn-outline',
 
-      // Top bar actions
-      toLanding: () => this.setState({ view: 'landing' }),
-      toAdminBeltflow: () => this.setState({ view: 'dashboard', role: 'admin_beltflow', tab: 'overview' }),
-      toAdminPersatuan: () => this.setState({ view: 'dashboard', role: 'admin_persatuan', tab: 'overview' }),
-      toCoach: () => this.setState({ view: 'dashboard', role: 'coach', tab: 'overview' }),
-      toStudent: () => this.setState({ view: 'dashboard', role: 'student', tab: 'overview' }),
+      setRoleSuper: () => this.setState({ role: 'super', tab: 'overview' }),
+      setRolePersatuan: () => this.setState({ role: 'persatuan', tab: 'overview' }),
+      setRoleCoach: () => this.setState({ role: 'coach', tab: 'overview' }),
+      setRoleStudent: () => this.setState({ role: 'student', tab: 'overview' }),
 
-      // Sidebar Tab states
-      isTabOverview: tab === 'overview',
-      isTabPersatuans: tab === 'persatuans',
-      isTabCharges: tab === 'charges',
-      isTabGlobalStats: tab === 'global_stats',
-      isTabCoaches: tab === 'coaches',
-      isTabStudents: tab === 'students',
-      isTabGrading: tab === 'grading',
-      isTabFees: tab === 'fees',
-      isTabAttendance: tab === 'attendance',
-      isTabGradingScoring: tab === 'grading_scoring',
-      isTabCertificates: tab === 'certificates',
-      isTabFeePortal: tab === 'fee_portal',
-
-      navStyleOverview: this.navStyle(tab === 'overview'),
-      navStylePersatuans: this.navStyle(tab === 'persatuans'),
-      navStyleCharges: this.navStyle(tab === 'charges'),
-      navStyleGlobalStats: this.navStyle(tab === 'global_stats'),
-      navStyleCoaches: this.navStyle(tab === 'coaches'),
-      navStyleStudents: this.navStyle(tab === 'students'),
-      navStyleGrading: this.navStyle(tab === 'grading'),
-      navStyleFees: this.navStyle(tab === 'fees'),
-      navStyleAttendance: this.navStyle(tab === 'attendance'),
-      navStyleGradingScoring: this.navStyle(tab === 'grading_scoring'),
-      navStyleCertificates: this.navStyle(tab === 'certificates'),
-      navStyleFeePortal: this.navStyle(tab === 'fee_portal'),
+      navOverviewClass: navClass('overview'),
+      navPersatuansClass: navClass('persatuans'),
+      navChargesClass: navClass('charges'),
+      navAuditClass: navClass('audit'),
+      navDojangsClass: navClass('dojangs'),
+      navCoachesClass: navClass('coaches'),
+      navGradingsClass: navClass('gradings'),
+      navFeesClass: navClass('fees'),
+      navAttendanceClass: navClass('attendance'),
+      navRetentionClass: navClass('retention'),
+      navExamsClass: navClass('exams'),
+      navSyllabusClass: navClass('syllabus'),
+      navCertsClass: navClass('certs'),
+      navBillingClass: navClass('billing'),
 
       setTabOverview: () => this.setState({ tab: 'overview' }),
       setTabPersatuans: () => this.setState({ tab: 'persatuans' }),
       setTabCharges: () => this.setState({ tab: 'charges' }),
-      setTabGlobalStats: () => this.setState({ tab: 'global_stats' }),
+      setTabAudit: () => this.setState({ tab: 'audit' }),
+      setTabDojangs: () => this.setState({ tab: 'dojangs' }),
       setTabCoaches: () => this.setState({ tab: 'coaches' }),
-      setTabStudents: () => this.setState({ tab: 'students' }),
-      setTabGrading: () => this.setState({ tab: 'grading' }),
+      setTabGradings: () => this.setState({ tab: 'gradings' }),
       setTabFees: () => this.setState({ tab: 'fees' }),
       setTabAttendance: () => this.setState({ tab: 'attendance' }),
-      setTabGradingScoring: () => this.setState({ tab: 'grading_scoring' }),
-      setTabCertificates: () => this.setState({ tab: 'certificates' }),
-      setTabFeePortal: () => this.setState({ tab: 'fee_portal' }),
+      setTabRetention: () => this.setState({ tab: 'retention' }),
+      setTabExams: () => this.setState({ tab: 'exams' }),
+      setTabSyllabus: () => this.setState({ tab: 'syllabus' }),
+      setTabCerts: () => this.setState({ tab: 'certs' }),
+      setTabBilling: () => this.setState({ tab: 'billing' }),
 
-      // Mock Data Lists for 4 Roles
-      persatuansList: [
-        { name: 'Persatuan Taekwondo Selangor', adminEmail: 'admin@selangortkd.org', chargeRate: '8.0% Cut', students: 640, status: 'Active' },
-        { name: 'Persatuan Karate Kuala Lumpur', adminEmail: 'klkarate@gmail.com', chargeRate: 'RM 499/mo', students: 410, status: 'Active' },
-        { name: 'Persatuan Silat Cekak Perak', adminEmail: 'info@silatperak.my', chargeRate: '6.5% Cut', students: 320, status: 'Active' },
-        { name: 'Persatuan Judo Johor', adminEmail: 'johorjudo@gmail.com', chargeRate: '8.0% Cut', students: 180, status: 'Active' },
+      persatuanMasterList: [
+        { name: 'Persatuan Taekwondo Negeri Selangor', state: 'Selangor', admin: 'Datuk Ir. Azman', email: 'admin@selangortkd.my', dojangs: 8, students: 640, chargeRate: '8.0% GMV Cut', mtdIncome: 'RM 48,200' },
+        { name: 'Persatuan Karate-Do Wilayah Persekutuan', state: 'Kuala Lumpur', admin: 'Sensei Gary Chen', email: 'klkarate@gmail.com', dojangs: 6, students: 510, chargeRate: 'RM 499 / Month Flat', mtdIncome: 'RM 39,400' },
+        { name: 'Persatuan Seni Silat Gayong Perak', state: 'Perak', admin: 'Cikgu Megat', email: 'gayong.perak@silat.org', dojangs: 5, students: 380, chargeRate: '6.5% GMV Cut', mtdIncome: 'RM 28,100' },
+        { name: 'Persatuan Judo & BJJ Negeri Johor', state: 'Johor', admin: 'Master Tan Chong', email: 'johor.judo@bjj.my', dojangs: 4, students: 290, chargeRate: '8.0% GMV Cut', mtdIncome: 'RM 22,600' }
       ],
-      coachesList: [
-        { name: 'Master Ravi', branch: 'Central Dojang', students: 120, roleTitle: 'Master Instructor' },
-        { name: 'Master Eswaran', branch: 'Riverside Branch', students: 84, roleTitle: 'Senior Examiner' },
-        { name: 'Coach Sarah', branch: 'Shah Alam Branch', students: 62, roleTitle: 'Junior Coach' },
-        { name: 'Coach Lim', branch: 'Petaling Jaya Dojang', students: 45, roleTitle: 'Assistant Coach' },
-      ],
-      coachClasses: [
-        { schedule: 'Mon / Wed 6:00 PM', className: 'Junior Green Belt Class', venue: 'Central Dojang', traineeCount: 18 },
-        { schedule: 'Tue / Thu 7:30 PM', className: 'Senior Blue & Brown Sparring', venue: 'Central Dojang', traineeCount: 16 },
-        { schedule: 'Sat 10:00 AM', className: 'Beginners White Belt Class', venue: 'Riverside Branch', traineeCount: 14 },
+
+      coachStudentRoster: [
+        { name: 'Aryan Suresh', guardian: 'Suresh Kumar', belt: 'Green Belt', beltBadgeClass: 'belt-badge belt-green', attendanceRate: '94% (32/34)', absences: 0, isAtRisk: false, isSafe: true, waLink: 'https://wa.me/60123456789' },
+        { name: 'Wei Ling Tan', guardian: 'Tan Boon Teck', belt: 'Orange Belt', beltBadgeClass: 'belt-badge belt-yellow', attendanceRate: '68% (21/31)', absences: 3, isAtRisk: true, isSafe: false, waLink: 'https://wa.me/60129876543' },
+        { name: 'Priya Nathan', guardian: 'Nathan Pillai', belt: 'Blue Belt', beltBadgeClass: 'belt-badge belt-blue', attendanceRate: '92% (31/34)', absences: 0, isAtRisk: false, isSafe: true, waLink: 'https://wa.me/60172233445' },
+        { name: 'Siti Rahman', guardian: 'Rahman Kasim', belt: 'White Belt', beltBadgeClass: 'belt-badge belt-white', attendanceRate: '61% (19/31)', absences: 4, isAtRisk: true, isSafe: false, waLink: 'https://wa.me/60195544332' },
+        { name: 'Kavi Selvam', guardian: 'Selvam Muniandy', belt: 'Brown Belt', beltBadgeClass: 'belt-badge belt-brown', attendanceRate: '97% (33/34)', absences: 0, isAtRisk: false, isSafe: true, waLink: 'https://wa.me/60133322119' }
       ]
     };
   }
