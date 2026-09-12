@@ -499,16 +499,16 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(13, 43, 71, 0.7);
-      backdrop-filter: blur(4px);
+      background: rgba(13, 43, 71, 0.75);
+      backdrop-filter: blur(5px);
       display: none;
       align-items: center;
       justify-content: center;
-      z-index: 2000;
+      z-index: 99999;
       padding: 16px;
     }
 
-    .modal-overlay.active { display: flex; }
+    .modal-overlay.active { display: flex !important; }
 
     .modal-box {
       background: #ffffff;
@@ -1719,11 +1719,10 @@
       wizardState.persatuanStyle = p.style || 'Martial Arts';
       wizardState.persatuanMaster = p.master;
 
-      document.querySelectorAll('.wizard-persatuan-card').forEach(card => card.classList.remove('selected'));
-      event?.currentTarget?.classList.add('selected');
       renderWizardStep1Persatuans();
 
-      document.getElementById('btnWizStep1Next').disabled = false;
+      const nextBtn = document.getElementById('btnWizStep1Next');
+      if (nextBtn) nextBtn.disabled = false;
     }
 
     function selectWizardRole(roleKey) {
@@ -2171,8 +2170,20 @@
       if (window.lucide) lucide.createIcons();
     }
 
-    function openModal(id) { document.getElementById(id).classList.add('active'); }
-    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+    function openModal(id) { 
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.add('active');
+        el.style.display = 'flex';
+      }
+    }
+    function closeModal(id) { 
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.remove('active');
+        el.style.display = 'none';
+      }
+    }
 
     function openAttendanceModal() {
       renderAttendanceModal();
