@@ -1295,11 +1295,22 @@
             </div>
 
             <!-- Dynamic Class Selection Under Selected Persatuan -->
-            <div>
-              <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Select Class / Training Session</label>
+            <div id="wizClassSelectGroup">
+              <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Select Active Class / Training Session</label>
               <select id="wizClassSelect" required style="width:100%;padding:9px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px;background:#fff;font-weight:600">
-                <!-- Dynamically populated from chosen persatuan's classes -->
+                <!-- Dynamically populated from active classes -->
               </select>
+            </div>
+
+            <!-- Warning Notice when no active classes exist -->
+            <div id="wizNoClassesNotice" style="display:none;background:#fef2f2;border:1.5px solid #fecaca;padding:14px;border-radius:8px;font-size:12px;color:#991b1b;line-height:1.5">
+              <div style="font-weight:700;display:flex;align-items:center;gap:6px">
+                <i data-lucide="alert-circle" style="width:16px;height:16px;color:#dc2626"></i>
+                <span>No active classes available under this Persatuan</span>
+              </div>
+              <div style="margin-top:4px;color:#7f1d1d">
+                No classes available yet under this persatuan. Please check back once a Master has been approved.
+              </div>
             </div>
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -1348,7 +1359,7 @@
                 <i data-lucide="arrow-left" style="width:14px;height:14px"></i>
                 <span>Back</span>
               </button>
-              <button type="submit" class="bf-btn bf-btn-primary">
+              <button type="submit" id="btnWizStep3BSubmit" class="bf-btn bf-btn-primary">
                 <i data-lucide="send" style="width:14px;height:14px"></i>
                 <span>Submit Registration</span>
               </button>
@@ -1466,10 +1477,32 @@
     let students = loadStorage('students', []);
     let persatuans = loadStorage('persatuans', []);
     let coaches = loadStorage('coaches', []);
+    let classes = loadStorage('classes', []);
     let attendanceStatuses = loadStorage('attendance', {});
     let superAdminPass = loadStorage('super_pass', 'Eswaran0321@');
     let loggedInUserEmail = 'eswaran2728@gmail.com';
     let activePersatuan = null;
+
+    // Initial Migration Helper: ensure all existing persatuans have proper class entities with lifecycle status
+    if (classes.length === 0 && persatuans.length > 0) {
+      persatuans.forEach(p => {
+        if (p.classes && Array.isArray(p.classes)) {
+          p.classes.forEach((c, idx) => {
+            classes.push({
+              id: c.id || (p.id + idx + 1),
+              persatuan_id: p.id,
+              master_id: p.id,
+              master_name: p.master,
+              name: c.name || `${p.master} - Class ${idx+1}`,
+              schedule: c.schedule || 'Weekly Session',
+              status: c.status || 'Active',
+              createdAt: new Date().toISOString()
+            });
+          });
+        }
+      });
+      saveStorage('classes', classes);
+    }
 
     function handleNewPersatuan(e) {
       e.preventDefault();
@@ -1482,15 +1515,17 @@
       const email = (document.getElementById('newAcademyEmail').value.trim() || '').toLowerCase();
       const password = document.getElementById('newAcademyPassword').value.trim() || 'Master1234@';
       const rev = `RM ${(studentCount * 100).toLocaleString()}`;
+      const newPId = Date.now();
+      const newMasterId = newPId + 10;
 
       const defaultClasses = [
-        { id: 1, name: `${master} - General Mat Session`, schedule: 'Sat & Sun 9:00 AM' },
-        { id: 2, name: `${style} - Junior & Beginners`, schedule: 'Tue & Thu 6:00 PM' },
-        { id: 3, name: `${style} - Advanced Sparring & Syllabus`, schedule: 'Mon & Wed 7:30 PM' }
+        { id: newMasterId + 1, persatuan_id: newPId, master_id: newMasterId, master_name: master, name: `${master} - General Mat Session`, schedule: 'Sat & Sun 9:00 AM', status: 'Active', createdAt: new Date().toISOString() },
+        { id: newMasterId + 2, persatuan_id: newPId, master_id: newMasterId, master_name: master, name: `${style} - Junior & Beginners`, schedule: 'Tue & Thu 6:00 PM', status: 'Active', createdAt: new Date().toISOString() },
+        { id: newMasterId + 3, persatuan_id: newPId, master_id: newMasterId, master_name: master, name: `${style} - Advanced Sparring & Syllabus`, schedule: 'Mon & Wed 7:30 PM', status: 'Active', createdAt: new Date().toISOString() }
       ];
 
       const newP = {
-        id: Date.now(),
+        id: newPId,
         name,
         state,
         style,
@@ -1506,7 +1541,9 @@
       };
 
       persatuans.unshift(newP);
+      classes.push(...defaultClasses);
       saveStorage('persatuans', persatuans);
+      saveStorage('classes', classes);
 
       // Reset form
       document.getElementById('newAcademyName').value = '';
@@ -1516,7 +1553,7 @@
       document.getElementById('newAcademyStudents').value = '';
       document.getElementById('newAcademyPassword').value = 'Master1234@';
 
-      alert(`🥋 Real-time Persatuan "${name}" (${style}) successfully created!\n\n🔑 Master Login:\nEmail: ${email}\nPassword: ${password}\n\nClasses have been generated for student self-registration.`);
+      alert(`🥋 Real-time Persatuan "${name}" (${style}) successfully created!\n\n🔑 Master Login:\nEmail: ${email}\nPassword: ${password}\n\n3 Active Classes have been registered and are open for student enrollments.`);
       closeModal('newPersatuanModal');
       renderSidebar();
       renderContent();
@@ -1640,6 +1677,9 @@
 
       persatuans.forEach(p => {
         const isSelected = wizardState.persatuanId == p.id;
+        const activeClassesCount = classes.filter(c => c.persatuan_id == p.id && c.status === 'Active').length;
+        const pendingClassesCount = classes.filter(c => c.persatuan_id == p.id && c.status === 'Pending Approval').length;
+        
         const card = document.createElement('div');
         card.className = `wizard-persatuan-card ${isSelected ? 'selected' : ''}`;
         card.onclick = () => selectWizardPersatuan(p.id);
@@ -1651,9 +1691,14 @@
             </div>
           </div>
           <div style="text-align:right">
-            <span style="font-size:10px;font-weight:700;color:var(--bf-amber);background:rgba(242,148,28,0.1);padding:3px 8px;border-radius:6px">
-              ${p.classes ? p.classes.length : 3} Active Classes
+            <span style="font-size:10px;font-weight:700;color:${activeClassesCount > 0 ? 'var(--bf-success)' : 'var(--bf-amber)'};background:${activeClassesCount > 0 ? 'rgba(16,185,129,0.1)' : 'rgba(242,148,28,0.1)'};padding:3px 8px;border-radius:6px;display:inline-block">
+              ${activeClassesCount} Active Class${activeClassesCount !== 1 ? 'es' : ''}
             </span>
+            ${pendingClassesCount > 0 ? `
+              <div style="font-size:9px;color:#d97706;font-weight:600;margin-top:2px">
+                +${pendingClassesCount} Pending Master
+              </div>
+            ` : ''}
           </div>
         `;
         container.appendChild(card);
@@ -1749,26 +1794,39 @@
 
     function populateWizardClasses() {
       const select = document.getElementById('wizClassSelect');
+      const notice = document.getElementById('wizNoClassesNotice');
+      const classGroup = document.getElementById('wizClassSelectGroup');
+      const submitBtn = document.getElementById('btnWizStep3BSubmit');
+      
       select.innerHTML = '';
 
-      const p = persatuans.find(item => item.id == wizardState.persatuanId);
-      if (p && p.classes && p.classes.length > 0) {
-        p.classes.forEach(c => {
+      // 2. QUERY ONLY classes with status === 'Active' under the selected persatuan
+      const activeClasses = classes.filter(c => c.persatuan_id == wizardState.persatuanId && c.status === 'Active');
+
+      if (activeClasses.length > 0) {
+        if (notice) notice.style.display = 'none';
+        if (classGroup) classGroup.style.display = 'block';
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.style.opacity = '1';
+          submitBtn.style.cursor = 'pointer';
+        }
+
+        activeClasses.forEach(c => {
           const opt = document.createElement('option');
-          opt.value = c.name;
-          opt.textContent = `${c.name} (${c.schedule})`;
+          opt.value = c.id;
+          opt.textContent = `${c.name} (${c.schedule || 'Active'}) — Coach: ${c.master_name || 'Master'}`;
           select.appendChild(opt);
         });
-      } else if (p) {
-        const opt = document.createElement('option');
-        opt.value = `${p.master} - General Mat Class`;
-        opt.textContent = `${p.master} - General Mat Class (Weekly)`;
-        select.appendChild(opt);
       } else {
-        const opt = document.createElement('option');
-        opt.value = 'General Training Batch';
-        opt.textContent = 'General Training Batch';
-        select.appendChild(opt);
+        // No active classes exist yet
+        if (notice) notice.style.display = 'block';
+        if (classGroup) classGroup.style.display = 'none';
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.style.opacity = '0.5';
+          submitBtn.style.cursor = 'not-allowed';
+        }
       }
     }
 
@@ -1782,9 +1840,26 @@
         const classesTeach = document.getElementById('wizMasterClasses').value.trim();
         const email = document.getElementById('wizMasterEmail').value.trim().toLowerCase();
         const password = document.getElementById('wizMasterPassword').value.trim();
+        const coachId = Date.now();
+
+        // 1. CLASS LIFECYCLE: Create associated class(es) with status = "Pending Approval"
+        const rawClassNames = classesTeach.split(',').map(s => s.trim()).filter(Boolean);
+        const createdClasses = (rawClassNames.length > 0 ? rawClassNames : [classesTeach]).map((cName, idx) => ({
+          id: coachId + idx + 10,
+          persatuan_id: wizardState.persatuanId,
+          master_id: coachId,
+          master_name: name,
+          name: cName,
+          schedule: 'Weekly Mat Training',
+          status: 'Pending Approval',
+          createdAt: new Date().toISOString()
+        }));
+
+        classes.unshift(...createdClasses);
+        saveStorage('classes', classes);
 
         const newCoach = {
-          id: Date.now(),
+          id: coachId,
           persatuan_id: wizardState.persatuanId,
           persatuan_name: wizardState.persatuanName,
           role: 'master',
@@ -1794,6 +1869,7 @@
           password,
           credential_level: rank || 'Instructor',
           className: classesTeach,
+          createdClassIds: createdClasses.map(c => c.id),
           status: 'Pending Approval',
           registeredAt: new Date().toLocaleDateString()
         };
@@ -1808,29 +1884,38 @@
             <strong>Candidate:</strong> ${name}<br>
             <strong>Role:</strong> <span class="belt-badge" style="background:#e0f2fe;color:#0369a1">🥋 Master / Instructor</span><br>
             <strong>Persatuan:</strong> ${wizardState.persatuanName}<br>
-            <strong>Classes:</strong> ${classesTeach}<br>
+            <strong>Proposed Class(es):</strong> ${classesTeach} <span class="belt-badge" style="background:#fef3c7;color:#92400e;font-size:10px">Pending Master Approval</span><br>
             <strong>Sign-In Email:</strong> ${email}
           </div>
         `;
       } else {
         const studentName = document.getElementById('wizStudentName').value.trim();
         const parentName = wizardState.role === 'parent' ? document.getElementById('wizParentName').value.trim() : '';
-        const selectedClass = document.getElementById('wizClassSelect').value;
+        const selectedClassId = parseInt(document.getElementById('wizClassSelect').value) || document.getElementById('wizClassSelect').value;
         const phone = document.getElementById('wizStudentPhone').value.trim();
         const belt = document.getElementById('wizStudentBelt').value;
         const email = document.getElementById('wizStudentEmail').value.trim().toLowerCase();
         const password = document.getElementById('wizStudentPassword').value.trim();
         const beltClass = belt.toLowerCase().includes('yellow') ? 'belt-yellow' : (belt.toLowerCase().includes('green') ? 'belt-green' : (belt.toLowerCase().includes('black') ? 'belt-black' : 'belt-white'));
 
+        // Strict Server/Logic Side Validation: Must reference an existing Active class
+        const targetClass = classes.find(c => c.id == selectedClassId && c.persatuan_id == wizardState.persatuanId && c.status === 'Active');
+        if (!targetClass) {
+          alert('Registration Rejected: No active approved class selected. Students can only register under active classes approved by HQ Admin.');
+          return;
+        }
+
         const newStudent = {
           id: Date.now(),
           persatuan_id: wizardState.persatuanId,
           persatuan_name: wizardState.persatuanName,
-          masterName: wizardState.persatuanMaster,
+          class_id: targetClass.id,
+          className: targetClass.name,
+          master_id: targetClass.master_id,
+          masterName: targetClass.master_name || wizardState.persatuanMaster,
           role: wizardState.role, // 'student' | 'parent'
           name: studentName,
           parent_name: parentName,
-          className: selectedClass,
           phone,
           belt,
           beltClass,
@@ -1853,7 +1938,7 @@
             <strong>Student Name:</strong> ${studentName} ${parentName ? `(Parent: ${parentName})` : ''}<br>
             <strong>Role:</strong> <span class="belt-badge" style="background:#fef3c7;color:#92400e">${wizardState.role === 'parent' ? '👨‍👩‍👧 Parent / Student' : '👤 Student'}</span><br>
             <strong>Persatuan:</strong> ${wizardState.persatuanName}<br>
-            <strong>Enrolled Class:</strong> ${selectedClass}<br>
+            <strong>Enrolled Active Class:</strong> ${targetClass.name} (Coach: ${targetClass.master_name || 'Master'})<br>
             <strong>Sign-In Email:</strong> ${email}
           </div>
         `;
@@ -1868,7 +1953,29 @@
         if (c) {
           c.status = 'Active';
           saveStorage('coaches', coaches);
-          alert(`✅ Master / Instructor "${c.name}" has been approved and activated!`);
+
+          // 4. APPROVAL QUEUE: Flip their associated class(es) to Active in the same action
+          let activatedCount = 0;
+          classes.forEach(cls => {
+            if (cls.master_id === c.id || (cls.persatuan_id == c.persatuan_id && cls.master_name === c.name)) {
+              cls.status = 'Active';
+              activatedCount++;
+            }
+          });
+          saveStorage('classes', classes);
+
+          // Also sync persatuan classes cache if present
+          const p = persatuans.find(item => item.id == c.persatuan_id);
+          if (p && p.classes) {
+            p.classes.forEach(cls => {
+              if (cls.master_id === c.id || cls.master_name === c.name) {
+                cls.status = 'Active';
+              }
+            });
+            saveStorage('persatuans', persatuans);
+          }
+
+          alert(`✅ Master "${c.name}" approved!\n\nAll ${activatedCount} associated class(es) are now ACTIVE and open for Student & Parent registrations.`);
           renderContent();
         }
       } else {
@@ -1891,8 +1998,14 @@
     function rejectRegistration(id, roleType) {
       if (confirm('Are you sure you want to decline this registration?')) {
         if (roleType === 'master' || roleType === 'coach') {
-          coaches = coaches.filter(item => item.id !== id);
-          saveStorage('coaches', coaches);
+          const c = coaches.find(item => item.id === id);
+          if (c) {
+            // Remove / mark rejected associated classes so they never become active
+            classes = classes.filter(cls => cls.master_id !== c.id && !(cls.persatuan_id == c.persatuan_id && cls.master_name === c.name && cls.status === 'Pending Approval'));
+            coaches = coaches.filter(item => item.id !== id);
+            saveStorage('classes', classes);
+            saveStorage('coaches', coaches);
+          }
         } else {
           students = students.filter(item => item.id !== id);
           saveStorage('students', students);
@@ -2286,11 +2399,14 @@
                         <td><strong>${c.name}</strong><br><span style="font-size:10px;color:var(--bf-text-muted)">${c.email}</span></td>
                         <td><strong>${c.persatuan_name || c.persatuanName}</strong></td>
                         <td><span class="belt-badge" style="background:#e0f2fe;color:#0369a1">🥋 Master / Coach</span></td>
-                        <td>${c.className}</td>
+                        <td>
+                          <strong>${c.className}</strong><br>
+                          <span class="belt-badge" style="background:#fef3c7;color:#92400e;font-size:10px">Class: Pending Master Approval</span>
+                        </td>
                         <td><a href="https://wa.me/${c.phone.replace(/[^0-9]/g,'')}" target="_blank" style="color:#10b981;font-weight:600">${c.phone}</a></td>
                         <td>
                           <div style="display:flex;gap:6px">
-                            <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="approveRegistration(${c.id}, 'master')">Approve Master</button>
+                            <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="approveRegistration(${c.id}, 'master')">Approve Master & Activate Classes</button>
                             <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="rejectRegistration(${c.id}, 'master')">Decline</button>
                           </div>
                         </td>
@@ -2315,7 +2431,7 @@
                     <th>State</th>
                     <th>Master In Charge</th>
                     <th>Students</th>
-                    <th>Monthly Revenue</th>
+                    <th>Active Classes</th>
                     <th>SaaS Fee Status</th>
                     <th>Action</th>
                   </tr>
@@ -2333,17 +2449,70 @@
                         </button>
                       </td>
                     </tr>
-                  ` : persatuans.map(p => `
-                    <tr>
-                      <td><strong>${p.name}</strong></td>
-                      <td>${p.state}</td>
-                      <td>${p.master}</td>
-                      <td>${p.students || 0}</td>
-                      <td>${p.revenue || 'RM 0'}</td>
-                      <td><span class="belt-badge" style="background:#dcfce7;color:#166534">${p.status}</span></td>
-                      <td><button class="bf-btn bf-btn-sm bf-btn-outline" onclick="switchRole('${p.role || 'persatuan'}')">Enter Portal</button></td>
-                    </tr>
-                  `).join('')}
+                  ` : persatuans.map(p => {
+                    const pActiveClasses = classes.filter(c => c.persatuan_id == p.id && c.status === 'Active').length;
+                    const pPendingClasses = classes.filter(c => c.persatuan_id == p.id && c.status === 'Pending Approval').length;
+                    return `
+                      <tr>
+                        <td><strong>${p.name}</strong></td>
+                        <td>${p.state}</td>
+                        <td>${p.master}</td>
+                        <td>${p.students || 0}</td>
+                        <td>
+                          <span class="belt-badge" style="background:#dcfce7;color:#166534">${pActiveClasses} Active</span>
+                          ${pPendingClasses > 0 ? `<span class="belt-badge" style="background:#fef3c7;color:#92400e;margin-left:4px">${pPendingClasses} Pending</span>` : ''}
+                        </td>
+                        <td><span class="belt-badge" style="background:#dcfce7;color:#166534">${p.status}</span></td>
+                        <td><button class="bf-btn bf-btn-sm bf-btn-outline" onclick="switchRole('${p.role || 'persatuan'}')">Enter Portal</button></td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Master Class Lifecycle Status (HQ View) -->
+          <div class="bf-card" style="margin-top:20px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+              <div>
+                <h3 style="font-size:16px">Academy Classes & Lifecycle Status (${classes.length})</h3>
+                <div style="font-size:11px;color:var(--bf-text-muted);margin-top:2px">Enforcing Class-Dependency Ordering: Students can only enroll in Active classes approved by HQ</div>
+              </div>
+            </div>
+            <div class="bf-table-wrap">
+              <table class="bf-table">
+                <thead>
+                  <tr>
+                    <th>Class Name</th>
+                    <th>Persatuan</th>
+                    <th>Master In Charge</th>
+                    <th>Schedule</th>
+                    <th>Class Status</th>
+                    <th>Enrolled Students</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${classes.length === 0 ? `
+                    <tr><td colspan="6" style="text-align:center;padding:24px;color:var(--bf-text-muted)">No classes created yet. Classes are created when Masters register or Persatuans are onboarded.</td></tr>
+                  ` : classes.map(c => {
+                    const p = persatuans.find(item => item.id == c.persatuan_id);
+                    const enrolledCount = students.filter(s => (s.class_id == c.id || s.className === c.name) && s.status === 'Active').length;
+                    return `
+                      <tr>
+                        <td><strong>${c.name}</strong></td>
+                        <td>${p ? p.name : 'Academy'}</td>
+                        <td>${c.master_name || 'Master'}</td>
+                        <td>${c.schedule || 'Weekly Session'}</td>
+                        <td>
+                          <span class="belt-badge" style="${c.status === 'Active' ? 'background:#dcfce7;color:#166534' : 'background:#fef3c7;color:#92400e'}">
+                            ${c.status === 'Active' ? '● Active' : '⏳ Pending Approval'}
+                          </span>
+                        </td>
+                        <td><strong>${enrolledCount}</strong> active student${enrolledCount !== 1 ? 's' : ''}</td>
+                      </tr>
+                    `;
+                  }).join('')}
                 </tbody>
               </table>
             </div>
@@ -2427,12 +2596,15 @@
                       <tr style="background:#fff">
                         <td><strong>${c.name}</strong><br><span style="font-size:10px;color:var(--bf-text-muted)">${c.email}</span></td>
                         <td><span class="belt-badge" style="background:#e0f2fe;color:#0369a1">🥋 Master / Instructor</span></td>
-                        <td><strong>${c.className}</strong></td>
+                        <td>
+                          <strong>${c.className}</strong><br>
+                          <span class="belt-badge" style="background:#fef3c7;color:#92400e;font-size:10px">Class: Pending Master Approval</span>
+                        </td>
                         <td><span class="belt-badge belt-black">${c.credential_level || 'Instructor'}</span></td>
                         <td><a href="https://wa.me/${c.phone.replace(/[^0-9]/g,'')}" target="_blank" style="color:#10b981;font-weight:600">${c.phone}</a></td>
                         <td>
                           <div style="display:flex;gap:6px">
-                            <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="approveRegistration(${c.id}, 'master')">Approve Master</button>
+                            <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="approveRegistration(${c.id}, 'master')">Approve Master & Classes</button>
                             <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="rejectRegistration(${c.id}, 'master')">Decline</button>
                           </div>
                         </td>
