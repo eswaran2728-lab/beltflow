@@ -700,15 +700,19 @@
         <span id="headerTenantLabel" style="font-size:12px;font-weight:600;color:#e2e8f0">BeltFlow Live Cloud</span>
       </div>
 
-      <!-- User Profile Badge & Logout -->
-      <div style="display:flex;align-items:center;gap:10px">
-        <div class="user-profile-badge">
+      <!-- User Profile Badge & Actions -->
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="user-profile-badge" onclick="openChangePasswordModal()" title="Click to manage password" style="cursor:pointer">
           <div style="text-align:right" class="hide-mobile">
             <div id="headerUserName" style="font-size:12px;font-weight:600">Master Eswaran</div>
-            <div id="headerRoleName" style="font-size:10px;color:var(--bf-amber)">eswaran2728@gmail.com</div>
+            <div id="headerRoleName" style="font-size:10px;color:var(--bf-amber)">HQ Super Admin</div>
           </div>
           <div id="headerUserAvatar" class="avatar-circle">ME</div>
         </div>
+        <button class="bf-btn bf-btn-sm bf-btn-outline" style="background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.2)" onclick="openChangePasswordModal()" title="Change Account Password">
+          <i data-lucide="key" style="width:14px;height:14px"></i>
+          <span class="hide-mobile">Password</span>
+        </button>
         <button class="bf-btn bf-btn-sm bf-btn-outline" style="background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.2)" onclick="executeLogout()" title="Log Out">
           <i data-lucide="log-out" style="width:14px;height:14px"></i>
           <span class="hide-mobile">Logout</span>
@@ -885,11 +889,13 @@
             <div>
               <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Martial Arts Style</label>
               <select id="newAcademyStyle" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
+                <option value="Silambam (Indian Martial Arts)">Silambam (Indian Martial Arts)</option>
                 <option value="Taekwondo (WTF/ITF)">Taekwondo (WTF/ITF)</option>
                 <option value="Karate (Shotokan/Wado)">Karate (Shotokan/Wado)</option>
                 <option value="Silat Gayong">Silat Gayong</option>
-                <option value="Judo">Judo</option>
-                <option value="Mixed Martial Arts">Mixed Martial Arts</option>
+                <option value="Judo / Brazilian Jiujitsu">Judo / Brazilian Jiujitsu</option>
+                <option value="Mixed Martial Arts (MMA)">Mixed Martial Arts (MMA)</option>
+                <option value="Kung Fu / Wushu">Kung Fu / Wushu</option>
               </select>
             </div>
           </div>
@@ -897,7 +903,7 @@
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div>
               <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Master / Head Coach In Charge</label>
-              <input type="text" id="newAcademyMaster" required placeholder="e.g. Master Lim" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
+              <input type="text" id="newAcademyMaster" required placeholder="e.g. Master Ravi / Master Lim" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
             </div>
             <div>
               <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Estimated Student Count</label>
@@ -908,6 +914,27 @@
           <div>
             <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Master WhatsApp / Contact</label>
             <input type="text" id="newAcademyPhone" required placeholder="+60123456789" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
+          </div>
+
+          <!-- Master Login Credentials Setup -->
+          <div style="background:#f8fafc;border:1px solid #cbd5e1;padding:12px;border-radius:8px;display:flex;flex-direction:column;gap:8px">
+            <div style="font-size:12px;font-weight:700;color:var(--bf-navy);display:flex;align-items:center;gap:6px">
+              <i data-lucide="key" style="width:14px;height:14px;color:var(--bf-amber)"></i>
+              <span>Master / Academy Sign-In Credentials</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div>
+                <label style="font-size:11px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Login Email</label>
+                <input type="email" id="newAcademyEmail" required placeholder="master@academy.com" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px;background:#fff">
+              </div>
+              <div>
+                <label style="font-size:11px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Temporary Dummy Password</label>
+                <input type="text" id="newAcademyPassword" required placeholder="e.g. Master1234@" value="Master1234@" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px;background:#fff;font-weight:600">
+              </div>
+            </div>
+            <div style="font-size:10px;color:var(--bf-text-muted)">
+              🔒 The Master can sign in directly with this email & dummy password, and change their password anytime via their profile settings.
+            </div>
           </div>
 
           <div style="background:#f8fafc;border:1px solid var(--bf-border);padding:10px;border-radius:6px;font-size:11px;color:var(--bf-text-muted)">
@@ -926,7 +953,40 @@
     </div>
   </div>
 
-  <!-- MODAL: ADD NEW STUDENT -->
+  <!-- MODAL: CHANGE PASSWORD -->
+  <div id="changePasswordModal" class="modal-overlay">
+    <div class="modal-box" style="max-width:440px">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <i data-lucide="shield" style="width:20px;height:20px;color:var(--bf-amber)"></i>
+          <h3 style="font-size:16px">Change Account Password</h3>
+        </div>
+        <button class="btn-close-modal" onclick="closeModal('changePasswordModal')">
+          <i data-lucide="x" style="width:14px;height:14px"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="handleChangePassword(event)" style="display:flex;flex-direction:column;gap:14px">
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Account Email</label>
+            <input type="text" id="cpCurrentEmail" readonly style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px;background:#f1f5f9;color:var(--bf-text-muted)">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">New Password</label>
+            <input type="password" id="cpNewPassword" required placeholder="Enter new password" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Confirm New Password</label>
+            <input type="password" id="cpConfirmPassword" required placeholder="Confirm new password" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
+          </div>
+          <div style="margin-top:8px;display:flex;justify-content:flex-end;gap:8px">
+            <button type="button" class="bf-btn bf-btn-outline" onclick="closeModal('changePasswordModal')">Cancel</button>
+            <button type="submit" class="bf-btn bf-btn-primary">Update Password</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
   <div id="newStudentModal" class="modal-overlay">
     <div class="modal-box">
       <div class="modal-header">
@@ -1006,6 +1066,8 @@
     let students = loadStorage('students', []);
     let persatuans = loadStorage('persatuans', []);
     let attendanceStatuses = loadStorage('attendance', {});
+    let superAdminPass = loadStorage('super_pass', 'Eswaran0321@');
+    let loggedInUserEmail = 'eswaran2728@gmail.com';
 
     function handleNewPersatuan(e) {
       e.preventDefault();
@@ -1015,6 +1077,8 @@
       const master = document.getElementById('newAcademyMaster').value.trim();
       const studentCount = parseInt(document.getElementById('newAcademyStudents').value) || 0;
       const phone = document.getElementById('newAcademyPhone').value.trim();
+      const email = (document.getElementById('newAcademyEmail').value.trim() || '').toLowerCase();
+      const password = document.getElementById('newAcademyPassword').value.trim() || 'Master1234@';
       const rev = `RM ${(studentCount * 100).toLocaleString()}`;
 
       const newP = {
@@ -1023,6 +1087,8 @@
         state,
         style,
         master,
+        email,
+        password,
         students: studentCount,
         revenue: rev,
         status: 'Active (Onboarded)',
@@ -1037,9 +1103,11 @@
       document.getElementById('newAcademyName').value = '';
       document.getElementById('newAcademyMaster').value = '';
       document.getElementById('newAcademyPhone').value = '';
+      document.getElementById('newAcademyEmail').value = '';
       document.getElementById('newAcademyStudents').value = '';
+      document.getElementById('newAcademyPassword').value = 'Master1234@';
 
-      alert(`🥋 Real-time Persatuan "${name}" (${state}) successfully created and onboarded!`);
+      alert(`🥋 Real-time Persatuan "${name}" (${style}) successfully created!\n\n🔑 Master Login:\nEmail: ${email}\nPassword: ${password}\n\nThe master can sign in immediately and update their password later.`);
       closeModal('newPersatuanModal');
       renderSidebar();
       renderContent();
@@ -1132,8 +1200,9 @@
 
       // Confidential Super Admin Authentication
       if (email === 'eswaran2728@gmail.com') {
-        if (pass === 'Eswaran0321@') {
+        if (pass === superAdminPass) {
           isLoggedIn = true;
+          loggedInUserEmail = 'eswaran2728@gmail.com';
           document.getElementById('loginScreen').style.display = 'none';
           switchRole('super');
           return;
@@ -1141,6 +1210,23 @@
           alert('Invalid Super Admin credentials. Access denied.');
           return;
         }
+      }
+
+      // Check registered persatuans in storage (e.g. Silambam, Taekwondo academy masters)
+      const matchedPersatuan = persatuans.find(p => (p.email && p.email.toLowerCase() === email) || (p.master && p.master.toLowerCase().includes(email.split('@')[0])));
+      if (matchedPersatuan) {
+        if (matchedPersatuan.password && matchedPersatuan.password !== pass) {
+          alert('Invalid password for ' + matchedPersatuan.name + ' (' + email + ').');
+          return;
+        }
+        isLoggedIn = true;
+        loggedInUserEmail = email;
+        ROLES.persatuan.name = matchedPersatuan.master;
+        ROLES.persatuan.title = matchedPersatuan.name + ' (' + (matchedPersatuan.style || 'Academy') + ')';
+        ROLES.persatuan.initials = matchedPersatuan.master.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase() || 'MA';
+        document.getElementById('loginScreen').style.display = 'none';
+        switchRole('persatuan');
+        return;
       }
 
       // Registered System User Authentication
@@ -1151,36 +1237,84 @@
           return;
         }
         isLoggedIn = true;
+        loggedInUserEmail = email;
         document.getElementById('loginScreen').style.display = 'none';
         switchRole(user.role);
-        return;
-      }
-
-      // Check registered persatuans in storage
-      const matchedPersatuan = persatuans.find(p => (p.email && p.email.toLowerCase() === email) || (p.master && p.master.toLowerCase().includes(email.split('@')[0])));
-      if (matchedPersatuan) {
-        isLoggedIn = true;
-        document.getElementById('loginScreen').style.display = 'none';
-        switchRole('persatuan');
         return;
       }
 
       // Role Heuristics for registered academy staff, coaches, students
       if (email.includes('coach')) {
         isLoggedIn = true;
+        loggedInUserEmail = email;
         document.getElementById('loginScreen').style.display = 'none';
         switchRole('coach');
-      } else if (email.includes('dojang') || email.includes('persatuan') || email.includes('academy')) {
+      } else if (email.includes('dojang') || email.includes('persatuan') || email.includes('academy') || email.includes('silambam')) {
         isLoggedIn = true;
+        loggedInUserEmail = email;
         document.getElementById('loginScreen').style.display = 'none';
         switchRole('persatuan');
       } else if (email.includes('student') || email.includes('parent')) {
         isLoggedIn = true;
+        loggedInUserEmail = email;
         document.getElementById('loginScreen').style.display = 'none';
         switchRole('student');
       } else {
         alert('Unrecognized user credentials. Please check your email and password or register your Persatuan.');
       }
+    }
+
+    function openChangePasswordModal() {
+      document.getElementById('cpCurrentEmail').value = loggedInUserEmail;
+      document.getElementById('cpNewPassword').value = '';
+      document.getElementById('cpConfirmPassword').value = '';
+      openModal('changePasswordModal');
+    }
+
+    function handleChangePassword(e) {
+      e.preventDefault();
+      const newPass = document.getElementById('cpNewPassword').value.trim();
+      const confirmPass = document.getElementById('cpConfirmPassword').value.trim();
+
+      if (!newPass || newPass.length < 4) {
+        alert('Password must be at least 4 characters long.');
+        return;
+      }
+
+      if (newPass !== confirmPass) {
+        alert('Passwords do not match! Please check and try again.');
+        return;
+      }
+
+      // If Super Admin
+      if (loggedInUserEmail === 'eswaran2728@gmail.com') {
+        superAdminPass = newPass;
+        saveStorage('super_pass', newPass);
+        alert('✅ Super Admin password updated successfully!\nNext login will require your new password.');
+        closeModal('changePasswordModal');
+        return;
+      }
+
+      // If Academy Master
+      const pIdx = persatuans.findIndex(p => p.email && p.email.toLowerCase() === loggedInUserEmail.toLowerCase());
+      if (pIdx !== -1) {
+        persatuans[pIdx].password = newPass;
+        saveStorage('persatuans', persatuans);
+        alert(`✅ Password updated successfully for Master ${persatuans[pIdx].master}!\nNext login will require your new password.`);
+        closeModal('changePasswordModal');
+        return;
+      }
+
+      // If registered preset account
+      if (USER_ACCOUNTS[loggedInUserEmail]) {
+        USER_ACCOUNTS[loggedInUserEmail].pass = newPass;
+        alert('✅ Password updated successfully!\nNext login will require your new password.');
+        closeModal('changePasswordModal');
+        return;
+      }
+
+      alert('✅ Password updated successfully!');
+      closeModal('changePasswordModal');
     }
 
     function executeLogout() {
