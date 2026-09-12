@@ -694,12 +694,10 @@
         </div>
       </div>
 
-      <!-- Quick Role Switcher -->
-      <div class="role-pills-bar">
-        <button class="role-pill-btn active" id="pillSuper" onclick="switchRole('super')">👑 HQ Admin</button>
-        <button class="role-pill-btn" id="pillPersatuan" onclick="switchRole('persatuan')">🏛️ Academy</button>
-        <button class="role-pill-btn" id="pillCoach" onclick="switchRole('coach')">🥋 Coach</button>
-        <button class="role-pill-btn" id="pillStudent" onclick="switchRole('student')">👤 Student/Parent</button>
+      <!-- Live Status Badge (Role switcher removed for real authentication) -->
+      <div class="header-status-badge hide-mobile" style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.08);padding:6px 14px;border-radius:20px;border:1px solid rgba(255,255,255,0.12)">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981"></span>
+        <span id="headerTenantLabel" style="font-size:12px;font-weight:600;color:#e2e8f0">BeltFlow Live Cloud</span>
       </div>
 
       <!-- User Profile Badge & Logout -->
@@ -843,6 +841,11 @@
             <i data-lucide="printer" style="width:14px;height:14px"></i>
             <span>Print Official Certificate</span>
           </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: ADD NEW PERSATUAN (ACADEMY ONBOARDING) -->
   <div id="newPersatuanModal" class="modal-overlay">
     <div class="modal-box">
@@ -999,10 +1002,10 @@
       } catch (e) {}
     }
 
-    // Live State (Fresh clean state: 0 initial mock items)
-    let students = loadStorage('students_live', []);
-    let persatuans = loadStorage('persatuans_live', []);
-    let attendanceStatuses = loadStorage('attendance_live', {});
+    // Live State
+    let students = loadStorage('students', []);
+    let persatuans = loadStorage('persatuans', []);
+    let attendanceStatuses = loadStorage('attendance', {});
 
     function handleNewPersatuan(e) {
       e.preventDefault();
@@ -1010,7 +1013,7 @@
       const state = document.getElementById('newAcademyState').value;
       const style = document.getElementById('newAcademyStyle').value;
       const master = document.getElementById('newAcademyMaster').value.trim();
-      const studentCount = parseInt(document.getElementById('newAcademyStudents').value) || 120;
+      const studentCount = parseInt(document.getElementById('newAcademyStudents').value) || 0;
       const phone = document.getElementById('newAcademyPhone').value.trim();
       const rev = `RM ${(studentCount * 100).toLocaleString()}`;
 
@@ -1030,8 +1033,15 @@
       persatuans.unshift(newP);
       saveStorage('persatuans', persatuans);
 
-      alert(`🥋 Real-time Persatuan "${name}" (${state}) onboarded and saved to live system!`);
+      // Reset form
+      document.getElementById('newAcademyName').value = '';
+      document.getElementById('newAcademyMaster').value = '';
+      document.getElementById('newAcademyPhone').value = '';
+      document.getElementById('newAcademyStudents').value = '';
+
+      alert(`🥋 Real-time Persatuan "${name}" (${state}) successfully created and onboarded!`);
       closeModal('newPersatuanModal');
+      renderSidebar();
       renderContent();
     }
 
@@ -1043,7 +1053,7 @@
         sidebarTitle: 'HQ Management',
         nav: [
           { id: 'overview', label: 'Global KPIs', icon: 'layout-dashboard' },
-          { id: 'persatuans', label: 'Persatuans (14)', icon: 'building-2' },
+          { id: 'persatuans', label: 'Persatuans (Academies)', icon: 'building-2' },
           { id: 'charges', label: 'SaaS Charges & Cuts', icon: 'percent' },
           { id: 'audit', label: 'Audit & Compliance', icon: 'shield-alert' },
           { id: 'verify', label: 'Certificate Verification', icon: 'award' }
@@ -1179,21 +1189,25 @@
       document.getElementById('loginPassword').value = '';
     }
 
-    // Role Switching
+    // Role Switching (Secured based on authentication)
     function switchRole(roleKey) {
       currentRole = roleKey;
       const roleData = ROLES[roleKey];
-      
-      // Update pills
-      document.querySelectorAll('.role-pill-btn').forEach(b => b.classList.remove('active'));
-      const activeBtn = document.getElementById(`pill${roleKey.charAt(0).toUpperCase() + roleKey.slice(1)}`);
-      if (activeBtn) activeBtn.classList.add('active');
+      if (!roleData) return;
 
       // Update Header
       document.getElementById('headerUserName').textContent = roleData.name;
-      document.getElementById('headerRoleName').textContent = roleKey === 'super' ? 'eswaran2728@gmail.com' : roleData.title;
+      document.getElementById('headerRoleName').textContent = roleKey === 'super' ? 'HQ Super Admin' : roleData.title;
       document.getElementById('headerUserAvatar').textContent = roleData.initials;
       document.getElementById('sidebarRoleTitle').textContent = roleData.sidebarTitle;
+
+      const tenantLabel = document.getElementById('headerTenantLabel');
+      if (tenantLabel) {
+        if (roleKey === 'super') tenantLabel.textContent = 'BeltFlow HQ Super Admin';
+        else if (roleKey === 'persatuan') tenantLabel.textContent = 'Academy Portal';
+        else if (roleKey === 'coach') tenantLabel.textContent = 'Coach Mat Portal';
+        else tenantLabel.textContent = 'Student Portal';
+      }
 
       // Default Tab for role
       currentTab = roleData.nav[0].id;
