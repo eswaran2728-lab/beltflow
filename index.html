@@ -843,7 +843,82 @@
             <i data-lucide="printer" style="width:14px;height:14px"></i>
             <span>Print Official Certificate</span>
           </button>
+  <!-- MODAL: ADD NEW PERSATUAN (ACADEMY ONBOARDING) -->
+  <div id="newPersatuanModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <i data-lucide="building-2" style="width:20px;height:20px;color:var(--bf-amber)"></i>
+          <h3 style="font-size:16px">Onboard New Persatuan / Academy</h3>
         </div>
+        <button class="btn-close-modal" onclick="closeModal('newPersatuanModal')">
+          <i data-lucide="x" style="width:14px;height:14px"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="handleNewPersatuan(event)" style="display:flex;flex-direction:column;gap:14px">
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Persatuan / Academy Name</label>
+            <input type="text" id="newAcademyName" required placeholder="e.g. Johor Southern Martial Arts Academy" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
+          </div>
+          
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">State / Territory</label>
+              <select id="newAcademyState" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
+                <option value="Kuala Lumpur">Kuala Lumpur</option>
+                <option value="Selangor">Selangor</option>
+                <option value="Johor">Johor</option>
+                <option value="Penang">Penang</option>
+                <option value="Perak">Perak</option>
+                <option value="Melaka">Melaka</option>
+                <option value="Kedah">Kedah</option>
+                <option value="Sabah">Sabah</option>
+                <option value="Sarawak">Sarawak</option>
+                <option value="Negeri Sembilan">Negeri Sembilan</option>
+                <option value="Pahang">Pahang</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Martial Arts Style</label>
+              <select id="newAcademyStyle" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
+                <option value="Taekwondo (WTF/ITF)">Taekwondo (WTF/ITF)</option>
+                <option value="Karate (Shotokan/Wado)">Karate (Shotokan/Wado)</option>
+                <option value="Silat Gayong">Silat Gayong</option>
+                <option value="Judo">Judo</option>
+                <option value="Mixed Martial Arts">Mixed Martial Arts</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Master / Head Coach In Charge</label>
+              <input type="text" id="newAcademyMaster" required placeholder="e.g. Master Lim" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Estimated Student Count</label>
+              <input type="number" id="newAcademyStudents" required placeholder="e.g. 120" value="120" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
+            </div>
+          </div>
+
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Master WhatsApp / Contact</label>
+            <input type="text" id="newAcademyPhone" required placeholder="+60123456789" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
+          </div>
+
+          <div style="background:#f8fafc;border:1px solid var(--bf-border);padding:10px;border-radius:6px;font-size:11px;color:var(--bf-text-muted)">
+            ⚡ <strong>BeltFlow SaaS Terms:</strong> Standard 10% SaaS processing cut with automated digital certificate issuance and sibling billing calculations.
+          </div>
+
+          <div style="margin-top:8px;display:flex;justify-content:flex-end;gap:8px">
+            <button type="button" class="bf-btn bf-btn-outline" onclick="closeModal('newPersatuanModal')">Cancel</button>
+            <button type="submit" class="bf-btn bf-btn-primary">
+              <i data-lucide="check" style="width:14px;height:14px"></i>
+              <span>Activate & Onboard Persatuan</span>
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -918,7 +993,42 @@
       { id: 5, name: 'Aina Binti Roslan', ic: '141103-10-6622', belt: 'Yellow Belt', beltClass: 'belt-yellow', attendance: 84, fee: 'RM 120 (Paid)', phone: '+60113456789', status: 'Active', sibling: false }
     ];
 
+    // Mock Persatuans Database
+    let persatuans = [
+      { id: 1, name: 'Central Dojang HQ', state: 'Kuala Lumpur', master: 'Grandmaster Lee', students: 248, revenue: 'RM 24,800', status: 'Paid (10%)', role: 'persatuan' },
+      { id: 2, name: 'Starlight Taekwondo Academy', state: 'Selangor', master: 'Master Ravi', students: 182, revenue: 'RM 18,200', status: 'Paid (10%)', role: 'coach' },
+      { id: 3, name: 'Penang Martial Arts Hub', state: 'Penang', master: 'Master Tan', students: 135, revenue: 'RM 13,500', status: 'Pending Verification', role: 'persatuan' },
+      { id: 4, name: 'Perak Silver Dragon Dojo', state: 'Perak', master: 'Master Kumar', students: 95, revenue: 'RM 9,500', status: 'Paid (10%)', role: 'persatuan' },
+      { id: 5, name: 'Johor Tiger Martial Arts', state: 'Johor', master: 'Master Chua', students: 160, revenue: 'RM 16,000', status: 'Paid (10%)', role: 'persatuan' }
+    ];
+
     let attendanceStatuses = { 1: 'Present', 2: 'Present', 3: 'Absent', 4: 'Present', 5: 'Present' };
+
+    function handleNewPersatuan(e) {
+      e.preventDefault();
+      const name = document.getElementById('newAcademyName').value.trim();
+      const state = document.getElementById('newAcademyState').value;
+      const style = document.getElementById('newAcademyStyle').value;
+      const master = document.getElementById('newAcademyMaster').value.trim();
+      const studentCount = parseInt(document.getElementById('newAcademyStudents').value) || 120;
+      const phone = document.getElementById('newAcademyPhone').value.trim();
+      const rev = `RM ${(studentCount * 100).toLocaleString()}`;
+
+      persatuans.unshift({
+        id: Date.now(),
+        name,
+        state,
+        master,
+        students: studentCount,
+        revenue: rev,
+        status: 'Active (Onboarded)',
+        role: 'persatuan'
+      });
+
+      alert(`🥋 Success! Persatuan "${name}" in ${state} has been onboarded to BeltFlow OS.`);
+      closeModal('newPersatuanModal');
+      renderContent();
+    }
 
     const ROLES = {
       super: {
@@ -1213,13 +1323,17 @@
       }
 
       if (currentRole === 'super') {
+        const totalStudents = persatuans.reduce((acc, p) => acc + p.students, 0);
+        const totalRev = persatuans.reduce((acc, p) => acc + (p.students * 100), 0);
+        const feeCut = Math.round(totalRev * 0.10);
+
         view.innerHTML = `
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
             <div>
               <h2 style="font-size:22px;color:var(--bf-navy)">BeltFlow HQ Global Platform</h2>
               <p style="font-size:12px;color:var(--bf-text-muted)">Super Admin: <strong>eswaran2728@gmail.com</strong> (Master Eswaran)</p>
             </div>
-            <button class="bf-btn bf-btn-primary" onclick="alert('New Persatuan onboarding initiated.')">
+            <button class="bf-btn bf-btn-primary" onclick="openModal('newPersatuanModal')">
               <i data-lucide="plus-circle" style="width:14px;height:14px"></i>
               <span>Onboard New Academy</span>
             </button>
@@ -1228,18 +1342,18 @@
           <div class="kpi-grid">
             <div class="kpi-card">
               <div class="kpi-title">Total Active Students</div>
-              <div class="kpi-value">1,482</div>
+              <div class="kpi-value">${totalStudents.toLocaleString()}</div>
               <div class="kpi-subtext"><span style="color:var(--bf-success);font-weight:700">↑ 12.4%</span> this month</div>
             </div>
             <div class="kpi-card">
               <div class="kpi-title">Total Academies (Persatuans)</div>
-              <div class="kpi-value">14</div>
-              <div class="kpi-subtext">Across 6 States</div>
+              <div class="kpi-value">${persatuans.length}</div>
+              <div class="kpi-subtext">Across ${new Set(persatuans.map(p => p.state)).size} States</div>
             </div>
             <div class="kpi-card">
               <div class="kpi-title">Monthly SaaS Processing</div>
-              <div class="kpi-value">RM 148,200</div>
-              <div class="kpi-subtext">BeltFlow Cut: RM 14,820 (10%)</div>
+              <div class="kpi-value">RM ${totalRev.toLocaleString()}</div>
+              <div class="kpi-subtext">BeltFlow Cut: RM ${feeCut.toLocaleString()} (10%)</div>
             </div>
             <div class="kpi-card">
               <div class="kpi-title">Promotions This Term</div>
@@ -1249,7 +1363,10 @@
           </div>
 
           <div class="bf-card">
-            <h3 style="font-size:16px;margin-bottom:14px">Active Persatuans (Academy Chains)</h3>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+              <h3 style="font-size:16px">Active Persatuans (Academy Chains)</h3>
+              <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="openModal('newPersatuanModal')">+ Create Persatuan</button>
+            </div>
             <div class="bf-table-wrap">
               <table class="bf-table">
                 <thead>
@@ -1264,33 +1381,17 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td><strong>Central Dojang HQ</strong></td>
-                    <td>Kuala Lumpur</td>
-                    <td>Grandmaster Lee</td>
-                    <td>248</td>
-                    <td>RM 24,800</td>
-                    <td><span class="belt-badge" style="background:#dcfce7;color:#166534">Paid (10%)</span></td>
-                    <td><button class="bf-btn bf-btn-sm bf-btn-outline" onclick="switchRole('persatuan')">Enter Portal</button></td>
-                  </tr>
-                  <tr>
-                    <td><strong>Starlight Taekwondo Academy</strong></td>
-                    <td>Selangor</td>
-                    <td>Master Ravi</td>
-                    <td>182</td>
-                    <td>RM 18,200</td>
-                    <td><span class="belt-badge" style="background:#dcfce7;color:#166534">Paid (10%)</span></td>
-                    <td><button class="bf-btn bf-btn-sm bf-btn-outline" onclick="switchRole('coach')">View Mat</button></td>
-                  </tr>
-                  <tr>
-                    <td><strong>Penang Martial Arts Hub</strong></td>
-                    <td>Penang</td>
-                    <td>Master Tan</td>
-                    <td>135</td>
-                    <td>RM 13,500</td>
-                    <td><span class="belt-badge" style="background:#fef9c3;color:#854d0e">Pending Verification</span></td>
-                    <td><button class="bf-btn bf-btn-sm bf-btn-outline">Review</button></td>
-                  </tr>
+                  ${persatuans.map(p => `
+                    <tr>
+                      <td><strong>${p.name}</strong></td>
+                      <td>${p.state}</td>
+                      <td>${p.master}</td>
+                      <td>${p.students}</td>
+                      <td>${p.revenue}</td>
+                      <td><span class="belt-badge" style="background:#dcfce7;color:#166534">${p.status}</span></td>
+                      <td><button class="bf-btn bf-btn-sm bf-btn-outline" onclick="switchRole('${p.role || 'persatuan'}')">Enter Portal</button></td>
+                    </tr>
+                  `).join('')}
                 </tbody>
               </table>
             </div>
