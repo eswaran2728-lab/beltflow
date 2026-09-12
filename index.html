@@ -1000,24 +1000,10 @@
       } catch (e) {}
     }
 
-    // Live State (Loaded from localStorage or initial defaults)
-    let students = loadStorage('students', [
-      { id: 1, name: 'Aryan Suresh', ic: '140512-10-5541', belt: 'Yellow Belt', beltClass: 'belt-yellow', attendance: 92, fee: 'RM 120 (Paid)', phone: '+60123456789', status: 'Active', sibling: false, persatuan: 'Central Dojang HQ' },
-      { id: 2, name: 'Kavya Suresh', ic: '160822-10-8832', belt: 'White Belt', beltClass: 'belt-white', attendance: 88, fee: 'RM 108 (10% Sibling)', phone: '+60123456789', status: 'Active', sibling: true, persatuan: 'Central Dojang HQ' },
-      { id: 3, name: 'Daniel Tan', ic: '130204-14-1123', belt: 'Green Belt', beltClass: 'belt-green', attendance: 58, fee: 'Unpaid', phone: '+60198765432', status: 'At-Risk', sibling: false, persatuan: 'Central Dojang HQ' },
-      { id: 4, name: 'Lucas Lee', ic: '150119-10-4421', belt: 'Blue Belt', beltClass: 'belt-blue', attendance: 96, fee: 'RM 120 (Paid)', phone: '+60172345678', status: 'Active', sibling: false, persatuan: 'Central Dojang HQ' },
-      { id: 5, name: 'Aina Binti Roslan', ic: '141103-10-6622', belt: 'Yellow Belt', beltClass: 'belt-yellow', attendance: 84, fee: 'RM 120 (Paid)', phone: '+60113456789', status: 'Active', sibling: false, persatuan: 'Central Dojang HQ' }
-    ]);
-
-    let persatuans = loadStorage('persatuans', [
-      { id: 1, name: 'Central Dojang HQ', state: 'Kuala Lumpur', master: 'Grandmaster Lee', students: 248, revenue: 'RM 24,800', status: 'Paid (10%)', role: 'persatuan' },
-      { id: 2, name: 'Starlight Taekwondo Academy', state: 'Selangor', master: 'Master Ravi', students: 182, revenue: 'RM 18,200', status: 'Paid (10%)', role: 'coach' },
-      { id: 3, name: 'Penang Martial Arts Hub', state: 'Penang', master: 'Master Tan', students: 135, revenue: 'RM 13,500', status: 'Pending Verification', role: 'persatuan' },
-      { id: 4, name: 'Perak Silver Dragon Dojo', state: 'Perak', master: 'Master Kumar', students: 95, revenue: 'RM 9,500', status: 'Paid (10%)', role: 'persatuan' },
-      { id: 5, name: 'Johor Tiger Martial Arts', state: 'Johor', master: 'Master Chua', students: 160, revenue: 'RM 16,000', status: 'Paid (10%)', role: 'persatuan' }
-    ]);
-
-    let attendanceStatuses = loadStorage('attendance', { 1: 'Present', 2: 'Present', 3: 'Absent', 4: 'Present', 5: 'Present' });
+    // Live State (Fresh clean state: 0 initial mock items)
+    let students = loadStorage('students_live', []);
+    let persatuans = loadStorage('persatuans_live', []);
+    let attendanceStatuses = loadStorage('attendance_live', {});
 
     function handleNewPersatuan(e) {
       e.preventDefault();
@@ -1406,7 +1392,19 @@
                   </tr>
                 </thead>
                 <tbody>
-                  ${persatuans.map(p => `
+                  ${persatuans.length === 0 ? `
+                    <tr>
+                      <td colspan="7" style="text-align:center;padding:36px 16px;color:var(--bf-text-muted)">
+                        <div style="font-size:28px;margin-bottom:8px">🏛️</div>
+                        <div style="font-weight:700;font-size:14px;color:var(--bf-navy)">No Persatuans Onboarded Yet</div>
+                        <div style="font-size:12px;margin-top:4px">Click the button below to register your first real state martial arts academy!</div>
+                        <button class="bf-btn bf-btn-sm bf-btn-primary" style="margin-top:14px" onclick="openModal('newPersatuanModal')">
+                          <i data-lucide="plus-circle" style="width:14px;height:14px"></i>
+                          <span>+ Onboard First Academy</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ` : persatuans.map(p => `
                     <tr>
                       <td><strong>${p.name}</strong></td>
                       <td>${p.state}</td>
@@ -1423,10 +1421,13 @@
           </div>
         `;
       } else if (currentRole === 'persatuan') {
+        const atRiskCount = students.filter(s => s.status === 'At-Risk').length;
+        const siblingCount = students.filter(s => s.sibling).length;
+
         view.innerHTML = `
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
             <div>
-              <h2 style="font-size:22px;color:var(--bf-navy)">Central Dojang Academy Hub</h2>
+              <h2 style="font-size:22px;color:var(--bf-navy)">Academy Operations Hub</h2>
               <p style="font-size:12px;color:var(--bf-text-muted)">Student Roster, Sibling Billing & Belt Promotions</p>
             </div>
             <div style="display:flex;gap:8px">
@@ -1445,21 +1446,21 @@
             <div class="kpi-card">
               <div class="kpi-title">Enrolled Students</div>
               <div class="kpi-value">${students.length}</div>
-              <div class="kpi-subtext">32 with Sibling Discount</div>
+              <div class="kpi-subtext">${siblingCount} with Sibling Discount</div>
             </div>
             <div class="kpi-card">
               <div class="kpi-title">Upcoming Grading Candidates</div>
-              <div class="kpi-value">46</div>
+              <div class="kpi-value">${students.length}</div>
               <div class="kpi-subtext">Exam Date: 28th Sep 2026</div>
             </div>
             <div class="kpi-card">
               <div class="kpi-title">Fee Collection Rate</div>
-              <div class="kpi-value">94.2%</div>
-              <div class="kpi-subtext">RM 23,360 collected</div>
+              <div class="kpi-value">${students.length > 0 ? '100%' : '0%'}</div>
+              <div class="kpi-subtext">RM ${(students.length * 120).toLocaleString()} projected</div>
             </div>
             <div class="kpi-card">
               <div class="kpi-title">At-Risk Absences</div>
-              <div class="kpi-value" style="color:var(--bf-danger)">1</div>
+              <div class="kpi-value" style="color:${atRiskCount > 0 ? 'var(--bf-danger)' : 'var(--bf-navy)'}">${atRiskCount}</div>
               <div class="kpi-subtext">3+ missed sessions</div>
             </div>
           </div>
@@ -1483,7 +1484,19 @@
                   </tr>
                 </thead>
                 <tbody>
-                  ${students.map(s => `
+                  ${students.length === 0 ? `
+                    <tr>
+                      <td colspan="7" style="text-align:center;padding:36px 16px;color:var(--bf-text-muted)">
+                        <div style="font-size:28px;margin-bottom:8px">🥋</div>
+                        <div style="font-weight:700;font-size:14px;color:var(--bf-navy)">No Students Registered Yet</div>
+                        <div style="font-size:12px;margin-top:4px">Click the button below to register your first student into the dojang!</div>
+                        <button class="bf-btn bf-btn-sm bf-btn-primary" style="margin-top:14px" onclick="openModal('newStudentModal')">
+                          <i data-lucide="user-plus" style="width:14px;height:14px"></i>
+                          <span>+ Register First Student</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ` : students.map(s => `
                     <tr style="${s.status === 'At-Risk' ? 'background:#fff1f2' : ''}">
                       <td><strong>${s.name}</strong> ${s.sibling ? '<span style="font-size:10px;background:#e0f2fe;color:#0369a1;padding:2px 6px;border-radius:4px;font-weight:700">Sibling</span>' : ''}</td>
                       <td>${s.ic}</td>
