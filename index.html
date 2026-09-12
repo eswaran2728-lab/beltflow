@@ -73,7 +73,80 @@
       overflow-x: hidden;
     }
 
-    /* Top Navigation Header */
+    /* ================= LOGIN SCREEN ================= */
+    #loginScreen {
+      min-height: 100vh;
+      width: 100%;
+      background: radial-gradient(circle at top right, #153c61 0%, #0d2b47 50%, #061828 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 5000;
+      overflow-y: auto;
+    }
+
+    .login-container {
+      width: 100%;
+      max-width: 440px;
+      background: #ffffff;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+      padding: 32px 28px;
+      animation: fadeInScale 0.3s ease-out;
+    }
+
+    @keyframes fadeInScale {
+      from { opacity: 0; transform: scale(0.96) translateY(10px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .login-logo-header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .login-logo-img {
+      height: 48px;
+      width: auto;
+      border-radius: 8px;
+      background: #fff;
+      padding: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      margin-bottom: 12px;
+    }
+
+    .role-quick-card {
+      border: 1px solid var(--bf-border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      background: #f8fafc;
+      margin-bottom: 8px;
+    }
+
+    .role-quick-card:hover {
+      border-color: var(--bf-amber);
+      background: var(--bf-amber-soft);
+      transform: translateY(-1px);
+    }
+
+    .role-quick-card.selected {
+      border-color: var(--bf-amber);
+      background: var(--bf-amber-soft);
+      box-shadow: 0 0 0 2px var(--bf-amber-border);
+    }
+
+    /* ================= MAIN DASHBOARD ================= */
     header.bf-header {
       background: var(--bf-navy);
       color: #ffffff;
@@ -136,9 +209,7 @@
       gap: 6px;
     }
 
-    .role-pill-btn:hover {
-      color: #fff;
-    }
+    .role-pill-btn:hover { color: #fff; }
 
     .role-pill-btn.active {
       background: var(--bf-amber);
@@ -166,7 +237,7 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.15);
     }
 
-    /* Main Layout */
+    /* Layout */
     .bf-app-layout {
       display: flex;
       flex: 1;
@@ -236,7 +307,7 @@
       max-width: calc(100% - 260px);
     }
 
-    /* General Components */
+    /* Components */
     .bf-card {
       background: var(--bf-card-bg);
       border: 1px solid var(--bf-border);
@@ -406,9 +477,7 @@
       padding: 16px;
     }
 
-    .modal-overlay.active {
-      display: flex;
-    }
+    .modal-overlay.active { display: flex; }
 
     .modal-box {
       background: #ffffff;
@@ -435,9 +504,7 @@
       justify-content: space-between;
     }
 
-    .modal-body {
-      padding: 24px;
-    }
+    .modal-body { padding: 24px; }
 
     .btn-close-modal {
       background: rgba(255,255,255,0.15);
@@ -452,7 +519,6 @@
       cursor: pointer;
     }
 
-    /* Certificate Official View */
     .cert-frame {
       border: 8px double #0d2b47;
       background: #fffdfa;
@@ -460,7 +526,6 @@
       text-align: center;
       border-radius: 12px;
       position: relative;
-      box-shadow: inset 0 0 20px rgba(242,148,28,0.08);
     }
 
     .cert-seal {
@@ -507,39 +572,101 @@
       padding: 4px 8px;
     }
 
-    .mobile-tab-btn.active {
-      color: var(--bf-navy);
-    }
-    .mobile-tab-btn.active i {
-      color: var(--bf-amber);
-    }
+    .mobile-tab-btn.active { color: var(--bf-navy); }
+    .mobile-tab-btn.active i { color: var(--bf-amber); }
 
     /* Responsive */
     @media (max-width: 900px) {
-      aside.bf-sidebar {
-        display: none;
-      }
+      aside.bf-sidebar { display: none; }
       main.bf-main-content {
         max-width: 100%;
         padding: 16px;
         padding-bottom: 80px;
       }
-      .mobile-bottom-nav {
-        display: flex;
-      }
+      .mobile-bottom-nav { display: flex; }
       .bf-header-inner {
         flex-direction: column;
         align-items: stretch;
       }
-      .role-pills-bar {
-        justify-content: space-between;
-      }
+      .role-pills-bar { justify-content: space-between; }
     }
   </style>
 </head>
 <body>
 
-  <!-- TOP HEADER -->
+  <!-- ================= LOGIN SCREEN ================= -->
+  <div id="loginScreen">
+    <div class="login-container">
+      <div class="login-logo-header">
+        <img src="/assets/beltflow-logo.png" alt="BeltFlow Logo" class="login-logo-img">
+        <h1 style="font-size:24px;color:var(--bf-navy);letter-spacing:.01em">BELTFLOW</h1>
+        <p style="font-size:12px;color:var(--bf-text-muted);margin-top:2px">Martial Arts Academy Management OS</p>
+      </div>
+
+      <!-- Quick Role Selection -->
+      <div style="margin-bottom:16px">
+        <div style="font-size:11px;font-weight:700;color:var(--bf-text-muted);text-transform:uppercase;margin-bottom:8px">
+          Select Your Portal / Account:
+        </div>
+
+        <div class="role-quick-card selected" id="cardSuper" onclick="selectLoginRole('super')">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:18px">👑</span>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--bf-navy)">Master Eswaran</div>
+              <div style="font-size:11px;color:var(--bf-text-muted)">BeltFlow HQ Super Admin</div>
+            </div>
+          </div>
+          <i data-lucide="check-circle-2" style="width:16px;height:16px;color:var(--bf-amber)"></i>
+        </div>
+
+        <div class="role-quick-card" id="cardPersatuan" onclick="selectLoginRole('persatuan')">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:18px">🏛️</span>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--bf-navy)">Grandmaster Lee</div>
+              <div style="font-size:11px;color:var(--bf-text-muted)">Central Dojang Academy Admin</div>
+            </div>
+          </div>
+          <i data-lucide="circle" style="width:16px;height:16px;color:#cbd5e1"></i>
+        </div>
+
+        <div class="role-quick-card" id="cardCoach" onclick="selectLoginRole('coach')">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:18px">🥋</span>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--bf-navy)">Master Ravi</div>
+              <div style="font-size:11px;color:var(--bf-text-muted)">Coach on Mat / Instructor</div>
+            </div>
+          </div>
+          <i data-lucide="circle" style="width:16px;height:16px;color:#cbd5e1"></i>
+        </div>
+
+        <div class="role-quick-card" id="cardStudent" onclick="selectLoginRole('student')">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:18px">👤</span>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--bf-navy)">Aryan Suresh & Family</div>
+              <div style="font-size:11px;color:var(--bf-text-muted)">Student & Parent Portal</div>
+            </div>
+          </div>
+          <i data-lucide="circle" style="width:16px;height:16px;color:#cbd5e1"></i>
+        </div>
+      </div>
+
+      <!-- Sign In Button -->
+      <button class="bf-btn bf-btn-primary" style="width:100%;padding:12px;font-size:14px;border-radius:10px" onclick="executeLogin()">
+        <i data-lucide="log-in" style="width:16px;height:16px"></i>
+        <span id="loginBtnText">Sign In as Master Eswaran</span>
+      </button>
+
+      <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--bf-text-muted)">
+        🔒 Secured by BeltFlow Multi-Role IAM & Room Database
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= TOP HEADER (DASHBOARD) ================= -->
   <header class="bf-header">
     <div class="bf-header-inner">
       <div class="bf-logo-area" onclick="switchTab('overview')">
@@ -560,8 +687,8 @@
         <button class="role-pill-btn" id="pillStudent" onclick="switchRole('student')">👤 Student/Parent</button>
       </div>
 
-      <!-- User Profile Badge -->
-      <div style="display:flex;align-items:center;gap:12px">
+      <!-- User Profile Badge & Logout -->
+      <div style="display:flex;align-items:center;gap:10px">
         <div class="user-profile-badge">
           <div style="text-align:right" class="hide-mobile">
             <div id="headerUserName" style="font-size:12px;font-weight:600">Master Eswaran</div>
@@ -569,11 +696,15 @@
           </div>
           <div id="headerUserAvatar" class="avatar-circle">ME</div>
         </div>
+        <button class="bf-btn bf-btn-sm bf-btn-outline" style="background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.2)" onclick="executeLogout()" title="Log Out">
+          <i data-lucide="log-out" style="width:14px;height:14px"></i>
+          <span class="hide-mobile">Logout</span>
+        </button>
       </div>
     </div>
   </header>
 
-  <!-- APP LAYOUT -->
+  <!-- ================= APP LAYOUT ================= -->
   <div class="bf-app-layout">
     
     <!-- SIDEBAR NAVIGATION -->
@@ -619,9 +750,9 @@
       <i data-lucide="clipboard-check" style="width:18px;height:18px"></i>
       <span>Mat</span>
     </button>
-    <button class="mobile-tab-btn" id="mobTab4" onclick="switchTab('billing')">
-      <i data-lucide="receipt" style="width:18px;height:18px"></i>
-      <span>Billing</span>
+    <button class="mobile-tab-btn" id="mobTab4" onclick="executeLogout()">
+      <i data-lucide="log-out" style="width:18px;height:18px"></i>
+      <span>Exit</span>
     </button>
   </nav>
 
@@ -747,11 +878,13 @@
     </div>
   </div>
 
-  <!-- JAVASCRIPT APPLICATION LOGIC -->
+  <!-- ================= JAVASCRIPT APPLICATION LOGIC ================= -->
   <script>
-    // App State
+    // State
+    let selectedLoginRoleKey = 'super';
     let currentRole = 'super';
     let currentTab = 'overview';
+    let isLoggedIn = false;
 
     // Mock Students Database
     let students = [
@@ -762,16 +895,8 @@
       { id: 5, name: 'Aina Binti Roslan', ic: '141103-10-6622', belt: 'Yellow Belt', beltClass: 'belt-yellow', attendance: 84, fee: 'RM 120 (Paid)', phone: '+60113456789', status: 'Active', sibling: false }
     ];
 
-    // Attendance State
-    let attendanceStatuses = {
-      1: 'Present',
-      2: 'Present',
-      3: 'Absent',
-      4: 'Present',
-      5: 'Present'
-    };
+    let attendanceStatuses = { 1: 'Present', 2: 'Present', 3: 'Absent', 4: 'Present', 5: 'Present' };
 
-    // Role Metadata
     const ROLES = {
       super: {
         name: 'Master Eswaran',
@@ -825,11 +950,51 @@
       }
     };
 
-    // Service Worker Registration for background performance
+    // Service Worker for fast performance
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js').catch(() => {});
       });
+    }
+
+    // Login Role Selection
+    function selectLoginRole(roleKey) {
+      selectedLoginRoleKey = roleKey;
+      
+      const cards = ['cardSuper', 'cardPersatuan', 'cardCoach', 'cardStudent'];
+      cards.forEach(c => {
+        const el = document.getElementById(c);
+        if (el) {
+          el.classList.remove('selected');
+          const icon = el.querySelector('i');
+          if (icon) icon.setAttribute('data-lucide', 'circle');
+        }
+      });
+
+      const activeCard = document.getElementById(`card${roleKey.charAt(0).toUpperCase() + roleKey.slice(1)}`);
+      if (activeCard) {
+        activeCard.classList.add('selected');
+        const icon = activeCard.querySelector('i');
+        if (icon) icon.setAttribute('data-lucide', 'check-circle-2');
+      }
+
+      const btnText = document.getElementById('loginBtnText');
+      if (btnText) {
+        btnText.textContent = `Sign In as ${ROLES[roleKey].name}`;
+      }
+
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function executeLogin() {
+      isLoggedIn = true;
+      document.getElementById('loginScreen').style.display = 'none';
+      switchRole(selectedLoginRoleKey);
+    }
+
+    function executeLogout() {
+      isLoggedIn = false;
+      document.getElementById('loginScreen').style.display = 'flex';
     }
 
     // Role Switching
@@ -877,13 +1042,8 @@
       if (window.lucide) lucide.createIcons();
     }
 
-    function openModal(id) {
-      document.getElementById(id).classList.add('active');
-    }
-
-    function closeModal(id) {
-      document.getElementById(id).classList.remove('active');
-    }
+    function openModal(id) { document.getElementById(id).classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
     function openAttendanceModal() {
       renderAttendanceModal();
@@ -1300,8 +1460,8 @@
       if (window.lucide) lucide.createIcons();
     }
 
-    // Initialize App
-    switchRole('super');
+    // Initialize App: Default starts on Login Screen
+    if (window.lucide) lucide.createIcons();
   </script>
 </body>
 </html>
