@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>BeltFlow — Martial Arts Academy Management OS</title>
+  
+  <!-- PWA & Mobile Meta Tags -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0d2b47">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BeltFlow">
+  <link rel="apple-touch-icon" href="/assets/beltflow-logo.png">
+  <link rel="icon" type="image/png" href="/assets/beltflow-logo.png">
+  <meta name="description" content="All-in-one martial arts academy SaaS platform: multi-role portals, mat attendance, sibling billing, belt gradings & certificates.">
+
+  <!-- Typography & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+  <style>
+    :root {
+      --bf-navy: #0d2b47;
+      --bf-navy-dark: #061828;
+      --bf-navy-light: #153c61;
+      --bf-navy-surface: #091e32;
+      --bf-amber: #f2941c;
+      --bf-amber-hover: #d97e0f;
+      --bf-amber-soft: #fff7ed;
+      --bf-amber-border: #fed7aa;
+      --bf-slate: #f8fafc;
+      --bf-card-bg: #ffffff;
+      --bf-border: #e2e8f0;
+      --bf-text-main: #0f172a;
+      --bf-text-muted: #64748b;
+      --bf-success: #10b981;
+      --bf-success-bg: #ecfdf5;
+      --bf-danger: #ef4444;
+      --bf-danger-bg: #fef2f2;
+      --bf-blue: #3b82f6;
+      --bf-blue-bg: #eff6ff;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-full: 9999px;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+      --shadow-lg: 0 10px 25px -5px rgba(13,43,71,0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    h1, h2, h3, h4, h5, h6, .brand-font {
+      font-family: 'Space Grotesk', -apple-system, sans-serif;
+      font-weight: 700;
+    }
+
+    body {
+      background: #f1f5f9;
+      color: var(--bf-text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* PWA Smart Install Banner */
+    .pwa-banner {
+      background: linear-gradient(135deg, #0d2b47 0%, #1e4a73 100%);
+      color: #ffffff;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid var(--bf-amber);
+      position: sticky;
+      top: 0;
+      z-index: 1100;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+      animation: slideDown 0.3s ease-out;
+    }
+
+    @keyframes slideDown {
+      from { transform: translateY(-100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .pwa-banner-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .pwa-app-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: #ffffff;
+      padding: 3px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+
+    .pwa-btn-install {
+      background: var(--bf-amber);
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+      box-shadow: 0 2px 8px rgba(242, 148, 28, 0.4);
+    }
+
+    .pwa-btn-install:hover {
+      background: var(--bf-amber-hover);
+      transform: translateY(-1px);
+    }
+
+    .pwa-btn-close {
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    /* Top Navigation Header */
+    header.bf-header {
+      background: var(--bf-navy);
+      color: #ffffff;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    .bf-header-inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .bf-logo-area {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+    }
+
+    .bf-logo-img {
+      height: 36px;
+      width: auto;
+      border-radius: 6px;
+      background: #fff;
+      padding: 3px;
+    }
+
+    .role-pills-bar {
+      display: flex;
+      align-items: center;
+      background: rgba(255,255,255,0.08);
+      padding: 4px;
+      border-radius: 12px;
+      gap: 4px;
+      overflow-x: auto;
+      max-width: 100%;
+    }
+
+    .role-pill-btn {
+      background: transparent;
+      color: #94a3b8;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .role-pill-btn.active {
+      background: var(--bf-amber);
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(242,148,28,0.35);
+    }
+
+    .user-profile-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .avatar-circle {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--bf-amber), #e07604);
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+
+    /* Main Layout */
+    .bf-app-layout {
+      display: flex;
+      flex: 1;
+      max-width: 1440px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* Sidebar Navigation */
+    aside.bf-sidebar {
+      width: 260px;
+      background: #ffffff;
+      border-right: 1px solid var(--bf-border);
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .sidebar-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--bf-text-muted);
+      padding: 0 10px 10px;
+    }
+
+    .nav-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      list-style: none;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--bf-text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .nav-item:hover {
+      background: #f8fafc;
+      color: var(--bf-navy);
+    }
+
+    .nav-item.active {
+      background: #eaf1f7;
+      color: var(--bf-navy);
+      font-weight: 700;
+      border-left: 3px solid var(--bf-amber);
+    }
+
+    /* Content Area */
+    main.bf-main-content {
+      flex: 1;
+      padding: 24px 28px;
+      overflow-y: auto;
+      max-width: calc(100% - 260px);
+    }
+
+    /* General Components */
+    .bf-card {
+      background: var(--bf-card-bg);
+      border: 1px solid var(--bf-border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .bf-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 16px;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s ease;
+    }
+
+    .bf-btn-primary {
+      background: var(--bf-amber);
+      color: #fff;
+    }
+    .bf-btn-primary:hover { background: var(--bf-amber-hover); }
+
+    .bf-btn-navy {
+      background: var(--bf-navy);
+      color: #fff;
+    }
+    .bf-btn-navy:hover { background: var(--bf-navy-light); }
+
+    .bf-btn-outline {
+      background: #fff;
+      border: 1px solid var(--bf-border);
+      color: var(--bf-text-main);
+    }
+    .bf-btn-outline:hover {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+    }
+
+    .bf-btn-sm {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    .belt-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 6px;
+    }
+    .belt-white { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+    .belt-yellow { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
+    .belt-green { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .belt-blue { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+    .belt-brown { background: #faebd7; color: #78350f; border: 1px solid #fcd34d; }
+    .belt-black { background: #0f172a; color: #f8fafc; border: 1px solid #334155; }
+
+    /* Tables */
+    .bf-table-wrap {
+      overflow-x: auto;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--bf-border);
+    }
+
+    table.bf-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 13px;
+    }
+
+    table.bf-table th {
+      background: #f8fafc;
+      color: var(--bf-text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--bf-border);
+    }
+
+    table.bf-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--bf-border);
+      vertical-align: middle;
+    }
+
+    table.bf-table tr:last-child td { border-bottom: none; }
+    table.bf-table tr:hover td { background: #fdfdfd; }
+
+    /* KPI Grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .kpi-card {
+      background: #fff;
+      border: 1px solid var(--bf-border);
+      border-radius: var(--radius-md);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--bf-amber);
+    }
+
+    .kpi-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--bf-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .kpi-value {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--bf-navy);
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    .kpi-subtext {
+      font-size: 11px;
+      color: var(--bf-text-muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Modal System */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(13, 43, 71, 0.7);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      padding: 16px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-box {
+      background: #ffffff;
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 580px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+      animation: zoomIn 0.2s ease-out;
+    }
+
+    @keyframes zoomIn {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .modal-header {
+      padding: 20px 24px;
+      background: var(--bf-navy);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-body {
+      padding: 24px;
+    }
+
+    /* Mobile Bottom Navigation (Visible only on small screens) */
+    .mobile-bottom-nav {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #ffffff;
+      border-top: 1px solid var(--bf-border);
+      padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+      z-index: 999;
+      justify-content: space-around;
+      box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
+    }
+
+    .mobile-tab-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      background: transparent;
+      border: none;
+      color: var(--bf-text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+
+    .mobile-tab-btn.active {
+      color: var(--bf-navy);
+    }
+    .mobile-tab-btn.active i {
+      color: var(--bf-amber);
+    }
+
+    /* Responsive Styles */
+    @media (max-width: 900px) {
+      aside.bf-sidebar {
+        display: none;
+      }
+      main.bf-main-content {
+        max-width: 100%;
+        padding: 16px;
+        padding-bottom: 80px;
+      }
+      .mobile-bottom-nav {
+        display: flex;
+      }
+      .bf-header-inner {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .role-pills-bar {
+        justify-content: space-between;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- PWA INSTALLATION RECOMMENDATION SMART BANNER -->
+  <div id="pwaInstallBanner" class="pwa-banner">
+    <div class="pwa-banner-left">
+      <img src="/assets/beltflow-logo.png" alt="BeltFlow App Icon" class="pwa-app-icon">
+      <div>
+        <div style="font-weight:800;font-size:14px;letter-spacing:0.02em;font-family:'Space Grotesk',sans-serif">Install BeltFlow App</div>
+        <div style="font-size:11px;color:#cbd5e1">Faster load times, offline attendance & instant home screen access</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button id="btnPwaInstallAction" class="pwa-btn-install" onclick="triggerPwaInstall()">
+        <i data-lucide="download" style="width:14px;height:14px"></i>
+        <span>Install App</span>
+      </button>
+      <button class="pwa-btn-close" onclick="dismissPwaBanner()" title="Dismiss banner">
+        <i data-lucide="x" style="width:14px;height:14px"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- TOP HEADER -->
+  <header class="bf-header">
+    <div class="bf-header-inner">
+      <div class="bf-logo-area" onclick="switchTab('overview')">
+        <img src="/assets/beltflow-logo.png" alt="BeltFlow Logo" class="bf-logo-img">
+        <div>
+          <div style="font-weight:800;font-size:18px;letter-spacing:.02em;display:flex;align-items:center;gap:6px">
+            BELTFLOW <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(242,148,28,.25);color:var(--bf-amber)">PWA SAAS</span>
+          </div>
+          <div style="font-size:11px;color:#94a3b8">Multi-Role Martial Arts Academy Platform</div>
+        </div>
+      </div>
+
+      <!-- Quick Role Switcher -->
+      <div class="role-pills-bar">
+        <button class="role-pill-btn active" id="pillSuper" onclick="switchRole('super')">👑 HQ Admin</button>
+        <button class="role-pill-btn" id="pillPersatuan" onclick="switchRole('persatuan')">🏛️ Academy</button>
+        <button class="role-pill-btn" id="pillCoach" onclick="switchRole('coach')">🥋 Coach</button>
+        <button class="role-pill-btn" id="pillStudent" onclick="switchRole('student')">👤 Student/Parent</button>
+      </div>
+
+      <!-- Right Header Actions -->
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="bf-btn bf-btn-sm bf-btn-outline" style="background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.2)" onclick="openPwaGuideModal()">
+          <i data-lucide="smartphone" style="width:14px;height:14px;color:var(--bf-amber)"></i>
+          <span>PWA Guide</span>
+        </button>
+        <div class="user-profile-badge">
+          <div style="text-align:right" class="hide-mobile">
+            <div id="headerUserName" style="font-size:12px;font-weight:600">Master Eswaran</div>
+            <div id="headerRoleName" style="font-size:10px;color:var(--bf-amber)">BeltFlow HQ Admin</div>
+          </div>
+          <div id="headerUserAvatar" class="avatar-circle">ME</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- APP LAYOUT -->
+  <div class="bf-app-layout">
+    
+    <!-- SIDEBAR NAVIGATION -->
+    <aside class="bf-sidebar">
+      <div>
+        <div class="sidebar-section-title" id="sidebarRoleTitle">HQ Management</div>
+        <ul class="nav-list" id="sidebarNavList">
+          <!-- Dynamic Nav Items will be rendered via JS -->
+        </ul>
+      </div>
+
+      <!-- Sidebar PWA & PlayStore Footer -->
+      <div style="background:#f8fafc;border:1px solid var(--bf-border);border-radius:var(--radius-sm);padding:12px;margin-top:20px">
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--bf-navy)">
+          <i data-lucide="shield-check" style="width:14px;height:14px;color:var(--bf-success)"></i>
+          <span>PWA & Play Store Ready</span>
+        </div>
+        <div style="font-size:11px;color:var(--bf-text-muted);margin-top:4px">
+          Deploy on Vercel & package directly for Google Play Store with TWA.
+        </div>
+        <button class="bf-btn bf-btn-sm bf-btn-outline" style="width:100%;margin-top:8px;font-size:11px" onclick="openPlayStoreModal()">
+          <i data-lucide="play" style="width:12px;height:12px;color:#10b981"></i>
+          <span>Play Store Setup</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT VIEWPORT -->
+    <main class="bf-main-content">
+      <div id="contentView">
+        <!-- Content will be injected dynamically by JavaScript -->
+      </div>
+    </main>
+  </div>
+
+  <!-- MOBILE BOTTOM NAVIGATION -->
+  <nav class="mobile-bottom-nav">
+    <button class="mobile-tab-btn active" onclick="switchTab('overview')">
+      <i data-lucide="layout-dashboard" style="width:18px;height:18px"></i>
+      <span>Overview</span>
+    </button>
+    <button class="mobile-tab-btn" onclick="switchTab('roster')">
+      <i data-lucide="users" style="width:18px;height:18px"></i>
+      <span>Students</span>
+    </button>
+    <button class="mobile-tab-btn" onclick="switchTab('mat')">
+      <i data-lucide="clipboard-check" style="width:18px;height:18px"></i>
+      <span>Mat</span>
+    </button>
+    <button class="mobile-tab-btn" onclick="switchTab('billing')">
+      <i data-lucide="receipt" style="width:18px;height:18px"></i>
+      <span>Billing</span>
+    </button>
+    <button class="mobile-tab-btn" onclick="openPwaGuideModal()">
+      <i data-lucide="download-cloud" style="width:18px;height:18px"></i>
+      <span>Install</span>
+    </button>
+  </nav>
+
+  <!-- MODAL: PWA INSTALLATION GUIDE -->
+  <div id="pwaGuideModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <i data-lucide="smartphone" style="width:20px;height:20px;color:var(--bf-amber)"></i>
+          <h3 style="font-size:16px">Install BeltFlow on Your Device</h3>
+        </div>
+        <button class="pwa-btn-close" onclick="closeModal('pwaGuideModal')">
+          <i data-lucide="x" style="width:14px;height:14px"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:13px;color:var(--bf-text-muted);margin-bottom:16px">
+          BeltFlow is a Progressive Web App (PWA) designed to provide a full native app experience with zero app store delays, automatic updates, and offline support.
+        </p>
+
+        <!-- Android Steps -->
+        <div style="background:#f8fafc;border:1px solid var(--bf-border);border-radius:var(--radius-sm);padding:14px;margin-bottom:12px">
+          <div style="font-weight:700;font-size:13px;color:var(--bf-navy);display:flex;align-items:center;gap:6px">
+            <i data-lucide="smartphone" style="width:16px;height:16px;color:#10b981"></i>
+            <span>Android (Chrome / Edge / Samsung Internet)</span>
+          </div>
+          <ol style="font-size:12px;color:var(--bf-text-muted);margin-left:22px;margin-top:6px;line-height:1.6">
+            <li>Tap the <strong>"Install App"</strong> button at the top of the screen.</li>
+            <li>If no prompt appears, tap the <strong>⋮ (three dots)</strong> menu in the browser top-right.</li>
+            <li>Select <strong>"Add to Home screen"</strong> or <strong>"Install app"</strong>.</li>
+          </ol>
+        </div>
+
+        <!-- iOS Steps -->
+        <div style="background:#f8fafc;border:1px solid var(--bf-border);border-radius:var(--radius-sm);padding:14px;margin-bottom:12px">
+          <div style="font-weight:700;font-size:13px;color:var(--bf-navy);display:flex;align-items:center;gap:6px">
+            <i data-lucide="apple" style="width:16px;height:16px;color:#0f172a"></i>
+            <span>iPhone & iPad (Safari)</span>
+          </div>
+          <ol style="font-size:12px;color:var(--bf-text-muted);margin-left:22px;margin-top:6px;line-height:1.6">
+            <li>Tap the <strong>Share</strong> button (box with an upward arrow ⎋) at the bottom of Safari.</li>
+            <li>Scroll down and tap <strong>"Add to Home Screen"</strong>.</li>
+            <li>Tap <strong>"Add"</strong> in the top right to install the standalone icon.</li>
+          </ol>
+        </div>
+
+        <!-- Desktop Steps -->
+        <div style="background:#f8fafc;border:1px solid var(--bf-border);border-radius:var(--radius-sm);padding:14px">
+          <div style="font-weight:700;font-size:13px;color:var(--bf-navy);display:flex;align-items:center;gap:6px">
+            <i data-lucide="monitor" style="width:16px;height:16px;color:#3b82f6"></i>
+            <span>Desktop (Chrome, Edge, Brave)</span>
+          </div>
+          <p style="font-size:12px;color:var(--bf-text-muted);margin-top:6px;line-height:1.5">
+            Click the install icon ⊕ in your browser's address bar to launch BeltFlow in its own dedicated, clean window.
+          </p>
+        </div>
+
+        <div style="margin-top:20px;display:flex;justify-content:flex-end">
+          <button class="bf-btn bf-btn-primary" onclick="triggerPwaInstall()">
+            <i data-lucide="download" style="width:14px;height:14px"></i>
+            <span>Trigger Install Prompt Now</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: GOOGLE PLAY STORE ROADMAP -->
+  <div id="playStoreModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <i data-lucide="play" style="width:20px;height:20px;color:#10b981"></i>
+          <h3 style="font-size:16px">Google Play Console Publishing Guide</h3>
+        </div>
+        <button class="pwa-btn-close" onclick="closeModal('playStoreModal')">
+          <i data-lucide="x" style="width:14px;height:14px"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div style="background:#ecfdf5;border:1px solid #a7f3d0;padding:12px;border-radius:var(--radius-sm);margin-bottom:16px">
+          <div style="font-size:12px;font-weight:700;color:#065f46">🎯 Direct Path from PWA to Google Play</div>
+          <div style="font-size:11px;color:#047857;margin-top:2px">
+            Because this app is now a compliant PWA with full manifest and service worker, it can be wrapped into a Google Play <strong>Trusted Web Activity (TWA)</strong> `.aab` package in minutes!
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px;font-size:12px;color:var(--bf-text-muted)">
+          <div style="padding:10px;border-left:3px solid var(--bf-amber);background:#f8fafc">
+            <strong style="color:var(--bf-navy)">Step 1: Deploy to Vercel</strong><br>
+            Push to GitHub and connect to Vercel (or run <code>npx vercel</code>) to get your live HTTPS URL (e.g. <code>https://beltflow.vercel.app</code>).
+          </div>
+          <div style="padding:10px;border-left:3px solid var(--bf-amber);background:#f8fafc">
+            <strong style="color:var(--bf-navy)">Step 2: Generate Android Bundle with PWABuilder</strong><br>
+            Go to <a href="https://www.pwabuilder.com" target="_blank" style="color:var(--bf-blue);font-weight:600">PWABuilder.com</a>, enter your Vercel URL, click <strong>Build My PWA</strong> ➔ <strong>Android Package (.aab)</strong>.
+          </div>
+          <div style="padding:10px;border-left:3px solid var(--bf-amber);background:#f8fafc">
+            <strong style="color:var(--bf-navy)">Step 3: Google Play Console Upload</strong><br>
+            Upload the generated <code>.aab</code> package directly to your Google Play Console under App Releases.
+          </div>
+        </div>
+
+        <div style="margin-top:20px;display:flex;justify-content:flex-end">
+          <button class="bf-btn bf-btn-navy" onclick="closeModal('playStoreModal')">Got it</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ATTENDANCE MAT MARKER -->
+  <div id="attendanceModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <i data-lucide="clipboard-check" style="width:20px;height:20px;color:var(--bf-amber)"></i>
+          <h3 style="font-size:16px">Mark Mat Attendance: Sparring & Poomsae</h3>
+        </div>
+        <button class="pwa-btn-close" onclick="closeModal('attendanceModal')">
+          <i data-lucide="x" style="width:14px;height:14px"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div style="font-size:12px;color:var(--bf-text-muted);margin-bottom:14px">
+          Coach: <strong>Master Ravi</strong> · Session: <strong>Mon 6:00 PM</strong> · Central Dojang
+        </div>
+        
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;border:1px solid var(--bf-border);border-radius:8px">
+            <div>
+              <div style="font-weight:700;font-size:13px">Aryan Suresh</div>
+              <div style="font-size:11px;color:var(--bf-text-muted)"><span class="belt-badge belt-yellow">Yellow Belt</span> · 92% Attendance</div>
+            </div>
+            <div style="display:flex;gap:4px">
+              <button class="bf-btn bf-btn-sm bf-btn-primary" style="padding:4px 8px">Present</button>
+              <button class="bf-btn bf-btn-sm bf-btn-outline" style="padding:4px 8px">Late</button>
+              <button class="bf-btn bf-btn-sm bf-btn-outline" style="padding:4px 8px">Absent</button>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;border:1px solid var(--bf-border);border-radius:8px">
+            <div>
+              <div style="font-weight:700;font-size:13px">Kavya Suresh</div>
+              <div style="font-size:11px;color:var(--bf-text-muted)"><span class="belt-badge belt-white">White Belt</span> · Sibling Discount Active</div>
+            </div>
+            <div style="display:flex;gap:4px">
+              <button class="bf-btn bf-btn-sm bf-btn-primary" style="padding:4px 8px">Present</button>
+              <button class="bf-btn bf-btn-sm bf-btn-outline" style="padding:4px 8px">Late</button>
+              <button class="bf-btn bf-btn-sm bf-btn-outline" style="padding:4px 8px">Absent</button>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;border:1px solid #fecaca;background:#fff5f5;border-radius:8px">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#b91c1c">Daniel Tan (At-Risk ⚠️)</div>
+              <div style="font-size:11px;color:#dc2626">3 consecutive absences · WhatsApp reminder recommended</div>
+            </div>
+            <div style="display:flex;gap:4px">
+              <button class="bf-btn bf-btn-sm bf-btn-outline" style="padding:4px 8px">Present</button>
+              <button class="bf-btn bf-btn-sm bf-btn-outline" style="padding:4px 8px">Late</button>
+              <button class="bf-btn bf-btn-sm bf-btn-outline" style="background:#fee2e2;color:#991b1b;border-color:#fca5a5;padding:4px 8px">Absent</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:20px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:11px;color:var(--bf-success);font-weight:600">✓ Auto-saves to Room/Local Storage</span>
+          <button class="bf-btn bf-btn-navy" onclick="saveAttendance()">Save & Submit Roster</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT APPLICATION LOGIC -->
+  <script>
+    // State
+    let currentRole = 'super'; // 'super', 'persatuan', 'coach', 'student'
+    let currentTab = 'overview';
+    let deferredPrompt = null;
+
+    // Roles Definition
+    const ROLES = {
+      super: {
+        name: 'Master Eswaran',
+        title: 'BeltFlow HQ Admin',
+        initials: 'ME',
+        sidebarTitle: 'HQ Management',
+        nav: [
+          { id: 'overview', label: 'Global KPIs', icon: 'layout-dashboard' },
+          { id: 'persatuans', label: 'Persatuans (14)', icon: 'building-2' },
+          { id: 'charges', label: 'SaaS Charges & Cuts', icon: 'percent' },
+          { id: 'audit', label: 'Audit & Compliance', icon: 'shield-alert' },
+          { id: 'verify', label: 'Public Certificate Verification', icon: 'award' }
+        ]
+      },
+      persatuan: {
+        name: 'Grandmaster Lee',
+        title: 'Central Dojang Admin',
+        initials: 'GL',
+        sidebarTitle: 'Academy Operations',
+        nav: [
+          { id: 'overview', label: 'Academy Dashboard', icon: 'layout-dashboard' },
+          { id: 'roster', label: 'Student Bio & Lifecycle', icon: 'users' },
+          { id: 'billing', label: 'Billing & Sibling Discounts', icon: 'receipt' },
+          { id: 'grading', label: 'Grading Examinations', icon: 'award' },
+          { id: 'verify', label: 'Verify Certificate', icon: 'check-circle' }
+        ]
+      },
+      coach: {
+        name: 'Master Ravi',
+        title: 'Senior Mat Instructor',
+        initials: 'MR',
+        sidebarTitle: 'Mat Coaching',
+        nav: [
+          { id: 'mat', label: 'Live Mat Session', icon: 'clipboard-check' },
+          { id: 'roster', label: 'Student Attendance History', icon: 'users' },
+          { id: 'cash_approvals', label: 'Cash Payment Approvals', icon: 'banknote' },
+          { id: 'syllabus', label: 'Syllabus Mastery Tracker', icon: 'book-open' }
+        ]
+      },
+      student: {
+        name: 'Aryan Suresh (Parent: Suresh)',
+        title: 'Junior Yellow Belt',
+        initials: 'AS',
+        sidebarTitle: 'Student & Parent Portal',
+        nav: [
+          { id: 'student_home', label: 'My Progress & Belt Target', icon: 'trending-up' },
+          { id: 'certificates', label: 'My Digital Certificates', icon: 'award' },
+          { id: 'payments', label: 'Fee Payments & Receipts', icon: 'credit-card' },
+          { id: 'tournaments', label: 'Medal Tally & Tournaments', icon: 'trophy' }
+        ]
+      }
+    };
+
+    // PWA Service Worker Registration
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then((reg) => {
+            console.log('[BeltFlow PWA] Service Worker registered:', reg.scope);
+          })
+          .catch((err) => {
+            console.warn('[BeltFlow PWA] Service Worker registration failed:', err);
+          });
+      });
+    }
+
+    // PWA Install Prompt Listener
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      console.log('[BeltFlow PWA] captured beforeinstallprompt');
+      const banner = document.getElementById('pwaInstallBanner');
+      if (banner) banner.style.display = 'flex';
+    });
+
+    window.addEventListener('appinstalled', () => {
+      console.log('[BeltFlow PWA] Successfully installed as standalone app');
+      dismissPwaBanner();
+      deferredPrompt = null;
+    });
+
+    // Check if running in standalone mode (suppress banner)
+    function isRunningStandalone() {
+      return (window.matchMedia('(display-mode: standalone)').matches) || (window.navigator.standalone === true);
+    }
+
+    if (isRunningStandalone()) {
+      const banner = document.getElementById('pwaInstallBanner');
+      if (banner) banner.style.display = 'none';
+    }
+
+    function triggerPwaInstall() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+          if (choiceResult.outcome === 'accepted') {
+            console.log('[BeltFlow PWA] User accepted install');
+          }
+          deferredPrompt = null;
+          dismissPwaBanner();
+        });
+      } else {
+        openPwaGuideModal();
+      }
+    }
+
+    function dismissPwaBanner() {
+      const banner = document.getElementById('pwaInstallBanner');
+      if (banner) banner.style.display = 'none';
+    }
+
+    function openPwaGuideModal() {
+      document.getElementById('pwaGuideModal').classList.add('active');
+    }
+
+    function openPlayStoreModal() {
+      document.getElementById('playStoreModal').classList.add('active');
+    }
+
+    function openAttendanceModal() {
+      document.getElementById('attendanceModal').classList.add('active');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('active');
+    }
+
+    function saveAttendance() {
+      alert('Attendance saved successfully! 2 Present, 0 Late, 1 Absent marked.');
+      closeModal('attendanceModal');
+    }
+
+    // Role Switching
+    function switchRole(roleKey) {
+      currentRole = roleKey;
+      const roleData = ROLES[roleKey];
+      
+      // Update pills
+      document.querySelectorAll('.role-pill-btn').forEach(b => b.classList.remove('active'));
+      const activeBtn = document.getElementById(`pill${roleKey.charAt(0).toUpperCase() + roleKey.slice(1)}`);
+      if (activeBtn) activeBtn.classList.add('active');
+
+      // Update Header
+      document.getElementById('headerUserName').textContent = roleData.name;
+      document.getElementById('headerRoleName').textContent = roleData.title;
+      document.getElementById('headerUserAvatar').textContent = roleData.initials;
+      document.getElementById('sidebarRoleTitle').textContent = roleData.sidebarTitle;
+
+      // Default Tab for role
+      currentTab = roleData.nav[0].id;
+
+      renderSidebar();
+      renderContent();
+    }
+
+    function switchTab(tabId) {
+      currentTab = tabId;
+      renderSidebar();
+      renderContent();
+    }
+
+    function renderSidebar() {
+      const roleData = ROLES[currentRole];
+      const navList = document.getElementById('sidebarNavList');
+      navList.innerHTML = '';
+
+      roleData.nav.forEach(item => {
+        const li = document.createElement('li');
+        li.className = `nav-item ${currentTab === item.id ? 'active' : ''}`;
+        li.innerHTML = `<i data-lucide="${item.icon}" style="width:16px;height:16px"></i><span>${item.label}</span>`;
+        li.onclick = () => switchTab(item.id);
+        navList.appendChild(li);
+      });
+
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function renderContent() {
+      const view = document.getElementById('contentView');
+
+      if (currentRole === 'super') {
+        view.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+            <div>
+              <h2 style="font-size:22px;color:var(--bf-navy)">BeltFlow HQ Global Platform</h2>
+              <p style="font-size:12px;color:var(--bf-text-muted)">14 Registered State Martial Arts Persatuans & Academies</p>
+            </div>
+            <button class="bf-btn bf-btn-primary" onclick="alert('New Persatuan onboarding modal triggered.')">
+              <i data-lucide="plus-circle" style="width:14px;height:14px"></i>
+              <span>Onboard New Academy</span>
+            </button>
+          </div>
+
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-title">Total Active Students</div>
+              <div class="kpi-value">1,482</div>
+              <div class="kpi-subtext"><span style="color:var(--bf-success);font-weight:700">↑ 12.4%</span> this month</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-title">Total Academies (Persatuans)</div>
+              <div class="kpi-value">14</div>
+              <div class="kpi-subtext">Across 6 States</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-title">Monthly SaaS Processing</div>
+              <div class="kpi-value">RM 148,200</div>
+              <div class="kpi-subtext">BeltFlow Cut: RM 14,820 (10%)</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-title">Promotions This Term</div>
+              <div class="kpi-value">328</div>
+              <div class="kpi-subtext">100% Digital Certificate Issued</div>
+            </div>
+          </div>
+
+          <div class="bf-card">
+            <h3 style="font-size:16px;margin-bottom:14px">Active Persatuans (Academy Chains)</h3>
+            <div class="bf-table-wrap">
+              <table class="bf-table">
+                <thead>
+                  <tr>
+                    <th>Persatuan / Academy</th>
+                    <th>State</th>
+                    <th>Master In Charge</th>
+                    <th>Students</th>
+                    <th>Monthly Revenue</th>
+                    <th>SaaS Fee Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Central Dojang HQ</strong></td>
+                    <td>Kuala Lumpur</td>
+                    <td>Grandmaster Lee</td>
+                    <td>248</td>
+                    <td>RM 24,800</td>
+                    <td><span class="belt-badge" style="background:#dcfce7;color:#166534">Paid (10%)</span></td>
+                    <td><button class="bf-btn bf-btn-sm bf-btn-outline" onclick="switchRole('persatuan')">Enter Portal</button></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Starlight Taekwondo Academy</strong></td>
+                    <td>Selangor</td>
+                    <td>Master Ravi</td>
+                    <td>182</td>
+                    <td>RM 18,200</td>
+                    <td><span class="belt-badge" style="background:#dcfce7;color:#166534">Paid (10%)</span></td>
+                    <td><button class="bf-btn bf-btn-sm bf-btn-outline">Enter Portal</button></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Penang Martial Arts Hub</strong></td>
+                    <td>Penang</td>
+                    <td>Master Tan</td>
+                    <td>135</td>
+                    <td>RM 13,500</td>
+                    <td><span class="belt-badge" style="background:#fef9c3;color:#854d0e">Pending Verification</span></td>
+                    <td><button class="bf-btn bf-btn-sm bf-btn-outline">Enter Portal</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      } else if (currentRole === 'persatuan') {
+        view.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+            <div>
+              <h2 style="font-size:22px;color:var(--bf-navy)">Central Dojang Academy Hub</h2>
+              <p style="font-size:12px;color:var(--bf-text-muted)">Student Roster, Sibling Billing & Belt Promotions</p>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="bf-btn bf-btn-primary" onclick="openAttendanceModal()">
+                <i data-lucide="clipboard-check" style="width:14px;height:14px"></i>
+                <span>Open Mat Roster</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-title">Enrolled Students</div>
+              <div class="kpi-value">248</div>
+              <div class="kpi-subtext">32 with Sibling Discount</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-title">Upcoming Grading Candidates</div>
+              <div class="kpi-value">46</div>
+              <div class="kpi-subtext">Exam Date: 28th Sep 2026</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-title">Fee Collection Rate</div>
+              <div class="kpi-value">94.2%</div>
+              <div class="kpi-subtext">RM 23,360 collected</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-title">At-Risk Absences</div>
+              <div class="kpi-value" style="color:var(--bf-danger)">3</div>
+              <div class="kpi-subtext">3+ missed sessions</div>
+            </div>
+          </div>
+
+          <div class="bf-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+              <h3 style="font-size:16px">Student Bio & Lifecycle Roster</h3>
+              <input type="text" placeholder="Search student by name / IC..." style="padding:6px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:12px;width:240px">
+            </div>
+            <div class="bf-table-wrap">
+              <table class="bf-table">
+                <thead>
+                  <tr>
+                    <th>Student Name</th>
+                    <th>MyKid / IC</th>
+                    <th>Current Rank</th>
+                    <th>Attendance %</th>
+                    <th>Billing Status</th>
+                    <th>Guardian WhatsApp</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Aryan Suresh</strong></td>
+                    <td>140512-10-5541</td>
+                    <td><span class="belt-badge belt-yellow">Yellow Belt</span></td>
+                    <td><strong style="color:var(--bf-success)">92%</strong></td>
+                    <td><span class="belt-badge" style="background:#dcfce7;color:#166534">RM 120 (Paid)</span></td>
+                    <td><a href="https://wa.me/60123456789" target="_blank" style="color:#10b981;font-weight:600">+60123456789</a></td>
+                    <td><button class="bf-btn bf-btn-sm bf-btn-outline" onclick="alert('Viewing profile for Aryan')">View</button></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Kavya Suresh (Sibling 2)</strong></td>
+                    <td>160822-10-8832</td>
+                    <td><span class="belt-badge belt-white">White Belt</span></td>
+                    <td><strong style="color:var(--bf-success)">88%</strong></td>
+                    <td><span class="belt-badge" style="background:#e0f2fe;color:#0369a1">RM 108 (10% Off)</span></td>
+                    <td><a href="https://wa.me/60123456789" target="_blank" style="color:#10b981;font-weight:600">+60123456789</a></td>
+                    <td><button class="bf-btn bf-btn-sm bf-btn-outline" onclick="alert('Viewing profile for Kavya')">View</button></td>
+                  </tr>
+                  <tr style="background:#fff1f2">
+                    <td><strong style="color:#b91c1c">Daniel Tan</strong></td>
+                    <td>130204-14-1123</td>
+                    <td><span class="belt-badge belt-green">Green Belt</span></td>
+                    <td><strong style="color:#ef4444">58% (At Risk)</strong></td>
+                    <td><span class="belt-badge" style="background:#fee2e2;color:#991b1b">Unpaid</span></td>
+                    <td><a href="https://wa.me/60198765432" target="_blank" style="color:#ef4444;font-weight:600">WhatsApp Reminder ⚠️</a></td>
+                    <td><button class="bf-btn bf-btn-sm bf-btn-outline">Alert</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      } else if (currentRole === 'coach') {
+        view.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+            <div>
+              <h2 style="font-size:22px;color:var(--bf-navy)">Coach on Mat Portal</h2>
+              <p style="font-size:12px;color:var(--bf-text-muted)">Master Ravi · Central Dojang Class Roster</p>
+            </div>
+            <button class="bf-btn bf-btn-primary" onclick="openAttendanceModal()">
+              <i data-lucide="play" style="width:14px;height:14px"></i>
+              <span>Start Live Mat Check-in</span>
+            </button>
+          </div>
+
+          <!-- Live Mat Card -->
+          <div style="background:var(--bf-navy);color:#fff;border-radius:var(--radius-md);padding:24px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px">
+            <div>
+              <span style="font-size:11px;font-weight:700;color:var(--bf-amber);text-transform:uppercase;letter-spacing:0.06em">Active Session</span>
+              <div style="font-size:20px;font-weight:800;margin-top:2px">Sparring & Poomsae Advanced</div>
+              <div style="font-size:13px;color:#94a3b8;margin-top:4px">Monday 6:00 PM – 7:30 PM · 18 Students Enrolled</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="bf-btn bf-btn-primary" onclick="openAttendanceModal()">1-Tap Roster Check</button>
+            </div>
+          </div>
+
+          <div class="bf-card">
+            <h3 style="font-size:16px;margin-bottom:14px">Syllabus Technique Mastery Tracker</h3>
+            <div class="bf-table-wrap">
+              <table class="bf-table">
+                <thead>
+                  <tr>
+                    <th>Technique</th>
+                    <th>Category</th>
+                    <th>Target Belt</th>
+                    <th>Mastery Breakdown</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Taegeuk Il Jang</strong></td>
+                    <td>Poomsae (Forms)</td>
+                    <td><span class="belt-badge belt-yellow">Yellow Belt</span></td>
+                    <td><span style="color:var(--bf-success);font-weight:700">14/18 Mastered</span></td>
+                    <td><button class="bf-btn bf-btn-sm bf-btn-outline">Mark Grades</button></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Roundhouse Kick (Dollyo Chagi)</strong></td>
+                    <td>Kicking / Sparring</td>
+                    <td><span class="belt-badge belt-white">White Belt</span></td>
+                    <td><span style="color:var(--bf-success);font-weight:700">18/18 Mastered</span></td>
+                    <td><button class="bf-btn bf-btn-sm bf-btn-outline">Mark Grades</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      } else if (currentRole === 'student') {
+        view.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+            <div>
+              <h2 style="font-size:22px;color:var(--bf-navy)">Student & Parent Dashboard</h2>
+              <p style="font-size:12px;color:var(--bf-text-muted)">Student: <strong>Aryan Suresh</strong> · Parent: <strong>Suresh Kumar</strong></p>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:12px;color:var(--bf-text-muted)">Sibling Switcher:</span>
+              <button class="bf-btn bf-btn-sm bf-btn-primary">Aryan (Yellow)</button>
+              <button class="bf-btn bf-btn-sm bf-btn-outline" onclick="alert('Switched to sibling Kavya (White Belt)')">Kavya (White)</button>
+            </div>
+          </div>
+
+          <!-- Progress Hero -->
+          <div style="background:linear-gradient(135deg, #0d2b47 0%, #173d63 100%);color:#fff;border-radius:var(--radius-md);padding:24px;margin-bottom:20px">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+              <div>
+                <span class="belt-badge belt-yellow" style="font-size:12px">Current Rank: Yellow Belt</span>
+                <div style="font-size:22px;font-weight:800;margin-top:8px">Target: Green Belt Promotion</div>
+                <div style="font-size:12px;color:#cbd5e1;margin-top:4px">Next Examination: 28th September 2026 · Eligibility: <strong style="color:#10b981">Eligible (92% Attendance)</strong></div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:32px;font-weight:800;font-family:'Space Grotesk',sans-serif;color:var(--bf-amber)">85%</div>
+                <div style="font-size:11px;color:#94a3b8">Syllabus Completion</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bf-card">
+            <h3 style="font-size:16px;margin-bottom:14px">Official Verifiable Certificates</h3>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px">
+              <div style="border:2px solid var(--bf-border);border-radius:var(--radius-sm);padding:16px;background:#fff">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <span class="belt-badge belt-yellow">Yellow Belt Certificate</span>
+                  <span style="font-size:11px;color:var(--bf-text-muted)">14 June 2026</span>
+                </div>
+                <div style="font-size:14px;font-weight:700;margin-top:8px">Central Dojang Official Promotion</div>
+                <div style="font-size:11px;color:var(--bf-text-muted);margin-top:4px">Code: <code>BF-YLW-8812</code></div>
+                <button class="bf-btn bf-btn-sm bf-btn-navy" style="width:100%;margin-top:12px" onclick="alert('Viewing digital cryptographic certificate for Aryan Suresh (Yellow Belt)')">
+                  <i data-lucide="award" style="width:14px;height:14px"></i>
+                  <span>View & Download Certificate</span>
+                </button>
+              </div>
+
+              <div style="border:2px solid var(--bf-border);border-radius:var(--radius-sm);padding:16px;background:#fff">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <span class="belt-badge" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a">🥇 Gold Medal Certificate</span>
+                  <span style="font-size:11px;color:var(--bf-text-muted)">22 Aug 2026</span>
+                </div>
+                <div style="font-size:14px;font-weight:700;margin-top:8px">State Youth Sparring Championship</div>
+                <div style="font-size:11px;color:var(--bf-text-muted);margin-top:4px">Division: U-12 Boys Sparring</div>
+                <button class="bf-btn bf-btn-sm bf-btn-navy" style="width:100%;margin-top:12px" onclick="alert('Viewing medal certificate')">
+                  <i data-lucide="trophy" style="width:14px;height:14px"></i>
+                  <span>View Achievement</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      if (window.lucide) lucide.createIcons();
+    }
+
+    // Initialize App
+    switchRole('super');
+  </script>
+</body>
+</html>

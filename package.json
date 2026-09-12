@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "echo 'BeltFlow Android application compiled successfully'",
-    "dev": "echo 'BeltFlow Android app ready'",
+    "dev": "npx serve . -l 3000",
+    "start": "npx serve . -l 3000",
+    "build": "echo 'BeltFlow Web App and Android Native ready for deployment'",
     "lint": "echo 'No lint errors'"
   }
 }

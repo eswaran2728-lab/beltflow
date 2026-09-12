@@ -1,0 +1,65 @@
+{
+  "name": "BeltFlow Martial Arts OS",
+  "short_name": "BeltFlow",
+  "description": "Comprehensive Martial Arts Academy Management SaaS Platform & Student Progression OS",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "background_color": "#0d2b47",
+  "theme_color": "#0d2b47",
+  "orientation": "any",
+  "categories": ["business", "sports", "education", "productivity"],
+  "icons": [
+    {
+      "src": "/assets/beltflow-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/beltflow-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Live Mat Session",
+      "short_name": "Mat Session",
+      "description": "Quick roster attendance check for coaches",
+      "url": "/?tab=mat",
+      "icons": [{ "src": "/assets/beltflow-logo.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Student Roster",
+      "short_name": "Students",
+      "description": "View student list and rank progress",
+      "url": "/?tab=students",
+      "icons": [{ "src": "/assets/beltflow-logo.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Verify Certificate",
+      "short_name": "Verify",
+      "description": "Verify official belt promotion certificate",
+      "url": "/?tab=verify",
+      "icons": [{ "src": "/assets/beltflow-logo.png", "sizes": "192x192" }]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/pasted-1788411531002-0-mtl21t0c-vsy7.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "BeltFlow Academy Management Dashboard"
+    },
+    {
+      "src": "/pasted-1788411545196-0-mtl223yv-uwhs.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "BeltFlow Coach & Student Mobile App"
+    }
+  ]
+}
