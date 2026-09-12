@@ -675,7 +675,16 @@
         </button>
       </form>
 
-      <div style="text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--bf-border);font-size:11px;color:var(--bf-text-muted)">
+      <!-- Self Registration Trigger -->
+      <div style="text-align:center;margin-top:16px;padding-top:14px;border-top:1px dashed var(--bf-border);font-size:12px;color:var(--bf-text-muted)">
+        <span>New Master, Student or Parent?</span>
+        <button type="button" onclick="openSelfRegisterModal()" class="bf-btn bf-btn-sm" style="display:inline-flex;margin-top:6px;width:100%;justify-content:center;background:#fff8ee;border:1.5px solid var(--bf-amber);color:var(--bf-amber);font-weight:700;border-radius:8px;padding:9px">
+          <i data-lucide="user-plus" style="width:14px;height:14px"></i>
+          <span>Register Account Under Persatuan</span>
+        </button>
+      </div>
+
+      <div style="text-align:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--bf-border);font-size:11px;color:var(--bf-text-muted)">
         🔒 <strong>Enterprise Cloud Security</strong> · Multi-Role Tenant Authorization
       </div>
     </div>
@@ -987,12 +996,138 @@
       </div>
     </div>
   </div>
+  <!-- MODAL: SELF-REGISTRATION (MASTER, COACH, STUDENT, PARENT) -->
+  <div id="selfRegisterModal" class="modal-overlay">
+    <div class="modal-box" style="max-width:560px">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <i data-lucide="user-plus" style="width:20px;height:20px;color:var(--bf-amber)"></i>
+          <h3 style="font-size:16px">Register Account Under Persatuan</h3>
+        </div>
+        <button class="btn-close-modal" onclick="closeModal('selfRegisterModal')">
+          <i data-lucide="x" style="width:14px;height:14px"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="handleSelfRegister(event)" style="display:flex;flex-direction:column;gap:14px">
+          
+          <!-- Role Type Selection -->
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:6px">I am registering as:</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1.5px solid var(--bf-amber);border-radius:8px;cursor:pointer;background:#fffaf0" id="labelRoleStudent">
+                <input type="radio" name="selfRegRole" value="student" checked onchange="toggleSelfRegRoleFields()" style="accent-color:var(--bf-amber)">
+                <div>
+                  <div style="font-size:12px;font-weight:700;color:var(--bf-navy)">👤 Student / Parent</div>
+                  <div style="font-size:10px;color:var(--bf-text-muted)">Join class & track promotions</div>
+                </div>
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1.5px solid var(--bf-border);border-radius:8px;cursor:pointer;background:#f8fafc" id="labelRoleCoach">
+                <input type="radio" name="selfRegRole" value="coach" onchange="toggleSelfRegRoleFields()" style="accent-color:var(--bf-amber)">
+                <div>
+                  <div style="font-size:12px;font-weight:700;color:var(--bf-navy)">🥋 Master / Coach</div>
+                  <div style="font-size:10px;color:var(--bf-text-muted)">Conduct classes & mat sessions</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Select Persatuan / Academy -->
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Select Persatuan / Academy</label>
+            <select id="selfRegPersatuan" required onchange="updateSelfRegClasses()" style="width:100%;padding:9px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px;background:#fff;font-weight:600">
+              <!-- Populated dynamically via JS -->
+            </select>
+          </div>
+
+          <!-- Select Master & Class (For Students) -->
+          <div id="selfRegClassGroup">
+            <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Select Master & Class Session</label>
+            <select id="selfRegClass" required style="width:100%;padding:9px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px;background:#fff">
+              <!-- Populated dynamically based on selected Persatuan -->
+            </select>
+          </div>
+
+          <!-- Coach Class Specification (For Coaches) -->
+          <div id="selfRegCoachGroup" style="display:none">
+            <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Class Name / Batch Schedule to Teach</label>
+            <input type="text" id="selfRegCoachClass" placeholder="e.g. Master Ravi - Weekend Silambam Mat (Sat 9am)" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
+          </div>
+
+          <!-- Full Name -->
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px" id="selfRegNameLabel">Student Full Name</label>
+            <input type="text" id="selfRegName" required placeholder="e.g. Kaven Suresh" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
+          </div>
+
+          <!-- IC & Initial Belt (For Students) -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="selfRegStudentExtras">
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">MyKid / IC No</label>
+              <input type="text" id="selfRegIC" placeholder="e.g. 150824-10-5541" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Current Belt / Rank</label>
+              <select id="selfRegBelt" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
+                <option value="White Belt">White Belt (Beginner)</option>
+                <option value="Yellow Belt">Yellow Belt</option>
+                <option value="Green Belt">Green Belt</option>
+                <option value="Blue Belt">Blue Belt</option>
+                <option value="Red Belt / Brown Belt">Red Belt / Brown Belt</option>
+                <option value="Black Belt (1st Dan / Asan)">Black Belt (1st Dan / Asan)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- WhatsApp Phone -->
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">WhatsApp Contact Number</label>
+            <input type="text" id="selfRegPhone" required placeholder="+60123456789" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
+          </div>
+
+          <!-- Login Credentials Setup -->
+          <div style="background:#f1f5f9;border:1px solid #cbd5e1;padding:12px;border-radius:8px;display:flex;flex-direction:column;gap:8px">
+            <div style="font-size:12px;font-weight:700;color:var(--bf-navy);display:flex;align-items:center;gap:6px">
+              <i data-lucide="key" style="width:14px;height:14px;color:var(--bf-amber)"></i>
+              <span>Create Sign-In Credentials</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div>
+                <label style="font-size:11px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Login Email</label>
+                <input type="email" id="selfRegEmail" required placeholder="user@gmail.com" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px;background:#fff">
+              </div>
+              <div>
+                <label style="font-size:11px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Password</label>
+                <input type="password" id="selfRegPassword" required placeholder="Create password" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px;background:#fff">
+              </div>
+            </div>
+          </div>
+
+          <!-- Approval Notice -->
+          <div style="background:#fffbeb;border:1px solid #fde68a;padding:10px;border-radius:6px;font-size:11px;color:#92400e;display:flex;align-items:center;gap:6px">
+            <i data-lucide="shield-alert" style="width:16px;height:16px;color:#d97706;flex-shrink:0"></i>
+            <span><strong>Academy Approval Required:</strong> Your registration will be reviewed and approved by the selected Persatuan Master before account activation.</span>
+          </div>
+
+          <div style="margin-top:6px;display:flex;justify-content:flex-end;gap:8px">
+            <button type="button" class="bf-btn bf-btn-outline" onclick="closeModal('selfRegisterModal')">Cancel</button>
+            <button type="submit" class="bf-btn bf-btn-primary">
+              <i data-lucide="send" style="width:14px;height:14px"></i>
+              <span>Submit Registration for Approval</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD NEW STUDENT (MANUAL ADMIN ADD) -->
   <div id="newStudentModal" class="modal-overlay">
     <div class="modal-box">
       <div class="modal-header">
         <div style="display:flex;align-items:center;gap:10px">
           <i data-lucide="user-plus" style="width:20px;height:20px;color:var(--bf-amber)"></i>
-          <h3 style="font-size:16px">Register New Student</h3>
+          <h3 style="font-size:16px">Register Student (Direct Master Entry)</h3>
         </div>
         <button class="btn-close-modal" onclick="closeModal('newStudentModal')">
           <i data-lucide="x" style="width:14px;height:14px"></i>
@@ -1065,9 +1200,11 @@
     // Live State
     let students = loadStorage('students', []);
     let persatuans = loadStorage('persatuans', []);
+    let coaches = loadStorage('coaches', []);
     let attendanceStatuses = loadStorage('attendance', {});
     let superAdminPass = loadStorage('super_pass', 'Eswaran0321@');
     let loggedInUserEmail = 'eswaran2728@gmail.com';
+    let activePersatuan = null;
 
     function handleNewPersatuan(e) {
       e.preventDefault();
@@ -1081,6 +1218,12 @@
       const password = document.getElementById('newAcademyPassword').value.trim() || 'Master1234@';
       const rev = `RM ${(studentCount * 100).toLocaleString()}`;
 
+      const defaultClasses = [
+        { id: 1, name: `${master} - General Mat Session`, schedule: 'Sat & Sun 9:00 AM' },
+        { id: 2, name: `${style} - Junior & Beginners`, schedule: 'Tue & Thu 6:00 PM' },
+        { id: 3, name: `${style} - Advanced Sparring & Syllabus`, schedule: 'Mon & Wed 7:30 PM' }
+      ];
+
       const newP = {
         id: Date.now(),
         name,
@@ -1089,6 +1232,7 @@
         master,
         email,
         password,
+        classes: defaultClasses,
         students: studentCount,
         revenue: rev,
         status: 'Active (Onboarded)',
@@ -1107,7 +1251,7 @@
       document.getElementById('newAcademyStudents').value = '';
       document.getElementById('newAcademyPassword').value = 'Master1234@';
 
-      alert(`🥋 Real-time Persatuan "${name}" (${style}) successfully created!\n\n🔑 Master Login:\nEmail: ${email}\nPassword: ${password}\n\nThe master can sign in immediately and update their password later.`);
+      alert(`🥋 Real-time Persatuan "${name}" (${style}) successfully created!\n\n🔑 Master Login:\nEmail: ${email}\nPassword: ${password}\n\nClasses have been generated for student self-registration.`);
       closeModal('newPersatuanModal');
       renderSidebar();
       renderContent();
@@ -1187,6 +1331,186 @@
       if (window.lucide) lucide.createIcons();
     }
 
+    // Open Self-Registration Modal and Populate Persatuan List
+    function openSelfRegisterModal() {
+      const pSelect = document.getElementById('selfRegPersatuan');
+      pSelect.innerHTML = '';
+
+      if (persatuans.length === 0) {
+        pSelect.innerHTML = '<option value="">No Persatuans Available - Please Contact HQ</option>';
+      } else {
+        persatuans.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = `${p.name} (${p.style || 'Martial Arts'}) · Master: ${p.master}`;
+          pSelect.appendChild(opt);
+        });
+      }
+
+      updateSelfRegClasses();
+      openModal('selfRegisterModal');
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function toggleSelfRegRoleFields() {
+      const isCoach = document.querySelector('input[name="selfRegRole"]:checked').value === 'coach';
+      document.getElementById('selfRegClassGroup').style.display = isCoach ? 'none' : 'block';
+      document.getElementById('selfRegCoachGroup').style.display = isCoach ? 'block' : 'none';
+      document.getElementById('selfRegStudentExtras').style.display = isCoach ? 'none' : 'grid';
+      document.getElementById('selfRegNameLabel').textContent = isCoach ? 'Master / Coach Full Name' : 'Student Full Name';
+
+      const sBox = document.getElementById('labelRoleStudent');
+      const cBox = document.getElementById('labelRoleCoach');
+      if (isCoach) {
+        cBox.style.borderColor = 'var(--bf-amber)';
+        cBox.style.background = '#fffaf0';
+        sBox.style.borderColor = 'var(--bf-border)';
+        sBox.style.background = '#f8fafc';
+      } else {
+        sBox.style.borderColor = 'var(--bf-amber)';
+        sBox.style.background = '#fffaf0';
+        cBox.style.borderColor = 'var(--bf-border)';
+        cBox.style.background = '#f8fafc';
+      }
+    }
+
+    function updateSelfRegClasses() {
+      const pId = document.getElementById('selfRegPersatuan').value;
+      const classSelect = document.getElementById('selfRegClass');
+      classSelect.innerHTML = '';
+
+      const p = persatuans.find(item => item.id == pId);
+      if (p && p.classes && p.classes.length > 0) {
+        p.classes.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.name;
+          opt.textContent = `${c.name} (${c.schedule})`;
+          classSelect.appendChild(opt);
+        });
+      } else if (p) {
+        const opt = document.createElement('option');
+        opt.value = `${p.master} - General Mat Class`;
+        opt.textContent = `${p.master} - General Mat Class (Mon - Sun)`;
+        classSelect.appendChild(opt);
+      } else {
+        const opt = document.createElement('option');
+        opt.value = 'General Academy Roster';
+        opt.textContent = 'General Academy Roster';
+        classSelect.appendChild(opt);
+      }
+    }
+
+    function handleSelfRegister(e) {
+      e.preventDefault();
+      const role = document.querySelector('input[name="selfRegRole"]:checked').value;
+      const pId = document.getElementById('selfRegPersatuan').value;
+      const persatuan = persatuans.find(p => p.id == pId) || { name: 'Academy', master: 'Master' };
+      const name = document.getElementById('selfRegName').value.trim();
+      const phone = document.getElementById('selfRegPhone').value.trim();
+      const email = document.getElementById('selfRegEmail').value.trim().toLowerCase();
+      const password = document.getElementById('selfRegPassword').value.trim();
+
+      if (!pId) {
+        alert('Please select a valid Persatuan/Academy to register under.');
+        return;
+      }
+
+      if (role === 'student') {
+        const ic = document.getElementById('selfRegIC').value.trim();
+        const belt = document.getElementById('selfRegBelt').value;
+        const className = document.getElementById('selfRegClass').value;
+        const beltClass = belt.toLowerCase().includes('yellow') ? 'belt-yellow' : (belt.toLowerCase().includes('green') ? 'belt-green' : (belt.toLowerCase().includes('black') ? 'belt-black' : 'belt-white'));
+
+        const newStudent = {
+          id: Date.now(),
+          name,
+          ic,
+          belt,
+          beltClass,
+          attendance: 100,
+          fee: 'RM 120 (Pending)',
+          phone,
+          email,
+          password,
+          persatuanId: pId,
+          persatuanName: persatuan.name,
+          masterName: persatuan.master,
+          className,
+          status: 'Pending Approval',
+          sibling: false,
+          registeredAt: new Date().toLocaleDateString()
+        };
+
+        students.unshift(newStudent);
+        saveStorage('students', students);
+
+        alert(`🥋 Registration Submitted Successfully!\n\nCandidate: ${name}\nPersatuan: ${persatuan.name}\nClass: ${className}\n\n⏳ Status: Pending Approval\nYour account has been forwarded to Master ${persatuan.master}. Once approved, you can sign in with ${email}.`);
+      } else {
+        const coachClass = document.getElementById('selfRegCoachClass').value.trim() || `${name} Class`;
+        const newCoach = {
+          id: Date.now(),
+          name,
+          phone,
+          email,
+          password,
+          persatuanId: pId,
+          persatuanName: persatuan.name,
+          className: coachClass,
+          role: 'coach',
+          status: 'Pending Approval',
+          registeredAt: new Date().toLocaleDateString()
+        };
+
+        coaches.unshift(newCoach);
+        saveStorage('coaches', coaches);
+
+        alert(`🥋 Instructor Registration Submitted!\n\nCoach: ${name}\nPersatuan: ${persatuan.name}\n\n⏳ Status: Pending Approval\nYour instructor account has been forwarded to ${persatuan.name} Master for verification.`);
+      }
+
+      closeModal('selfRegisterModal');
+    }
+
+    function approveMember(id, type) {
+      if (type === 'coach') {
+        const c = coaches.find(item => item.id === id);
+        if (c) {
+          c.status = 'Active';
+          saveStorage('coaches', coaches);
+          alert(`✅ Coach "${c.name}" has been approved and activated!`);
+          renderContent();
+        }
+      } else {
+        const s = students.find(item => item.id === id);
+        if (s) {
+          s.status = 'Active';
+          // Update Persatuan student count
+          const p = persatuans.find(item => item.id == s.persatuanId || item.name === s.persatuanName);
+          if (p) {
+            p.students = (p.students || 0) + 1;
+            p.revenue = `RM ${(p.students * 100).toLocaleString()}`;
+            saveStorage('persatuans', persatuans);
+          }
+          saveStorage('students', students);
+          alert(`✅ Student "${s.name}" has been approved and officially enrolled in "${s.className}"!`);
+          renderContent();
+        }
+      }
+    }
+
+    function rejectMember(id, type) {
+      if (confirm('Are you sure you want to decline this registration?')) {
+        if (type === 'coach') {
+          coaches = coaches.filter(item => item.id !== id);
+          saveStorage('coaches', coaches);
+        } else {
+          students = students.filter(item => item.id !== id);
+          saveStorage('students', students);
+        }
+        alert('Registration request removed.');
+        renderContent();
+      }
+    }
+
     // Handle Form-Based Login
     function handleFormLogin(e) {
       e.preventDefault();
@@ -1203,6 +1527,7 @@
         if (pass === superAdminPass) {
           isLoggedIn = true;
           loggedInUserEmail = 'eswaran2728@gmail.com';
+          activePersatuan = null;
           document.getElementById('loginScreen').style.display = 'none';
           switchRole('super');
           return;
@@ -1212,7 +1537,7 @@
         }
       }
 
-      // Check registered persatuans in storage (e.g. Silambam, Taekwondo academy masters)
+      // Check registered Persatuans (Academy Masters)
       const matchedPersatuan = persatuans.find(p => (p.email && p.email.toLowerCase() === email) || (p.master && p.master.toLowerCase().includes(email.split('@')[0])));
       if (matchedPersatuan) {
         if (matchedPersatuan.password && matchedPersatuan.password !== pass) {
@@ -1221,6 +1546,7 @@
         }
         isLoggedIn = true;
         loggedInUserEmail = email;
+        activePersatuan = matchedPersatuan;
         ROLES.persatuan.name = matchedPersatuan.master;
         ROLES.persatuan.title = matchedPersatuan.name + ' (' + (matchedPersatuan.style || 'Academy') + ')';
         ROLES.persatuan.initials = matchedPersatuan.master.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase() || 'MA';
@@ -1229,7 +1555,47 @@
         return;
       }
 
-      // Registered System User Authentication
+      // Check registered Students/Parents in storage
+      const matchedStudent = students.find(s => s.email && s.email.toLowerCase() === email);
+      if (matchedStudent) {
+        if (matchedStudent.password && matchedStudent.password !== pass) {
+          alert('Invalid password for student account.');
+          return;
+        }
+        if (matchedStudent.status === 'Pending Approval') {
+          alert(`⏳ Registration Pending Approval:\n\nYour account under "${matchedStudent.persatuanName}" is awaiting official approval by Master ${matchedStudent.masterName}.\n\nPlease check back once approved.`);
+          return;
+        }
+        isLoggedIn = true;
+        loggedInUserEmail = email;
+        ROLES.student.name = matchedStudent.name;
+        ROLES.student.title = `${matchedStudent.belt} · ${matchedStudent.persatuanName}`;
+        document.getElementById('loginScreen').style.display = 'none';
+        switchRole('student');
+        return;
+      }
+
+      // Check registered Coaches in storage
+      const matchedCoach = coaches.find(c => c.email && c.email.toLowerCase() === email);
+      if (matchedCoach) {
+        if (matchedCoach.password && matchedCoach.password !== pass) {
+          alert('Invalid password for coach account.');
+          return;
+        }
+        if (matchedCoach.status === 'Pending Approval') {
+          alert(`⏳ Instructor Registration Pending Approval:\n\nYour instructor account under "${matchedCoach.persatuanName}" is awaiting Master approval.`);
+          return;
+        }
+        isLoggedIn = true;
+        loggedInUserEmail = email;
+        ROLES.coach.name = matchedCoach.name;
+        ROLES.coach.title = `Instructor · ${matchedCoach.persatuanName}`;
+        document.getElementById('loginScreen').style.display = 'none';
+        switchRole('coach');
+        return;
+      }
+
+      // Preset Accounts
       const user = USER_ACCOUNTS[email];
       if (user) {
         if (user.pass && user.pass !== pass) {
@@ -1243,78 +1609,7 @@
         return;
       }
 
-      // Role Heuristics for registered academy staff, coaches, students
-      if (email.includes('coach')) {
-        isLoggedIn = true;
-        loggedInUserEmail = email;
-        document.getElementById('loginScreen').style.display = 'none';
-        switchRole('coach');
-      } else if (email.includes('dojang') || email.includes('persatuan') || email.includes('academy') || email.includes('silambam')) {
-        isLoggedIn = true;
-        loggedInUserEmail = email;
-        document.getElementById('loginScreen').style.display = 'none';
-        switchRole('persatuan');
-      } else if (email.includes('student') || email.includes('parent')) {
-        isLoggedIn = true;
-        loggedInUserEmail = email;
-        document.getElementById('loginScreen').style.display = 'none';
-        switchRole('student');
-      } else {
-        alert('Unrecognized user credentials. Please check your email and password or register your Persatuan.');
-      }
-    }
-
-    function openChangePasswordModal() {
-      document.getElementById('cpCurrentEmail').value = loggedInUserEmail;
-      document.getElementById('cpNewPassword').value = '';
-      document.getElementById('cpConfirmPassword').value = '';
-      openModal('changePasswordModal');
-    }
-
-    function handleChangePassword(e) {
-      e.preventDefault();
-      const newPass = document.getElementById('cpNewPassword').value.trim();
-      const confirmPass = document.getElementById('cpConfirmPassword').value.trim();
-
-      if (!newPass || newPass.length < 4) {
-        alert('Password must be at least 4 characters long.');
-        return;
-      }
-
-      if (newPass !== confirmPass) {
-        alert('Passwords do not match! Please check and try again.');
-        return;
-      }
-
-      // If Super Admin
-      if (loggedInUserEmail === 'eswaran2728@gmail.com') {
-        superAdminPass = newPass;
-        saveStorage('super_pass', newPass);
-        alert('✅ Super Admin password updated successfully!\nNext login will require your new password.');
-        closeModal('changePasswordModal');
-        return;
-      }
-
-      // If Academy Master
-      const pIdx = persatuans.findIndex(p => p.email && p.email.toLowerCase() === loggedInUserEmail.toLowerCase());
-      if (pIdx !== -1) {
-        persatuans[pIdx].password = newPass;
-        saveStorage('persatuans', persatuans);
-        alert(`✅ Password updated successfully for Master ${persatuans[pIdx].master}!\nNext login will require your new password.`);
-        closeModal('changePasswordModal');
-        return;
-      }
-
-      // If registered preset account
-      if (USER_ACCOUNTS[loggedInUserEmail]) {
-        USER_ACCOUNTS[loggedInUserEmail].pass = newPass;
-        alert('✅ Password updated successfully!\nNext login will require your new password.');
-        closeModal('changePasswordModal');
-        return;
-      }
-
-      alert('✅ Password updated successfully!');
-      closeModal('changePasswordModal');
+      alert('Account not found or invalid credentials.\nPlease check your email/password or use "Register Account Under Persatuan".');
     }
 
     function executeLogout() {
@@ -1599,19 +1894,32 @@
           </div>
         `;
       } else if (currentRole === 'persatuan') {
-        const atRiskCount = students.filter(s => s.status === 'At-Risk').length;
-        const siblingCount = students.filter(s => s.sibling).length;
+        const currentPersatuanName = activePersatuan ? activePersatuan.name : '';
+        const relevantStudents = activePersatuan 
+          ? students.filter(s => s.persatuanId == activePersatuan.id || s.persatuanName === activePersatuan.name)
+          : students;
+        const relevantCoaches = activePersatuan 
+          ? coaches.filter(c => c.persatuanId == activePersatuan.id || c.persatuanName === activePersatuan.name)
+          : coaches;
+
+        const activeStudents = relevantStudents.filter(s => s.status !== 'Pending Approval');
+        const pendingStudents = relevantStudents.filter(s => s.status === 'Pending Approval');
+        const pendingCoaches = relevantCoaches.filter(c => c.status === 'Pending Approval');
+        const totalPending = pendingStudents.length + pendingCoaches.length;
+
+        const atRiskCount = activeStudents.filter(s => s.status === 'At-Risk').length;
+        const siblingCount = activeStudents.filter(s => s.sibling).length;
 
         view.innerHTML = `
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
             <div>
-              <h2 style="font-size:22px;color:var(--bf-navy)">Academy Operations Hub</h2>
-              <p style="font-size:12px;color:var(--bf-text-muted)">Student Roster, Sibling Billing & Belt Promotions</p>
+              <h2 style="font-size:22px;color:var(--bf-navy)">${activePersatuan ? activePersatuan.name : 'Academy Operations Hub'}</h2>
+              <p style="font-size:12px;color:var(--bf-text-muted)">Master In Charge: <strong>${activePersatuan ? activePersatuan.master : 'Master'}</strong> · ${activePersatuan ? activePersatuan.style : 'Martial Arts'}</p>
             </div>
             <div style="display:flex;gap:8px">
               <button class="bf-btn bf-btn-outline" onclick="openModal('newStudentModal')">
                 <i data-lucide="user-plus" style="width:14px;height:14px"></i>
-                <span>Register Student</span>
+                <span>Direct Add Student</span>
               </button>
               <button class="bf-btn bf-btn-primary" onclick="openAttendanceModal()">
                 <i data-lucide="clipboard-check" style="width:14px;height:14px"></i>
@@ -1620,26 +1928,87 @@
             </div>
           </div>
 
+          <!-- Pending Approvals Banner (If Any) -->
+          ${totalPending > 0 ? `
+            <div class="bf-card" style="border:2px solid var(--bf-amber);background:#fffdf7;margin-bottom:24px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="background:var(--bf-amber);color:#fff;font-size:10px;font-weight:800;padding:3px 8px;border-radius:12px;letter-spacing:.04em">ACTION REQUIRED</span>
+                  <h3 style="font-size:16px;color:var(--bf-navy)">Pending Member Registrations (${totalPending})</h3>
+                </div>
+                <div style="font-size:12px;color:var(--bf-text-muted)">Review and approve students and instructors to grant them system access</div>
+              </div>
+              
+              <div class="bf-table-wrap">
+                <table class="bf-table">
+                  <thead>
+                    <tr>
+                      <th>Candidate Name</th>
+                      <th>Type / Role</th>
+                      <th>Selected Class & Master</th>
+                      <th>Belt / IC</th>
+                      <th>WhatsApp Phone</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${pendingStudents.map(s => `
+                      <tr style="background:#fff">
+                        <td><strong>${s.name}</strong><br><span style="font-size:10px;color:var(--bf-text-muted)">${s.email}</span></td>
+                        <td><span class="belt-badge" style="background:#fef3c7;color:#92400e">Student / Parent</span></td>
+                        <td><strong>${s.className || 'General Class'}</strong></td>
+                        <td><span class="belt-badge ${s.beltClass}">${s.belt}</span><br><span style="font-size:10px;color:var(--bf-text-muted)">IC: ${s.ic || 'N/A'}</span></td>
+                        <td><a href="https://wa.me/${s.phone.replace(/[^0-9]/g,'')}" target="_blank" style="color:#10b981;font-weight:600">${s.phone}</a></td>
+                        <td>
+                          <div style="display:flex;gap:6px">
+                            <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="approveMember(${s.id}, 'student')">Approve & Enrol</button>
+                            <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="rejectMember(${s.id}, 'student')">Decline</button>
+                          </div>
+                        </td>
+                      </tr>
+                    `).join('')}
+
+                    ${pendingCoaches.map(c => `
+                      <tr style="background:#fff">
+                        <td><strong>${c.name}</strong><br><span style="font-size:10px;color:var(--bf-text-muted)">${c.email}</span></td>
+                        <td><span class="belt-badge" style="background:#e0f2fe;color:#0369a1">Instructor / Coach</span></td>
+                        <td><strong>${c.className}</strong></td>
+                        <td><span class="belt-badge belt-black">Coach</span></td>
+                        <td><a href="https://wa.me/${c.phone.replace(/[^0-9]/g,'')}" target="_blank" style="color:#10b981;font-weight:600">${c.phone}</a></td>
+                        <td>
+                          <div style="display:flex;gap:6px">
+                            <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="approveMember(${c.id}, 'coach')">Approve Instructor</button>
+                            <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="rejectMember(${c.id}, 'coach')">Decline</button>
+                          </div>
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ` : ''}
+
           <div class="kpi-grid">
             <div class="kpi-card">
-              <div class="kpi-title">Enrolled Students</div>
-              <div class="kpi-value">${students.length}</div>
+              <div class="kpi-title">Enrolled Active Students</div>
+              <div class="kpi-value">${activeStudents.length}</div>
               <div class="kpi-subtext">${siblingCount} with Sibling Discount</div>
             </div>
             <div class="kpi-card">
-              <div class="kpi-title">Upcoming Grading Candidates</div>
-              <div class="kpi-value">${students.length}</div>
-              <div class="kpi-subtext">Exam Date: 28th Sep 2026</div>
+              <div class="kpi-title">Active Classes & Batches</div>
+              <div class="kpi-value">${activePersatuan && activePersatuan.classes ? activePersatuan.classes.length : 3}</div>
+              <div class="kpi-subtext">${activePersatuan ? activePersatuan.style : 'Martial Arts'} Sessions</div>
             </div>
             <div class="kpi-card">
               <div class="kpi-title">Fee Collection Rate</div>
-              <div class="kpi-value">${students.length > 0 ? '100%' : '0%'}</div>
-              <div class="kpi-subtext">RM ${(students.length * 120).toLocaleString()} projected</div>
+              <div class="kpi-value">${activeStudents.length > 0 ? '100%' : '0%'}</div>
+              <div class="kpi-subtext">RM ${(activeStudents.length * 120).toLocaleString()} projected</div>
             </div>
             <div class="kpi-card">
-              <div class="kpi-title">At-Risk Absences</div>
-              <div class="kpi-value" style="color:${atRiskCount > 0 ? 'var(--bf-danger)' : 'var(--bf-navy)'}">${atRiskCount}</div>
-              <div class="kpi-subtext">3+ missed sessions</div>
+              <div class="kpi-title">Pending Approvals</div>
+              <div class="kpi-value" style="color:${totalPending > 0 ? 'var(--bf-amber)' : 'var(--bf-navy)'}">${totalPending}</div>
+              <div class="kpi-subtext">Awaiting Master Action</div>
             </div>
           </div>
 
@@ -1653,7 +2022,7 @@
                 <thead>
                   <tr>
                     <th>Student Name</th>
-                    <th>MyKid / IC</th>
+                    <th>Enrolled Class Session</th>
                     <th>Current Rank</th>
                     <th>Attendance %</th>
                     <th>Billing Status</th>
@@ -1662,25 +2031,21 @@
                   </tr>
                 </thead>
                 <tbody>
-                  ${students.length === 0 ? `
+                  ${activeStudents.length === 0 ? `
                     <tr>
                       <td colspan="7" style="text-align:center;padding:36px 16px;color:var(--bf-text-muted)">
                         <div style="font-size:28px;margin-bottom:8px">🥋</div>
-                        <div style="font-weight:700;font-size:14px;color:var(--bf-navy)">No Students Registered Yet</div>
-                        <div style="font-size:12px;margin-top:4px">Click the button below to register your first student into the dojang!</div>
-                        <button class="bf-btn bf-btn-sm bf-btn-primary" style="margin-top:14px" onclick="openModal('newStudentModal')">
-                          <i data-lucide="user-plus" style="width:14px;height:14px"></i>
-                          <span>+ Register First Student</span>
-                        </button>
+                        <div style="font-weight:700;font-size:14px;color:var(--bf-navy)">No Active Students Enrolled Yet</div>
+                        <div style="font-size:12px;margin-top:4px">Students who register under this Persatuan will appear in the Pending Approvals list above for your verification!</div>
                       </td>
                     </tr>
-                  ` : students.map(s => `
+                  ` : activeStudents.map(s => `
                     <tr style="${s.status === 'At-Risk' ? 'background:#fff1f2' : ''}">
-                      <td><strong>${s.name}</strong> ${s.sibling ? '<span style="font-size:10px;background:#e0f2fe;color:#0369a1;padding:2px 6px;border-radius:4px;font-weight:700">Sibling</span>' : ''}</td>
-                      <td>${s.ic}</td>
+                      <td><strong>${s.name}</strong> ${s.sibling ? '<span style="font-size:10px;background:#e0f2fe;color:#0369a1;padding:2px 6px;border-radius:4px;font-weight:700">Sibling</span>' : ''}<br><span style="font-size:10px;color:var(--bf-text-muted)">${s.ic || s.email || ''}</span></td>
+                      <td><strong>${s.className || 'General Mat Session'}</strong></td>
                       <td><span class="belt-badge ${s.beltClass}">${s.belt}</span></td>
-                      <td><strong style="color:${s.attendance < 75 ? 'var(--bf-danger)' : 'var(--bf-success)'}">${s.attendance}%</strong></td>
-                      <td><span class="belt-badge" style="background:#dcfce7;color:#166534">${s.fee}</span></td>
+                      <td><strong style="color:${s.attendance < 75 ? 'var(--bf-danger)' : 'var(--bf-success)'}">${s.attendance || 100}%</strong></td>
+                      <td><span class="belt-badge" style="background:#dcfce7;color:#166534">${s.fee || 'RM 120 (Paid)'}</span></td>
                       <td><a href="https://wa.me/${s.phone.replace(/[^0-9]/g,'')}" target="_blank" style="color:${s.status === 'At-Risk' ? '#dc2626' : '#10b981'};font-weight:600">${s.phone}</a></td>
                       <td>
                         <button class="bf-btn bf-btn-sm bf-btn-outline" onclick="openCertificate('${s.name}', '${s.belt}')">Certificate</button>
