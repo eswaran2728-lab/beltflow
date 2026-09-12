@@ -5,6 +5,7 @@ android/.antigravity/
 build/
 app/build/
 *.aab
+*.apk
 *.keystore
 node_modules/
 .next/

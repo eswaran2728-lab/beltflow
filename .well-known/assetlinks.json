@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.vercel.beltflow.twa",
+        "sha256_cert_fingerprints": ["1A:8F:F7:AB:18:93:DE:FE:BB:D3:32:5D:71:1A:8D:1E:53:18:CB:AB:4F:D6:4C:84:9F:F8:50:D3:C3:30:20:46"]
+      }
+    }]
