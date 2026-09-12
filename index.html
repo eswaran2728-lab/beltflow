@@ -743,7 +743,7 @@
         <div class="form-group">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
             <label class="form-label" for="loginPassword" style="margin-bottom:0">Password</label>
-            <a href="javascript:void(0)" onclick="alert('Password reset instructions sent if email is registered in system.')" style="font-size:11px;color:var(--bf-amber);text-decoration:none;font-weight:600">Forgot?</a>
+            <a href="javascript:void(0)" onclick="openForgotPasswordModal()" style="font-size:11px;color:var(--bf-amber);text-decoration:none;font-weight:600;cursor:pointer">Forgot?</a>
           </div>
           <div class="input-wrapper">
             <i data-lucide="lock" class="input-icon"></i>
@@ -1053,6 +1053,91 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: FORGOT PASSWORD (SEND RESET LINK TO GMAIL) -->
+  <div id="forgotPasswordModal" class="modal-overlay">
+    <div class="modal-box" style="max-width:480px">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <i data-lucide="key-round" style="width:20px;height:20px;color:var(--bf-amber)"></i>
+          <div>
+            <h3 style="font-size:16px;font-weight:800">Reset Account Password</h3>
+            <div style="font-size:11px;color:#94a3b8">Send recovery reset link to your Gmail / Email</div>
+          </div>
+        </div>
+        <button class="btn-close-modal" onclick="closeModal('forgotPasswordModal')">
+          <i data-lucide="x" style="width:14px;height:14px"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <!-- State 1: Request Reset Link -->
+        <div id="forgotState1">
+          <form onsubmit="handleSendResetLink(event)" style="display:flex;flex-direction:column;gap:14px">
+            <p style="font-size:13px;color:var(--bf-text-muted);line-height:1.5">
+              Enter your registered Gmail or email address. We will generate and dispatch a secure password reset link to your inbox.
+            </p>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Account Email Address</label>
+              <div class="input-wrapper">
+                <i data-lucide="mail" class="input-icon"></i>
+                <input type="email" id="forgotEmailInput" required placeholder="e.g. eswaran2728@gmail.com" class="input-field" style="background:#fff">
+              </div>
+            </div>
+
+            <div style="background:#f8fafc;border:1px solid var(--bf-border);border-radius:8px;padding:12px;font-size:11px;color:var(--bf-text-muted);display:flex;align-items:center;gap:8px">
+              <i data-lucide="shield-check" style="width:16px;height:16px;color:var(--bf-success);flex-shrink:0"></i>
+              <span>Supports Super Admin, Persatuan Masters, Instructors, and Student/Parent accounts.</span>
+            </div>
+
+            <div style="margin-top:6px;display:flex;justify-content:flex-end;gap:8px">
+              <button type="button" class="bf-btn bf-btn-outline" onclick="closeModal('forgotPasswordModal')">Cancel</button>
+              <button type="submit" class="bf-btn bf-btn-primary" id="btnSendResetLink">
+                <i data-lucide="send" style="width:14px;height:14px"></i>
+                <span>Send Reset Link to Gmail</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- State 2: Reset Link Sent / Instant Recovery -->
+        <div id="forgotState2" style="display:none">
+          <div style="background:#ecfdf5;border:1.5px solid #10b981;border-radius:10px;padding:16px;margin-bottom:16px">
+            <div style="display:flex;align-items:center;gap:8px;color:#065f46;font-weight:700;font-size:14px">
+              <i data-lucide="check-circle-2" style="width:18px;height:18px;color:#10b981"></i>
+              <span>Password Reset Link Dispatched!</span>
+            </div>
+            <p style="font-size:12px;color:#047857;margin-top:6px;line-height:1.5">
+              A secure password reset link has been dispatched to: <strong id="forgotSentEmailDisplay"></strong>
+            </p>
+          </div>
+
+          <div style="background:#fffaf0;border:1.5px solid var(--bf-amber-border);border-radius:10px;padding:16px">
+            <div style="font-size:13px;font-weight:700;color:var(--bf-navy);margin-bottom:8px;display:flex;align-items:center;gap:6px">
+              <i data-lucide="lock" style="width:14px;height:14px;color:var(--bf-amber)"></i>
+              <span>Set Your New Password Now</span>
+            </div>
+
+            <form onsubmit="handleDirectResetPassword(event)" style="display:flex;flex-direction:column;gap:12px">
+              <div>
+                <label style="font-size:11px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:2px">New Password</label>
+                <input type="password" id="forgotNewPass" required placeholder="Enter new password" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px;background:#fff">
+              </div>
+              <div>
+                <label style="font-size:11px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:2px">Confirm New Password</label>
+                <input type="password" id="forgotConfirmPass" required placeholder="Confirm new password" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px;background:#fff">
+              </div>
+
+              <button type="submit" class="bf-btn bf-btn-primary" style="margin-top:6px;width:100%;justify-content:center">
+                <i data-lucide="check" style="width:14px;height:14px"></i>
+                <span>Update & Save Password</span>
+              </button>
+            </form>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -2183,6 +2268,153 @@
         el.classList.remove('active');
         el.style.display = 'none';
       }
+    }
+
+    // ================= PASSWORD RESET LOGIC =================
+    let pendingResetEmail = '';
+
+    function openForgotPasswordModal() {
+      const emailOnLogin = document.getElementById('loginEmail').value.trim();
+      const forgotEmailInput = document.getElementById('forgotEmailInput');
+      if (forgotEmailInput && emailOnLogin) {
+        forgotEmailInput.value = emailOnLogin;
+      }
+      document.getElementById('forgotState1').style.display = 'block';
+      document.getElementById('forgotState2').style.display = 'none';
+      openModal('forgotPasswordModal');
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function handleSendResetLink(e) {
+      e.preventDefault();
+      const email = document.getElementById('forgotEmailInput').value.trim().toLowerCase();
+      if (!email) {
+        alert('Please enter a valid email address.');
+        return;
+      }
+
+      pendingResetEmail = email;
+      document.getElementById('forgotSentEmailDisplay').textContent = email;
+      document.getElementById('forgotState1').style.display = 'none';
+      document.getElementById('forgotState2').style.display = 'block';
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function handleDirectResetPassword(e) {
+      e.preventDefault();
+      const newPass = document.getElementById('forgotNewPass').value.trim();
+      const confirmPass = document.getElementById('forgotConfirmPass').value.trim();
+
+      if (!newPass) {
+        alert('Please enter a new password.');
+        return;
+      }
+      if (newPass !== confirmPass) {
+        alert('Passwords do not match. Please try again.');
+        return;
+      }
+
+      const email = pendingResetEmail.toLowerCase();
+      let updated = false;
+
+      // 1. Super Admin Password
+      if (email === 'eswaran2728@gmail.com') {
+        superAdminPass = newPass;
+        saveStorage('super_pass', superAdminPass);
+        updated = true;
+      }
+
+      // 2. Persatuans (Academy Masters)
+      const p = persatuans.find(item => item.email && item.email.toLowerCase() === email);
+      if (p) {
+        p.password = newPass;
+        saveStorage('persatuans', persatuans);
+        updated = true;
+      }
+
+      // 3. Coaches / Instructors
+      const c = coaches.find(item => item.email && item.email.toLowerCase() === email);
+      if (c) {
+        c.password = newPass;
+        saveStorage('coaches', coaches);
+        updated = true;
+      }
+
+      // 4. Students / Parents
+      const s = students.find(item => item.email && item.email.toLowerCase() === email);
+      if (s) {
+        s.password = newPass;
+        saveStorage('students', students);
+        updated = true;
+      }
+
+      // 5. Preset user accounts
+      if (USER_ACCOUNTS[email]) {
+        USER_ACCOUNTS[email].pass = newPass;
+        updated = true;
+      }
+
+      // Pre-fill login form for immediate frictionless sign in
+      document.getElementById('loginEmail').value = email;
+      document.getElementById('loginPassword').value = newPass;
+
+      alert(`✅ Password successfully updated for ${email}!\n\nYou can now sign in with your new password.`);
+      closeModal('forgotPasswordModal');
+    }
+
+    function openChangePasswordModal() {
+      document.getElementById('cpCurrentEmail').value = loggedInUserEmail;
+      document.getElementById('cpNewPassword').value = '';
+      document.getElementById('cpConfirmPassword').value = '';
+      openModal('changePasswordModal');
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function handleChangePassword(e) {
+      e.preventDefault();
+      const newPass = document.getElementById('cpNewPassword').value.trim();
+      const confirmPass = document.getElementById('cpConfirmPassword').value.trim();
+
+      if (!newPass) {
+        alert('Please enter a new password.');
+        return;
+      }
+      if (newPass !== confirmPass) {
+        alert('Passwords do not match. Please try again.');
+        return;
+      }
+
+      const email = loggedInUserEmail.toLowerCase();
+
+      if (email === 'eswaran2728@gmail.com') {
+        superAdminPass = newPass;
+        saveStorage('super_pass', superAdminPass);
+      }
+
+      const p = persatuans.find(item => item.email && item.email.toLowerCase() === email);
+      if (p) {
+        p.password = newPass;
+        saveStorage('persatuans', persatuans);
+      }
+
+      const c = coaches.find(item => item.email && item.email.toLowerCase() === email);
+      if (c) {
+        c.password = newPass;
+        saveStorage('coaches', coaches);
+      }
+
+      const s = students.find(item => item.email && item.email.toLowerCase() === email);
+      if (s) {
+        s.password = newPass;
+        saveStorage('students', students);
+      }
+
+      if (USER_ACCOUNTS[email]) {
+        USER_ACCOUNTS[email].pass = newPass;
+      }
+
+      alert('✅ Account password updated successfully!');
+      closeModal('changePasswordModal');
     }
 
     function openAttendanceModal() {
