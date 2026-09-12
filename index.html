@@ -984,25 +984,40 @@
       'parent@beltflow.com': { role: 'student', name: 'Aryan Suresh', title: 'Junior Yellow Belt', initials: 'AS' }
     };
 
-    // Mock Students Database
-    let students = [
-      { id: 1, name: 'Aryan Suresh', ic: '140512-10-5541', belt: 'Yellow Belt', beltClass: 'belt-yellow', attendance: 92, fee: 'RM 120 (Paid)', phone: '+60123456789', status: 'Active', sibling: false },
-      { id: 2, name: 'Kavya Suresh', ic: '160822-10-8832', belt: 'White Belt', beltClass: 'belt-white', attendance: 88, fee: 'RM 108 (10% Sibling)', phone: '+60123456789', status: 'Active', sibling: true },
-      { id: 3, name: 'Daniel Tan', ic: '130204-14-1123', belt: 'Green Belt', beltClass: 'belt-green', attendance: 58, fee: 'Unpaid', phone: '+60198765432', status: 'At-Risk', sibling: false },
-      { id: 4, name: 'Lucas Lee', ic: '150119-10-4421', belt: 'Blue Belt', beltClass: 'belt-blue', attendance: 96, fee: 'RM 120 (Paid)', phone: '+60172345678', status: 'Active', sibling: false },
-      { id: 5, name: 'Aina Binti Roslan', ic: '141103-10-6622', belt: 'Yellow Belt', beltClass: 'belt-yellow', attendance: 84, fee: 'RM 120 (Paid)', phone: '+60113456789', status: 'Active', sibling: false }
-    ];
+    // Persistent Storage Helpers
+    function loadStorage(key, fallback) {
+      try {
+        const item = localStorage.getItem('beltflow_' + key);
+        return item ? JSON.parse(item) : fallback;
+      } catch (e) {
+        return fallback;
+      }
+    }
 
-    // Mock Persatuans Database
-    let persatuans = [
+    function saveStorage(key, data) {
+      try {
+        localStorage.setItem('beltflow_' + key, JSON.stringify(data));
+      } catch (e) {}
+    }
+
+    // Live State (Loaded from localStorage or initial defaults)
+    let students = loadStorage('students', [
+      { id: 1, name: 'Aryan Suresh', ic: '140512-10-5541', belt: 'Yellow Belt', beltClass: 'belt-yellow', attendance: 92, fee: 'RM 120 (Paid)', phone: '+60123456789', status: 'Active', sibling: false, persatuan: 'Central Dojang HQ' },
+      { id: 2, name: 'Kavya Suresh', ic: '160822-10-8832', belt: 'White Belt', beltClass: 'belt-white', attendance: 88, fee: 'RM 108 (10% Sibling)', phone: '+60123456789', status: 'Active', sibling: true, persatuan: 'Central Dojang HQ' },
+      { id: 3, name: 'Daniel Tan', ic: '130204-14-1123', belt: 'Green Belt', beltClass: 'belt-green', attendance: 58, fee: 'Unpaid', phone: '+60198765432', status: 'At-Risk', sibling: false, persatuan: 'Central Dojang HQ' },
+      { id: 4, name: 'Lucas Lee', ic: '150119-10-4421', belt: 'Blue Belt', beltClass: 'belt-blue', attendance: 96, fee: 'RM 120 (Paid)', phone: '+60172345678', status: 'Active', sibling: false, persatuan: 'Central Dojang HQ' },
+      { id: 5, name: 'Aina Binti Roslan', ic: '141103-10-6622', belt: 'Yellow Belt', beltClass: 'belt-yellow', attendance: 84, fee: 'RM 120 (Paid)', phone: '+60113456789', status: 'Active', sibling: false, persatuan: 'Central Dojang HQ' }
+    ]);
+
+    let persatuans = loadStorage('persatuans', [
       { id: 1, name: 'Central Dojang HQ', state: 'Kuala Lumpur', master: 'Grandmaster Lee', students: 248, revenue: 'RM 24,800', status: 'Paid (10%)', role: 'persatuan' },
       { id: 2, name: 'Starlight Taekwondo Academy', state: 'Selangor', master: 'Master Ravi', students: 182, revenue: 'RM 18,200', status: 'Paid (10%)', role: 'coach' },
       { id: 3, name: 'Penang Martial Arts Hub', state: 'Penang', master: 'Master Tan', students: 135, revenue: 'RM 13,500', status: 'Pending Verification', role: 'persatuan' },
       { id: 4, name: 'Perak Silver Dragon Dojo', state: 'Perak', master: 'Master Kumar', students: 95, revenue: 'RM 9,500', status: 'Paid (10%)', role: 'persatuan' },
       { id: 5, name: 'Johor Tiger Martial Arts', state: 'Johor', master: 'Master Chua', students: 160, revenue: 'RM 16,000', status: 'Paid (10%)', role: 'persatuan' }
-    ];
+    ]);
 
-    let attendanceStatuses = { 1: 'Present', 2: 'Present', 3: 'Absent', 4: 'Present', 5: 'Present' };
+    let attendanceStatuses = loadStorage('attendance', { 1: 'Present', 2: 'Present', 3: 'Absent', 4: 'Present', 5: 'Present' });
 
     function handleNewPersatuan(e) {
       e.preventDefault();
@@ -1014,18 +1029,23 @@
       const phone = document.getElementById('newAcademyPhone').value.trim();
       const rev = `RM ${(studentCount * 100).toLocaleString()}`;
 
-      persatuans.unshift({
+      const newP = {
         id: Date.now(),
         name,
         state,
+        style,
         master,
         students: studentCount,
         revenue: rev,
         status: 'Active (Onboarded)',
-        role: 'persatuan'
-      });
+        role: 'persatuan',
+        createdAt: new Date().toISOString()
+      };
 
-      alert(`🥋 Success! Persatuan "${name}" in ${state} has been onboarded to BeltFlow OS.`);
+      persatuans.unshift(newP);
+      saveStorage('persatuans', persatuans);
+
+      alert(`🥋 Real-time Persatuan "${name}" (${state}) onboarded and saved to live system!`);
       closeModal('newPersatuanModal');
       renderContent();
     }
@@ -1224,8 +1244,10 @@
     }
 
     function saveAttendance() {
-      alert('Attendance saved successfully! Syncing live roster to coaches & parents.');
+      saveStorage('attendance', attendanceStatuses);
+      alert('✅ Live Attendance saved! Synchronized with student records.');
       closeModal('attendanceModal');
+      renderContent();
     }
 
     function openCertificate(name, belt) {
@@ -1243,7 +1265,7 @@
       const phone = document.getElementById('newStudentPhone').value;
       const beltClass = belt.toLowerCase().includes('yellow') ? 'belt-yellow' : (belt.toLowerCase().includes('green') ? 'belt-green' : 'belt-white');
 
-      students.unshift({
+      const newStudentObj = {
         id: Date.now(),
         name,
         ic,
@@ -1254,9 +1276,12 @@
         phone,
         status: 'Active',
         sibling: false
-      });
+      };
 
-      alert(`Student ${name} successfully registered!`);
+      students.unshift(newStudentObj);
+      saveStorage('students', students);
+
+      alert(`✅ Student "${name}" registered successfully and saved to live system!`);
       closeModal('newStudentModal');
       renderContent();
     }
