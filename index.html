@@ -93,11 +93,11 @@
 
     .login-container {
       width: 100%;
-      max-width: 440px;
+      max-width: 420px;
       background: #ffffff;
       border-radius: var(--radius-lg);
       box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
-      padding: 32px 28px;
+      padding: 36px 30px;
       animation: fadeInScale 0.3s ease-out;
     }
 
@@ -108,42 +108,73 @@
 
     .login-logo-header {
       text-align: center;
-      margin-bottom: 24px;
+      margin-bottom: 28px;
     }
 
     .login-logo-img {
-      height: 48px;
+      height: 52px;
       width: auto;
-      border-radius: 8px;
+      border-radius: 10px;
       background: #fff;
       padding: 4px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
       margin-bottom: 12px;
     }
 
-    .role-quick-card {
-      border: 1px solid var(--bf-border);
-      border-radius: var(--radius-sm);
-      padding: 10px 14px;
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--bf-navy);
+      margin-bottom: 6px;
+    }
+
+    .input-wrapper {
+      position: relative;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      cursor: pointer;
-      transition: all 0.15s ease;
+    }
+
+    .input-wrapper i.input-icon {
+      position: absolute;
+      left: 12px;
+      width: 16px;
+      height: 16px;
+      color: #94a3b8;
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 12px 14px 12px 38px;
+      border: 1px solid var(--bf-border);
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      color: var(--bf-text-main);
       background: #f8fafc;
-      margin-bottom: 8px;
+      transition: all 0.15s ease;
+      outline: none;
     }
 
-    .role-quick-card:hover {
+    .input-field:focus {
+      background: #ffffff;
       border-color: var(--bf-amber);
-      background: var(--bf-amber-soft);
-      transform: translateY(-1px);
+      box-shadow: 0 0 0 3px rgba(242, 148, 28, 0.2);
     }
 
-    .role-quick-card.selected {
-      border-color: var(--bf-amber);
-      background: var(--bf-amber-soft);
-      box-shadow: 0 0 0 2px var(--bf-amber-border);
+    .password-toggle {
+      position: absolute;
+      right: 12px;
+      cursor: pointer;
+      color: #94a3b8;
+      background: transparent;
+      border: none;
+      display: flex;
+      align-items: center;
+      padding: 0;
     }
 
     /* ================= MAIN DASHBOARD ================= */
@@ -594,7 +625,7 @@
 </head>
 <body>
 
-  <!-- ================= LOGIN SCREEN ================= -->
+  <!-- ================= AUTHENTICATION / LOGIN SCREEN ================= -->
   <div id="loginScreen">
     <div class="login-container">
       <div class="login-logo-header">
@@ -603,65 +634,49 @@
         <p style="font-size:12px;color:var(--bf-text-muted);margin-top:2px">Martial Arts Academy Management OS</p>
       </div>
 
-      <!-- Quick Role Selection -->
-      <div style="margin-bottom:16px">
-        <div style="font-size:11px;font-weight:700;color:var(--bf-text-muted);text-transform:uppercase;margin-bottom:8px">
-          Select Your Portal / Account:
-        </div>
-
-        <div class="role-quick-card selected" id="cardSuper" onclick="selectLoginRole('super')">
-          <div style="display:flex;align-items:center;gap:10px">
-            <span style="font-size:18px">👑</span>
-            <div>
-              <div style="font-size:13px;font-weight:700;color:var(--bf-navy)">Master Eswaran</div>
-              <div style="font-size:11px;color:var(--bf-text-muted)">BeltFlow HQ Super Admin</div>
-            </div>
+      <form id="loginForm" onsubmit="handleFormLogin(event)">
+        <!-- Email Input -->
+        <div class="form-group">
+          <label class="form-label" for="loginEmail">Email Address</label>
+          <div class="input-wrapper">
+            <i data-lucide="mail" class="input-icon"></i>
+            <input type="email" id="loginEmail" class="input-field" placeholder="eswaran2728@gmail.com" required value="eswaran2728@gmail.com">
           </div>
-          <i data-lucide="check-circle-2" style="width:16px;height:16px;color:var(--bf-amber)"></i>
         </div>
 
-        <div class="role-quick-card" id="cardPersatuan" onclick="selectLoginRole('persatuan')">
-          <div style="display:flex;align-items:center;gap:10px">
-            <span style="font-size:18px">🏛️</span>
-            <div>
-              <div style="font-size:13px;font-weight:700;color:var(--bf-navy)">Grandmaster Lee</div>
-              <div style="font-size:11px;color:var(--bf-text-muted)">Central Dojang Academy Admin</div>
-            </div>
+        <!-- Password Input -->
+        <div class="form-group">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <label class="form-label" for="loginPassword" style="margin-bottom:0">Password</label>
+            <a href="javascript:void(0)" onclick="alert('Password reset link sent to registered email!')" style="font-size:11px;color:var(--bf-amber);text-decoration:none;font-weight:600">Forgot?</a>
           </div>
-          <i data-lucide="circle" style="width:16px;height:16px;color:#cbd5e1"></i>
-        </div>
-
-        <div class="role-quick-card" id="cardCoach" onclick="selectLoginRole('coach')">
-          <div style="display:flex;align-items:center;gap:10px">
-            <span style="font-size:18px">🥋</span>
-            <div>
-              <div style="font-size:13px;font-weight:700;color:var(--bf-navy)">Master Ravi</div>
-              <div style="font-size:11px;color:var(--bf-text-muted)">Coach on Mat / Instructor</div>
-            </div>
+          <div class="input-wrapper">
+            <i data-lucide="lock" class="input-icon"></i>
+            <input type="password" id="loginPassword" class="input-field" placeholder="••••••••" required value="master1234">
+            <button type="button" class="password-toggle" onclick="togglePasswordVisibility()">
+              <i data-lucide="eye" id="togglePassIcon" style="width:16px;height:16px"></i>
+            </button>
           </div>
-          <i data-lucide="circle" style="width:16px;height:16px;color:#cbd5e1"></i>
         </div>
 
-        <div class="role-quick-card" id="cardStudent" onclick="selectLoginRole('student')">
-          <div style="display:flex;align-items:center;gap:10px">
-            <span style="font-size:18px">👤</span>
-            <div>
-              <div style="font-size:13px;font-weight:700;color:var(--bf-navy)">Aryan Suresh & Family</div>
-              <div style="font-size:11px;color:var(--bf-text-muted)">Student & Parent Portal</div>
-            </div>
-          </div>
-          <i data-lucide="circle" style="width:16px;height:16px;color:#cbd5e1"></i>
+        <!-- Remember Me Checkbox -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;font-size:12px;color:var(--bf-text-muted)">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" checked style="accent-color:var(--bf-amber);width:15px;height:15px">
+            <span>Remember my session</span>
+          </label>
+          <span style="font-size:11px;color:var(--bf-success);font-weight:600">● Live Cloud Active</span>
         </div>
-      </div>
 
-      <!-- Sign In Button -->
-      <button class="bf-btn bf-btn-primary" style="width:100%;padding:12px;font-size:14px;border-radius:10px" onclick="executeLogin()">
-        <i data-lucide="log-in" style="width:16px;height:16px"></i>
-        <span id="loginBtnText">Sign In as Master Eswaran</span>
-      </button>
+        <!-- Sign In Button -->
+        <button type="submit" class="bf-btn bf-btn-primary" style="width:100%;padding:13px;font-size:14px;border-radius:10px;font-weight:700">
+          <i data-lucide="log-in" style="width:16px;height:16px"></i>
+          <span>Sign In to BeltFlow</span>
+        </button>
+      </form>
 
-      <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--bf-text-muted)">
-        🔒 Secured by BeltFlow Multi-Role IAM & Room Database
+      <div style="text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--bf-border);font-size:11px;color:var(--bf-text-muted)">
+        Super Admin: <strong style="color:var(--bf-navy)">eswaran2728@gmail.com</strong>
       </div>
     </div>
   </div>
@@ -692,7 +707,7 @@
         <div class="user-profile-badge">
           <div style="text-align:right" class="hide-mobile">
             <div id="headerUserName" style="font-size:12px;font-weight:600">Master Eswaran</div>
-            <div id="headerRoleName" style="font-size:10px;color:var(--bf-amber)">BeltFlow HQ Admin</div>
+            <div id="headerRoleName" style="font-size:10px;color:var(--bf-amber)">eswaran2728@gmail.com</div>
           </div>
           <div id="headerUserAvatar" class="avatar-circle">ME</div>
         </div>
@@ -880,11 +895,19 @@
 
   <!-- ================= JAVASCRIPT APPLICATION LOGIC ================= -->
   <script>
-    // State
-    let selectedLoginRoleKey = 'super';
+    // App State
     let currentRole = 'super';
     let currentTab = 'overview';
     let isLoggedIn = false;
+
+    // Database of known users & roles
+    const USER_ACCOUNTS = {
+      'eswaran2728@gmail.com': { role: 'super', name: 'Master Eswaran', title: 'BeltFlow HQ Super Admin', initials: 'ME' },
+      'admin@beltflow.com': { role: 'super', name: 'Master Eswaran', title: 'BeltFlow HQ Super Admin', initials: 'ME' },
+      'dojang@central.com': { role: 'persatuan', name: 'Grandmaster Lee', title: 'Central Dojang Academy Admin', initials: 'GL' },
+      'coach@beltflow.com': { role: 'coach', name: 'Master Ravi', title: 'Senior Mat Instructor', initials: 'MR' },
+      'parent@beltflow.com': { role: 'student', name: 'Aryan Suresh', title: 'Junior Yellow Belt', initials: 'AS' }
+    };
 
     // Mock Students Database
     let students = [
@@ -900,7 +923,7 @@
     const ROLES = {
       super: {
         name: 'Master Eswaran',
-        title: 'BeltFlow HQ Admin',
+        title: 'BeltFlow HQ Super Admin',
         initials: 'ME',
         sidebarTitle: 'HQ Management',
         nav: [
@@ -950,51 +973,64 @@
       }
     };
 
-    // Service Worker for fast performance
+    // Service Worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js').catch(() => {});
       });
     }
 
-    // Login Role Selection
-    function selectLoginRole(roleKey) {
-      selectedLoginRoleKey = roleKey;
-      
-      const cards = ['cardSuper', 'cardPersatuan', 'cardCoach', 'cardStudent'];
-      cards.forEach(c => {
-        const el = document.getElementById(c);
-        if (el) {
-          el.classList.remove('selected');
-          const icon = el.querySelector('i');
-          if (icon) icon.setAttribute('data-lucide', 'circle');
-        }
-      });
-
-      const activeCard = document.getElementById(`card${roleKey.charAt(0).toUpperCase() + roleKey.slice(1)}`);
-      if (activeCard) {
-        activeCard.classList.add('selected');
-        const icon = activeCard.querySelector('i');
-        if (icon) icon.setAttribute('data-lucide', 'check-circle-2');
+    // Toggle Password Visibility
+    function togglePasswordVisibility() {
+      const passInput = document.getElementById('loginPassword');
+      const icon = document.getElementById('togglePassIcon');
+      if (passInput.type === 'password') {
+        passInput.type = 'text';
+        icon.setAttribute('data-lucide', 'eye-off');
+      } else {
+        passInput.type = 'password';
+        icon.setAttribute('data-lucide', 'eye');
       }
-
-      const btnText = document.getElementById('loginBtnText');
-      if (btnText) {
-        btnText.textContent = `Sign In as ${ROLES[roleKey].name}`;
-      }
-
       if (window.lucide) lucide.createIcons();
     }
 
-    function executeLogin() {
+    // Handle Form-Based Login
+    function handleFormLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+      const pass = document.getElementById('loginPassword').value.trim();
+
+      if (!email || !pass) {
+        alert('Please fill in both your email and password.');
+        return;
+      }
+
+      // Check user role
+      let targetRole = 'super';
+      let userProfile = USER_ACCOUNTS[email];
+
+      if (userProfile) {
+        targetRole = userProfile.role;
+      } else if (email.includes('coach')) {
+        targetRole = 'coach';
+      } else if (email.includes('dojang') || email.includes('academy')) {
+        targetRole = 'persatuan';
+      } else if (email.includes('student') || email.includes('parent')) {
+        targetRole = 'student';
+      } else {
+        // Default admin
+        targetRole = 'super';
+      }
+
       isLoggedIn = true;
       document.getElementById('loginScreen').style.display = 'none';
-      switchRole(selectedLoginRoleKey);
+      switchRole(targetRole);
     }
 
     function executeLogout() {
       isLoggedIn = false;
       document.getElementById('loginScreen').style.display = 'flex';
+      document.getElementById('loginPassword').value = '';
     }
 
     // Role Switching
@@ -1009,7 +1045,7 @@
 
       // Update Header
       document.getElementById('headerUserName').textContent = roleData.name;
-      document.getElementById('headerRoleName').textContent = roleData.title;
+      document.getElementById('headerRoleName').textContent = roleKey === 'super' ? 'eswaran2728@gmail.com' : roleData.title;
       document.getElementById('headerUserAvatar').textContent = roleData.initials;
       document.getElementById('sidebarRoleTitle').textContent = roleData.sidebarTitle;
 
@@ -1181,7 +1217,7 @@
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
             <div>
               <h2 style="font-size:22px;color:var(--bf-navy)">BeltFlow HQ Global Platform</h2>
-              <p style="font-size:12px;color:var(--bf-text-muted)">14 Registered State Martial Arts Persatuans & Academies</p>
+              <p style="font-size:12px;color:var(--bf-text-muted)">Super Admin: <strong>eswaran2728@gmail.com</strong> (Master Eswaran)</p>
             </div>
             <button class="bf-btn bf-btn-primary" onclick="alert('New Persatuan onboarding initiated.')">
               <i data-lucide="plus-circle" style="width:14px;height:14px"></i>
@@ -1460,7 +1496,7 @@
       if (window.lucide) lucide.createIcons();
     }
 
-    // Initialize App: Default starts on Login Screen
+    // Initialize Icons
     if (window.lucide) lucide.createIcons();
   </script>
 </body>
