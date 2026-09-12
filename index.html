@@ -640,7 +640,7 @@
           <label class="form-label" for="loginEmail">Email Address</label>
           <div class="input-wrapper">
             <i data-lucide="mail" class="input-icon"></i>
-            <input type="email" id="loginEmail" class="input-field" placeholder="eswaran2728@gmail.com" required value="eswaran2728@gmail.com">
+            <input type="email" id="loginEmail" class="input-field" placeholder="name@domain.com" required value="">
           </div>
         </div>
 
@@ -648,11 +648,11 @@
         <div class="form-group">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
             <label class="form-label" for="loginPassword" style="margin-bottom:0">Password</label>
-            <a href="javascript:void(0)" onclick="alert('Password reset link sent to registered email!')" style="font-size:11px;color:var(--bf-amber);text-decoration:none;font-weight:600">Forgot?</a>
+            <a href="javascript:void(0)" onclick="alert('Password reset instructions sent if email is registered in system.')" style="font-size:11px;color:var(--bf-amber);text-decoration:none;font-weight:600">Forgot?</a>
           </div>
           <div class="input-wrapper">
             <i data-lucide="lock" class="input-icon"></i>
-            <input type="password" id="loginPassword" class="input-field" placeholder="••••••••" required value="master1234">
+            <input type="password" id="loginPassword" class="input-field" placeholder="••••••••" required value="">
             <button type="button" class="password-toggle" onclick="togglePasswordVisibility()">
               <i data-lucide="eye" id="togglePassIcon" style="width:16px;height:16px"></i>
             </button>
@@ -676,7 +676,7 @@
       </form>
 
       <div style="text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--bf-border);font-size:11px;color:var(--bf-text-muted)">
-        Super Admin: <strong style="color:var(--bf-navy)">eswaran2728@gmail.com</strong>
+        🔒 <strong>Enterprise Cloud Security</strong> · Multi-Role Tenant Authorization
       </div>
     </div>
   </div>
@@ -977,11 +977,10 @@
 
     // Database of known users & roles
     const USER_ACCOUNTS = {
-      'eswaran2728@gmail.com': { role: 'super', name: 'Master Eswaran', title: 'BeltFlow HQ Super Admin', initials: 'ME' },
-      'admin@beltflow.com': { role: 'super', name: 'Master Eswaran', title: 'BeltFlow HQ Super Admin', initials: 'ME' },
-      'dojang@central.com': { role: 'persatuan', name: 'Grandmaster Lee', title: 'Central Dojang Academy Admin', initials: 'GL' },
-      'coach@beltflow.com': { role: 'coach', name: 'Master Ravi', title: 'Senior Mat Instructor', initials: 'MR' },
-      'parent@beltflow.com': { role: 'student', name: 'Aryan Suresh', title: 'Junior Yellow Belt', initials: 'AS' }
+      'eswaran2728@gmail.com': { role: 'super', pass: 'Eswaran0321@', name: 'Master Eswaran', title: 'BeltFlow HQ Super Admin', initials: 'ME' },
+      'dojang@central.com': { role: 'persatuan', pass: 'dojang123', name: 'Grandmaster Lee', title: 'Central Dojang Academy Admin', initials: 'GL' },
+      'coach@beltflow.com': { role: 'coach', pass: 'coach123', name: 'Master Ravi', title: 'Senior Mat Instructor', initials: 'MR' },
+      'parent@beltflow.com': { role: 'student', pass: 'parent123', name: 'Aryan Suresh', title: 'Junior Yellow Belt', initials: 'AS' }
     };
 
     // Persistent Storage Helpers
@@ -1117,30 +1116,61 @@
       const pass = document.getElementById('loginPassword').value.trim();
 
       if (!email || !pass) {
-        alert('Please fill in both your email and password.');
+        alert('Please enter both your email and password.');
         return;
       }
 
-      // Check user role
-      let targetRole = 'super';
-      let userProfile = USER_ACCOUNTS[email];
-
-      if (userProfile) {
-        targetRole = userProfile.role;
-      } else if (email.includes('coach')) {
-        targetRole = 'coach';
-      } else if (email.includes('dojang') || email.includes('academy')) {
-        targetRole = 'persatuan';
-      } else if (email.includes('student') || email.includes('parent')) {
-        targetRole = 'student';
-      } else {
-        // Default admin
-        targetRole = 'super';
+      // Confidential Super Admin Authentication
+      if (email === 'eswaran2728@gmail.com') {
+        if (pass === 'Eswaran0321@') {
+          isLoggedIn = true;
+          document.getElementById('loginScreen').style.display = 'none';
+          switchRole('super');
+          return;
+        } else {
+          alert('Invalid Super Admin credentials. Access denied.');
+          return;
+        }
       }
 
-      isLoggedIn = true;
-      document.getElementById('loginScreen').style.display = 'none';
-      switchRole(targetRole);
+      // Registered System User Authentication
+      const user = USER_ACCOUNTS[email];
+      if (user) {
+        if (user.pass && user.pass !== pass) {
+          alert('Invalid password for ' + email + '.');
+          return;
+        }
+        isLoggedIn = true;
+        document.getElementById('loginScreen').style.display = 'none';
+        switchRole(user.role);
+        return;
+      }
+
+      // Check registered persatuans in storage
+      const matchedPersatuan = persatuans.find(p => (p.email && p.email.toLowerCase() === email) || (p.master && p.master.toLowerCase().includes(email.split('@')[0])));
+      if (matchedPersatuan) {
+        isLoggedIn = true;
+        document.getElementById('loginScreen').style.display = 'none';
+        switchRole('persatuan');
+        return;
+      }
+
+      // Role Heuristics for registered academy staff, coaches, students
+      if (email.includes('coach')) {
+        isLoggedIn = true;
+        document.getElementById('loginScreen').style.display = 'none';
+        switchRole('coach');
+      } else if (email.includes('dojang') || email.includes('persatuan') || email.includes('academy')) {
+        isLoggedIn = true;
+        document.getElementById('loginScreen').style.display = 'none';
+        switchRole('persatuan');
+      } else if (email.includes('student') || email.includes('parent')) {
+        isLoggedIn = true;
+        document.getElementById('loginScreen').style.display = 'none';
+        switchRole('student');
+      } else {
+        alert('Unrecognized user credentials. Please check your email and password or register your Persatuan.');
+      }
     }
 
     function executeLogout() {
