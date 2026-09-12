@@ -521,6 +521,101 @@
       animation: zoomIn 0.2s ease-out;
     }
 
+    /* Registration Wizard Styles */
+    .wizard-steps-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      position: relative;
+      background: #f8fafc;
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--bf-border);
+    }
+    .wizard-step-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--bf-text-muted);
+      z-index: 2;
+    }
+    .wizard-step-item.active {
+      color: var(--bf-navy);
+      font-weight: 800;
+    }
+    .wizard-step-item.completed {
+      color: var(--bf-success);
+    }
+    .wizard-step-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #e2e8f0;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+      transition: all .2s ease;
+    }
+    .wizard-step-item.active .wizard-step-num {
+      background: var(--bf-amber);
+      color: #fff;
+      box-shadow: 0 0 0 3px rgba(242, 148, 28, 0.25);
+    }
+    .wizard-step-item.completed .wizard-step-num {
+      background: var(--bf-success);
+      color: #fff;
+    }
+    .wizard-persatuan-card {
+      border: 2px solid var(--bf-border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      cursor: pointer;
+      transition: all .2s ease;
+      background: #ffffff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .wizard-persatuan-card:hover {
+      border-color: #94a3b8;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+    .wizard-persatuan-card.selected {
+      border-color: var(--bf-amber);
+      background: #fffaf0;
+      box-shadow: 0 4px 14px rgba(242, 148, 28, 0.18);
+    }
+    .wizard-role-card {
+      border: 2px solid var(--bf-border);
+      border-radius: 12px;
+      padding: 18px 16px;
+      cursor: pointer;
+      transition: all .2s ease;
+      background: #ffffff;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .wizard-role-card:hover {
+      border-color: #94a3b8;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+    .wizard-role-card.selected {
+      border-color: var(--bf-amber);
+      background: #fffaf0;
+      box-shadow: 0 4px 14px rgba(242, 148, 28, 0.2);
+    }
+
     @keyframes zoomIn {
       from { transform: scale(0.95); opacity: 0; }
       to { transform: scale(1); opacity: 1; }
@@ -675,12 +770,12 @@
         </button>
       </form>
 
-      <!-- Self Registration Trigger -->
+      <!-- Self Registration Trigger (Wizard Entry) -->
       <div style="text-align:center;margin-top:16px;padding-top:14px;border-top:1px dashed var(--bf-border);font-size:12px;color:var(--bf-text-muted)">
         <span>New Master, Student or Parent?</span>
-        <button type="button" onclick="openSelfRegisterModal()" class="bf-btn bf-btn-sm" style="display:inline-flex;margin-top:6px;width:100%;justify-content:center;background:#fff8ee;border:1.5px solid var(--bf-amber);color:var(--bf-amber);font-weight:700;border-radius:8px;padding:9px">
-          <i data-lucide="user-plus" style="width:14px;height:14px"></i>
-          <span>Register Account Under Persatuan</span>
+        <button type="button" onclick="openRegisterWizard()" class="bf-btn bf-btn-sm" style="display:inline-flex;margin-top:8px;width:100%;justify-content:center;background:linear-gradient(135deg, #fff8ee 0%, #fff 100%);border:1.5px solid var(--bf-amber);color:var(--bf-amber);font-weight:800;border-radius:8px;padding:11px;font-size:13px;box-shadow:0 2px 6px rgba(242,148,28,0.12)">
+          <i data-lucide="user-plus" style="width:16px;height:16px"></i>
+          <span>Register Now</span>
         </button>
       </div>
 
@@ -996,127 +1091,297 @@
       </div>
     </div>
   </div>
-  <!-- MODAL: SELF-REGISTRATION (MASTER, COACH, STUDENT, PARENT) -->
-  <div id="selfRegisterModal" class="modal-overlay">
-    <div class="modal-box" style="max-width:560px">
+  <!-- ================= MULTI-STEP REGISTRATION WIZARD MODAL ================= -->
+  <div id="registerWizardModal" class="modal-overlay">
+    <div class="modal-box" style="max-width:620px">
+      
+      <!-- Wizard Modal Header -->
       <div class="modal-header">
         <div style="display:flex;align-items:center;gap:10px">
           <i data-lucide="user-plus" style="width:20px;height:20px;color:var(--bf-amber)"></i>
-          <h3 style="font-size:16px">Register Account Under Persatuan</h3>
+          <div>
+            <h3 style="font-size:16px;font-weight:800;letter-spacing:.01em" id="wizModalTitle">BeltFlow Registration Wizard</h3>
+            <div style="font-size:11px;color:#94a3b8" id="wizModalSubtitle">Step 1 of 4: Select Your Persatuan / Academy</div>
+          </div>
         </div>
-        <button class="btn-close-modal" onclick="closeModal('selfRegisterModal')">
+        <button class="btn-close-modal" onclick="closeModal('registerWizardModal')">
           <i data-lucide="x" style="width:14px;height:14px"></i>
         </button>
       </div>
+
       <div class="modal-body">
-        <form onsubmit="handleSelfRegister(event)" style="display:flex;flex-direction:column;gap:14px">
-          
-          <!-- Role Type Selection -->
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:6px">I am registering as:</label>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-              <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1.5px solid var(--bf-amber);border-radius:8px;cursor:pointer;background:#fffaf0" id="labelRoleStudent">
-                <input type="radio" name="selfRegRole" value="student" checked onchange="toggleSelfRegRoleFields()" style="accent-color:var(--bf-amber)">
-                <div>
-                  <div style="font-size:12px;font-weight:700;color:var(--bf-navy)">👤 Student / Parent</div>
-                  <div style="font-size:10px;color:var(--bf-text-muted)">Join class & track promotions</div>
-                </div>
-              </label>
-              <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1.5px solid var(--bf-border);border-radius:8px;cursor:pointer;background:#f8fafc" id="labelRoleCoach">
-                <input type="radio" name="selfRegRole" value="coach" onchange="toggleSelfRegRoleFields()" style="accent-color:var(--bf-amber)">
-                <div>
-                  <div style="font-size:12px;font-weight:700;color:var(--bf-navy)">🥋 Master / Coach</div>
-                  <div style="font-size:10px;color:var(--bf-text-muted)">Conduct classes & mat sessions</div>
-                </div>
-              </label>
-            </div>
+        
+        <!-- Progress Steps Bar -->
+        <div class="wizard-steps-bar" id="wizProgressBar">
+          <div class="wizard-step-item active" id="wizStepTab1">
+            <span class="wizard-step-num">1</span>
+            <span class="hide-mobile">1. Persatuan</span>
+          </div>
+          <i data-lucide="chevron-right" style="width:14px;height:14px;color:#cbd5e1"></i>
+          <div class="wizard-step-item" id="wizStepTab2">
+            <span class="wizard-step-num">2</span>
+            <span class="hide-mobile">2. Role</span>
+          </div>
+          <i data-lucide="chevron-right" style="width:14px;height:14px;color:#cbd5e1"></i>
+          <div class="wizard-step-item" id="wizStepTab3">
+            <span class="wizard-step-num">3</span>
+            <span class="hide-mobile">3. Details</span>
+          </div>
+          <i data-lucide="chevron-right" style="width:14px;height:14px;color:#cbd5e1"></i>
+          <div class="wizard-step-item" id="wizStepTab4">
+            <span class="wizard-step-num">4</span>
+            <span class="hide-mobile">4. Complete</span>
+          </div>
+        </div>
+
+        <!-- ================= STEP 1: SELECT PERSATUAN ================= -->
+        <div id="wizStep1Content">
+          <div style="margin-bottom:16px">
+            <h4 style="font-size:15px;color:var(--bf-navy);font-weight:700">Select Martial Arts Persatuan / Academy</h4>
+            <p style="font-size:12px;color:var(--bf-text-muted);margin-top:2px">Choose the authorized martial arts organization you belong to.</p>
           </div>
 
-          <!-- Select Persatuan / Academy -->
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Select Persatuan / Academy</label>
-            <select id="selfRegPersatuan" required onchange="updateSelfRegClasses()" style="width:100%;padding:9px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px;background:#fff;font-weight:600">
-              <!-- Populated dynamically via JS -->
-            </select>
+          <div id="wizPersatuanList" style="display:flex;flex-direction:column;gap:10px;max-height:300px;overflow-y:auto;padding:2px">
+            <!-- Dynamically Rendered Persatuans -->
           </div>
 
-          <!-- Select Master & Class (For Students) -->
-          <div id="selfRegClassGroup">
-            <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Select Master & Class Session</label>
-            <select id="selfRegClass" required style="width:100%;padding:9px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px;background:#fff">
-              <!-- Populated dynamically based on selected Persatuan -->
-            </select>
-          </div>
-
-          <!-- Coach Class Specification (For Coaches) -->
-          <div id="selfRegCoachGroup" style="display:none">
-            <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Class Name / Batch Schedule to Teach</label>
-            <input type="text" id="selfRegCoachClass" placeholder="e.g. Master Ravi - Weekend Silambam Mat (Sat 9am)" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
-          </div>
-
-          <!-- Full Name -->
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px" id="selfRegNameLabel">Student Full Name</label>
-            <input type="text" id="selfRegName" required placeholder="e.g. Kaven Suresh" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
-          </div>
-
-          <!-- IC & Initial Belt (For Students) -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="selfRegStudentExtras">
-            <div>
-              <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">MyKid / IC No</label>
-              <input type="text" id="selfRegIC" placeholder="e.g. 150824-10-5541" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
-            </div>
-            <div>
-              <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Current Belt / Rank</label>
-              <select id="selfRegBelt" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
-                <option value="White Belt">White Belt (Beginner)</option>
-                <option value="Yellow Belt">Yellow Belt</option>
-                <option value="Green Belt">Green Belt</option>
-                <option value="Blue Belt">Blue Belt</option>
-                <option value="Red Belt / Brown Belt">Red Belt / Brown Belt</option>
-                <option value="Black Belt (1st Dan / Asan)">Black Belt (1st Dan / Asan)</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- WhatsApp Phone -->
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">WhatsApp Contact Number</label>
-            <input type="text" id="selfRegPhone" required placeholder="+60123456789" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
-          </div>
-
-          <!-- Login Credentials Setup -->
-          <div style="background:#f1f5f9;border:1px solid #cbd5e1;padding:12px;border-radius:8px;display:flex;flex-direction:column;gap:8px">
-            <div style="font-size:12px;font-weight:700;color:var(--bf-navy);display:flex;align-items:center;gap:6px">
-              <i data-lucide="key" style="width:14px;height:14px;color:var(--bf-amber)"></i>
-              <span>Create Sign-In Credentials</span>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-              <div>
-                <label style="font-size:11px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Login Email</label>
-                <input type="email" id="selfRegEmail" required placeholder="user@gmail.com" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px;background:#fff">
-              </div>
-              <div>
-                <label style="font-size:11px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Password</label>
-                <input type="password" id="selfRegPassword" required placeholder="Create password" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px;background:#fff">
-              </div>
-            </div>
-          </div>
-
-          <!-- Approval Notice -->
-          <div style="background:#fffbeb;border:1px solid #fde68a;padding:10px;border-radius:6px;font-size:11px;color:#92400e;display:flex;align-items:center;gap:6px">
-            <i data-lucide="shield-alert" style="width:16px;height:16px;color:#d97706;flex-shrink:0"></i>
-            <span><strong>Academy Approval Required:</strong> Your registration will be reviewed and approved by the selected Persatuan Master before account activation.</span>
-          </div>
-
-          <div style="margin-top:6px;display:flex;justify-content:flex-end;gap:8px">
-            <button type="button" class="bf-btn bf-btn-outline" onclick="closeModal('selfRegisterModal')">Cancel</button>
-            <button type="submit" class="bf-btn bf-btn-primary">
-              <i data-lucide="send" style="width:14px;height:14px"></i>
-              <span>Submit Registration for Approval</span>
+          <div style="margin-top:20px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--bf-border);padding-top:16px">
+            <button type="button" class="bf-btn bf-btn-outline" onclick="closeModal('registerWizardModal')">Cancel</button>
+            <button type="button" class="bf-btn bf-btn-primary" id="btnWizStep1Next" onclick="goToWizardStep(2)" disabled>
+              <span>Continue to Role Selection</span>
+              <i data-lucide="arrow-right" style="width:14px;height:14px"></i>
             </button>
           </div>
-        </form>
+        </div>
+
+        <!-- ================= STEP 2: SELECT ROLE ================= -->
+        <div id="wizStep2Content" style="display:none">
+          <div style="background:#f1f5f9;border:1px solid #cbd5e1;padding:10px 14px;border-radius:8px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:10px;text-transform:uppercase;color:var(--bf-text-muted);font-weight:700">Selected Persatuan:</div>
+              <div style="font-size:13px;font-weight:700;color:var(--bf-navy)" id="wizSummaryPersatuan1">-</div>
+            </div>
+            <button type="button" class="bf-btn bf-btn-sm bf-btn-outline" style="padding:3px 8px;font-size:11px" onclick="goToWizardStep(1)">Change</button>
+          </div>
+
+          <div style="margin-bottom:16px">
+            <h4 style="font-size:15px;color:var(--bf-navy);font-weight:700">Select Your Registration Role</h4>
+            <p style="font-size:12px;color:var(--bf-text-muted);margin-top:2px">Your role determines your portal permissions and class associations.</p>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">
+            <div class="wizard-role-card selected" id="wizRoleCardStudent" onclick="selectWizardRole('student')">
+              <div style="font-size:28px">👤</div>
+              <div style="font-weight:800;font-size:14px;color:var(--bf-navy)">Student</div>
+              <div style="font-size:11px;color:var(--bf-text-muted);line-height:1.4">Enrol in martial arts training & track promotions</div>
+            </div>
+
+            <div class="wizard-role-card" id="wizRoleCardParent" onclick="selectWizardRole('parent')">
+              <div style="font-size:28px">👨‍👩‍👧</div>
+              <div style="font-weight:800;font-size:14px;color:var(--bf-navy)">Parent</div>
+              <div style="font-size:11px;color:var(--bf-text-muted);line-height:1.4">Register children, manage sibling fees & receipts</div>
+            </div>
+
+            <div class="wizard-role-card" id="wizRoleCardMaster" onclick="selectWizardRole('master')">
+              <div style="font-size:28px">🥋</div>
+              <div style="font-weight:800;font-size:14px;color:var(--bf-navy)">Master / Coach</div>
+              <div style="font-size:11px;color:var(--bf-text-muted);line-height:1.4">Conduct classes, lead syllabus & mark mat attendance</div>
+            </div>
+          </div>
+
+          <div style="margin-top:24px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--bf-border);padding-top:16px">
+            <button type="button" class="bf-btn bf-btn-outline" onclick="goToWizardStep(1)">
+              <i data-lucide="arrow-left" style="width:14px;height:14px"></i>
+              <span>Back</span>
+            </button>
+            <button type="button" class="bf-btn bf-btn-primary" onclick="goToWizardStep(3)">
+              <span>Next: Fill Details</span>
+              <i data-lucide="arrow-right" style="width:14px;height:14px"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- ================= STEP 3A: MASTER REGISTRATION FORM ================= -->
+        <div id="wizStep3AContent" style="display:none">
+          <div style="background:#f1f5f9;border:1px solid #cbd5e1;padding:10px 14px;border-radius:8px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:10px;text-transform:uppercase;color:var(--bf-text-muted);font-weight:700">Persatuan & Role:</div>
+              <div style="font-size:13px;font-weight:700;color:var(--bf-navy)">
+                <span id="wizSummaryPersatuan2">-</span> · <span style="color:var(--bf-amber)">🥋 Master / Instructor</span>
+              </div>
+            </div>
+            <button type="button" class="bf-btn bf-btn-sm bf-btn-outline" style="padding:3px 8px;font-size:11px" onclick="goToWizardStep(2)">Change</button>
+          </div>
+
+          <form onsubmit="handleWizardSubmit(event, 'master')" style="display:flex;flex-direction:column;gap:12px">
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Master / Instructor Full Name</label>
+              <input type="text" id="wizMasterName" required placeholder="e.g. Master Ravi Kumar" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div>
+                <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Phone Number (WhatsApp)</label>
+                <input type="text" id="wizMasterPhone" required placeholder="+60123456789" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
+              </div>
+              <div>
+                <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Grading / Credential Level (Optional)</label>
+                <input type="text" id="wizMasterRank" placeholder="e.g. 4th Dan Black Belt / Chief Asan" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
+              </div>
+            </div>
+
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Class(es) You Will Teach / Manage</label>
+              <input type="text" id="wizMasterClasses" required placeholder="e.g. Weekend Morning Silambam Mat Session (Sat 9:00 AM)" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
+            </div>
+
+            <!-- Login Credentials -->
+            <div style="background:#f8fafc;border:1px solid #cbd5e1;padding:12px;border-radius:8px;margin-top:2px">
+              <div style="font-size:11px;font-weight:700;color:var(--bf-navy);margin-bottom:6px;display:flex;align-items:center;gap:6px">
+                <i data-lucide="key" style="width:14px;height:14px;color:var(--bf-amber)"></i>
+                <span>Create Master Sign-In Credentials</span>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div>
+                  <label style="font-size:11px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:2px">Email</label>
+                  <input type="email" id="wizMasterEmail" required placeholder="master@gmail.com" style="width:100%;padding:8px 10px;border:1px solid var(--bf-border);border-radius:6px;font-size:12px;background:#fff">
+                </div>
+                <div>
+                  <label style="font-size:11px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:2px">Password</label>
+                  <input type="password" id="wizMasterPassword" required placeholder="Create password" style="width:100%;padding:8px 10px;border:1px solid var(--bf-border);border-radius:6px;font-size:12px;background:#fff">
+                </div>
+              </div>
+            </div>
+
+            <div style="background:#fffbeb;border:1px solid #fde68a;padding:10px;border-radius:6px;font-size:11px;color:#92400e;display:flex;align-items:center;gap:6px">
+              <i data-lucide="shield-alert" style="width:16px;height:16px;color:#d97706;flex-shrink:0"></i>
+              <span>Your registration will be queued for <strong>HQ Admin / Persatuan Approval</strong> before login access is granted.</span>
+            </div>
+
+            <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--bf-border);padding-top:14px">
+              <button type="button" class="bf-btn bf-btn-outline" onclick="goToWizardStep(2)">
+                <i data-lucide="arrow-left" style="width:14px;height:14px"></i>
+                <span>Back</span>
+              </button>
+              <button type="submit" class="bf-btn bf-btn-primary">
+                <i data-lucide="send" style="width:14px;height:14px"></i>
+                <span>Submit Master Registration</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- ================= STEP 3B: STUDENT / PARENT REGISTRATION FORM ================= -->
+        <div id="wizStep3BContent" style="display:none">
+          <div style="background:#f1f5f9;border:1px solid #cbd5e1;padding:10px 14px;border-radius:8px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:10px;text-transform:uppercase;color:var(--bf-text-muted);font-weight:700">Persatuan & Role:</div>
+              <div style="font-size:13px;font-weight:700;color:var(--bf-navy)">
+                <span id="wizSummaryPersatuan3">-</span> · <span style="color:var(--bf-amber)" id="wizSummaryRole3">👤 Student</span>
+              </div>
+            </div>
+            <button type="button" class="bf-btn bf-btn-sm bf-btn-outline" style="padding:3px 8px;font-size:11px" onclick="goToWizardStep(2)">Change</button>
+          </div>
+
+          <form onsubmit="handleWizardSubmit(event, 'student_or_parent')" style="display:flex;flex-direction:column;gap:12px">
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px" id="wizStudentNameLabel">Student / Child Full Name</label>
+              <input type="text" id="wizStudentName" required placeholder="e.g. Aryan Suresh" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
+            </div>
+
+            <div id="wizParentNameGroup" style="display:none">
+              <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Parent / Guardian Full Name</label>
+              <input type="text" id="wizParentName" placeholder="e.g. Suresh Kumar" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
+            </div>
+
+            <!-- Dynamic Class Selection Under Selected Persatuan -->
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Select Class / Training Session</label>
+              <select id="wizClassSelect" required style="width:100%;padding:9px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px;background:#fff;font-weight:600">
+                <!-- Dynamically populated from chosen persatuan's classes -->
+              </select>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div>
+                <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Phone Number (WhatsApp)</label>
+                <input type="text" id="wizStudentPhone" required placeholder="+60123456789" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
+              </div>
+              <div>
+                <label style="font-size:12px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:4px">Initial Belt / Rank</label>
+                <select id="wizStudentBelt" style="width:100%;padding:8px 12px;border:1px solid var(--bf-border);border-radius:6px;font-size:13px">
+                  <option value="White Belt">White Belt (Beginner)</option>
+                  <option value="Yellow Belt">Yellow Belt</option>
+                  <option value="Green Belt">Green Belt</option>
+                  <option value="Blue Belt">Blue Belt</option>
+                  <option value="Red Belt">Red Belt</option>
+                  <option value="Black Belt">Black Belt (1st Dan / Asan)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Login Credentials -->
+            <div style="background:#f8fafc;border:1px solid #cbd5e1;padding:12px;border-radius:8px;margin-top:2px">
+              <div style="font-size:11px;font-weight:700;color:var(--bf-navy);margin-bottom:6px;display:flex;align-items:center;gap:6px">
+                <i data-lucide="key" style="width:14px;height:14px;color:var(--bf-amber)"></i>
+                <span>Create Student / Parent Sign-In Credentials</span>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div>
+                  <label style="font-size:11px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:2px">Email</label>
+                  <input type="email" id="wizStudentEmail" required placeholder="user@gmail.com" style="width:100%;padding:8px 10px;border:1px solid var(--bf-border);border-radius:6px;font-size:12px;background:#fff">
+                </div>
+                <div>
+                  <label style="font-size:11px;font-weight:600;color:var(--bf-navy);display:block;margin-bottom:2px">Password</label>
+                  <input type="password" id="wizStudentPassword" required placeholder="Create password" style="width:100%;padding:8px 10px;border:1px solid var(--bf-border);border-radius:6px;font-size:12px;background:#fff">
+                </div>
+              </div>
+            </div>
+
+            <div style="background:#fffbeb;border:1px solid #fde68a;padding:10px;border-radius:6px;font-size:11px;color:#92400e;display:flex;align-items:center;gap:6px">
+              <i data-lucide="shield-alert" style="width:16px;height:16px;color:#d97706;flex-shrink:0"></i>
+              <span>Registration will be queued for <strong>Persatuan Admin Approval</strong> before account activation.</span>
+            </div>
+
+            <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--bf-border);padding-top:14px">
+              <button type="button" class="bf-btn bf-btn-outline" onclick="goToWizardStep(2)">
+                <i data-lucide="arrow-left" style="width:14px;height:14px"></i>
+                <span>Back</span>
+              </button>
+              <button type="submit" class="bf-btn bf-btn-primary">
+                <i data-lucide="send" style="width:14px;height:14px"></i>
+                <span>Submit Registration</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- ================= STEP 4: CONFIRMATION ================= -->
+        <div id="wizStep4Content" style="display:none;text-align:center;padding:12px 6px">
+          <div style="width:64px;height:64px;border-radius:50%;background:#ecfdf5;color:#10b981;display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 6px 16px rgba(16,185,129,0.2)">
+            <i data-lucide="check-circle-2" style="width:36px;height:36px"></i>
+          </div>
+
+          <h3 style="font-size:20px;color:var(--bf-navy);font-weight:800">Registration Submitted!</h3>
+          <p style="font-size:13px;color:var(--bf-text-muted);max-width:440px;margin:6px auto 18px" id="wizConfirmMessage">
+            Registration submitted. Await approval from admin.
+          </p>
+
+          <div style="background:#f8fafc;border:1.5px solid var(--bf-border);border-radius:12px;padding:16px;text-align:left;max-width:460px;margin:0 auto 20px" id="wizConfirmSummary">
+            <!-- Dynamic Registration Summary -->
+          </div>
+
+          <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;max-width:460px;margin:0 auto 24px;font-size:12px;color:#92400e;line-height:1.5;text-align:left">
+            🔒 <strong>Account Status: Pending Approval</strong><br>
+            Your account is locked until verified. Once approved by your Persatuan Admin or HQ Super Admin, you can immediately sign in with your email & password.
+          </div>
+
+          <button type="button" class="bf-btn bf-btn-primary" style="padding:12px 28px;font-size:14px;font-weight:700" onclick="closeModal('registerWizardModal')">
+            <i data-lucide="log-in" style="width:16px;height:16px"></i>
+            <span>Back to Sign In</span>
+          </button>
+        </div>
+
       </div>
     </div>
   </div>
@@ -1331,111 +1596,248 @@
       if (window.lucide) lucide.createIcons();
     }
 
-    // Open Self-Registration Modal and Populate Persatuan List
-    function openSelfRegisterModal() {
-      const pSelect = document.getElementById('selfRegPersatuan');
-      pSelect.innerHTML = '';
+    // ================= REGISTRATION WIZARD STATE & LOGIC =================
+    let wizardState = {
+      persatuanId: null,
+      persatuanName: '',
+      persatuanStyle: '',
+      persatuanMaster: '',
+      role: 'student', // 'master' | 'student' | 'parent'
+      currentStep: 1
+    };
 
-      if (persatuans.length === 0) {
-        pSelect.innerHTML = '<option value="">No Persatuans Available - Please Contact HQ</option>';
-      } else {
-        persatuans.forEach(p => {
-          const opt = document.createElement('option');
-          opt.value = p.id;
-          opt.textContent = `${p.name} (${p.style || 'Martial Arts'}) · Master: ${p.master}`;
-          pSelect.appendChild(opt);
-        });
-      }
+    function openRegisterWizard() {
+      wizardState = {
+        persatuanId: null,
+        persatuanName: '',
+        persatuanStyle: '',
+        persatuanMaster: '',
+        role: 'student',
+        currentStep: 1
+      };
 
-      updateSelfRegClasses();
-      openModal('selfRegisterModal');
+      renderWizardStep1Persatuans();
+      goToWizardStep(1);
+      openModal('registerWizardModal');
       if (window.lucide) lucide.createIcons();
     }
 
-    function toggleSelfRegRoleFields() {
-      const isCoach = document.querySelector('input[name="selfRegRole"]:checked').value === 'coach';
-      document.getElementById('selfRegClassGroup').style.display = isCoach ? 'none' : 'block';
-      document.getElementById('selfRegCoachGroup').style.display = isCoach ? 'block' : 'none';
-      document.getElementById('selfRegStudentExtras').style.display = isCoach ? 'none' : 'grid';
-      document.getElementById('selfRegNameLabel').textContent = isCoach ? 'Master / Coach Full Name' : 'Student Full Name';
+    function renderWizardStep1Persatuans() {
+      const container = document.getElementById('wizPersatuanList');
+      container.innerHTML = '';
 
-      const sBox = document.getElementById('labelRoleStudent');
-      const cBox = document.getElementById('labelRoleCoach');
-      if (isCoach) {
-        cBox.style.borderColor = 'var(--bf-amber)';
-        cBox.style.background = '#fffaf0';
-        sBox.style.borderColor = 'var(--bf-border)';
-        sBox.style.background = '#f8fafc';
-      } else {
-        sBox.style.borderColor = 'var(--bf-amber)';
-        sBox.style.background = '#fffaf0';
-        cBox.style.borderColor = 'var(--bf-border)';
-        cBox.style.background = '#f8fafc';
+      if (persatuans.length === 0) {
+        container.innerHTML = `
+          <div style="text-align:center;padding:28px 16px;background:#f8fafc;border:1px dashed var(--bf-border);border-radius:8px">
+            <div style="font-size:24px;margin-bottom:6px">🏛️</div>
+            <div style="font-weight:700;font-size:13px;color:var(--bf-navy)">No Persatuans Available Yet</div>
+            <div style="font-size:11px;color:var(--bf-text-muted);margin-top:2px">Please ask your Academy Master or HQ Super Admin to onboard your Persatuan first.</div>
+          </div>
+        `;
+        document.getElementById('btnWizStep1Next').disabled = true;
+        return;
+      }
+
+      persatuans.forEach(p => {
+        const isSelected = wizardState.persatuanId == p.id;
+        const card = document.createElement('div');
+        card.className = `wizard-persatuan-card ${isSelected ? 'selected' : ''}`;
+        card.onclick = () => selectWizardPersatuan(p.id);
+        card.innerHTML = `
+          <div>
+            <div style="font-weight:800;font-size:14px;color:var(--bf-navy)">${p.name}</div>
+            <div style="font-size:11px;color:var(--bf-text-muted);margin-top:2px">
+              <span class="belt-badge belt-yellow" style="font-size:10px">${p.style || 'Martial Arts'}</span> · State: <strong>${p.state || 'Malaysia'}</strong> · Master: <strong>${p.master}</strong>
+            </div>
+          </div>
+          <div style="text-align:right">
+            <span style="font-size:10px;font-weight:700;color:var(--bf-amber);background:rgba(242,148,28,0.1);padding:3px 8px;border-radius:6px">
+              ${p.classes ? p.classes.length : 3} Active Classes
+            </span>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      // If only 1 persatuan exists, auto-select it for frictionless experience
+      if (persatuans.length === 1 && !wizardState.persatuanId) {
+        selectWizardPersatuan(persatuans[0].id);
       }
     }
 
-    function updateSelfRegClasses() {
-      const pId = document.getElementById('selfRegPersatuan').value;
-      const classSelect = document.getElementById('selfRegClass');
-      classSelect.innerHTML = '';
-
+    function selectWizardPersatuan(pId) {
       const p = persatuans.find(item => item.id == pId);
+      if (!p) return;
+
+      wizardState.persatuanId = p.id;
+      wizardState.persatuanName = p.name;
+      wizardState.persatuanStyle = p.style || 'Martial Arts';
+      wizardState.persatuanMaster = p.master;
+
+      document.querySelectorAll('.wizard-persatuan-card').forEach(card => card.classList.remove('selected'));
+      event?.currentTarget?.classList.add('selected');
+      renderWizardStep1Persatuans();
+
+      document.getElementById('btnWizStep1Next').disabled = false;
+    }
+
+    function selectWizardRole(roleKey) {
+      wizardState.role = roleKey;
+      
+      document.getElementById('wizRoleCardStudent').classList.remove('selected');
+      document.getElementById('wizRoleCardParent').classList.remove('selected');
+      document.getElementById('wizRoleCardMaster').classList.remove('selected');
+
+      if (roleKey === 'student') document.getElementById('wizRoleCardStudent').classList.add('selected');
+      else if (roleKey === 'parent') document.getElementById('wizRoleCardParent').classList.add('selected');
+      else if (roleKey === 'master') document.getElementById('wizRoleCardMaster').classList.add('selected');
+    }
+
+    function goToWizardStep(stepNum) {
+      wizardState.currentStep = stepNum;
+
+      // Update progress tab UI
+      [1, 2, 3, 4].forEach(i => {
+        const tab = document.getElementById(`wizStepTab${i}`);
+        tab.classList.remove('active', 'completed');
+        if (i === stepNum) tab.classList.add('active');
+        else if (i < stepNum) tab.classList.add('completed');
+      });
+
+      // Hide all content blocks
+      document.getElementById('wizStep1Content').style.display = 'none';
+      document.getElementById('wizStep2Content').style.display = 'none';
+      document.getElementById('wizStep3AContent').style.display = 'none';
+      document.getElementById('wizStep3BContent').style.display = 'none';
+      document.getElementById('wizStep4Content').style.display = 'none';
+
+      if (stepNum === 1) {
+        document.getElementById('wizStep1Content').style.display = 'block';
+        document.getElementById('wizModalTitle').textContent = 'Step 1 of 4: Select Persatuan / Academy';
+        document.getElementById('wizModalSubtitle').textContent = 'Choose the martial arts organization you wish to join or teach under.';
+      } else if (stepNum === 2) {
+        document.getElementById('wizStep2Content').style.display = 'block';
+        document.getElementById('wizSummaryPersatuan1').textContent = `${wizardState.persatuanName} (${wizardState.persatuanStyle})`;
+        document.getElementById('wizModalTitle').textContent = 'Step 2 of 4: Select Your Role';
+        document.getElementById('wizModalSubtitle').textContent = 'Choose whether you are registering as a Master, Student, or Parent.';
+      } else if (stepNum === 3) {
+        if (wizardState.role === 'master') {
+          document.getElementById('wizStep3AContent').style.display = 'block';
+          document.getElementById('wizSummaryPersatuan2').textContent = wizardState.persatuanName;
+          document.getElementById('wizModalTitle').textContent = 'Step 3 of 4: Master Instructor Profile';
+          document.getElementById('wizModalSubtitle').textContent = 'Provide your instructor details and classes you will manage.';
+        } else {
+          document.getElementById('wizStep3BContent').style.display = 'block';
+          document.getElementById('wizSummaryPersatuan3').textContent = wizardState.persatuanName;
+          document.getElementById('wizSummaryRole3').textContent = wizardState.role === 'parent' ? '👨‍👩‍👧 Parent / Guardian' : '👤 Student';
+          document.getElementById('wizParentNameGroup').style.display = wizardState.role === 'parent' ? 'block' : 'none';
+          document.getElementById('wizStudentNameLabel').textContent = wizardState.role === 'parent' ? 'Child / Student Full Name' : 'Student Full Name';
+          document.getElementById('wizModalTitle').textContent = wizardState.role === 'parent' ? 'Step 3 of 4: Parent & Student Details' : 'Step 3 of 4: Student Registration';
+          document.getElementById('wizModalSubtitle').textContent = 'Fill in candidate details and select your training batch.';
+
+          // Populate class options under selected persatuan
+          populateWizardClasses();
+        }
+      } else if (stepNum === 4) {
+        document.getElementById('wizStep4Content').style.display = 'block';
+        document.getElementById('wizModalTitle').textContent = 'Step 4: Registration Submitted';
+        document.getElementById('wizModalSubtitle').textContent = 'Your application has been received and queued for approval.';
+      }
+
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function populateWizardClasses() {
+      const select = document.getElementById('wizClassSelect');
+      select.innerHTML = '';
+
+      const p = persatuans.find(item => item.id == wizardState.persatuanId);
       if (p && p.classes && p.classes.length > 0) {
         p.classes.forEach(c => {
           const opt = document.createElement('option');
           opt.value = c.name;
           opt.textContent = `${c.name} (${c.schedule})`;
-          classSelect.appendChild(opt);
+          select.appendChild(opt);
         });
       } else if (p) {
         const opt = document.createElement('option');
         opt.value = `${p.master} - General Mat Class`;
-        opt.textContent = `${p.master} - General Mat Class (Mon - Sun)`;
-        classSelect.appendChild(opt);
+        opt.textContent = `${p.master} - General Mat Class (Weekly)`;
+        select.appendChild(opt);
       } else {
         const opt = document.createElement('option');
-        opt.value = 'General Academy Roster';
-        opt.textContent = 'General Academy Roster';
-        classSelect.appendChild(opt);
+        opt.value = 'General Training Batch';
+        opt.textContent = 'General Training Batch';
+        select.appendChild(opt);
       }
     }
 
-    function handleSelfRegister(e) {
+    function handleWizardSubmit(e, formType) {
       e.preventDefault();
-      const role = document.querySelector('input[name="selfRegRole"]:checked').value;
-      const pId = document.getElementById('selfRegPersatuan').value;
-      const persatuan = persatuans.find(p => p.id == pId) || { name: 'Academy', master: 'Master' };
-      const name = document.getElementById('selfRegName').value.trim();
-      const phone = document.getElementById('selfRegPhone').value.trim();
-      const email = document.getElementById('selfRegEmail').value.trim().toLowerCase();
-      const password = document.getElementById('selfRegPassword').value.trim();
 
-      if (!pId) {
-        alert('Please select a valid Persatuan/Academy to register under.');
-        return;
-      }
+      if (formType === 'master') {
+        const name = document.getElementById('wizMasterName').value.trim();
+        const phone = document.getElementById('wizMasterPhone').value.trim();
+        const rank = document.getElementById('wizMasterRank').value.trim();
+        const classesTeach = document.getElementById('wizMasterClasses').value.trim();
+        const email = document.getElementById('wizMasterEmail').value.trim().toLowerCase();
+        const password = document.getElementById('wizMasterPassword').value.trim();
 
-      if (role === 'student') {
-        const ic = document.getElementById('selfRegIC').value.trim();
-        const belt = document.getElementById('selfRegBelt').value;
-        const className = document.getElementById('selfRegClass').value;
+        const newCoach = {
+          id: Date.now(),
+          persatuan_id: wizardState.persatuanId,
+          persatuan_name: wizardState.persatuanName,
+          role: 'master',
+          name,
+          phone,
+          email,
+          password,
+          credential_level: rank || 'Instructor',
+          className: classesTeach,
+          status: 'Pending Approval',
+          registeredAt: new Date().toLocaleDateString()
+        };
+
+        coaches.unshift(newCoach);
+        saveStorage('coaches', coaches);
+
+        // Update Confirmation Step Summary
+        document.getElementById('wizConfirmMessage').textContent = `Registration submitted. Await approval from ${wizardState.persatuanName} admin.`;
+        document.getElementById('wizConfirmSummary').innerHTML = `
+          <div style="font-size:12px;color:var(--bf-navy);line-height:1.8">
+            <strong>Candidate:</strong> ${name}<br>
+            <strong>Role:</strong> <span class="belt-badge" style="background:#e0f2fe;color:#0369a1">🥋 Master / Instructor</span><br>
+            <strong>Persatuan:</strong> ${wizardState.persatuanName}<br>
+            <strong>Classes:</strong> ${classesTeach}<br>
+            <strong>Sign-In Email:</strong> ${email}
+          </div>
+        `;
+      } else {
+        const studentName = document.getElementById('wizStudentName').value.trim();
+        const parentName = wizardState.role === 'parent' ? document.getElementById('wizParentName').value.trim() : '';
+        const selectedClass = document.getElementById('wizClassSelect').value;
+        const phone = document.getElementById('wizStudentPhone').value.trim();
+        const belt = document.getElementById('wizStudentBelt').value;
+        const email = document.getElementById('wizStudentEmail').value.trim().toLowerCase();
+        const password = document.getElementById('wizStudentPassword').value.trim();
         const beltClass = belt.toLowerCase().includes('yellow') ? 'belt-yellow' : (belt.toLowerCase().includes('green') ? 'belt-green' : (belt.toLowerCase().includes('black') ? 'belt-black' : 'belt-white'));
 
         const newStudent = {
           id: Date.now(),
-          name,
-          ic,
+          persatuan_id: wizardState.persatuanId,
+          persatuan_name: wizardState.persatuanName,
+          masterName: wizardState.persatuanMaster,
+          role: wizardState.role, // 'student' | 'parent'
+          name: studentName,
+          parent_name: parentName,
+          className: selectedClass,
+          phone,
           belt,
           beltClass,
-          attendance: 100,
-          fee: 'RM 120 (Pending)',
-          phone,
           email,
           password,
-          persatuanId: pId,
-          persatuanName: persatuan.name,
-          masterName: persatuan.master,
-          className,
+          attendance: 100,
+          fee: 'RM 120 (Pending)',
           status: 'Pending Approval',
           sibling: false,
           registeredAt: new Date().toLocaleDateString()
@@ -1444,69 +1846,58 @@
         students.unshift(newStudent);
         saveStorage('students', students);
 
-        alert(`🥋 Registration Submitted Successfully!\n\nCandidate: ${name}\nPersatuan: ${persatuan.name}\nClass: ${className}\n\n⏳ Status: Pending Approval\nYour account has been forwarded to Master ${persatuan.master}. Once approved, you can sign in with ${email}.`);
-      } else {
-        const coachClass = document.getElementById('selfRegCoachClass').value.trim() || `${name} Class`;
-        const newCoach = {
-          id: Date.now(),
-          name,
-          phone,
-          email,
-          password,
-          persatuanId: pId,
-          persatuanName: persatuan.name,
-          className: coachClass,
-          role: 'coach',
-          status: 'Pending Approval',
-          registeredAt: new Date().toLocaleDateString()
-        };
-
-        coaches.unshift(newCoach);
-        saveStorage('coaches', coaches);
-
-        alert(`🥋 Instructor Registration Submitted!\n\nCoach: ${name}\nPersatuan: ${persatuan.name}\n\n⏳ Status: Pending Approval\nYour instructor account has been forwarded to ${persatuan.name} Master for verification.`);
+        // Update Confirmation Step Summary
+        document.getElementById('wizConfirmMessage').textContent = `Registration submitted. Await approval from ${wizardState.persatuanName} admin.`;
+        document.getElementById('wizConfirmSummary').innerHTML = `
+          <div style="font-size:12px;color:var(--bf-navy);line-height:1.8">
+            <strong>Student Name:</strong> ${studentName} ${parentName ? `(Parent: ${parentName})` : ''}<br>
+            <strong>Role:</strong> <span class="belt-badge" style="background:#fef3c7;color:#92400e">${wizardState.role === 'parent' ? '👨‍👩‍👧 Parent / Student' : '👤 Student'}</span><br>
+            <strong>Persatuan:</strong> ${wizardState.persatuanName}<br>
+            <strong>Enrolled Class:</strong> ${selectedClass}<br>
+            <strong>Sign-In Email:</strong> ${email}
+          </div>
+        `;
       }
 
-      closeModal('selfRegisterModal');
+      goToWizardStep(4);
     }
 
-    function approveMember(id, type) {
-      if (type === 'coach') {
+    function approveRegistration(id, roleType) {
+      if (roleType === 'master' || roleType === 'coach') {
         const c = coaches.find(item => item.id === id);
         if (c) {
           c.status = 'Active';
           saveStorage('coaches', coaches);
-          alert(`✅ Coach "${c.name}" has been approved and activated!`);
+          alert(`✅ Master / Instructor "${c.name}" has been approved and activated!`);
           renderContent();
         }
       } else {
         const s = students.find(item => item.id === id);
         if (s) {
           s.status = 'Active';
-          // Update Persatuan student count
-          const p = persatuans.find(item => item.id == s.persatuanId || item.name === s.persatuanName);
+          const p = persatuans.find(item => item.id == s.persatuan_id || item.name === s.persatuan_name);
           if (p) {
             p.students = (p.students || 0) + 1;
             p.revenue = `RM ${(p.students * 100).toLocaleString()}`;
             saveStorage('persatuans', persatuans);
           }
           saveStorage('students', students);
-          alert(`✅ Student "${s.name}" has been approved and officially enrolled in "${s.className}"!`);
+          alert(`✅ Student "${s.name}" approved and officially enrolled in "${s.className}"!`);
           renderContent();
         }
       }
     }
 
-    function rejectMember(id, type) {
+    function rejectRegistration(id, roleType) {
       if (confirm('Are you sure you want to decline this registration?')) {
-        if (type === 'coach') {
+        if (roleType === 'master' || roleType === 'coach') {
           coaches = coaches.filter(item => item.id !== id);
           saveStorage('coaches', coaches);
         } else {
           students = students.filter(item => item.id !== id);
           saveStorage('students', students);
         }
-        alert('Registration request removed.');
+        alert('Registration request declined.');
         renderContent();
       }
     }
@@ -1609,7 +2000,7 @@
         return;
       }
 
-      alert('Account not found or invalid credentials.\nPlease check your email/password or use "Register Account Under Persatuan".');
+      alert('Account not found or invalid credentials.\nPlease check your email/password or use "Register Now".');
     }
 
     function executeLogout() {
@@ -1807,9 +2198,13 @@
       }
 
       if (currentRole === 'super') {
-        const totalStudents = persatuans.reduce((acc, p) => acc + p.students, 0);
-        const totalRev = persatuans.reduce((acc, p) => acc + (p.students * 100), 0);
+        const totalStudents = persatuans.reduce((acc, p) => acc + (p.students || 0), 0);
+        const totalRev = persatuans.reduce((acc, p) => acc + ((p.students || 0) * 100), 0);
         const feeCut = Math.round(totalRev * 0.10);
+
+        const allPendingStudents = students.filter(s => s.status === 'Pending Approval');
+        const allPendingCoaches = coaches.filter(c => c.status === 'Pending Approval');
+        const globalPendingTotal = allPendingStudents.length + allPendingCoaches.length;
 
         view.innerHTML = `
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
@@ -1835,16 +2230,77 @@
               <div class="kpi-subtext">Across ${new Set(persatuans.map(p => p.state)).size} States</div>
             </div>
             <div class="kpi-card">
+              <div class="kpi-title">Pending Approvals Queue</div>
+              <div class="kpi-value" style="color:${globalPendingTotal > 0 ? 'var(--bf-amber)' : 'var(--bf-navy)'}">${globalPendingTotal}</div>
+              <div class="kpi-subtext">Awaiting HQ / Master Review</div>
+            </div>
+            <div class="kpi-card">
               <div class="kpi-title">Monthly SaaS Processing</div>
               <div class="kpi-value">RM ${totalRev.toLocaleString()}</div>
               <div class="kpi-subtext">BeltFlow Cut: RM ${feeCut.toLocaleString()} (10%)</div>
             </div>
-            <div class="kpi-card">
-              <div class="kpi-title">Promotions This Term</div>
-              <div class="kpi-value">328</div>
-              <div class="kpi-subtext">100% Digital Certificate Issued</div>
-            </div>
           </div>
+
+          <!-- HQ Admin Global Approval Queue -->
+          ${globalPendingTotal > 0 ? `
+            <div class="bf-card" style="border:2px solid var(--bf-amber);background:#fffdf7;margin-bottom:24px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="background:var(--bf-amber);color:#fff;font-size:10px;font-weight:800;padding:3px 8px;border-radius:12px">HQ APPROVAL QUEUE</span>
+                  <h3 style="font-size:16px;color:var(--bf-navy)">Pending Self-Registrations (${globalPendingTotal})</h3>
+                </div>
+                <div style="font-size:12px;color:var(--bf-text-muted)">Global registration queue awaiting approval across all persatuans</div>
+              </div>
+
+              <div class="bf-table-wrap">
+                <table class="bf-table">
+                  <thead>
+                    <tr>
+                      <th>Candidate Name</th>
+                      <th>Persatuan / Academy</th>
+                      <th>Role</th>
+                      <th>Assigned Class</th>
+                      <th>WhatsApp Phone</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${allPendingStudents.map(s => `
+                      <tr style="background:#fff">
+                        <td><strong>${s.name}</strong><br><span style="font-size:10px;color:var(--bf-text-muted)">${s.email}</span></td>
+                        <td><strong>${s.persatuan_name || s.persatuanName}</strong></td>
+                        <td><span class="belt-badge" style="background:#fef3c7;color:#92400e">${s.role === 'parent' ? 'Parent' : 'Student'}</span></td>
+                        <td>${s.className || 'General Class'}</td>
+                        <td><a href="https://wa.me/${s.phone.replace(/[^0-9]/g,'')}" target="_blank" style="color:#10b981;font-weight:600">${s.phone}</a></td>
+                        <td>
+                          <div style="display:flex;gap:6px">
+                            <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="approveRegistration(${s.id}, 'student')">Approve</button>
+                            <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="rejectRegistration(${s.id}, 'student')">Decline</button>
+                          </div>
+                        </td>
+                      </tr>
+                    `).join('')}
+
+                    ${allPendingCoaches.map(c => `
+                      <tr style="background:#fff">
+                        <td><strong>${c.name}</strong><br><span style="font-size:10px;color:var(--bf-text-muted)">${c.email}</span></td>
+                        <td><strong>${c.persatuan_name || c.persatuanName}</strong></td>
+                        <td><span class="belt-badge" style="background:#e0f2fe;color:#0369a1">🥋 Master / Coach</span></td>
+                        <td>${c.className}</td>
+                        <td><a href="https://wa.me/${c.phone.replace(/[^0-9]/g,'')}" target="_blank" style="color:#10b981;font-weight:600">${c.phone}</a></td>
+                        <td>
+                          <div style="display:flex;gap:6px">
+                            <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="approveRegistration(${c.id}, 'master')">Approve Master</button>
+                            <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="rejectRegistration(${c.id}, 'master')">Decline</button>
+                          </div>
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ` : ''}
 
           <div class="bf-card">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
@@ -1882,8 +2338,8 @@
                       <td><strong>${p.name}</strong></td>
                       <td>${p.state}</td>
                       <td>${p.master}</td>
-                      <td>${p.students}</td>
-                      <td>${p.revenue}</td>
+                      <td>${p.students || 0}</td>
+                      <td>${p.revenue || 'RM 0'}</td>
                       <td><span class="belt-badge" style="background:#dcfce7;color:#166534">${p.status}</span></td>
                       <td><button class="bf-btn bf-btn-sm bf-btn-outline" onclick="switchRole('${p.role || 'persatuan'}')">Enter Portal</button></td>
                     </tr>
@@ -1894,12 +2350,11 @@
           </div>
         `;
       } else if (currentRole === 'persatuan') {
-        const currentPersatuanName = activePersatuan ? activePersatuan.name : '';
         const relevantStudents = activePersatuan 
-          ? students.filter(s => s.persatuanId == activePersatuan.id || s.persatuanName === activePersatuan.name)
+          ? students.filter(s => s.persatuan_id == activePersatuan.id || s.persatuanId == activePersatuan.id || s.persatuanName === activePersatuan.name || s.persatuan_name === activePersatuan.name)
           : students;
         const relevantCoaches = activePersatuan 
-          ? coaches.filter(c => c.persatuanId == activePersatuan.id || c.persatuanName === activePersatuan.name)
+          ? coaches.filter(c => c.persatuan_id == activePersatuan.id || c.persatuanId == activePersatuan.id || c.persatuanName === activePersatuan.name || c.persatuan_name === activePersatuan.name)
           : coaches;
 
         const activeStudents = relevantStudents.filter(s => s.status !== 'Pending Approval');
@@ -1945,8 +2400,8 @@
                     <tr>
                       <th>Candidate Name</th>
                       <th>Type / Role</th>
-                      <th>Selected Class & Master</th>
-                      <th>Belt / IC</th>
+                      <th>Selected Class & Schedule</th>
+                      <th>Belt Rank</th>
                       <th>WhatsApp Phone</th>
                       <th>Action</th>
                     </tr>
@@ -1954,15 +2409,15 @@
                   <tbody>
                     ${pendingStudents.map(s => `
                       <tr style="background:#fff">
-                        <td><strong>${s.name}</strong><br><span style="font-size:10px;color:var(--bf-text-muted)">${s.email}</span></td>
-                        <td><span class="belt-badge" style="background:#fef3c7;color:#92400e">Student / Parent</span></td>
+                        <td><strong>${s.name}</strong> ${s.parent_name ? `<br><span style="font-size:10px;color:var(--bf-text-muted)">Parent: ${s.parent_name}</span>` : ''}<br><span style="font-size:10px;color:var(--bf-text-muted)">${s.email}</span></td>
+                        <td><span class="belt-badge" style="background:#fef3c7;color:#92400e">${s.role === 'parent' ? 'Parent / Student' : 'Student'}</span></td>
                         <td><strong>${s.className || 'General Class'}</strong></td>
-                        <td><span class="belt-badge ${s.beltClass}">${s.belt}</span><br><span style="font-size:10px;color:var(--bf-text-muted)">IC: ${s.ic || 'N/A'}</span></td>
+                        <td><span class="belt-badge ${s.beltClass}">${s.belt}</span></td>
                         <td><a href="https://wa.me/${s.phone.replace(/[^0-9]/g,'')}" target="_blank" style="color:#10b981;font-weight:600">${s.phone}</a></td>
                         <td>
                           <div style="display:flex;gap:6px">
-                            <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="approveMember(${s.id}, 'student')">Approve & Enrol</button>
-                            <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="rejectMember(${s.id}, 'student')">Decline</button>
+                            <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="approveRegistration(${s.id}, 'student')">Approve & Enrol</button>
+                            <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="rejectRegistration(${s.id}, 'student')">Decline</button>
                           </div>
                         </td>
                       </tr>
@@ -1971,14 +2426,14 @@
                     ${pendingCoaches.map(c => `
                       <tr style="background:#fff">
                         <td><strong>${c.name}</strong><br><span style="font-size:10px;color:var(--bf-text-muted)">${c.email}</span></td>
-                        <td><span class="belt-badge" style="background:#e0f2fe;color:#0369a1">Instructor / Coach</span></td>
+                        <td><span class="belt-badge" style="background:#e0f2fe;color:#0369a1">🥋 Master / Instructor</span></td>
                         <td><strong>${c.className}</strong></td>
-                        <td><span class="belt-badge belt-black">Coach</span></td>
+                        <td><span class="belt-badge belt-black">${c.credential_level || 'Instructor'}</span></td>
                         <td><a href="https://wa.me/${c.phone.replace(/[^0-9]/g,'')}" target="_blank" style="color:#10b981;font-weight:600">${c.phone}</a></td>
                         <td>
                           <div style="display:flex;gap:6px">
-                            <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="approveMember(${c.id}, 'coach')">Approve Instructor</button>
-                            <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="rejectMember(${c.id}, 'coach')">Decline</button>
+                            <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="approveRegistration(${c.id}, 'master')">Approve Master</button>
+                            <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="rejectRegistration(${c.id}, 'master')">Decline</button>
                           </div>
                         </td>
                       </tr>
