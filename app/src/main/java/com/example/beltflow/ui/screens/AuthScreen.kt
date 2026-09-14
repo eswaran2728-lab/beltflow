@@ -414,32 +414,47 @@ fun AuthScreen(
 
                         Button(
                             onClick = {
-                                if (fullName.isBlank() || email.isBlank() || password.isBlank()) {
-                                    errorMessage = "Please fill in Full Name, Email, and Password."
-                                } else {
-                                    isLoading = true
-                                    errorMessage = ""
-                                    viewModel.registerUser(
-                                        fullName = fullName.trim(),
-                                        email = email.trim(),
-                                        phone = phone.trim(),
-                                        role = selectedRole,
-                                        childName = childName.trim(),
-                                        assignedClass = classCode.trim(),
-                                        password = password.trim()
-                                    ) { result ->
-                                        isLoading = false
-                                        result.onSuccess {
-                                            if (email.trim().equals("eswaran2728@gmail.com", ignoreCase = true)) {
-                                                onAuthSuccess(UserRole.SUPER_ADMIN)
-                                            } else if (email.trim().equals("persatuansilambamdaerahsepang@gmail.com", ignoreCase = true)) {
-                                                onAuthSuccess(UserRole.ADMIN_PERSATUAN)
-                                            } else {
-                                                showPendingDialog = true
-                                                successMessage = "Account submitted for approval."
+                                val cleanName = fullName.trim()
+                                val cleanEmail = email.trim()
+                                val cleanPassword = password.trim()
+                                when {
+                                    cleanName.isBlank() -> {
+                                        errorMessage = "Please enter your Full Name."
+                                    }
+                                    cleanEmail.isBlank() -> {
+                                        errorMessage = "Please enter your Email address."
+                                    }
+                                    cleanPassword.isBlank() -> {
+                                        errorMessage = "Please enter a Password."
+                                    }
+                                    cleanPassword.length < 6 -> {
+                                        errorMessage = "Password must be at least 6 characters long."
+                                    }
+                                    else -> {
+                                        isLoading = true
+                                        errorMessage = ""
+                                        viewModel.registerUser(
+                                            fullName = cleanName,
+                                            email = cleanEmail,
+                                            phone = phone.trim(),
+                                            role = selectedRole,
+                                            childName = childName.trim(),
+                                            assignedClass = classCode.trim(),
+                                            password = cleanPassword
+                                        ) { result ->
+                                            isLoading = false
+                                            result.onSuccess {
+                                                if (cleanEmail.equals("eswaran2728@gmail.com", ignoreCase = true)) {
+                                                    onAuthSuccess(UserRole.SUPER_ADMIN)
+                                                } else if (cleanEmail.equals("persatuansilambamdaerahsepang@gmail.com", ignoreCase = true)) {
+                                                    onAuthSuccess(UserRole.ADMIN_PERSATUAN)
+                                                } else {
+                                                    showPendingDialog = true
+                                                    successMessage = "Account submitted for approval."
+                                                }
+                                            }.onFailure {
+                                                errorMessage = it.message ?: "Failed to sign up."
                                             }
-                                        }.onFailure {
-                                            errorMessage = it.message ?: "Failed to sign up."
                                         }
                                     }
                                 }

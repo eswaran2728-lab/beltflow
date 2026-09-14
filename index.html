@@ -1558,15 +1558,58 @@
       } catch (e) {}
     }
 
+    // Default Seed Persatuans
+    const DEFAULT_PERSATUANS = [
+      {
+        id: 101,
+        name: "Persatuan Silambam Daerah Sepang",
+        state: "Selangor",
+        style: "Silambam Porr / Thanithiramai",
+        master: "Master Eswaran",
+        email: "persatuansilambamdaerahsepang@gmail.com",
+        password: "Master1234@",
+        classes: [
+          { id: 1001, name: "Silambam Sepang - Intermediate & Sparring", schedule: "Sat & Sun 9:00 AM", status: "Active" },
+          { id: 1002, name: "Silambam Sepang - Junior Beginners", schedule: "Tue & Thu 6:00 PM", status: "Active" }
+        ],
+        students: 45,
+        revenue: "RM 4,500",
+        status: "Active (Onboarded)",
+        role: "persatuan",
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 102,
+        name: "Central Taekwondo Dojang HQ",
+        state: "Kuala Lumpur",
+        style: "WTF Taekwondo",
+        master: "Grandmaster Lee",
+        email: "dojang@central.com",
+        password: "dojang123",
+        classes: [
+          { id: 1003, name: "Taekwondo KL - Black Belt Syllabus", schedule: "Mon & Wed 7:30 PM", status: "Active" }
+        ],
+        students: 62,
+        revenue: "RM 6,200",
+        status: "Active (Onboarded)",
+        role: "persatuan",
+        createdAt: new Date().toISOString()
+      }
+    ];
+
     // Live State
     let students = loadStorage('students', []);
-    let persatuans = loadStorage('persatuans', []);
+    let persatuans = loadStorage('persatuans', DEFAULT_PERSATUANS);
     let coaches = loadStorage('coaches', []);
     let classes = loadStorage('classes', []);
     let attendanceStatuses = loadStorage('attendance', {});
     let superAdminPass = loadStorage('super_pass', 'Eswaran0321@');
     let loggedInUserEmail = 'eswaran2728@gmail.com';
     let activePersatuan = null;
+
+    if (!localStorage.getItem('beltflow_persatuans')) {
+      saveStorage('persatuans', persatuans);
+    }
 
     // Initial Migration Helper: ensure all existing persatuans have proper class entities with lifecycle status
     if (classes.length === 0 && persatuans.length > 0) {
@@ -1748,16 +1791,31 @@
       const container = document.getElementById('wizPersatuanList');
       container.innerHTML = '';
 
-      if (persatuans.length === 0) {
-        container.innerHTML = `
-          <div style="text-align:center;padding:28px 16px;background:#f8fafc;border:1px dashed var(--bf-border);border-radius:8px">
-            <div style="font-size:24px;margin-bottom:6px">🏛️</div>
-            <div style="font-weight:700;font-size:13px;color:var(--bf-navy)">No Persatuans Available Yet</div>
-            <div style="font-size:11px;color:var(--bf-text-muted);margin-top:2px">Please ask your Academy Master or HQ Super Admin to onboard your Persatuan first.</div>
-          </div>
-        `;
-        document.getElementById('btnWizStep1Next').disabled = true;
-        return;
+      if (!persatuans || persatuans.length === 0) {
+        persatuans = [...DEFAULT_PERSATUANS];
+        saveStorage('persatuans', persatuans);
+        
+        // Seed default classes if missing
+        if (!classes || classes.length === 0) {
+          classes = [];
+          persatuans.forEach(p => {
+            if (p.classes && Array.isArray(p.classes)) {
+              p.classes.forEach(c => {
+                classes.push({
+                  id: c.id,
+                  persatuan_id: p.id,
+                  master_id: p.id,
+                  master_name: p.master,
+                  name: c.name,
+                  schedule: c.schedule,
+                  status: c.status || 'Active',
+                  createdAt: new Date().toISOString()
+                });
+              });
+            }
+          });
+          saveStorage('classes', classes);
+        }
       }
 
       persatuans.forEach(p => {
