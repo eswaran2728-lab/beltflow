@@ -1577,23 +1577,6 @@
         status: "Active (Onboarded)",
         role: "persatuan",
         createdAt: new Date().toISOString()
-      },
-      {
-        id: 102,
-        name: "Central Taekwondo Dojang HQ",
-        state: "Kuala Lumpur",
-        style: "WTF Taekwondo",
-        master: "Grandmaster Lee",
-        email: "dojang@central.com",
-        password: "dojang123",
-        classes: [
-          { id: 1003, name: "Taekwondo KL - Black Belt Syllabus", schedule: "Mon & Wed 7:30 PM", status: "Active" }
-        ],
-        students: 62,
-        revenue: "RM 6,200",
-        status: "Active (Onboarded)",
-        role: "persatuan",
-        createdAt: new Date().toISOString()
       }
     ];
 
@@ -1826,23 +1809,13 @@
         const card = document.createElement('div');
         card.className = `wizard-persatuan-card ${isSelected ? 'selected' : ''}`;
         card.onclick = () => selectWizardPersatuan(p.id);
+        card.style.display = 'flex';
+        card.style.alignItems = 'center';
+        card.style.justify = 'space-between';
+        card.style.padding = '14px 16px';
         card.innerHTML = `
-          <div>
-            <div style="font-weight:800;font-size:14px;color:var(--bf-navy)">${p.name}</div>
-            <div style="font-size:11px;color:var(--bf-text-muted);margin-top:2px">
-              <span class="belt-badge belt-yellow" style="font-size:10px">${p.style || 'Martial Arts'}</span> · State: <strong>${p.state || 'Malaysia'}</strong> · Master: <strong>${p.master}</strong>
-            </div>
-          </div>
-          <div style="text-align:right">
-            <span style="font-size:10px;font-weight:700;color:${activeClassesCount > 0 ? 'var(--bf-success)' : 'var(--bf-amber)'};background:${activeClassesCount > 0 ? 'rgba(16,185,129,0.1)' : 'rgba(242,148,28,0.1)'};padding:3px 8px;border-radius:6px;display:inline-block">
-              ${activeClassesCount} Active Class${activeClassesCount !== 1 ? 'es' : ''}
-            </span>
-            ${pendingClassesCount > 0 ? `
-              <div style="font-size:9px;color:#d97706;font-weight:600;margin-top:2px">
-                +${pendingClassesCount} Pending Master
-              </div>
-            ` : ''}
-          </div>
+          <div style="font-weight:800;font-size:15px;color:var(--bf-navy)">${p.name}</div>
+          ${isSelected ? `<i data-lucide="check-circle-2" style="width:20px;height:20px;color:var(--bf-amber)"></i>` : ''}
         `;
         container.appendChild(card);
       });
