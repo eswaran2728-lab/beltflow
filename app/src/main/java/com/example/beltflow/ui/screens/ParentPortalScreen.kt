@@ -36,15 +36,19 @@ fun ParentPortalScreen(
     val allStudents by viewModel.allStudents.collectAsState()
     val allInvoices by viewModel.allInvoices.collectAsState()
 
-    // Find children linked to this parent (by parent name, child name, or phone)
-    val parentChildren = remember(allStudents, currentUser) {
+    val allParentChildLinks by viewModel.allParentChildLinks.collectAsState()
+
+    // Find children linked to this parent strictly via verified ParentChildLinkEntity
+    val parentChildren = remember(allStudents, allParentChildLinks, currentUser) {
         val user = currentUser
         if (user != null) {
+            val approvedStudentIds = allParentChildLinks
+                .filter { it.parentProfileId == user.id && it.status == LinkApprovalStatus.APPROVED }
+                .map { it.studentId }
+                .toSet()
+
             allStudents.filter { s ->
-                (user.linkedStudentId != null && s.id == user.linkedStudentId) ||
-                (user.childName.isNotBlank() && s.fullName.equals(user.childName, ignoreCase = true)) ||
-                (user.phone.isNotBlank() && s.parentPhone.isNotBlank() && s.parentPhone.contains(user.phone)) ||
-                (s.parentName.isNotBlank() && s.parentName.equals(user.fullName, ignoreCase = true))
+                approvedStudentIds.contains(s.id)
             }
         } else {
             emptyList()
@@ -100,13 +104,6 @@ fun ParentPortalScreen(
             TopNavBar(
                 title = "Parent Portal",
                 currentUser = currentUser,
-                onSwitchUser = { email ->
-                    if (onSwitchUser != null) {
-                        onSwitchUser(email)
-                    } else {
-                        viewModel.loginAs(email) {}
-                    }
-                },
                 onLogout = onLogout
             )
         },
@@ -249,22 +246,14 @@ fun ParentPortalScreen(
 
                                 if (inv.status == InvoiceStatus.UNPAID || inv.status == InvoiceStatus.OVERDUE) {
                                     Spacer(modifier = Modifier.height(10.dp))
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Button(
-                                            onClick = { showCashClaimDialog = inv },
-                                            colors = ButtonDefaults.buttonColors(containerColor = Navy800),
-                                            modifier = Modifier.weight(1f).testTag("pay_cash_claim_button")
-                                        ) {
-                                            Text("Paid Cash to Coach")
-                                        }
-                                        OutlinedButton(
-                                            onClick = {
-                                                viewModel.payInvoiceWithFpx(inv.id) {}
-                                            },
-                                            modifier = Modifier.weight(1f).testTag("pay_fpx_button")
-                                        ) {
-                                            Text("Pay via FPX")
-                                        }
+                                    Button(
+                                        onClick = { showCashClaimDialog = inv },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Navy800),
+                                        modifier = Modifier.fillMaxWidth().testTag("submit_payment_proof_button")
+                                    ) {
+                                        Icon(Icons.Default.UploadFile, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Submit Payment Slip / Cash Proof")
                                     }
                                 } else if (inv.status == InvoiceStatus.PAID && inv.payments.isNotEmpty()) {
                                     Spacer(modifier = Modifier.height(8.dp))

@@ -80,7 +80,6 @@ fun AttendanceScreen(
             TopNavBar(
                 title = "Class Attendance Roster",
                 currentUser = currentUser,
-                onSwitchUser = { viewModel.loginAs(it) {} },
                 onLogout = { viewModel.logout() },
                 onBack = onBack
             )

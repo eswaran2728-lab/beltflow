@@ -71,17 +71,6 @@ fun AdminDashboardScreen(
             TopNavBar(
                 title = "BeltFlow",
                 currentUser = currentUser,
-                onSwitchUser = { email ->
-                    viewModel.loginAs(email) {
-                        val profile = viewModel.currentUser.value
-                        when (profile?.role) {
-                            UserRole.MASTER -> onNavigateToCoachPortal()
-                            UserRole.PARENT -> onNavigateToParentPortal()
-                            UserRole.STUDENT -> onNavigateToStudentPortal()
-                            else -> {}
-                        }
-                    }
-                },
                 onLogout = onLogout,
                 onNavigateToSettings = onNavigateToSettings
             )
@@ -671,7 +660,7 @@ private fun StudentsTabContent(
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "Students registered via the academy portal or enrolled by Master Eswaran will appear here.",
+                            text = "Students registered via the academy portal or enrolled by staff will appear here.",
                             style = MaterialTheme.typography.bodySmall,
                             color = Slate600,
                             textAlign = TextAlign.Center

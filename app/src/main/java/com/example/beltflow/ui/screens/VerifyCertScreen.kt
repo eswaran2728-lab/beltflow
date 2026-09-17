@@ -33,6 +33,7 @@ fun VerifyCertScreen(
     viewModel: BeltFlowViewModel,
     onBack: () -> Unit
 ) {
+    val currentUser by viewModel.currentUser.collectAsState()
     var verifyCodeInput by remember { mutableStateOf("BF-ORANGE-9821") }
     var verifiedCert by remember { mutableStateOf<CertificateDetail?>(null) }
     var hasSearched by remember { mutableStateOf(false) }
@@ -43,7 +44,7 @@ fun VerifyCertScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Public Certificate Verification", fontWeight = FontWeight.Bold) },
+                title = { Text("BeltFlow Certificate Verification", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

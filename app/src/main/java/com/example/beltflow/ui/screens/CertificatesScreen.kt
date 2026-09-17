@@ -45,7 +45,6 @@ fun CertificatesScreen(
             TopNavBar(
                 title = "Issued Certificates",
                 currentUser = currentUser,
-                onSwitchUser = { viewModel.loginAs(it) {} },
                 onLogout = { viewModel.logout() },
                 onBack = onBack
             )

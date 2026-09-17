@@ -26,7 +26,7 @@ import com.example.beltflow.ui.viewmodels.BeltFlowViewModel
 fun SuperAdminDashboardScreen(
     viewModel: BeltFlowViewModel,
     onLogout: () -> Unit,
-    onSwitchUser: (String) -> Unit
+    onSwitchUser: ((String) -> Unit)? = null
 ) {
     val stats by viewModel.superAdminDashboardStats.collectAsState()
     val persatuans by viewModel.allPersatuans.collectAsState()
@@ -36,6 +36,7 @@ fun SuperAdminDashboardScreen(
     var persatuanName by remember { mutableStateOf("") }
     var adminEmail by remember { mutableStateOf("") }
     var adminFullName by remember { mutableStateOf("") }
+    var adminPassword by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
@@ -135,15 +136,15 @@ fun SuperAdminDashboardScreen(
                 ) {
                     BlueprintCard(modifier = Modifier.weight(1f)) {
                         Column(modifier = Modifier.padding(12.dp)) {
-                            Text("Platform Charges Cut", style = MaterialTheme.typography.labelSmall)
+                            Text("Active Subscriptions", style = MaterialTheme.typography.labelSmall)
                             Text(
-                                "RM ${stats.totalPlatformChargesCollected.toInt()}",
+                                "${stats.activeSubscriptionsCount}",
                                 style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
                             )
                             Text(
-                                "8.0% Auto-deducted",
+                                "Overdue/Unpaid: ${stats.overdueSubscriptionsCount + stats.unpaidSubscriptionsCount}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -152,14 +153,15 @@ fun SuperAdminDashboardScreen(
 
                     BlueprintCard(modifier = Modifier.weight(1f)) {
                         Column(modifier = Modifier.padding(12.dp)) {
-                            Text("Total Platform Members", style = MaterialTheme.typography.labelSmall)
+                            Text("Platform Status", style = MaterialTheme.typography.labelSmall)
                             Text(
-                                "${stats.totalPlatformStudents}",
+                                "Healthy",
                                 style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF059669)
                             )
                             Text(
-                                "Across all Persatuans",
+                                "All Systems Operational",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -246,15 +248,22 @@ fun SuperAdminDashboardScreen(
                         label = { Text("Admin Email Address") },
                         modifier = Modifier.fillMaxWidth()
                     )
+                    OutlinedTextField(
+                        value = adminPassword,
+                        onValueChange = { adminPassword = it },
+                        label = { Text("Admin Initial Password") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             },
             confirmButton = {
                 Button(onClick = {
-                    if (persatuanName.isNotBlank() && adminEmail.isNotBlank()) {
+                    if (persatuanName.isNotBlank() && adminEmail.isNotBlank() && adminPassword.isNotBlank()) {
                         viewModel.createPersatuan(
                             name = persatuanName,
                             adminEmail = adminEmail,
                             adminFullName = adminFullName,
+                            adminPassword = adminPassword,
                             plan = SubscriptionPlan.GROWTH,
                             chargePercent = 8.0
                         )
@@ -262,6 +271,7 @@ fun SuperAdminDashboardScreen(
                         persatuanName = ""
                         adminEmail = ""
                         adminFullName = ""
+                        adminPassword = ""
                     }
                 }) {
                     Text("Create & Provision")

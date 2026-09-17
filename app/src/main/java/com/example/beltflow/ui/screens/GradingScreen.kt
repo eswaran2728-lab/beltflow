@@ -47,7 +47,6 @@ fun GradingScreen(
             TopNavBar(
                 title = "Belt Gradings & Examinations",
                 currentUser = currentUser,
-                onSwitchUser = { viewModel.loginAs(it) {} },
                 onLogout = { viewModel.logout() },
                 onBack = onBack
             )
@@ -336,7 +335,7 @@ fun CreateGradingEventDialog(
     var name by remember { mutableStateOf("Sepang Silambam Grading Examination") }
     var eventDate by remember { mutableStateOf("2026-11-20") }
     var location by remember { mutableStateOf("Dojo Sepang Utama") }
-    var examiner by remember { mutableStateOf("Master Eswaran") }
+    var examiner by remember { mutableStateOf("") }
     var fee by remember { mutableStateOf("80.00") }
 
     Dialog(onDismissRequest = onDismiss) {

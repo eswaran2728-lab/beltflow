@@ -91,7 +91,7 @@ fun MasterPortalScreen(
 
             allClasses.filter { cls ->
                 classIdsAssigned.contains(cls.id) || cls.mainMasterId == user.id || cls.coachName.contains(user.fullName, true)
-            }.ifEmpty { allClasses }
+            }
         }
     }
 
@@ -114,7 +114,7 @@ fun MasterPortalScreen(
     // Students in the active class
     val classStudents = remember(allStudents, currentClass) {
         val cls = currentClass
-        if (cls == null) allStudents
+        if (cls == null) emptyList()
         else {
             allStudents.filter { st ->
                 st.classIds.contains(cls.id) || st.classNames.any { it.equals(cls.name, ignoreCase = true) }
@@ -147,13 +147,6 @@ fun MasterPortalScreen(
             TopNavBar(
                 title = "Master Operations Command",
                 currentUser = currentUser,
-                onSwitchUser = { email ->
-                    if (onSwitchUser != null) {
-                        onSwitchUser(email)
-                    } else {
-                        viewModel.loginAs(email) {}
-                    }
-                },
                 onLogout = onLogout
             )
         },
@@ -230,7 +223,7 @@ fun MasterPortalScreen(
                                     }
                                 }
                                 Text(
-                                    text = "Persatuan Silambam Daerah Sepang • Active Class: ${currentClass?.name ?: "All Classes"}",
+                                    text = "Persatuan Silambam Daerah Sepang • Active Class: ${currentClass?.name ?: "No Class Assigned"}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = AccentAmber200,
                                     maxLines = 1,

@@ -68,7 +68,6 @@ fun SettingsScreen(
             TopNavBar(
                 title = "Academy Settings",
                 currentUser = currentUser,
-                onSwitchUser = { viewModel.loginAs(it) {} },
                 onLogout = { viewModel.logout() },
                 onBack = onBack
             )

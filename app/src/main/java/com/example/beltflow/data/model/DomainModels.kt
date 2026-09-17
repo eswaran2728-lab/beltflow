@@ -6,7 +6,7 @@ data class AuthUser(
     val email: String,
     val role: UserRole,
     val status: ProfileStatus,
-    val organizationId: String? = "persatuan_selangor",
+    val organizationId: String? = null,
     val phone: String = "",
     val childName: String = "",
     val assignedClass: String = "",
@@ -17,7 +17,8 @@ data class AuthUser(
 
 data class StudentWithDetails(
     val id: String,
-    val organizationId: String? = "persatuan_selangor",
+    val organizationId: String? = null,
+    val profileId: String? = null,
     val fullName: String,
     val icOrMykid: String,
     val dateOfBirth: String,
@@ -40,7 +41,7 @@ data class StudentWithDetails(
 
 data class ClassWithBranch(
     val id: String,
-    val organizationId: String? = "persatuan_selangor",
+    val organizationId: String? = null,
     val branchId: String?,
     val branchName: String,
     val name: String,
@@ -165,3 +166,29 @@ data class ParentChildLinkDetail(
     val masterApproved: Boolean,
     val adminApproved: Boolean
 )
+
+data class ClassWorkflowRequestDetail(
+    val id: String,
+    val masterProfileId: String,
+    val masterName: String,
+    val requestType: ClassRequestType,
+    val targetClassId: String? = null,
+    val proposedClassName: String = "",
+    val proposedBranchId: String? = null,
+    val status: ClassRequestStatus,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+data class MessageDetail(
+    val id: String,
+    val organizationId: String,
+    val senderId: String,
+    val senderName: String,
+    val senderRole: UserRole,
+    val recipientId: String?,
+    val classId: String?,
+    val content: String,
+    val timestamp: Long = System.currentTimeMillis(),
+    val isAuditable: Boolean = true
+)
+

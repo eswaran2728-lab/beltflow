@@ -32,13 +32,13 @@ fun StudentPortalScreen(
     val currentUser by viewModel.currentUser.collectAsState()
     val allStudents by viewModel.allStudents.collectAsState()
 
-    // Select current user's student or active student
+    // Select current user's student strictly matching the authenticated profile ID or student ID
     val student = remember(allStudents, currentUser) {
         val user = currentUser
-        if (user != null && user.studentId != null) {
-            allStudents.find { it.id == user.studentId } ?: allStudents.firstOrNull()
+        if (user != null) {
+            allStudents.find { it.profileId == user.id || (user.studentId != null && it.id == user.studentId) }
         } else {
-            allStudents.firstOrNull()
+            null
         }
     }
 
@@ -73,13 +73,6 @@ fun StudentPortalScreen(
             TopNavBar(
                 title = "Student Martial Arts Portal",
                 currentUser = currentUser,
-                onSwitchUser = { email ->
-                    if (onSwitchUser != null) {
-                        onSwitchUser(email)
-                    } else {
-                        viewModel.loginAs(email) {}
-                    }
-                },
                 onLogout = onLogout
             )
         },

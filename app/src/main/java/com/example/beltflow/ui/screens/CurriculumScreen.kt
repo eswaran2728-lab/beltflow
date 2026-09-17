@@ -61,7 +61,6 @@ fun CurriculumScreen(
             TopNavBar(
                 title = "Silambam Curriculum & Skills",
                 currentUser = currentUser,
-                onSwitchUser = { viewModel.loginAs(it) {} },
                 onLogout = { viewModel.logout() },
                 onBack = onBack
             )

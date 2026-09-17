@@ -48,12 +48,21 @@ interface BeltFlowDao {
     @Query("UPDATE profiles SET studentId = :studentId WHERE id = :profileId")
     suspend fun linkProfileToStudent(profileId: String, studentId: String)
 
+    @Query("SELECT COUNT(*) FROM profiles")
+    suspend fun getProfilesCount(): Int
+
+    @Query("SELECT * FROM profiles")
+    suspend fun getAllProfilesDirect(): List<ProfileEntity>
+
     // --- Parent Child Links (3-Way Approval) ---
     @Query("SELECT * FROM parent_child_links ORDER BY createdAt DESC")
     fun getAllParentChildLinks(): Flow<List<ParentChildLinkEntity>>
 
     @Query("SELECT * FROM parent_child_links WHERE parentProfileId = :parentProfileId AND status = 'APPROVED'")
     fun getApprovedLinksForParent(parentProfileId: String): Flow<List<ParentChildLinkEntity>>
+
+    @Query("SELECT * FROM parent_child_links WHERE parentProfileId = :parentProfileId AND status = 'APPROVED'")
+    suspend fun getApprovedLinksForParentDirect(parentProfileId: String): List<ParentChildLinkEntity>
 
     @Query("SELECT * FROM parent_child_links WHERE id = :id LIMIT 1")
     suspend fun getParentChildLinkById(id: String): ParentChildLinkEntity?
@@ -178,11 +187,20 @@ interface BeltFlowDao {
     @Query("SELECT * FROM students ORDER BY fullName ASC")
     fun getAllStudents(): Flow<List<StudentEntity>>
 
+    @Query("SELECT * FROM students WHERE organizationId = :orgId ORDER BY fullName ASC")
+    fun getStudentsForOrganization(orgId: String): Flow<List<StudentEntity>>
+
+    @Query("SELECT * FROM students WHERE classIdsJson LIKE '%' || :classId || '%' ORDER BY fullName ASC")
+    fun getStudentsForClass(classId: String): Flow<List<StudentEntity>>
+
     @Query("SELECT * FROM students ORDER BY fullName ASC")
     suspend fun getAllStudentsDirect(): List<StudentEntity>
 
     @Query("SELECT * FROM students WHERE id = :id LIMIT 1")
     suspend fun getStudentById(id: String): StudentEntity?
+
+    @Query("SELECT * FROM students WHERE profileId = :profileId LIMIT 1")
+    suspend fun getStudentByProfileId(profileId: String): StudentEntity?
 
     @Query("SELECT * FROM students WHERE id = :id LIMIT 1")
     fun getStudentFlowById(id: String): Flow<StudentEntity?>
@@ -218,6 +236,12 @@ interface BeltFlowDao {
     @Query("SELECT * FROM attendance WHERE studentId = :studentId ORDER BY sessionDate DESC")
     fun getAttendanceForStudent(studentId: String): Flow<List<AttendanceEntity>>
 
+    @Query("SELECT * FROM attendance WHERE classId = :classId ORDER BY sessionDate DESC")
+    fun getAttendanceForClass(classId: String): Flow<List<AttendanceEntity>>
+
+    @Query("SELECT a.* FROM attendance a INNER JOIN students s ON a.studentId = s.id WHERE s.organizationId = :orgId ORDER BY a.sessionDate DESC")
+    fun getAttendanceForOrganization(orgId: String): Flow<List<AttendanceEntity>>
+
     @Query("SELECT * FROM attendance ORDER BY sessionDate DESC")
     fun getAllAttendance(): Flow<List<AttendanceEntity>>
 
@@ -233,6 +257,12 @@ interface BeltFlowDao {
     // --- Invoices & Payments ---
     @Query("SELECT * FROM invoices ORDER BY billingMonth DESC, createdAt DESC")
     fun getAllInvoices(): Flow<List<InvoiceEntity>>
+
+    @Query("SELECT i.* FROM invoices i INNER JOIN students s ON i.studentId = s.id WHERE s.classIdsJson LIKE '%' || :classId || '%' ORDER BY i.billingMonth DESC, i.createdAt DESC")
+    fun getInvoicesForClass(classId: String): Flow<List<InvoiceEntity>>
+
+    @Query("SELECT i.* FROM invoices i INNER JOIN students s ON i.studentId = s.id WHERE s.organizationId = :orgId ORDER BY i.billingMonth DESC, i.createdAt DESC")
+    fun getInvoicesForOrganization(orgId: String): Flow<List<InvoiceEntity>>
 
     @Query("SELECT * FROM invoices WHERE studentId = :studentId ORDER BY billingMonth DESC")
     fun getInvoicesForStudent(studentId: String): Flow<List<InvoiceEntity>>
@@ -347,12 +377,57 @@ interface BeltFlowDao {
     @Query("SELECT * FROM certificates ORDER BY issuedAt DESC")
     fun getAllCertificates(): Flow<List<CertificateEntity>>
 
-    @Query("SELECT * FROM certificates WHERE studentId = :studentId ORDER BY issuedAt DESC")
+    @Query("SELECT * FROM certificates WHERE organizationId = :orgId AND isRevoked = 0 ORDER BY issuedAt DESC")
+    fun getCertificatesForOrganization(orgId: String): Flow<List<CertificateEntity>>
+
+    @Query("SELECT c.* FROM certificates c INNER JOIN students s ON c.studentId = s.id WHERE s.classIdsJson LIKE '%' || :classId || '%' AND c.isRevoked = 0 ORDER BY c.issuedAt DESC")
+    fun getCertificatesForClass(classId: String): Flow<List<CertificateEntity>>
+
+    @Query("SELECT * FROM certificates WHERE studentId = :studentId AND isRevoked = 0 ORDER BY issuedAt DESC")
     fun getCertificatesForStudent(studentId: String): Flow<List<CertificateEntity>>
+
+    @Query("SELECT * FROM certificates WHERE id = :id LIMIT 1")
+    suspend fun getCertificateById(id: String): CertificateEntity?
 
     @Query("SELECT * FROM certificates WHERE verifyCode = :code LIMIT 1")
     suspend fun getCertificateByVerifyCode(code: String): CertificateEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCertificate(certificate: CertificateEntity)
+
+    @Update
+    suspend fun updateCertificate(certificate: CertificateEntity)
+
+    @Delete
+    suspend fun deleteCertificate(certificate: CertificateEntity)
+
+    // --- Class Workflow Requests (Create Class / Join Class) ---
+    @Query("SELECT * FROM class_workflow_requests ORDER BY createdAt DESC")
+    fun getAllClassWorkflowRequests(): Flow<List<ClassWorkflowRequestEntity>>
+
+    @Query("SELECT * FROM class_workflow_requests WHERE id = :id LIMIT 1")
+    suspend fun getClassWorkflowRequestById(id: String): ClassWorkflowRequestEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertClassWorkflowRequest(request: ClassWorkflowRequestEntity)
+
+    @Update
+    suspend fun updateClassWorkflowRequest(request: ClassWorkflowRequestEntity)
+
+    // --- Messages with Audit ---
+    @Query("SELECT * FROM messages ORDER BY timestamp DESC")
+    fun getAllMessages(): Flow<List<MessageEntity>>
+
+    @Query("SELECT * FROM messages WHERE organizationId = :orgId ORDER BY timestamp DESC")
+    fun getMessagesForOrganization(orgId: String): Flow<List<MessageEntity>>
+
+    @Query("SELECT * FROM messages WHERE classId = :classId OR recipientId = :userId OR senderId = :userId ORDER BY timestamp DESC")
+    fun getMessagesForUser(userId: String, classId: String?): Flow<List<MessageEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMessage(message: MessageEntity)
+
+    // --- Audit Log Deletion for Admin Persatuan ---
+    @Query("DELETE FROM audit_logs WHERE organizationId = :orgId")
+    suspend fun deleteAuditLogsForOrganization(orgId: String)
 }

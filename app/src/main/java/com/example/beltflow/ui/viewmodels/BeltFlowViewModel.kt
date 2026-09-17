@@ -19,8 +19,9 @@ data class SuperAdminDashboardUiState(
     val totalPersatuans: Int = 0,
     val activePersatuans: Int = 0,
     val totalMonthlySubscriptionRevenue: Double = 0.0,
-    val totalPlatformChargesCollected: Double = 0.0,
-    val totalPlatformStudents: Int = 0
+    val activeSubscriptionsCount: Int = 0,
+    val unpaidSubscriptionsCount: Int = 0,
+    val overdueSubscriptionsCount: Int = 0
 )
 
 data class AdminDashboardUiState(
@@ -107,34 +108,85 @@ class BeltFlowViewModel(private val repository: BeltFlowRepository) : ViewModel(
         viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
     )
 
-    // Current User Auth Context for RBAC Evaluation
-    val authContext: StateFlow<AuthContext?> = currentUser.map { user ->
-        user?.let {
-            AuthContext(
-                userId = it.id,
-                role = it.role,
-                organizationId = it.organizationId,
-                assignedClassIds = emptyList(),
-                linkedStudentIds = listOfNotNull(it.studentId)
-            )
+    val allClassMasterCrossRefs = repository.allClassMasterCrossRefs.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
+    )
+
+    val allClassTransfers = repository.allClassTransfers.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
+    )
+
+    val allClassWorkflowRequests = repository.allClassWorkflowRequests.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
+    )
+
+    val allMessages = repository.allMessages.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
+    )
+
+    // Current User Auth Context for RBAC Evaluation with accurate class and parent relationships
+    val authContext: StateFlow<AuthContext?> = combine(
+        currentUser,
+        allClassMasterCrossRefs,
+        allParentChildLinks,
+        allStudents
+    ) { user, crossRefs, links, students ->
+        if (user == null) return@combine null
+
+        val assignedClasses = if (user.role == UserRole.MASTER) {
+            crossRefs.filter { it.masterProfileId == user.id }.map { it.classId }
+        } else {
+            emptyList()
         }
+
+        val mainMasterMap = if (user.role == UserRole.MASTER) {
+            crossRefs.filter { it.masterProfileId == user.id }.associate { it.classId to it.isMainMaster }
+        } else {
+            emptyMap()
+        }
+
+        val linkedStudents = when (user.role) {
+            UserRole.STUDENT -> listOfNotNull(user.studentId ?: students.find { it.profileId == user.id }?.id)
+            UserRole.PARENT -> links.filter { it.parentProfileId == user.id && it.status == LinkApprovalStatus.APPROVED }.map { it.studentId }
+            else -> emptyList()
+        }
+
+        AuthContext(
+            userId = user.id,
+            role = user.role,
+            organizationId = user.organizationId,
+            assignedClassIds = assignedClasses,
+            isMainMasterMap = mainMasterMap,
+            linkedStudentIds = linkedStudents
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    // --- Super Admin Dashboard UI State ---
-    val superAdminDashboardStats: StateFlow<SuperAdminDashboardUiState> = combine(
-        allPersatuans,
-        allStudents
-    ) { persatuans, students ->
+    // Helper to evaluate permissions
+    fun checkPermission(permission: Permission, targetOrgId: String? = null, targetClassId: String? = null, targetStudentId: String? = null): Boolean {
+        return AuthorizationManager.authorize(
+            context = authContext.value,
+            permission = permission,
+            targetOrganizationId = targetOrgId,
+            targetClassId = targetClassId,
+            targetStudentId = targetStudentId
+        ).isAllowed
+    }
+
+    // --- Super Admin Dashboard UI State (Strictly platform-level) ---
+    val superAdminDashboardStats: StateFlow<SuperAdminDashboardUiState> = allPersatuans.map { persatuans ->
         val active = persatuans.count { it.status == ProfileStatus.APPROVED }
         val subRev = persatuans.sumOf { it.monthlyFee }
-        val chargeRev = persatuans.sumOf { (it.monthlyFee * it.platformChargeRatePercent) / 100.0 }
+        val activeSubs = persatuans.count { it.subscriptionStatus == SubscriptionStatus.ACTIVE }
+        val unpaidSubs = persatuans.count { it.subscriptionStatus == SubscriptionStatus.UNPAID }
+        val overdueSubs = persatuans.count { it.subscriptionStatus == SubscriptionStatus.OVERDUE }
 
         SuperAdminDashboardUiState(
             totalPersatuans = persatuans.size,
             activePersatuans = active,
             totalMonthlySubscriptionRevenue = subRev,
-            totalPlatformChargesCollected = chargeRev,
-            totalPlatformStudents = students.size
+            activeSubscriptionsCount = activeSubs,
+            unpaidSubscriptionsCount = unpaidSubs,
+            overdueSubscriptionsCount = overdueSubs
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SuperAdminDashboardUiState())
 
@@ -172,13 +224,18 @@ class BeltFlowViewModel(private val repository: BeltFlowRepository) : ViewModel(
     // --- Master Dashboard UI State ---
     val masterDashboardStats: StateFlow<MasterDashboardUiState> = combine(
         allClasses,
-        allStudents
-    ) { classes, students ->
-        val atRisk = students.count { it.isAtRisk }
+        allStudents,
+        authContext
+    ) { classes, students, context ->
+        val assignedIds = context?.assignedClassIds ?: emptyList()
+        val masterClasses = if (assignedIds.isNotEmpty()) classes.filter { assignedIds.contains(it.id) } else classes
+        val masterStudents = if (assignedIds.isNotEmpty()) students.filter { st -> st.classIds.any { assignedIds.contains(it) } } else students
+        val atRisk = masterStudents.count { it.isAtRisk }
+
         MasterDashboardUiState(
-            assignedClassesCount = classes.size,
-            totalTraineesCount = students.size,
-            todaySessionsCount = 2,
+            assignedClassesCount = masterClasses.size,
+            totalTraineesCount = masterStudents.size,
+            todaySessionsCount = masterClasses.size,
             atRiskTraineesCount = atRisk,
             gradingCandidatesCount = 8
         )
@@ -197,6 +254,7 @@ class BeltFlowViewModel(private val repository: BeltFlowRepository) : ViewModel(
         email: String,
         phone: String,
         role: UserRole,
+        organizationId: String,
         childName: String,
         assignedClass: String,
         password: String,
@@ -208,6 +266,7 @@ class BeltFlowViewModel(private val repository: BeltFlowRepository) : ViewModel(
                 email = email,
                 phone = phone,
                 role = role,
+                organizationId = organizationId,
                 childName = childName,
                 assignedClass = assignedClass,
                 password = password
@@ -216,35 +275,7 @@ class BeltFlowViewModel(private val repository: BeltFlowRepository) : ViewModel(
         }
     }
 
-    fun loginAs(target: String, onComplete: () -> Unit = {}) {
-        viewModelScope.launch {
-            val profile = when (target.lowercase(Locale.getDefault())) {
-                "super_admin", "superadmin" -> daoGetProfileByEmail("eswaran2728@gmail.com")
-                "admin", "admin_persatuan" -> daoGetProfileByEmail("persatuansilambamdaerahsepang@gmail.com")
-                else -> daoGetProfileByEmail(target)
-            }
-            if (profile != null) {
-                repository.setCurrentUser(
-                    AuthUser(
-                        id = profile.id,
-                        fullName = profile.fullName,
-                        email = profile.email,
-                        role = profile.role,
-                        status = profile.status,
-                        organizationId = profile.organizationId,
-                        childName = profile.childName,
-                        assignedClass = profile.assignedClass,
-                        studentId = profile.studentId
-                    )
-                )
-            }
-            onComplete()
-        }
-    }
 
-    private suspend fun daoGetProfileByEmail(email: String): ProfileEntity? {
-        return allProfiles.value.find { it.email.equals(email, ignoreCase = true) }
-    }
 
     fun logout() {
         repository.logout()
@@ -255,12 +286,13 @@ class BeltFlowViewModel(private val repository: BeltFlowRepository) : ViewModel(
         name: String,
         adminEmail: String,
         adminFullName: String,
+        adminPassword: String,
         plan: SubscriptionPlan,
         chargePercent: Double
     ) {
         if (!AuthorizationManager.authorize(authContext.value, Permission.PLATFORM_MANAGE_PERSATUAN).isAllowed) return
         viewModelScope.launch {
-            repository.createPersatuan(name, adminEmail, adminFullName, plan, chargePercent)
+            repository.createPersatuan(name, adminEmail, adminFullName, adminPassword, plan, chargePercent)
         }
     }
 
@@ -278,9 +310,6 @@ class BeltFlowViewModel(private val repository: BeltFlowRepository) : ViewModel(
     }
 
     // --- Master Class Instructor Management (Main Master Controls) ---
-    val allClassMasterCrossRefs = repository.allClassMasterCrossRefs.stateIn(
-        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
-    )
 
     fun addMasterToClass(classId: String, masterProfileId: String, isMainMaster: Boolean = false) {
         viewModelScope.launch {
@@ -322,9 +351,6 @@ class BeltFlowViewModel(private val repository: BeltFlowRepository) : ViewModel(
     }
 
     // --- Class Transfers ---
-    val allClassTransfers = repository.allClassTransfers.stateIn(
-        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
-    )
 
     fun requestClassTransfer(studentId: String, oldClassId: String, newClassId: String) {
         viewModelScope.launch {
@@ -528,16 +554,6 @@ class BeltFlowViewModel(private val repository: BeltFlowRepository) : ViewModel(
         }
     }
 
-    fun payInvoiceWithFpx(invoiceId: String, onDone: () -> Unit = {}) {
-        viewModelScope.launch {
-            val user = currentUser.value
-            val submitterId = user?.fullName ?: "Online User"
-            val invoice = allInvoices.value.find { it.id == invoiceId }
-            val amount = invoice?.netAmount ?: 0.0
-            repository.recordDirectPayment(invoiceId, amount, PaymentMethod.FPX, submitterId, "FPX Online Banking Payment")
-            onDone()
-        }
-    }
 
     fun approvePayment(paymentId: String, invoiceId: String) {
         viewModelScope.launch {
@@ -702,6 +718,157 @@ class BeltFlowViewModel(private val repository: BeltFlowRepository) : ViewModel(
     fun rejectAnnouncement(announcementId: String) {
         viewModelScope.launch {
             repository.rejectAnnouncement(announcementId)
+        }
+    }
+
+    // --- Class Workflow Requests (Creation & Join) ---
+    fun requestClassCreation(proposedClassName: String, proposedBranchId: String?, onDone: () -> Unit = {}) {
+        val user = currentUser.value ?: return
+        viewModelScope.launch {
+            repository.requestClassCreation(user.id, proposedClassName, proposedBranchId)
+            onDone()
+        }
+    }
+
+    fun approveClassCreation(requestId: String, code: String, dayOfWeek: Int, startTime: String, endTime: String, monthlyFee: Double, onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            repository.approveClassCreation(requestId, code, dayOfWeek, startTime, endTime, monthlyFee)
+            onDone()
+        }
+    }
+
+    fun rejectClassCreation(requestId: String, onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            repository.rejectClassCreation(requestId)
+            onDone()
+        }
+    }
+
+    fun requestJoinClass(targetClassId: String, onDone: () -> Unit = {}) {
+        val user = currentUser.value ?: return
+        viewModelScope.launch {
+            repository.requestJoinClass(user.id, targetClassId)
+            onDone()
+        }
+    }
+
+    fun approveJoinClass(requestId: String, onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            repository.approveJoinClass(requestId)
+            onDone()
+        }
+    }
+
+    fun rejectJoinClass(requestId: String, onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            repository.rejectJoinClass(requestId)
+            onDone()
+        }
+    }
+
+    // --- Student Registration Approvals by Master ---
+    fun approveStudentRegistration(profileId: String, onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            repository.approveStudentRegistration(profileId)
+            onDone()
+        }
+    }
+
+    fun rejectStudentRegistration(profileId: String, onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            repository.rejectStudentRegistration(profileId)
+            onDone()
+        }
+    }
+
+    // --- Parent Child 3-Way Link Workflow ---
+    fun requestParentChildLink(parentProfileId: String, studentId: String, onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            repository.requestParentChildLink(parentProfileId, studentId)
+            onDone()
+        }
+    }
+
+    fun approveParentChildLinkStep(linkId: String, approverRole: UserRole, onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            repository.approveParentChildLinkStep(linkId, approverRole)
+            onDone()
+        }
+    }
+
+    fun rejectParentChildLink(linkId: String, onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            repository.rejectParentChildLink(linkId)
+            onDone()
+        }
+    }
+
+    // --- Class Transfer 2-Way Master Workflow ---
+    fun requestClassTransfer(studentId: String, oldClassId: String, newClassId: String, onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            repository.requestClassTransfer(studentId, oldClassId, newClassId)
+            onDone()
+        }
+    }
+
+    fun approveClassTransferStep(transferId: String, isNewMaster: Boolean, onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            repository.approveClassTransferStep(transferId, isNewMaster)
+            onDone()
+        }
+    }
+
+    fun rejectClassTransfer(transferId: String, onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            repository.rejectClassTransfer(transferId)
+            onDone()
+        }
+    }
+
+    // --- Messaging with Audit ---
+    fun sendMessage(recipientId: String?, classId: String?, content: String, onDone: () -> Unit = {}) {
+        val user = currentUser.value ?: return
+        viewModelScope.launch {
+            repository.sendMessage(user.id, user.fullName, user.role, recipientId, classId, content)
+            onDone()
+        }
+    }
+
+    // --- Certificates ---
+    fun createCertificate(studentId: String, type: CertType, title: String, issuedBy: String, onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            repository.createCertificate(studentId, type, title, issuedBy)
+            onDone()
+        }
+    }
+
+    fun revokeCertificate(certificateId: String, onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            repository.revokeCertificate(certificateId)
+            onDone()
+        }
+    }
+
+    fun deleteCertificate(certificateId: String, onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            repository.deleteCertificate(certificateId)
+            onDone()
+        }
+    }
+
+    // --- Audit Logs Deletion for Admin Persatuan ---
+    fun deleteAuditLogsForOrganization(orgId: String, onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            repository.deleteAuditLogsForOrganization(orgId)
+            onDone()
+        }
+    }
+
+    // --- Account Deactivation ---
+    fun deactivateAccount(userId: String, onResult: (Result<Unit>) -> Unit) {
+        viewModelScope.launch {
+            val res = repository.deactivateAccount(userId)
+            onResult(res)
         }
     }
 

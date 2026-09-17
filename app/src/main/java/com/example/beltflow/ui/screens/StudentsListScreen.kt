@@ -60,7 +60,6 @@ fun StudentsListScreen(
             TopNavBar(
                 title = "Students Directory",
                 currentUser = currentUser,
-                onSwitchUser = { viewModel.loginAs(it) {} },
                 onLogout = { viewModel.logout() },
                 onBack = onBack
             )

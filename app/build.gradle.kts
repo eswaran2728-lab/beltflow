@@ -23,9 +23,9 @@ android {
     signingConfigs {
         create("release") {
             storeFile = rootProject.file("release.keystore")
-            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "beltflowpass"
-            keyAlias = System.getenv("KEY_ALIAS") ?: "beltflow"
-            keyPassword = System.getenv("KEY_PASSWORD") ?: "beltflowpass"
+            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+            keyAlias = System.getenv("KEY_ALIAS") ?: ""
+            keyPassword = System.getenv("KEY_PASSWORD") ?: ""
         }
     }
 
@@ -72,5 +72,12 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
+    testImplementation(libs.junit)
     debugImplementation(libs.androidx.ui.tooling)
+
+    // Networking (Shared BeltFlow API Client)
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 }

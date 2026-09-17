@@ -49,6 +49,7 @@ fun AuthScreen(
     var selectedRole by remember { mutableStateOf(UserRole.PARENT) }
     var childName by remember { mutableStateOf("") }
     var classCode by remember { mutableStateOf("") }
+    var organizationId by remember { mutableStateOf("") }
 
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
@@ -289,7 +290,7 @@ fun AuthScreen(
                             color = BrandNavy
                         )
                         Text(
-                            text = "Register as a Parent, Student, or Master",
+                            text = "Register as a Parent or Student. Ask your academy for its ID and class ID.",
                             style = MaterialTheme.typography.bodySmall,
                             color = Slate500,
                             modifier = Modifier.padding(bottom = 16.dp)
@@ -369,7 +370,7 @@ fun AuthScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            listOf(UserRole.PARENT, UserRole.STUDENT, UserRole.MASTER).forEach { role ->
+                            listOf(UserRole.PARENT, UserRole.STUDENT).forEach { role ->
                                 FilterChip(
                                     selected = selectedRole == role,
                                     onClick = { selectedRole = role },
@@ -394,6 +395,27 @@ fun AuthScreen(
                                     modifier = Modifier.weight(1f)
                                 )
                             }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedTextField(
+                            value = organizationId,
+                            onValueChange = { organizationId = it.trim() },
+                            label = { Text("Academy ID *") },
+                            singleLine = true,
+                            colors = beltFlowTextFieldColors(),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        if (selectedRole == UserRole.STUDENT || selectedRole == UserRole.PARENT) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            OutlinedTextField(
+                                value = classCode,
+                                onValueChange = { classCode = it.trim() },
+                                label = { Text(if (selectedRole == UserRole.STUDENT) "Requested Class ID *" else "Child's Class ID *") },
+                                singleLine = true,
+                                colors = beltFlowTextFieldColors(),
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
 
                         if (selectedRole == UserRole.PARENT) {
@@ -430,6 +452,15 @@ fun AuthScreen(
                                     cleanPassword.length < 6 -> {
                                         errorMessage = "Password must be at least 6 characters long."
                                     }
+                                    organizationId.isBlank() -> {
+                                        errorMessage = "Please enter your academy ID."
+                                    }
+                                    classCode.isBlank() -> {
+                                        errorMessage = "Please enter the requested class ID."
+                                    }
+                                    selectedRole == UserRole.PARENT && childName.isBlank() -> {
+                                        errorMessage = "Please enter your child's name."
+                                    }
                                     else -> {
                                         isLoading = true
                                         errorMessage = ""
@@ -438,20 +469,17 @@ fun AuthScreen(
                                             email = cleanEmail,
                                             phone = phone.trim(),
                                             role = selectedRole,
+                                            organizationId = organizationId,
                                             childName = childName.trim(),
                                             assignedClass = classCode.trim(),
                                             password = cleanPassword
                                         ) { result ->
                                             isLoading = false
                                             result.onSuccess {
-                                                if (cleanEmail.equals("eswaran2728@gmail.com", ignoreCase = true)) {
-                                                    onAuthSuccess(UserRole.SUPER_ADMIN)
-                                                } else if (cleanEmail.equals("persatuansilambamdaerahsepang@gmail.com", ignoreCase = true)) {
-                                                    onAuthSuccess(UserRole.ADMIN_PERSATUAN)
-                                                } else {
-                                                    showPendingDialog = true
-                                                    successMessage = "Account submitted for approval."
-                                                }
+                                                showPendingDialog = true
+                                                successMessage = if (selectedRole == UserRole.STUDENT)
+                                                    "Student registration submitted for assigned Master approval."
+                                                else "Parent account created. Sign in to view approved children."
                                             }.onFailure {
                                                 errorMessage = it.message ?: "Failed to sign up."
                                             }

@@ -215,7 +215,7 @@ fun SkillProgressBar(
 fun TopNavBar(
     title: String,
     currentUser: AuthUser?,
-    onSwitchUser: (String) -> Unit,
+    onSwitchUser: ((String) -> Unit)? = null,
     onLogout: () -> Unit,
     onNavigateToSettings: (() -> Unit)? = null,
     onBack: (() -> Unit)? = null

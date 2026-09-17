@@ -64,7 +64,6 @@ fun StudentDetailScreen(
                 TopNavBar(
                     title = "Student Details",
                     currentUser = currentUser,
-                    onSwitchUser = {},
                     onLogout = {},
                     onBack = onBack
                 )
@@ -82,7 +81,6 @@ fun StudentDetailScreen(
             TopNavBar(
                 title = s.fullName,
                 currentUser = currentUser,
-                onSwitchUser = { viewModel.loginAs(it) {} },
                 onLogout = { viewModel.logout() },
                 onBack = onBack
             )

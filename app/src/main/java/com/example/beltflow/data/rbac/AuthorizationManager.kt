@@ -44,7 +44,7 @@ object AuthorizationManager {
 
                 // Admin Persatuan cannot delete attendance records (only Master can delete session attendance)
                 if (permission == Permission.CLASS_DELETE_ATTENDANCE) {
-                    return AuthorizationResult.Denied("Admin Persatuan cannot delete attendance records")
+                    return AuthorizationResult.Denied("Admin Persatuan cannot delete attendance records (reserved for Master)")
                 }
 
                 return AuthorizationResult.Allowed
@@ -59,7 +59,9 @@ object AuthorizationManager {
                     permission == Permission.PERSATUAN_MANAGE_BRANCHES ||
                     permission == Permission.PERSATUAN_MANAGE_BELTS ||
                     permission == Permission.PERSATUAN_VIEW_AUDIT_LOGS ||
-                    permission == Permission.PERSATUAN_DELETE_AUDIT_LOGS
+                    permission == Permission.PERSATUAN_DELETE_AUDIT_LOGS ||
+                    permission == Permission.PERSATUAN_APPROVE_PARENT_LINK ||
+                    permission == Permission.CERTIFICATE_EDIT // Master cannot edit cert info after creation
                 ) {
                     return AuthorizationResult.Denied("Action requires Admin Persatuan authorization")
                 }
@@ -69,16 +71,32 @@ object AuthorizationManager {
                     return AuthorizationResult.Denied("Access denied: Data belongs to another organization")
                 }
 
+                // Requesting a new class creation is allowed for any Master
+                if (permission == Permission.CLASS_REQUEST_CREATE ||
+                    permission == Permission.ANNOUNCEMENT_CREATE ||
+                    permission == Permission.MESSAGE_SEND ||
+                    permission == Permission.MESSAGE_AUDIT ||
+                    permission == Permission.CERTIFICATE_VIEW
+                ) {
+                    return AuthorizationResult.Allowed
+                }
+
+                // If Master has no assigned classes, they cannot perform class operational duties
+                if (context.assignedClassIds.isEmpty() && targetClassId != null) {
+                    return AuthorizationResult.Denied("Master is not assigned to any class")
+                }
+
                 // Class Scoping
-                if (targetClassId != null && context.assignedClassIds.isNotEmpty() && !context.assignedClassIds.contains(targetClassId)) {
+                if (targetClassId != null && !context.assignedClassIds.contains(targetClassId)) {
                     return AuthorizationResult.Denied("Access denied: Master is not assigned to Class ID $targetClassId")
                 }
 
-                // Main Master check for managing instructors within a class
-                if (permission == Permission.CLASS_MANAGE_MASTERS) {
-                    val isMainMaster = targetClassId?.let { context.isMainMasterMap[it] } ?: (context.isMainMasterMap.values.any { it })
-                    if (!isMainMaster) {
-                        return AuthorizationResult.Denied("Only the designated MAIN MASTER can manage instructors for this class")
+                // Main Master check for managing instructors within a class or approving join requests
+                if (permission == Permission.CLASS_MANAGE_MASTERS || permission == Permission.CLASS_REQUEST_JOIN_APPROVE) {
+                    val isMainMaster = targetClassId?.let { context.isMainMasterMap[it] }
+                        ?: (context.isMainMasterMap.values.any { it })
+                    if (isMainMaster != true) {
+                        return AuthorizationResult.Denied("Only the designated MAIN MASTER can manage instructors or approve join requests for this class")
                     }
                 }
 
@@ -93,9 +111,11 @@ object AuthorizationManager {
                     Permission.STUDENT_VIEW_CERTIFICATES,
                     Permission.STUDENT_REGISTER_GRADING,
                     Permission.STUDENT_REGISTER_TOURNAMENT,
-                    Permission.STUDENT_REQUEST_TRANSFER -> {
-                        if (targetStudentId != null && targetStudentId != context.userId) {
-                            AuthorizationResult.Denied("Students can only view their own records")
+                    Permission.STUDENT_REQUEST_TRANSFER,
+                    Permission.STUDENT_APPROVE_PARENT_LINK,
+                    Permission.CERTIFICATE_VIEW -> {
+                        if (targetStudentId != null && targetStudentId != context.userId && targetStudentId != context.linkedStudentIds.firstOrNull()) {
+                            AuthorizationResult.Denied("Students can only access their own records")
                         } else {
                             AuthorizationResult.Allowed
                         }
@@ -114,7 +134,9 @@ object AuthorizationManager {
                     Permission.PARENT_PAY_FEES,
                     Permission.PARENT_SUBMIT_EXCUSE,
                     Permission.PARENT_REGISTER_CHILD_GRADING,
-                    Permission.PARENT_REGISTER_CHILD_TOURNAMENT -> {
+                    Permission.PARENT_REGISTER_CHILD_TOURNAMENT,
+                    Permission.PARENT_VIEW_SKILL_PROGRESS,
+                    Permission.CERTIFICATE_VIEW -> {
                         if (targetStudentId != null && !context.linkedStudentIds.contains(targetStudentId)) {
                             AuthorizationResult.Denied("Access denied: Student is not a verified linked child")
                         } else {

@@ -11,16 +11,16 @@ data class PersatuanEntity(
     @PrimaryKey val id: String,
     val name: String,
     val logoUrl: String = "",
-    val phone: String = "+60 12-345 6789",
-    val email: String = "persatuansilambamdaerahsepang@gmail.com",
-    val address: String = "Kompleks Sukan Daerah Sepang, Selangor",
-    val registrationNo: String = "PPM-014-10-12052021",
+    val phone: String = "",
+    val email: String = "",
+    val address: String = "",
+    val registrationNo: String = "",
     val status: ProfileStatus = ProfileStatus.APPROVED,
     val subscriptionPlan: SubscriptionPlan = SubscriptionPlan.GROWTH,
     val subscriptionStatus: SubscriptionStatus = SubscriptionStatus.ACTIVE,
-    val renewalDate: String = "2026-12-31",
-    val monthlyFee: Double = 399.0,
-    val platformChargeRatePercent: Double = 8.0
+    val renewalDate: String = "",
+    val monthlyFee: Double = 0.0,
+    val platformChargeRatePercent: Double = 0.0
 )
 
 @Entity(tableName = "profiles")
@@ -31,7 +31,7 @@ data class ProfileEntity(
     val phone: String = "",
     val role: UserRole,
     val status: ProfileStatus,
-    val organizationId: String? = "persatuan_sepang",
+    val organizationId: String? = null,
     val childName: String = "",
     val assignedClass: String = "",
     val studentId: String? = null,
@@ -43,22 +43,22 @@ data class ProfileEntity(
 @Entity(tableName = "academy_settings")
 data class AcademySettingsEntity(
     @PrimaryKey val id: String = "academy_main",
-    val organizationId: String = "persatuan_sepang",
-    val name: String = "Persatuan Silambam Daerah Sepang",
-    val description: String = "Traditional Martial Arts & Belt Progression Platform",
-    val martialArtStyle: String = "Silambam Nillaikalakki & Porr Silambam",
-    val phone: String = "+60 12-345 6789",
-    val email: String = "persatuansilambamdaerahsepang@gmail.com",
-    val address: String = "Kompleks Sukan Daerah Sepang, Selangor",
-    val defaultMonthlyFee: Double = 80.0,
+    val organizationId: String = "",
+    val name: String = "",
+    val description: String = "",
+    val martialArtStyle: String = "",
+    val phone: String = "",
+    val email: String = "",
+    val address: String = "",
+    val defaultMonthlyFee: Double = 0.0,
     val siblingDiscountPercent: Double = 10.0,
-    val prefix: String = "PSMDS"
+    val prefix: String = ""
 )
 
 @Entity(tableName = "belts")
 data class BeltEntity(
     @PrimaryKey val id: String,
-    val organizationId: String? = "persatuan_selangor",
+    val organizationId: String? = null,
     val name: String,
     val colorHex: String,
     val sortOrder: Int
@@ -67,7 +67,7 @@ data class BeltEntity(
 @Entity(tableName = "branches")
 data class BranchEntity(
     @PrimaryKey val id: String,
-    val organizationId: String? = "persatuan_selangor",
+    val organizationId: String? = null,
     val name: String,
     val address: String = "",
     val phone: String = ""
@@ -87,7 +87,7 @@ data class BranchEntity(
 )
 data class ClassEntity(
     @PrimaryKey val id: String,
-    val organizationId: String? = "persatuan_selangor",
+    val organizationId: String? = null,
     val branchId: String? = null,
     val name: String,
     val code: String,
@@ -95,13 +95,13 @@ data class ClassEntity(
     val startTime: String = "09:00",
     val endTime: String = "11:00",
     val scheduleNote: String = "Every Saturday 9:00 AM - 11:00 AM",
-    val monthlyFeeOverride: Double? = 80.0,
-    val mainMasterId: String? = "profile_master_eswaran",
-    val coachName: String = "Master Eswaran"
+    val monthlyFeeOverride: Double? = null,
+    val mainMasterId: String? = null,
+    val coachName: String = ""
 ) {
     val schedule: String get() = scheduleNote
-    val monthlyFee: Double get() = monthlyFeeOverride ?: 80.0
-    val branchName: String get() = "HQ Dojang"
+    val monthlyFee: Double get() = monthlyFeeOverride ?: 0.0
+    val branchName: String get() = ""
 }
 
 @Entity(
@@ -128,7 +128,7 @@ data class ClassMasterCrossRefEntity(
 )
 data class StudentEntity(
     @PrimaryKey val id: String,
-    val organizationId: String? = "persatuan_selangor",
+    val organizationId: String? = null,
     val profileId: String? = null,
     val fullName: String,
     val icOrMykid: String = "",
@@ -147,7 +147,7 @@ data class StudentEntity(
 @Entity(tableName = "parent_child_links")
 data class ParentChildLinkEntity(
     @PrimaryKey val id: String,
-    val organizationId: String = "persatuan_selangor",
+    val organizationId: String = "",
     val parentProfileId: String,
     val studentId: String,
     val status: LinkApprovalStatus = LinkApprovalStatus.PENDING_STUDENT,
@@ -172,7 +172,7 @@ data class ClassTransferRequestEntity(
 @Entity(tableName = "audit_logs")
 data class AuditLogEntity(
     @PrimaryKey val id: String,
-    val organizationId: String? = "persatuan_selangor",
+    val organizationId: String? = null,
     val classId: String? = null,
     val actorId: String,
     val actorName: String,
@@ -189,7 +189,7 @@ data class AuditLogEntity(
 @Entity(tableName = "announcements")
 data class AnnouncementEntity(
     @PrimaryKey val id: String,
-    val organizationId: String? = "persatuan_selangor",
+    val organizationId: String? = null,
     val classId: String? = null,
     val authorId: String,
     val authorName: String,
@@ -257,6 +257,7 @@ data class InvoiceEntity(
     val billingMonth: String, // YYYY-MM
     val amount: Double,
     val discount: Double = 0.0,
+    val discountType: DiscountType? = null,
     val discountReason: String = "",
     val status: InvoiceStatus = InvoiceStatus.UNPAID,
     val createdAt: Long = System.currentTimeMillis()
@@ -290,7 +291,7 @@ data class PaymentEntity(
 @Entity(tableName = "grading_events")
 data class GradingEventEntity(
     @PrimaryKey val id: String,
-    val organizationId: String? = "persatuan_selangor",
+    val organizationId: String? = null,
     val name: String,
     val eventDate: String,
     val location: String,
@@ -396,11 +397,14 @@ data class InstructorNoteEntity(
 @Entity(tableName = "tournaments")
 data class TournamentEntity(
     @PrimaryKey val id: String,
-    val organizationId: String? = "persatuan_selangor",
+    val organizationId: String? = null,
     val name: String,
     val eventDate: String,
     val location: String,
-    val organizer: String = "Persatuan Taekwondo Selangor"
+    val organizer: String = "",
+    val fee: Double = 50.0,
+    val paymentDestination: String = "",
+    val categoriesJson: String = "[]"
 )
 
 @Entity(
@@ -445,11 +449,42 @@ data class TournamentResultEntity(
 )
 data class CertificateEntity(
     @PrimaryKey val id: String,
+    val organizationId: String? = null,
+    val classId: String? = null,
     val studentId: String,
     val type: CertType,
     val title: String,
     val certNo: String,
     val verifyCode: String,
     val issuedAt: String,
-    val issuedBy: String = "Master Eswaran (Chief Examiner)"
+    val issuedBy: String = "",
+    val isRevoked: Boolean = false
 )
+
+@Entity(tableName = "class_workflow_requests")
+data class ClassWorkflowRequestEntity(
+    @PrimaryKey val id: String,
+    val organizationId: String = "",
+    val masterProfileId: String,
+    val requestType: ClassRequestType,
+    val targetClassId: String? = null,
+    val proposedClassName: String = "",
+    val proposedBranchId: String? = null,
+    val status: ClassRequestStatus = ClassRequestStatus.PENDING,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "messages")
+data class MessageEntity(
+    @PrimaryKey val id: String,
+    val organizationId: String = "",
+    val senderId: String,
+    val senderName: String,
+    val senderRole: UserRole,
+    val recipientId: String? = null,
+    val classId: String? = null,
+    val content: String,
+    val timestamp: Long = System.currentTimeMillis(),
+    val isAuditable: Boolean = true
+)
+

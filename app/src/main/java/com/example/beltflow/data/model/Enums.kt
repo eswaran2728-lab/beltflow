@@ -53,6 +53,15 @@ enum class PaymentMethod(val label: String) {
 }
 
 @Serializable
+enum class DiscountType(val label: String) {
+    SIBLING("Sibling Discount"),
+    SPECIAL("Special Discount"),
+    FINANCIAL_ASSISTANCE("Financial Assistance"),
+    PROMOTION("Promotional Discount"),
+    CUSTOM("Custom Discount")
+}
+
+@Serializable
 enum class GradingResultType(val label: String) {
     REGISTERED("Registered / Pending"),
     PASS("Pass (Promoted)"),
@@ -106,6 +115,19 @@ enum class ClassTransferStatus(val label: String) {
     PENDING_OLD_MASTER("Pending Current Master Approval"),
     PENDING_NEW_MASTER("Pending Target Master Approval"),
     APPROVED("Approved & Transferred"),
+    REJECTED("Rejected")
+}
+
+@Serializable
+enum class ClassRequestType(val label: String) {
+    CREATE_CLASS("New Class Creation Request"),
+    JOIN_CLASS("Join Existing Class Request")
+}
+
+@Serializable
+enum class ClassRequestStatus(val label: String) {
+    PENDING("Pending Review"),
+    APPROVED("Approved"),
     REJECTED("Rejected")
 }
 

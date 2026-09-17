@@ -50,7 +50,6 @@ fun TournamentsScreen(
             TopNavBar(
                 title = "Martial Arts Tournaments",
                 currentUser = currentUser,
-                onSwitchUser = { viewModel.loginAs(it) {} },
                 onLogout = { viewModel.logout() },
                 onBack = onBack
             )

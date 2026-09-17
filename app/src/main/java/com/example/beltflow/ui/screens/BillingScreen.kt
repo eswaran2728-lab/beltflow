@@ -58,7 +58,6 @@ fun BillingScreen(
             TopNavBar(
                 title = "Fee Invoices & Billing",
                 currentUser = currentUser,
-                onSwitchUser = { viewModel.loginAs(it) {} },
                 onLogout = { viewModel.logout() },
                 onBack = onBack
             )
