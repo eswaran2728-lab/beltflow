@@ -2245,7 +2245,8 @@
               date: new Date(p.created_at).toLocaleDateString(),
               method: p.method || 'Online Banking',
               status: p.status,
-              receiptNo: p.receipt_no
+              receiptNo: p.receipt_no,
+              proofNotes: p.proof_notes || ''
             }));
           }
 
@@ -2262,6 +2263,7 @@
             gradings = gradingRes.data.gradingEvents.map(g => ({
               id: g.id, persatuan_id: g.organization_id, title: g.title, date: g.event_date,
               location: g.location, fee: g.fee, status: g.status || 'Scheduled',
+              candidateStudentIds: g.candidate_student_ids || [],
               candidates: Array.from({ length: Number(g.candidate_count) || 0 })
             }));
           }
@@ -2876,7 +2878,8 @@
       const g = gradings.find(item => item.id == gradingId);
       if (!g || !activePersatuan) return;
 
-      const pStudents = students.filter(s => s.persatuan_id == activePersatuan.id && s.status === 'Active');
+      const candidateIds = g.candidateStudentIds || [];
+      const pStudents = students.filter(s => s.persatuan_id == activePersatuan.id && s.status === 'Active' && candidateIds.includes(s.id));
       const style = activePersatuan.style || 'Silambam (Indian Martial Arts)';
       const cfg = MARTIAL_ARTS_CONFIG[style] || MARTIAL_ARTS_CONFIG['Silambam (Indian Martial Arts)'];
 
@@ -2887,8 +2890,8 @@
         body.innerHTML = `
           <div class="empty-state">
             <div class="empty-state-icon">👤</div>
-            <div class="empty-state-title">No Enrolled Students</div>
-            <div class="empty-state-desc">Enrol students in this academy to register them for grading examinations.</div>
+            <div class="empty-state-title">No Registered Candidates</div>
+            <div class="empty-state-desc">No students have registered for this grading exam yet. A parent or student must register before they can be graded.</div>
           </div>
         `;
       } else {
@@ -2934,7 +2937,7 @@
           </div>
           <div style="display:flex;justify-content:flex-end;gap:8px">
             <button type="button" class="bf-btn bf-btn-outline" onclick="closeModal('recordGradingResultsModal')">Cancel</button>
-            <button type="button" class="bf-btn bf-btn-primary" onclick="handleSaveGradingResults(${g.id})">Save Results & Issue Certificates</button>
+            <button type="button" class="bf-btn bf-btn-primary" onclick="handleSaveGradingResults('${g.id}')">Save Results & Issue Certificates</button>
           </div>
         `;
       }
@@ -3062,7 +3065,7 @@
           </div>
           <div style="display:flex;justify-content:flex-end;gap:8px">
             <button type="button" class="bf-btn bf-btn-outline" onclick="closeModal('recordTournamentMedalsModal')">Cancel</button>
-            <button type="button" class="bf-btn bf-btn-primary" onclick="handleSaveTournamentMedals(${t.id})">Save Medals & Issue Certificates</button>
+            <button type="button" class="bf-btn bf-btn-primary" onclick="handleSaveTournamentMedals('${t.id}')">Save Medals & Issue Certificates</button>
           </div>
         `;
       }
@@ -3763,8 +3766,8 @@
                       <td>${s.phone}</td>
                       <td>
                         <div style="display:flex;gap:6px">
-                          <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="approveRegistration(${s.id}, 'student')">Approve</button>
-                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="rejectRegistration(${s.id}, 'student')">Decline</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="approveRegistration('${s.id}', 'student')">Approve</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="rejectRegistration('${s.id}', 'student')">Decline</button>
                         </div>
                       </td>
                     </tr>
@@ -3777,8 +3780,8 @@
                       <td>${c.phone}</td>
                       <td>
                         <div style="display:flex;gap:6px">
-                          <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="approveRegistration(${c.id}, 'coach')">Approve</button>
-                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="rejectRegistration(${c.id}, 'coach')">Decline</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="approveRegistration('${c.id}', 'coach')">Approve</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="rejectRegistration('${c.id}', 'coach')">Decline</button>
                         </div>
                       </td>
                     </tr>
@@ -4099,12 +4102,12 @@
                         <td><strong>${pay.studentName}</strong></td>
                         <td><strong>${pay.amount}</strong></td>
                         <td>${pay.method}</td>
-                        <td>${pay.proofNotes}</td>
+                        <td>${pay.proofNotes || '-'}</td>
                         <td>${pay.date}</td>
                         <td>
                           <div style="display:flex;gap:6px">
-                            <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="coachApprovePayment(${pay.id})">Approve</button>
-                            <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="coachRejectPayment(${pay.id})">Reject</button>
+                            <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="coachApprovePayment('${pay.id}')">Approve</button>
+                            <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="coachRejectPayment('${pay.id}')">Reject</button>
                           </div>
                         </td>
                       </tr>
@@ -4214,7 +4217,7 @@
                         </span>
                       </td>
                       <td>
-                        <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="openRecordGradingResults(${g.id})">
+                        <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="openRecordGradingResults('${g.id}')">
                           ${g.status === 'Completed' ? 'View / Update Results' : 'Grade Candidates →'}
                         </button>
                       </td>
@@ -4282,7 +4285,7 @@
                           </span>
                         </td>
                         <td>
-                          <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="openRecordTournamentMedals(${t.id})">
+                          <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="openRecordTournamentMedals('${t.id}')">
                             ${t.status === 'Completed' ? 'View / Update Medals' : 'Record Medals →'}
                           </button>
                         </td>
@@ -4408,8 +4411,8 @@
                       <td>${s.phone}</td>
                       <td>
                         <div style="display:flex;gap:6px">
-                          <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="approveRegistration(${s.id}, 'student')">Approve</button>
-                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="rejectRegistration(${s.id}, 'student')">Decline</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="approveRegistration('${s.id}', 'student')">Approve</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="rejectRegistration('${s.id}', 'student')">Decline</button>
                         </div>
                       </td>
                     </tr>
@@ -4423,8 +4426,8 @@
                       <td>${c.phone}</td>
                       <td>
                         <div style="display:flex;gap:6px">
-                          <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="approveRegistration(${c.id}, 'coach')">Approve</button>
-                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="rejectRegistration(${c.id}, 'coach')">Decline</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="approveRegistration('${c.id}', 'coach')">Approve</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="rejectRegistration('${c.id}', 'coach')">Decline</button>
                         </div>
                       </td>
                     </tr>
@@ -4630,7 +4633,7 @@
 
                       <div style="margin-top:18px;display:flex;gap:8px;flex-wrap:wrap">
                         ${isUpcoming ? `
-                          <button class="bf-btn bf-btn-primary" style="flex:1" onclick="coachStartClass(${c.id})">
+                          <button class="bf-btn bf-btn-primary" style="flex:1" onclick="coachStartClass('${c.id}')">
                             <i data-lucide="play" style="width:14px;height:14px"></i>
                             <span>Start Class</span>
                           </button>
@@ -4641,7 +4644,7 @@
                             <i data-lucide="clipboard-check" style="width:14px;height:14px"></i>
                             <span>Take Attendance</span>
                           </button>
-                          <button class="bf-btn bf-btn-outline" onclick="coachCompleteClass(${c.id})">
+                          <button class="bf-btn bf-btn-outline" onclick="coachCompleteClass('${c.id}')">
                             <span>Complete Class</span>
                           </button>
                         ` : ''}
@@ -4731,10 +4734,10 @@
                         </div>
                       </div>
                       <div style="display:flex;gap:6px">
-                        <button class="bf-btn bf-btn-sm ${current === 'Present' ? 'bf-btn-primary' : 'bf-btn-outline'}" onclick="coachSetAttendanceStatus(${activeCoachClassId}, '${activeCoachAttendanceDate}', ${s.id}, 'Present')">Present</button>
-                        <button class="bf-btn bf-btn-sm ${current === 'Late' ? 'bf-btn-primary' : 'bf-btn-outline'}" onclick="coachSetAttendanceStatus(${activeCoachClassId}, '${activeCoachAttendanceDate}', ${s.id}, 'Late')">Late</button>
-                        <button class="bf-btn bf-btn-sm ${current === 'Absent' ? 'bf-btn-navy' : 'bf-btn-outline'}" onclick="coachSetAttendanceStatus(${activeCoachClassId}, '${activeCoachAttendanceDate}', ${s.id}, 'Absent')">Absent</button>
-                        <button class="bf-btn bf-btn-sm ${current === 'Excused' ? 'bf-btn-navy' : 'bf-btn-outline'}" onclick="coachSetAttendanceStatus(${activeCoachClassId}, '${activeCoachAttendanceDate}', ${s.id}, 'Excused')">Excused</button>
+                        <button class="bf-btn bf-btn-sm ${current === 'Present' ? 'bf-btn-primary' : 'bf-btn-outline'}" onclick="coachSetAttendanceStatus('${activeCoachClassId}', '${activeCoachAttendanceDate}', '${s.id}', 'Present')">Present</button>
+                        <button class="bf-btn bf-btn-sm ${current === 'Late' ? 'bf-btn-primary' : 'bf-btn-outline'}" onclick="coachSetAttendanceStatus('${activeCoachClassId}', '${activeCoachAttendanceDate}', '${s.id}', 'Late')">Late</button>
+                        <button class="bf-btn bf-btn-sm ${current === 'Absent' ? 'bf-btn-navy' : 'bf-btn-outline'}" onclick="coachSetAttendanceStatus('${activeCoachClassId}', '${activeCoachAttendanceDate}', '${s.id}', 'Absent')">Absent</button>
+                        <button class="bf-btn bf-btn-sm ${current === 'Excused' ? 'bf-btn-navy' : 'bf-btn-outline'}" onclick="coachSetAttendanceStatus('${activeCoachClassId}', '${activeCoachAttendanceDate}', '${s.id}', 'Excused')">Excused</button>
                       </div>
                     </div>
                   `;
@@ -4890,10 +4893,10 @@
                       <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center">
                         <input type="text" id="coachSkillNotes_${s.id}_${currentSkill ? currentSkill.id : ''}" class="bf-input" placeholder="Coach observation notes (e.g. Good balance, needs faster recoil)" value="${pData.notes || ''}">
                         <div style="display:flex;gap:4px">
-                          <button class="bf-btn bf-btn-sm ${currLevel === 'Not started' ? 'bf-btn-navy' : 'bf-btn-outline'}" onclick="coachSetStudentSkillLevel(${s.id}, '${currentSkill.id}', 'Not started')">Not started</button>
-                          <button class="bf-btn bf-btn-sm ${currLevel === 'Learning' ? 'bf-btn-primary' : 'bf-btn-outline'}" onclick="coachSetStudentSkillLevel(${s.id}, '${currentSkill.id}', 'Learning')">Learning</button>
-                          <button class="bf-btn bf-btn-sm ${currLevel === 'Good' ? 'bf-btn-primary' : 'bf-btn-outline'}" onclick="coachSetStudentSkillLevel(${s.id}, '${currentSkill.id}', 'Good')">Good</button>
-                          <button class="bf-btn bf-btn-sm ${currLevel === 'Mastered' ? 'bf-btn-success' : 'bf-btn-outline'}" onclick="coachSetStudentSkillLevel(${s.id}, '${currentSkill.id}', 'Mastered')">Mastered</button>
+                          <button class="bf-btn bf-btn-sm ${currLevel === 'Not started' ? 'bf-btn-navy' : 'bf-btn-outline'}" onclick="coachSetStudentSkillLevel('${s.id}', '${currentSkill.id}', 'Not started')">Not started</button>
+                          <button class="bf-btn bf-btn-sm ${currLevel === 'Learning' ? 'bf-btn-primary' : 'bf-btn-outline'}" onclick="coachSetStudentSkillLevel('${s.id}', '${currentSkill.id}', 'Learning')">Learning</button>
+                          <button class="bf-btn bf-btn-sm ${currLevel === 'Good' ? 'bf-btn-primary' : 'bf-btn-outline'}" onclick="coachSetStudentSkillLevel('${s.id}', '${currentSkill.id}', 'Good')">Good</button>
+                          <button class="bf-btn bf-btn-sm ${currLevel === 'Mastered' ? 'bf-btn-success' : 'bf-btn-outline'}" onclick="coachSetStudentSkillLevel('${s.id}', '${currentSkill.id}', 'Mastered')">Mastered</button>
                         </div>
                       </div>
                     </div>
@@ -4946,12 +4949,12 @@
                       <td>${pay.className}</td>
                       <td><strong>${pay.amount}</strong></td>
                       <td>${pay.method}</td>
-                      <td>${pay.proofNotes}</td>
+                      <td>${pay.proofNotes || '-'}</td>
                       <td>${pay.date}</td>
                       <td>
                         <div style="display:flex;gap:6px">
-                          <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="coachApprovePayment(${pay.id})">Approve</button>
-                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="coachRejectPayment(${pay.id})">Reject</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="coachApprovePayment('${pay.id}')">Approve</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="coachRejectPayment('${pay.id}')">Reject</button>
                         </div>
                       </td>
                     </tr>
@@ -5001,7 +5004,7 @@
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;background:var(--bf-card-bg);padding:10px 14px;border:1px solid var(--bf-border);border-radius:var(--radius-sm)">
           <span style="font-size:12px;font-weight:600;color:var(--bf-navy)">Active Child:</span>
           ${parentChildren.map(c => `
-            <button class="bf-btn bf-btn-sm ${c.id == activeParentChildId ? 'bf-btn-primary' : 'bf-btn-outline'}" onclick="parentSwitchChild(${c.id})">
+            <button class="bf-btn bf-btn-sm ${c.id == activeParentChildId ? 'bf-btn-primary' : 'bf-btn-outline'}" onclick="parentSwitchChild('${c.id}')">
               ${c.name} (${c.belt})
             </button>
           `).join('')}

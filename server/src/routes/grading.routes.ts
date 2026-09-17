@@ -45,7 +45,8 @@ router.get('/organization/:orgId', authenticateJWT, async (req: Request, res: Re
       return res.status(403).json({ error: 'Cross-organization access denied.' });
     }
     const listRes = await dbClient.query(
-      `SELECT e.*, COUNT(c.id) AS candidate_count
+      `SELECT e.*, COUNT(c.id) AS candidate_count,
+              COALESCE(array_agg(c.student_id) FILTER (WHERE c.student_id IS NOT NULL), '{}') AS candidate_student_ids
        FROM grading_events e LEFT JOIN grading_candidates c ON c.grading_event_id = e.id
        WHERE e.organization_id = $1
        GROUP BY e.id
