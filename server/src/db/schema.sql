@@ -39,6 +39,10 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Instructor rank/title (e.g. "3rd Dan Instructor"). Additive column so it
+-- applies to a database created before this field existed.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS credential_level VARCHAR(255);
+
 -- 4. Classes / Mat Sessions (Main Master is a class assignment)
 CREATE TABLE IF NOT EXISTS classes (
     id TEXT PRIMARY KEY,
