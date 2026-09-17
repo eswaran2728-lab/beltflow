@@ -38,6 +38,26 @@ router.post('/', authenticateJWT, requirePermission(Permission.PERSATUAN_MANAGE_
   }
 });
 
+// List grading events for an organization, with registered-candidate counts
+router.get('/organization/:orgId', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    if (!req.user!.organizationId || req.params.orgId !== req.user!.organizationId) {
+      return res.status(403).json({ error: 'Cross-organization access denied.' });
+    }
+    const listRes = await dbClient.query(
+      `SELECT e.*, COUNT(c.id) AS candidate_count
+       FROM grading_events e LEFT JOIN grading_candidates c ON c.grading_event_id = e.id
+       WHERE e.organization_id = $1
+       GROUP BY e.id
+       ORDER BY e.created_at DESC`,
+      [req.params.orgId]
+    );
+    return res.json({ gradingEvents: listRes.rows });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Database error', message: err.message });
+  }
+});
+
 router.post('/:eventId/register', authenticateJWT, async (req: Request, res: Response) => {
   try {
     const { studentId, targetBelt } = req.body;
