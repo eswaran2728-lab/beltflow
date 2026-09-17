@@ -1239,6 +1239,62 @@
     </div>
   </div>
 
+  <div id="registerGradingCandidateModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <i data-lucide="award" style="width:20px;height:20px;color:var(--bf-amber)"></i>
+          <h3 style="font-size:16px">Register for Grading Exam</h3>
+        </div>
+        <button class="btn-close-modal" onclick="closeModal('registerGradingCandidateModal')">
+          <i data-lucide="x" style="width:14px;height:14px"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="handleRegisterGradingCandidate(event)" style="display:flex;flex-direction:column;gap:14px">
+          <div>
+            <label class="bf-label">Target Belt Rank</label>
+            <select id="registerGradingTargetBelt" class="bf-input"></select>
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
+            <button type="button" class="bf-btn bf-btn-outline" onclick="closeModal('registerGradingCandidateModal')">Cancel</button>
+            <button type="submit" class="bf-btn bf-btn-primary">Register Candidate</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div id="linkExistingChildModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <i data-lucide="link" style="width:20px;height:20px;color:var(--bf-amber)"></i>
+          <h3 style="font-size:16px">Link Existing Child</h3>
+        </div>
+        <button class="btn-close-modal" onclick="closeModal('linkExistingChildModal')">
+          <i data-lucide="x" style="width:14px;height:14px"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="handleLinkExistingChild(event)" style="display:flex;flex-direction:column;gap:14px">
+          <p style="font-size:12px;color:var(--bf-text-muted)">
+            Enter the IC / Student ID number your child registered with at this academy.
+            A link request will be sent for the student, their Master, and the Academy Admin to approve before you gain access.
+          </p>
+          <div>
+            <label class="bf-label">Child's IC / Student ID Number</label>
+            <input type="text" id="linkChildIcNumber" required placeholder="e.g. 120514-10-1234" class="bf-input">
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
+            <button type="button" class="bf-btn bf-btn-outline" onclick="closeModal('linkExistingChildModal')">Cancel</button>
+            <button type="submit" class="bf-btn bf-btn-primary">Send Link Request</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: MANUAL CASH PAYMENT RECEIPT (MASTER RECORDING) -->
   <div id="manualPaymentReceiptModal" class="modal-overlay">
     <div class="modal-box">
@@ -2280,6 +2336,25 @@
               billingStatus: s.billing_status, monthlyFee: Number(s.monthly_fee),
               status: s.status === 'ACTIVE' ? 'Active' : s.status };
           });
+
+          if (activeUser.organizationId) {
+            const tourneyRes = await fetchApi('/tournaments/organization/' + activeUser.organizationId);
+            if (tourneyRes.ok && tourneyRes.data && tourneyRes.data.tournaments) {
+              tournaments = tourneyRes.data.tournaments.map(t => ({
+                id: t.id, persatuan_id: t.organization_id, title: t.title, date: t.event_date,
+                location: t.location, categories: t.categories, status: t.status
+              }));
+            }
+            const gradingRes = await fetchApi('/grading/organization/' + activeUser.organizationId);
+            if (gradingRes.ok && gradingRes.data && gradingRes.data.gradingEvents) {
+              gradings = gradingRes.data.gradingEvents.map(g => ({
+                id: g.id, persatuan_id: g.organization_id, title: g.title, date: g.event_date,
+                location: g.location, fee: g.fee, status: g.status || 'Scheduled',
+                candidateStudentIds: g.candidate_student_ids || [],
+                candidates: Array.from({ length: Number(g.candidate_count) || 0 })
+              }));
+            }
+          }
         }
         if (activeUser && activeUser.role === 'STUDENT') {
           const result = await fetchApi('/students/me');
@@ -3425,6 +3500,64 @@
       await loadLivePortalData();
       showToast('📤 Payment notice registered in PostgreSQL! Coach / Academy Master will review.');
       closeModal('parentSubmitPaymentModal');
+      renderContent();
+    }
+
+    let registerGradingEventId = null;
+    function openRegisterGradingCandidate(gradingId) {
+      registerGradingEventId = gradingId;
+      const style = activePersatuan ? activePersatuan.style : 'Silambam (Indian Martial Arts)';
+      const cfg = MARTIAL_ARTS_CONFIG[style] || MARTIAL_ARTS_CONFIG['Silambam (Indian Martial Arts)'];
+      const select = document.getElementById('registerGradingTargetBelt');
+      select.innerHTML = cfg.belts.map(b => `<option value="${b.name}">${b.name}</option>`).join('');
+      openModal('registerGradingCandidateModal');
+    }
+
+    async function handleRegisterGradingCandidate(e) {
+      e.preventDefault();
+      const targetBelt = document.getElementById('registerGradingTargetBelt').value;
+      const child = students.find(s => s.id === activeParentChildId) || students[0];
+      if (!child || !registerGradingEventId) return;
+
+      const res = await fetchApi('/grading/' + registerGradingEventId + '/register', {
+        method: 'POST',
+        body: JSON.stringify({ studentId: child.id, targetBelt })
+      });
+
+      if (!res.ok) {
+        alert('Registration Failed: ' + ((res.data && res.data.error) || res.error || 'Server error'));
+        return;
+      }
+
+      await loadLivePortalData();
+      closeModal('registerGradingCandidateModal');
+      showToast('🏅 ' + child.name + ' registered for the grading exam!');
+      renderContent();
+    }
+
+    function openLinkExistingChildModal() {
+      const input = document.getElementById('linkChildIcNumber');
+      if (input) input.value = '';
+      openModal('linkExistingChildModal');
+    }
+
+    async function handleLinkExistingChild(e) {
+      e.preventDefault();
+      const icNumber = document.getElementById('linkChildIcNumber').value.trim();
+      if (!icNumber) return;
+
+      const res = await fetchApi('/auth/parent-link-requests', {
+        method: 'POST',
+        body: JSON.stringify({ icNumber })
+      });
+
+      if (!res.ok) {
+        alert('Link Request Failed: ' + ((res.data && res.data.error) || res.error || 'Server error'));
+        return;
+      }
+
+      closeModal('linkExistingChildModal');
+      showToast('🔗 Link request sent! The student, their Master, and the Academy Admin must each approve before you gain access.');
       renderContent();
     }
 
@@ -4993,23 +5126,30 @@
           <div class="empty-state" style="padding:40px">
             <div class="empty-state-icon">👨‍👩‍👧</div>
             <div class="empty-state-title">No Children Registered Under this Account</div>
-            <div class="empty-state-desc">Register your child to track their martial arts belt progress and submit fees.</div>
-            <button class="bf-btn bf-btn-primary" onclick="openRegisterWizard()">+ Register Child</button>
+            <div class="empty-state-desc">Register a new child, or link to a child already enrolled at your academy.</div>
+            <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
+              <button class="bf-btn bf-btn-primary" onclick="openRegisterWizard()">+ Register Child</button>
+              <button class="bf-btn bf-btn-outline" onclick="openLinkExistingChildModal()">+ Link Existing Child</button>
+            </div>
           </div>
         `;
         return;
       }
 
-      const childSelectorHtml = parentChildren.length > 1 ? `
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;background:var(--bf-card-bg);padding:10px 14px;border:1px solid var(--bf-border);border-radius:var(--radius-sm)">
-          <span style="font-size:12px;font-weight:600;color:var(--bf-navy)">Active Child:</span>
+      const childSelectorHtml = `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;background:var(--bf-card-bg);padding:10px 14px;border:1px solid var(--bf-border);border-radius:var(--radius-sm)">
+          ${parentChildren.length > 1 ? `<span style="font-size:12px;font-weight:600;color:var(--bf-navy)">Active Child:</span>` : ''}
           ${parentChildren.map(c => `
             <button class="bf-btn bf-btn-sm ${c.id == activeParentChildId ? 'bf-btn-primary' : 'bf-btn-outline'}" onclick="parentSwitchChild('${c.id}')">
               ${c.name} (${c.belt})
             </button>
           `).join('')}
+          <button class="bf-btn bf-btn-sm bf-btn-outline" style="margin-left:auto" onclick="openLinkExistingChildModal()">
+            <i data-lucide="link" style="width:12px;height:12px"></i>
+            <span>+ Link Existing Child</span>
+          </button>
         </div>
-      ` : '';
+      `;
 
       if (currentTab === 'overview') {
         view.innerHTML = `
@@ -5195,12 +5335,20 @@
                 <div class="empty-state" style="padding:16px"><div class="empty-state-title">No Gradings Scheduled</div></div>
               ` : `
                 <div style="display:flex;flex-direction:column;gap:10px">
-                  ${pGradings.map(g => `
+                  ${pGradings.map(g => {
+                    const isRegistered = (g.candidateStudentIds || []).includes(activeChild.id);
+                    return `
                     <div style="border:1px solid var(--bf-border);border-radius:var(--radius-sm);padding:12px;background:#fff">
                       <div style="font-weight:700;color:var(--bf-navy)">${g.title}</div>
-                      <div style="font-size:11px;color:var(--bf-text-muted)">Date: ${g.date} · Fee: RM ${g.fee} · Target: ${g.targetBelt}</div>
+                      <div style="font-size:11px;color:var(--bf-text-muted)">Date: ${g.date} · Fee: RM ${g.fee}</div>
+                      <div style="margin-top:8px">
+                        ${isRegistered
+                          ? `<span class="belt-badge" style="background:#dcfce7;color:#166534">✓ ${activeChild.name} Registered</span>`
+                          : `<button class="bf-btn bf-btn-sm bf-btn-primary" onclick="openRegisterGradingCandidate('${g.id}')">Register ${activeChild.name}</button>`}
+                      </div>
                     </div>
-                  `).join('')}
+                  `;
+                  }).join('')}
                 </div>
               `}
             </div>
