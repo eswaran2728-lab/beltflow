@@ -3,6 +3,10 @@ import { dbClient } from '../db/client';
 import { UserRole } from '../security/rbac';
 import { hashPasswordServer, verifyPasswordServer, generateAuthToken } from '../security/crypto';
 import { authenticateJWT } from '../middleware/auth';
+import { safeErrorMessage } from '../security/errors';
+import { rateLimit } from '../middleware/rateLimit';
+
+const authAttemptLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: 'Too many attempts. Please try again in a few minutes.' });
 
 const router = Router();
 
@@ -11,7 +15,7 @@ router.get('/setup-status', async (_req: Request, res: Response) => {
     const result = await dbClient.query("SELECT 1 FROM users WHERE role = 'SUPER_ADMIN' LIMIT 1");
     return res.json({ setupRequired: result.rowCount === 0 });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
@@ -21,7 +25,7 @@ router.get('/registration-organizations', async (_req: Request, res: Response) =
       "SELECT id, name, state, martial_art_style FROM organizations WHERE status = 'ACTIVE' ORDER BY name");
     return res.json({ organizations: result.rows });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
@@ -33,12 +37,12 @@ router.get('/registration-organizations/:orgId/classes', async (req: Request, re
       [req.params.orgId]);
     return res.json({ classes: result.rows });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
 // Setup initial Super Admin account (Allowed ONLY when zero super admins exist)
-router.post('/setup-admin', async (req: Request, res: Response) => {
+router.post('/setup-admin', authAttemptLimit, async (req: Request, res: Response) => {
   try {
     const existing = await dbClient.query('SELECT id FROM users WHERE role = $1', [UserRole.SUPER_ADMIN]);
     if (existing.rowCount > 0) {
@@ -82,12 +86,12 @@ router.post('/setup-admin', async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error('Setup admin error:', err);
-    return res.status(500).json({ error: 'Internal database error', message: err.message });
+    return res.status(500).json({ error: 'Internal database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
 // Login endpoint
-router.post('/login', async (req: Request, res: Response) => {
+router.post('/login', authAttemptLimit, async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -166,7 +170,7 @@ router.post('/login', async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error('Login error:', err);
-    return res.status(500).json({ error: 'Internal server error', message: err.message });
+    return res.status(500).json({ error: 'Internal server error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
@@ -189,12 +193,12 @@ router.get('/me', authenticateJWT, async (req: Request, res: Response) => {
       }
     });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Internal database error', message: err.message });
+    return res.status(500).json({ error: 'Internal database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
 // Change Password endpoint — currentPassword is MANDATORY. Omitting it is rejected.
-router.post('/change-password', authenticateJWT, async (req: Request, res: Response) => {
+router.post('/change-password', authAttemptLimit, authenticateJWT, async (req: Request, res: Response) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
@@ -224,7 +228,7 @@ router.post('/change-password', authenticateJWT, async (req: Request, res: Respo
 
     return res.json({ message: 'Password successfully updated in PostgreSQL database.' });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
@@ -232,7 +236,7 @@ router.post('/change-password', authenticateJWT, async (req: Request, res: Respo
 // The student account is created with status PENDING_VERIFICATION.
 // An ADMIN_PERSATUAN or MASTER must approve it before it can be used for access.
 // Privileged roles (SUPER_ADMIN, ADMIN_PERSATUAN, MASTER, PARENT) cannot use this endpoint.
-router.post('/register-student', async (req: Request, res: Response) => {
+router.post('/register-student', authAttemptLimit, async (req: Request, res: Response) => {
   try {
     const { organizationId, fullName, email, phone, password, classId, beltRank, icNumber } = req.body;
 
@@ -301,7 +305,7 @@ router.post('/register-student', async (req: Request, res: Response) => {
       }
     });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
@@ -317,7 +321,7 @@ router.get('/student-registrations/pending', authenticateJWT, async (req: Reques
        ORDER BY s.registered_at DESC`, [req.user.organizationId, req.user.assignedClassIds || []]);
     return res.json({ registrations: result.rows });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
@@ -343,7 +347,7 @@ router.post('/student-registrations/:studentId/approve', authenticateJWT, async 
       [`audit_${Date.now()}_${Math.random().toString(36).slice(2)}`, 'Student Registration Approved', `Student ${row.id} activated`, req.user.role, req.user.email]);
     return res.json({ message: 'Student account activated.' });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
@@ -368,7 +372,7 @@ router.post('/student-registrations/:studentId/reject', authenticateJWT, async (
       [`audit_${Date.now()}_${Math.random().toString(36).slice(2)}`, 'Student Registration Rejected', `Student ${row.id} rejected`, req.user.role, req.user.email]);
     return res.json({ message: 'Student registration rejected.' });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
@@ -376,7 +380,7 @@ router.post('/student-registrations/:studentId/reject', authenticateJWT, async (
 // If childName is given (no studentId): creates new child student + ACTIVE link (parent owns child).
 // If studentId is given: creates parent account + PENDING link request. Access granted only after
 // three-step approval: STUDENT → MASTER → ADMIN_PERSATUAN.
-router.post('/register-parent', async (req: Request, res: Response) => {
+router.post('/register-parent', authAttemptLimit, async (req: Request, res: Response) => {
   try {
     const { organizationId, parentName, fullName, email, phone, password, childName, classId, studentId: reqStudentId, beltRank } = req.body;
     const parentFullName = parentName || fullName;
@@ -502,7 +506,7 @@ router.post('/register-parent', async (req: Request, res: Response) => {
       });
     }
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
@@ -545,7 +549,7 @@ router.post('/parent-link-requests', authenticateJWT, async (req: Request, res: 
       [`audit_${Date.now()}_${Math.random().toString(36).slice(2)}`, 'Parent Link Request', `Parent ${user.id} requested link to ${studentId}`, user.role, user.email]);
     return res.status(201).json({ linkRequest: result.rows[0] });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
@@ -592,7 +596,7 @@ router.get('/parent-link-requests', authenticateJWT, async (req: Request, res: R
     const result = await dbClient.query(query, params);
     return res.json({ linkRequests: result.rows });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
@@ -665,7 +669,7 @@ router.post('/parent-link-requests/:linkId/approve', authenticateJWT, async (req
 
     return res.json({ message: `Approval recorded. Link status is now: ${newStatus}`, status: newStatus });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
@@ -729,7 +733,7 @@ router.post('/parent-link-requests/:linkId/reject', authenticateJWT, async (req:
 
     return res.json({ message: 'Link request rejected.' });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
@@ -753,7 +757,7 @@ router.post('/parent-links/:linkId/revoke', authenticateJWT, async (req: Request
       [`audit_${Date.now()}_${Math.random().toString(36).slice(2)}`, 'Parent Link Revoked', `Link ${link.id} revoked`, user.role, user.email]);
     return res.json({ message: 'Link revoked.' });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 

@@ -19,3 +19,19 @@ local.properties
 # secrets - never commit
 release.keystore.base64
 *.jks
+*.p12
+*.keystore.base64
+
+# backend build output / local dev databases
+server/dist/
+server/node_modules/
+*.beltflow_pgdata/
+.beltflow_pgdata/
+
+# Android local toolchain / IDE state
+.kotlin/
+.idea/
+*.iml
+
+# scratch/session-local test artifacts - never intended for the repo
+scratch/

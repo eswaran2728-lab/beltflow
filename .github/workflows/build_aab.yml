@@ -5,17 +5,18 @@ on:
     branches: [ "**" ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  build:
+  # Runs on every branch/PR. Never touches signing secrets, so it is safe
+  # to run against untrusted branches/forks.
+  build-and-test:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -29,57 +30,86 @@ jobs:
           gradle-version: '8.11.1'
           cache-disabled: false
 
-      - name: Restore or Generate Release Keystore
-        run: |
-          if [ -n "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" ]; then
-            echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > release.keystore
-          else
-            echo "Generating self-signed release keystore for CI build..."
-            keytool -genkeypair -v -keystore release.keystore -storepass beltflowpass -alias beltflow -keypass beltflowpass -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=BeltFlow, OU=BeltFlow, O=BeltFlow, L=Sepang, ST=Selangor, C=MY"
-          fi
-
-      - name: Generate Gradle Wrapper
-        run: gradle wrapper --gradle-version 8.11.1
-
       - name: Run Android Unit Tests
         run: ./gradlew testDebugUnitTest --stacktrace
 
-      - name: Build Android App Bundle and Release APK
-        env:
-          KEYSTORE_PASSWORD: beltflowpass
-          KEY_ALIAS: beltflow
-          KEY_PASSWORD: beltflowpass
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Compile Release Sources (no signing)
+        run: ./gradlew compileReleaseKotlin --stacktrace
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+
+  # Produces a signed release AAB/APK. Only runs on main, and only signs
+  # when the real production keystore secrets are configured - it never
+  # falls back to a locally generated keystore, since a "release" build
+  # signed with a throwaway key is not a real release and must not be
+  # mistaken for one (e.g. accidentally uploaded to Play Console).
+  release-signing:
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Verify signing secrets are configured
         run: |
-          set +e
-          ./gradlew :app:bundleRelease :app:assembleRelease --stacktrace --info > gradle_build.log 2>&1
-          BUILD_STATUS=$?
-          if [ $BUILD_STATUS -ne 0 ]; then
-            echo "Build failed with exit code $BUILD_STATUS"
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git checkout --orphan ci-debug-log || git checkout -B ci-debug-log
-            git rm -rf . || true
-            cp gradle_build.log build_output.txt
-            git add build_output.txt
-            git commit -m "ci: capture build error log"
-            git push origin HEAD:ci-debug-log --force || true
-            tail -n 100 gradle_build.log
-            exit 1
+          if [ -z "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" ] || [ -z "${{ secrets.KEYSTORE_PASSWORD }}" ] || [ -z "${{ secrets.KEY_ALIAS }}" ] || [ -z "${{ secrets.KEY_PASSWORD }}" ]; then
+            echo "::warning::Release signing secrets are not configured (RELEASE_KEYSTORE_BASE64 / KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD). Skipping signed release build - this is expected until production signing is set up."
+            echo "SIGNING_READY=false" >> "$GITHUB_ENV"
+          else
+            echo "SIGNING_READY=true" >> "$GITHUB_ENV"
           fi
 
+      - name: Set up JDK 17
+        if: env.SIGNING_READY == 'true'
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        if: env.SIGNING_READY == 'true'
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+          cache-disabled: false
+
+      - name: Restore Release Keystore From Secret
+        if: env.SIGNING_READY == 'true'
+        run: echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+
+      - name: Build Signed Release App Bundle and APK
+        if: env.SIGNING_READY == 'true'
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew :app:bundleRelease :app:assembleRelease --stacktrace
+
       - name: Verify Signed Bundle
-        run: |
-          jarsigner -verify -verbose -certs app/build/outputs/bundle/release/app-release.aab || echo "Bundle verification completed"
+        if: env.SIGNING_READY == 'true'
+        run: jarsigner -verify -verbose -certs app/build/outputs/bundle/release/app-release.aab
 
       - name: Upload Release AAB (For Google Play Console)
+        if: env.SIGNING_READY == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: app-release-aab
           path: app/build/outputs/bundle/release/app-release.aab
 
       - name: Upload Release APK
+        if: env.SIGNING_READY == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: app-release-apk
           path: app/build/outputs/apk/release/app-release.apk
-

@@ -3,6 +3,7 @@ import { dbClient } from '../db/client';
 import { Permission, UserRole } from '../security/rbac';
 import { authenticateJWT, requirePermission } from '../middleware/auth';
 import { studentAccess } from '../security/access';
+import { safeErrorMessage } from '../security/errors';
 
 const router = Router();
 
@@ -34,7 +35,7 @@ router.post('/', authenticateJWT, requirePermission(Permission.PERSATUAN_MANAGE_
 
     return res.status(201).json({ message: 'Grading event created successfully in PostgreSQL.', event: eventRes.rows[0] });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
@@ -55,7 +56,7 @@ router.get('/organization/:orgId', authenticateJWT, async (req: Request, res: Re
     );
     return res.json({ gradingEvents: listRes.rows });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
@@ -79,7 +80,7 @@ router.post('/:eventId/register', authenticateJWT, async (req: Request, res: Res
       [id, req.params.eventId, studentId, access.student.belt_rank, targetBelt]);
     return res.status(201).json({ candidate: result.rows[0] });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
@@ -149,7 +150,7 @@ router.post('/:eventId/score', authenticateJWT, requirePermission(Permission.CLA
 
     return res.json({ message: 'Grading results saved and certificates issued in PostgreSQL.', issuedCertificates: issuedCerts });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 

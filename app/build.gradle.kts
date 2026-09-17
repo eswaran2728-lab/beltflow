@@ -29,10 +29,24 @@ android {
         }
     }
 
+    // Release must never silently fall back to the emulator-loopback
+    // address used for local development. There is no fixed production
+    // backend URL decided yet, so this is passed in at build time
+    // (-PRELEASE_API_BASE_URL=... or a RELEASE_API_BASE_URL env var) and
+    // left blank otherwise - BeltFlowApiClient treats a blank release URL
+    // as a hard configuration error rather than defaulting to localhost.
+    val releaseApiBaseUrl = (project.findProperty("RELEASE_API_BASE_URL") as String?)
+        ?: System.getenv("RELEASE_API_BASE_URL")
+        ?: ""
+
     buildTypes {
+        debug {
+            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:4000/api/v1/\"")
+        }
         release {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("release")
+            buildConfigField("String", "API_BASE_URL", "\"$releaseApiBaseUrl\"")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -48,6 +62,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

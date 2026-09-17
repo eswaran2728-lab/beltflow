@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!--
+        The app's local Room cache can hold student/parent personal data.
+        Auto Backup (and adb backup) would otherwise copy that data off-device;
+        disable it for release builds only so local development is unaffected.
+    -->
+    <application android:allowBackup="false" tools:replace="android:allowBackup" />
+</manifest>

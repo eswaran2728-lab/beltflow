@@ -3,6 +3,7 @@ import { dbClient } from '../db/client';
 import { Permission, UserRole } from '../security/rbac';
 import { authenticateJWT, requirePermission } from '../middleware/auth';
 import { studentAccess } from '../security/access';
+import { safeErrorMessage } from '../security/errors';
 
 const router = Router();
 
@@ -38,7 +39,7 @@ router.get('/organization/:orgId', authenticateJWT, async (req: Request, res: Re
          WHERE p.organization_id = $1 ORDER BY p.created_at DESC`, [req.params.orgId]);
     return res.json({ payments: result.rows });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
@@ -49,7 +50,7 @@ router.get('/student/:studentId', authenticateJWT, async (req: Request, res: Res
     const result = await dbClient.query('SELECT * FROM payments WHERE student_id = $1 ORDER BY created_at DESC', [req.params.studentId]);
     return res.json({ payments: result.rows });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
@@ -95,7 +96,7 @@ router.post('/submit-payment', authenticateJWT, async (req: Request, res: Respon
 
     return res.status(201).json({ message: 'Payment notice submitted for review.', payment: payRes.rows[0] });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
@@ -142,7 +143,7 @@ router.post('/:paymentId/approve', authenticateJWT, requirePermission(Permission
 
     return res.json({ message: 'Payment approved successfully in PostgreSQL.', payment: updatePayRes!.rows[0] });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
@@ -166,7 +167,7 @@ router.post('/:paymentId/reject', authenticateJWT, requirePermission(Permission.
       [`audit_${Date.now()}_${Math.random().toString(36).slice(2)}`, 'Payment Rejected', `Payment ${payment.id} rejected`, req.user!.role, req.user!.email]);
     return res.json({ payment: updated.rows[0] });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
@@ -217,7 +218,7 @@ router.post('/record-cash-payment', authenticateJWT, requirePermission(Permissio
 
     return res.status(201).json({ message: 'Cash payment recorded and receipt generated in PostgreSQL.', payment: payRes!.rows[0] });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 

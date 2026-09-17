@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { dbClient } from '../db/client';
 import { Permission } from '../security/rbac';
 import { authenticateJWT, requirePermission } from '../middleware/auth';
+import { safeErrorMessage } from '../security/errors';
 
 const router = Router();
 
@@ -35,7 +36,7 @@ router.post('/', authenticateJWT, requirePermission(Permission.PERSATUAN_MANAGE_
 
     return res.status(201).json({ message: 'Tournament scheduled in PostgreSQL.', tournament: insertRes.rows[0] });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
@@ -51,7 +52,7 @@ router.get('/organization/:orgId', authenticateJWT, async (req: Request, res: Re
     );
     return res.json({ tournaments: listRes.rows });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
@@ -117,7 +118,7 @@ router.post('/:id/results', authenticateJWT, requirePermission(Permission.PERSAT
       issuedCertificates
     });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 

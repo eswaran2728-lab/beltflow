@@ -3,6 +3,7 @@ import { dbClient } from '../db/client';
 import { Permission, UserRole } from '../security/rbac';
 import { hashPasswordServer } from '../security/crypto';
 import { authenticateJWT, requirePermission } from '../middleware/auth';
+import { safeErrorMessage } from '../security/errors';
 
 const router = Router();
 
@@ -51,7 +52,7 @@ router.post('/', authenticateJWT, requirePermission(Permission.PERSATUAN_MANAGE_
 
     return res.status(201).json({ message: 'Coach registered successfully in PostgreSQL.', coach: insertRes.rows[0] });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
@@ -67,7 +68,7 @@ router.get('/organization/:orgId', authenticateJWT, requirePermission(Permission
     );
     return res.json({ coaches: listRes.rows });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Database error', message: err.message });
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
