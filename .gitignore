@@ -14,3 +14,7 @@ out/
 *.pem
 .env*
 .vercel
+
+# secrets - never commit
+release.keystore.base64
+*.jks
