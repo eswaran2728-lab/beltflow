@@ -146,6 +146,24 @@ PostgreSQL outage, with a new regression test
 were also found and fixed. Android Phase 7B remains BLOCKED/OPEN,
 unrelated to and not resolved by this phase.
 
+## 6d. Release Candidate Freeze & Final Regression Certification (Phase 9B)
+
+**Status: WEB RELEASE CANDIDATE CERTIFIED.** A full release-candidate
+freeze regression pass was executed against commit `9bb51df` (no code
+change was needed - zero P0/P1/P2 defects found): clean-build
+reproducibility, the full 84/84 authoritative backend suite, production
+config enforcement (CORS/JWT fail-closed, DB pool crash survival
+re-proven against a real outage), a fresh database RC regression, a
+five-role web smoke test re-confirming every Phase 9A fix is intact, a
+true-375px mobile regression, and an Android non-runtime build
+regression (`compileDebugKotlin`, `testDebugUnitTest` 26/26,
+`assembleDebug`, `compileReleaseKotlin` all pass) - see
+[RELEASE_CANDIDATE_REPORT.md](RELEASE_CANDIDATE_REPORT.md) for the full
+ledger, artifact hashes, and rollback reference. **Android remains NOT
+READY** (Phase 7B physical-device UAT still open/blocked, unrelated to
+and not resolved by this phase). This phase does **not** declare
+production go-live - all external gates in §8 remain open.
+
 ## 7. Rollback
 
 - [ ] Note the previous known-good git commit hash and, if applicable, the
