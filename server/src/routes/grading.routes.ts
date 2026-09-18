@@ -151,6 +151,14 @@ router.post('/:eventId/score', authenticateJWT, requirePermission(Permission.CLA
       }
     }
 
+    await dbClient.query(
+      `INSERT INTO audit_logs (id, action, details, user_role, user_email)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [`audit_${Date.now()}_${Math.random().toString(36).slice(2)}`, 'Grading Results Recorded',
+       `Recorded results for grading event ${event.id} (${results.length} candidates, ${issuedCerts.length} certificates issued)`,
+       req.user!.role, req.user!.email]
+    );
+
     return res.json({ message: 'Grading results saved and certificates issued in PostgreSQL.', issuedCertificates: issuedCerts });
   } catch (err: any) {
     console.error('[Database error]', err);

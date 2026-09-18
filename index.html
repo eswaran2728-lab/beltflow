@@ -2270,6 +2270,23 @@
               status: s.status === 'ACTIVE' ? 'Active' : s.status,
               sibling: s.has_sibling_discount
             }));
+
+            // skillProgress was previously declared but never populated from
+            // the API anywhere - every "Current Level" badge (coach, parent,
+            // student views) always fell back to "Not started" regardless of
+            // what was actually saved, even after reload. There's no per-
+            // organization skills list endpoint, only per-student, so fetch
+            // each enrolled student's progress and merge it in.
+            skillProgress = {};
+            const skillResults = await Promise.all(students.map(s => fetchApi('/skills/student/' + s.id)));
+            students.forEach((s, i) => {
+              const sr = skillResults[i];
+              if (sr.ok && sr.data && sr.data.skills) {
+                sr.data.skills.forEach(sk => {
+                  skillProgress[`${s.id}_${sk.skill_id}`] = { level: sk.level, notes: sk.notes || '' };
+                });
+              }
+            });
           }
 
           if (activeUser.role === 'ADMIN_PERSATUAN') {
@@ -2459,6 +2476,14 @@
       // otherwise unreachable at narrow widths, so it moves into a "More"
       // overflow sheet rather than being silently dropped.
       const mobileNav = document.getElementById('mobileBottomNav');
+      // Truncating a label to its first word made every Student-role tab
+      // starting with "My " (My Progress, My Syllabus, My Certificates)
+      // read as an identical, ambiguous "My" - skip that leading word so
+      // the second word (the actually distinguishing one) is shown instead.
+      function mobileTabShortLabel(label) {
+        const words = label.split(' ');
+        return (words[0] === 'My' && words.length > 1) ? words[1] : words[0];
+      }
       if (mobileNav) {
         const primaryItems = r.nav.slice(0, 4);
         const overflowItems = r.nav.slice(4);
@@ -2466,7 +2491,7 @@
         mobileNav.innerHTML = primaryItems.map(item => `
           <button class="mobile-tab-btn ${currentTab === item.id ? 'active' : ''}" onclick="switchTab('${item.id}')">
             <i data-lucide="${item.icon}"></i>
-            <span>${item.label.split(' ')[0]}</span>
+            <span>${mobileTabShortLabel(item.label)}</span>
           </button>
         `).join('') + (overflowItems.length ? `
           <button class="mobile-tab-btn ${overflowActive ? 'active' : ''}" onclick="toggleMobileMoreMenu()">
@@ -5185,7 +5210,7 @@
               <div class="kpi-value" style="font-size:20px;color:${activeChild.billingStatus === 'Paid' ? 'var(--bf-success)' : 'var(--bf-amber)'}">
                 ${activeChild.billingStatus === 'Paid' ? 'RM ' + (activeChild.monthlyFee || 120) + ' (Paid)' : 'Pending (RM ' + (activeChild.monthlyFee || 120) + ')'}
               </div>
-              <div class="kpi-subtext">${parentChildren.length > 1 ? `${activePersatuan ? (activePersatuan.siblingDiscountPercent || 10) : 10}% Sibling Discount Applied` : 'Standard Tuition'}</div>
+              <div class="kpi-subtext">${activeChild.sibling ? `${activePersatuan ? (activePersatuan.siblingDiscountPercent || 10) : 10}% Sibling Discount Applied` : 'Standard Tuition'}</div>
             </div>
             <div class="kpi-card">
               <div class="kpi-title">Earned Digital Certificates</div>

@@ -114,8 +114,8 @@ documents these, with no values):
 - [x] Backend: `test_adversarial_security.js` (20/20), `test_receipt_integrity.js`
       (7/7), `test_process_restart_persistence.js` (10/10),
       `test_link_and_grading_gaps.js` (8/8), `test_production_hardening.js`
-      (15/15, new in Phase 8C) - all green as of Phase 8C, commit history
-      in this file's own repo.
+      (15/15) - all still green as of Phase 9A, after the DB-pool-crash
+      fix and all UI/audit-trail fixes.
 - [ ] Android: `compileDebugKotlin`, `testDebugUnitTest` (26/26 baseline),
       `assembleDebug`.
 
@@ -129,6 +129,22 @@ display showing "undefined" fields). **Not covered:** a real public
 staging URL with actual HTTPS/TLS and reverse-proxy behavior - this
 sandbox had no such environment to test against (see
 STAGING_DEPLOYMENT.md §7, §16).
+
+## 6c. Final Full-System UAT (Phase 9A)
+
+**Status: VERIFIED (web).** A complete fresh-academy lifecycle was driven
+through the real UI (five roles, class transfer, billing, grading,
+tournaments, certificates, password lifecycle, security/IDOR matrix,
+restart persistence, real database-outage recovery) - see
+[FINAL_UAT_REPORT.md](FINAL_UAT_REPORT.md) for the full ledger and defect
+list. One **P1** was found and fixed this phase: a transient database
+disconnection previously crashed the entire backend process
+(`server/src/db/client.ts` now handles `pg.Pool` connection errors instead
+of letting them crash the process) - re-tested against a real
+PostgreSQL outage, with a new regression test
+(`scratch/test_db_pool_crash_fix.js`). Six P2/P3 UI/audit-trail defects
+were also found and fixed. Android Phase 7B remains BLOCKED/OPEN,
+unrelated to and not resolved by this phase.
 
 ## 7. Rollback
 

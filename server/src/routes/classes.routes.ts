@@ -58,9 +58,13 @@ router.post('/', authenticateJWT, requirePermission(Permission.PERSATUAN_MANAGE_
 router.get('/organization/:orgId', authenticateJWT, requirePermission(Permission.CLASS_VIEW), async (req: Request, res: Response) => {
   try {
     const listRes = req.user!.role === UserRole.MASTER
-      ? await dbClient.query(`SELECT c.* FROM classes c JOIN coach_class_assignments a ON a.class_id = c.id
+      ? await dbClient.query(`SELECT c.*, u.full_name AS master_name FROM classes c
+                              JOIN coach_class_assignments a ON a.class_id = c.id
+                              LEFT JOIN users u ON u.id = c.main_master_id
                               WHERE c.organization_id = $1 AND a.coach_id = $2 ORDER BY c.created_at DESC`, [req.params.orgId, req.user!.id])
-      : await dbClient.query('SELECT * FROM classes WHERE organization_id = $1 ORDER BY created_at DESC', [req.params.orgId]);
+      : await dbClient.query(`SELECT c.*, u.full_name AS master_name FROM classes c
+                              LEFT JOIN users u ON u.id = c.main_master_id
+                              WHERE c.organization_id = $1 ORDER BY c.created_at DESC`, [req.params.orgId]);
     return res.json({ classes: listRes.rows });
   } catch (err: any) {
     console.error('[Database error]', err);

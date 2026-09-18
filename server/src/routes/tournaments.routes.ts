@@ -113,6 +113,14 @@ router.post('/:id/results', authenticateJWT, requirePermission(Permission.PERSAT
 
     await dbClient.query(`UPDATE tournaments SET status = 'Completed' WHERE id = $1`, [tourneyId]);
 
+    await dbClient.query(
+      `INSERT INTO audit_logs (id, action, details, user_role, user_email)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [`audit_${Date.now()}`, 'Tournament Results Finalized',
+       `Finalized results for tournament ${tourneyId} (${results.length} entries, ${issuedCertificates.length} certificates issued)`,
+       req.user!.role, req.user!.email]
+    );
+
     return res.json({
       message: 'Tournament results and certificates recorded in PostgreSQL.',
       count: issuedCertificates.length,

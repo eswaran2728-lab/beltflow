@@ -32,6 +32,15 @@ class PostgresDatabaseClient {
         connectionString: dbUrl,
         ssl: useSsl ? { rejectUnauthorized: false } : false
       });
+      // pg's Pool emits 'error' on an idle client (e.g. the network drops,
+      // or the DB restarts) - without a listener, Node treats that as an
+      // uncaught exception and crashes the ENTIRE process on any transient
+      // DB blip, not just the affected request. A brief outage must
+      // degrade to failing requests (see /api/health/ready), never take
+      // the whole server down.
+      this.pgPool.on('error', (err) => {
+        console.error('[Database pool error - connection dropped, will retry on next query]', err);
+      });
       // Test connection
       const client = await this.pgPool.connect();
       client.release();
