@@ -6,21 +6,36 @@ repository and cannot be verified by running code here.
 
 ## 1. Signing
 
-- [ ] **(external)** Confirm in Google Play Console → Setup → App integrity
-      whether Play App Signing is enabled, and whether the historically
-      exposed `release.keystore` is the **upload key** or the **app
-      signing key**. See Phase 8 report §2-5 for exactly what to check.
-- [ ] **(external)** If it is (or might be) the app signing key: contact
-      Google Play support about compromised-key remediation before any
-      further production release.
-- [ ] **(external)** If it is the upload key under Play App Signing:
-      generate a new upload key and request an upload key reset in Play
-      Console.
-- [ ] Generate/store the replacement keystore outside this repository.
-      Set `RELEASE_KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`,
-      `KEY_PASSWORD` as GitHub Actions secrets - never as repository files.
-- [ ] Confirm `.github/workflows/build_aab.yml`'s `release-signing` job only
-      runs on `main` and only signs when all four secrets are present.
+**PRODUCTION SIGNING CLASSIFICATION: RESOLVED**
+
+- Package: `com.eswaran.beltflow`
+- Google Play App Signing: **ENABLED**
+- Historical exposed key: **UPLOAD KEY ONLY** (confirmed in Play Console
+  under Setup → App integrity → Upload key certificate; Google's own
+  app-signing key was never exposed and was never touched by this
+  rotation)
+- Historical upload key: **COMPROMISED / RETIRED** — old SHA-1
+  `FC:CF:02:7E:5F:CE:D9:2E:D8:F5:85:77:00:8B:D2:C3:09:B4:5E:9A`
+- Replacement upload key: **REGISTERED WITH GOOGLE PLAY** — new SHA-1
+  `86:30:9A:E7:F1:E3:1B:7E:4F:7D:68:4A:2B:61:90:13:AE:36:DD:95`, new
+  SHA-256
+  `B5:E8:5F:DC:29:59:A9:DC:9C:F4:E4:F9:DC:18:02:9C:CE:0F:1F:DA:6A:12:B1:06:29:95:F7:34:B0:1B:92:E4`
+- Replacement activation: **2026-09-20 01:01 UTC / 2026-09-20 09:01 MYT**.
+  Google Play will not accept any APK/AAB upload before this time - do
+  not attempt a Play release until after activation.
+- New private keystore lives outside this repository at
+  `C:\Users\eswaranp\beltflow_signing_2026\beltflow-upload-2026.jks`
+  (never committed; password stored in the user's password manager, not
+  in any file in this repo).
+- [ ] Set `RELEASE_KEYSTORE_BASE64` (base64 of the new `.jks`),
+      `KEYSTORE_PASSWORD`, `KEY_ALIAS` (`upload`), `KEY_PASSWORD` as
+      GitHub Actions secrets before the next signed release build - never
+      as repository files.
+- [ ] Confirm `.github/workflows/build_aab.yml`'s `release-signing` job
+      only runs on `main` and only signs when all four secrets are
+      present.
+- **Google Play release upload: TEMPORARILY WAITING FOR NEW KEY
+  ACTIVATION** (see date above). Do not upload before then.
 
 ## 2. Android Release Configuration
 
@@ -102,8 +117,13 @@ documents these, with no values):
 
 Do **not** proceed to publishing/go-live (Phase 9) until:
 
-- Signing-key identity is confirmed and remediated (§1).
-- Phase 7B real-device UAT is complete (§2).
+- ~~Signing-key identity is confirmed and remediated (§1).~~ **RESOLVED**
+  - upload key rotated and registered with Google Play; new key is not
+    valid for uploads until 2026-09-20 01:01 UTC (see §1).
+- Phase 7B real-device UAT is complete (§2) - still blocked pending a
+  physical Android device.
 - Production environment variables are set on the real host, not assumed
   (§3).
 - A backup has been verified restorable at least once (§4).
+- The current date/time is at or after the new upload key's activation
+  time (§1) before any Play Console upload is attempted.
