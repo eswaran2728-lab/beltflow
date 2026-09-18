@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { dbClient } from '../db/client';
 import { Permission, UserRole } from '../security/rbac';
 import { hashPasswordServer } from '../security/crypto';
+import { validatePassword } from '../security/passwordPolicy';
 import { authenticateJWT, requirePermission } from '../middleware/auth';
 import { safeErrorMessage } from '../security/errors';
 
@@ -14,6 +15,10 @@ router.post('/', authenticateJWT, requirePermission(Permission.ORGANIZATION_CREA
 
     if (!name || !masterName || !email || !password) {
       return res.status(400).json({ error: 'Name, masterName, email, and password are required.' });
+    }
+    const orgPasswordCheck = validatePassword(password);
+    if (!orgPasswordCheck.valid) {
+      return res.status(400).json({ error: orgPasswordCheck.error });
     }
 
     const existingOrg = await dbClient.query('SELECT id FROM organizations WHERE LOWER(email) = LOWER($1)', [email.trim()]);

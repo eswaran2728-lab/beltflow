@@ -1553,7 +1553,7 @@
           </div>
           <div>
             <label class="bf-label">Master Password</label>
-            <input type="password" id="setupAdminPass" required placeholder="Create secure password" class="bf-input">
+            <input type="password" id="setupAdminPass" required minlength="12" maxlength="128" placeholder="At least 12 characters" class="bf-input">
           </div>
           <div>
             <label class="bf-label">Confirm Password</label>
@@ -2022,14 +2022,22 @@
       const pass = document.getElementById('setupAdminPass').value.trim();
       const confirmPass = document.getElementById('setupAdminConfirmPass').value.trim();
 
-      if (!pass || pass !== confirmPass) {
+      if (!pass || pass.length < 12) {
+        alert('Password must be at least 12 characters.');
+        return;
+      }
+      if (pass.length > 128) {
+        alert('Password must be at most 128 characters.');
+        return;
+      }
+      if (pass !== confirmPass) {
         alert('Passwords do not match. Please re-enter.');
         return;
       }
 
       const res = await fetchApi('/auth/setup-admin', {
         method: 'POST',
-        body: JSON.stringify({ fullName: name, email, phone, password: pass })
+        body: JSON.stringify({ fullName: name, email, phone, password: pass, confirmPassword: confirmPass })
       });
 
       if (!res.ok || !res.data) {

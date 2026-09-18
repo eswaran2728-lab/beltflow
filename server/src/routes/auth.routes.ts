@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { dbClient } from '../db/client';
 import { UserRole } from '../security/rbac';
 import { hashPasswordServer, verifyPasswordServer, generateAuthToken } from '../security/crypto';
+import { validatePassword } from '../security/passwordPolicy';
 import { authenticateJWT } from '../middleware/auth';
 import { safeErrorMessage } from '../security/errors';
 import { rateLimit } from '../middleware/rateLimit';
@@ -52,9 +53,17 @@ router.post('/setup-admin', authAttemptLimit, async (req: Request, res: Response
       return res.status(403).json({ error: 'Security Exception: Super Admin setup is permanently locked after initialization.' });
     }
 
-    const { fullName, email, phone, password } = req.body;
+    const { fullName, email, phone, password, confirmPassword } = req.body;
     if (!fullName || !email || !password) {
       return res.status(400).json({ error: 'Full name, email, and password are required.' });
+    }
+
+    const passwordCheck = validatePassword(password);
+    if (!passwordCheck.valid) {
+      return res.status(400).json({ error: passwordCheck.error });
+    }
+    if (confirmPassword !== undefined && password.trim() !== String(confirmPassword).trim()) {
+      return res.status(400).json({ error: 'Password and confirmation do not match.' });
     }
 
     const userId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -211,8 +220,9 @@ router.post('/change-password', authAttemptLimit, authenticateJWT, async (req: R
     if (!currentPassword || !currentPassword.trim()) {
       return res.status(400).json({ error: 'Current password is required to change your password.' });
     }
-    if (!newPassword || newPassword.trim().length < 6) {
-      return res.status(400).json({ error: 'New password must be at least 6 characters.' });
+    const newPasswordCheck = validatePassword(newPassword);
+    if (!newPasswordCheck.valid) {
+      return res.status(400).json({ error: newPasswordCheck.error });
     }
 
     const userRes = await dbClient.query('SELECT password_hash FROM users WHERE id = $1', [req.user!.id]);
@@ -249,6 +259,10 @@ router.post('/register-student', authAttemptLimit, async (req: Request, res: Res
 
     if (!fullName || !email || !password || !organizationId || !classId) {
       return res.status(400).json({ error: 'fullName, email, password, organizationId, and requested classId are required.' });
+    }
+    const studentPasswordCheck = validatePassword(password);
+    if (!studentPasswordCheck.valid) {
+      return res.status(400).json({ error: studentPasswordCheck.error });
     }
 
     const cleanEmail = email.trim().toLowerCase();
@@ -397,6 +411,10 @@ router.post('/register-parent', authAttemptLimit, async (req: Request, res: Resp
     const parentFullName = parentName || fullName;
     if (!parentFullName || !email || !password) {
       return res.status(400).json({ error: 'fullName/parentName, email, and password are required.' });
+    }
+    const parentPasswordCheck = validatePassword(password);
+    if (!parentPasswordCheck.valid) {
+      return res.status(400).json({ error: parentPasswordCheck.error });
     }
     if (!reqStudentId && (!childName || !classId)) {
       return res.status(400).json({ error: 'Child name and class are required for a new child.' });

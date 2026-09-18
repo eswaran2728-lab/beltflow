@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { dbClient } from '../db/client';
 import { Permission, UserRole } from '../security/rbac';
 import { hashPasswordServer } from '../security/crypto';
+import { validatePassword } from '../security/passwordPolicy';
 import { authenticateJWT, requirePermission } from '../middleware/auth';
 import { safeErrorMessage } from '../security/errors';
 
@@ -13,6 +14,10 @@ router.post('/', authenticateJWT, requirePermission(Permission.PERSATUAN_MANAGE_
     const { organizationId, fullName, email, phone, password, credentialLevel, assignedClassId } = req.body;
     if (!organizationId || !fullName || !email || !password) {
       return res.status(400).json({ error: 'organizationId, fullName, email, and password are required.' });
+    }
+    const coachPasswordCheck = validatePassword(password);
+    if (!coachPasswordCheck.valid) {
+      return res.status(400).json({ error: coachPasswordCheck.error });
     }
 
     const orgId = req.user!.organizationId || organizationId;

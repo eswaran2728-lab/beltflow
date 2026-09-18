@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { dbClient } from '../db/client';
 import { Permission, UserRole } from '../security/rbac';
 import { hashPasswordServer } from '../security/crypto';
+import { validatePassword } from '../security/passwordPolicy';
 import { authenticateJWT, requirePermission } from '../middleware/auth';
 import { studentAccess } from '../security/access';
 import { safeErrorMessage } from '../security/errors';
@@ -49,6 +50,10 @@ router.post('/', authenticateJWT, requirePermission(Permission.PERSATUAN_MANAGE_
     let userId: string | null = null;
 
     if (email && password) {
+      const studentPasswordCheck = validatePassword(password);
+      if (!studentPasswordCheck.valid) {
+        return res.status(400).json({ error: studentPasswordCheck.error });
+      }
       userId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
       const passHash = hashPasswordServer(password.trim());
       await dbClient.query(

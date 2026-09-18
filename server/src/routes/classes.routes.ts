@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { dbClient } from '../db/client';
 import { Permission, UserRole } from '../security/rbac';
 import { hashPasswordServer } from '../security/crypto';
+import { validatePassword } from '../security/passwordPolicy';
 import { authenticateJWT, requirePermission } from '../middleware/auth';
 import { safeErrorMessage } from '../security/errors';
 
@@ -80,6 +81,10 @@ router.post('/masters', authenticateJWT, requirePermission(Permission.PERSATUAN_
 
     if (!fullName || !email || !password || !orgId) {
       return res.status(400).json({ error: 'Full name, email, password, and organizationId are required.' });
+    }
+    const masterPasswordCheck = validatePassword(password);
+    if (!masterPasswordCheck.valid) {
+      return res.status(400).json({ error: masterPasswordCheck.error });
     }
     const classIds = Array.isArray(assignedClassIds) ? assignedClassIds : [];
     for (const cid of classIds) {

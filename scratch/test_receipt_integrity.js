@@ -76,8 +76,8 @@ async function run() {
     check('payments_receipt_no_unique index exists in PostgreSQL', idxRes.rowCount === 1);
 
     console.log('\n--- FORCED COLLISION: DB rejects a duplicate receipt_no, app must not crash ---');
-    const stu1 = await req(PORT, 'POST', '/api/v1/students', { organizationId: orgId, classId, fullName: 'Student One', email: 's1@a.test', password: 'Pass2026!' }, token);
-    const stu2 = await req(PORT, 'POST', '/api/v1/students', { organizationId: orgId, classId, fullName: 'Student Two', email: 's2@a.test', password: 'Pass2026!' }, token);
+    const stu1 = await req(PORT, 'POST', '/api/v1/students', { organizationId: orgId, classId, fullName: 'Student One', email: 's1@a.test', password: 'StudentPass2026!' }, token);
+    const stu2 = await req(PORT, 'POST', '/api/v1/students', { organizationId: orgId, classId, fullName: 'Student Two', email: 's2@a.test', password: 'StudentPass2026!' }, token);
     const studentId1 = stu1.body.student.id, studentId2 = stu2.body.student.id;
 
     const cash1 = await req(PORT, 'POST', '/api/v1/billing/record-cash-payment', { studentId: studentId1, amount: 50 }, token);
@@ -102,7 +102,7 @@ async function run() {
     check('Database rejects a second row with an identical receipt_no', dupInsertRejected);
 
     console.log('\n--- CONCURRENT CASH PAYMENTS: all receipts unique ---');
-    const stu3 = await req(PORT, 'POST', '/api/v1/students', { organizationId: orgId, classId, fullName: 'Student Three', email: 's3@a.test', password: 'Pass2026!' }, token);
+    const stu3 = await req(PORT, 'POST', '/api/v1/students', { organizationId: orgId, classId, fullName: 'Student Three', email: 's3@a.test', password: 'StudentPass2026!' }, token);
     const studentId3 = stu3.body.student.id;
     const concurrentResults = await Promise.all(
       Array.from({ length: 8 }, () => req(PORT, 'POST', '/api/v1/billing/record-cash-payment', { studentId: studentId3, amount: 20 }, token))
