@@ -38,6 +38,7 @@ router.post('/verify', authenticateJWT, requirePermission(Permission.CERTIFICATE
       }
     });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -50,6 +51,7 @@ router.get('/student/:studentId', authenticateJWT, async (req: Request, res: Res
     const certsRes = await dbClient.query('SELECT * FROM certificates WHERE student_id = $1 ORDER BY created_at DESC', [req.params.studentId]);
     return res.json({ certificates: certsRes.rows });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });

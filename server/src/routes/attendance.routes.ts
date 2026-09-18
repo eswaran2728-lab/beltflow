@@ -48,6 +48,7 @@ router.post('/record', authenticateJWT, requirePermission(Permission.CLASS_MARK_
 
     return res.json({ message: 'Attendance recorded successfully in PostgreSQL.', count: records.length });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -59,6 +60,7 @@ router.get('/class/:classId', authenticateJWT, requirePermission(Permission.CLAS
     const listRes = await dbClient.query('SELECT * FROM attendance_records WHERE class_id = $1 ORDER BY marked_at DESC', [req.params.classId]);
     return res.json({ attendance: listRes.rows });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });

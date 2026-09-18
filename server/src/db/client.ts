@@ -20,9 +20,17 @@ class PostgresDatabaseClient {
 
     if (dbUrl) {
       console.log('🔌 Connecting to remote PostgreSQL database via DATABASE_URL...');
+      // Most managed PostgreSQL providers require SSL, so it defaults on
+      // in production. But a self-hosted/staging PostgreSQL instance may
+      // not have SSL configured at all - forcing it unconditionally would
+      // make the app impossible to run against such a database ("The
+      // server does not support SSL connections"). DATABASE_SSL lets an
+      // operator override the default explicitly either way.
+      const sslMode = process.env.DATABASE_SSL;
+      const useSsl = sslMode === 'require' ? true : sslMode === 'disable' ? false : process.env.NODE_ENV === 'production';
       this.pgPool = new Pool({
         connectionString: dbUrl,
-        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+        ssl: useSsl ? { rejectUnauthorized: false } : false
       });
       // Test connection
       const client = await this.pgPool.connect();

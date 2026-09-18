@@ -16,6 +16,7 @@ router.get('/me', authenticateJWT, async (req: Request, res: Response) => {
     const access = await studentAccess(req.user, result.rows[0].id);
     return res.json({ student: access.student });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -75,6 +76,7 @@ router.post('/', authenticateJWT, requirePermission(Permission.PERSATUAN_MANAGE_
       student: studentRes.rows[0]
     });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -92,6 +94,7 @@ router.get('/organization/:orgId', authenticateJWT, async (req: Request, res: Re
       : await dbClient.query('SELECT * FROM students WHERE organization_id = $1 ORDER BY registered_at DESC', [req.params.orgId]);
     return res.json({ students: listRes.rows });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -128,6 +131,7 @@ router.post('/:studentId/transfer-requests', authenticateJWT, async (req: Reques
       [id, access.student.id, access.student.organization_id, oldClassId, newClassId]);
     return res.status(201).json({ transfer: result.rows[0] });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -171,6 +175,7 @@ router.post('/transfer-requests/:transferId/:decision', authenticateJWT, async (
        req.user.role, req.user.email]);
     return res.json({ status: 'APPROVED' });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -187,6 +192,7 @@ router.get('/transfer-requests/pending', authenticateJWT, async (req: Request, r
        ORDER BY t.created_at DESC`, [user.organizationId, user.assignedClassIds || []]);
     return res.json({ transfers: result.rows });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -202,6 +208,7 @@ router.get('/:studentId', authenticateJWT, async (req: Request, res: Response) =
 
     return res.json({ student: access.student });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });

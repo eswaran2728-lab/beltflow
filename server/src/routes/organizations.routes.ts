@@ -59,6 +59,7 @@ router.post('/', authenticateJWT, requirePermission(Permission.ORGANIZATION_CREA
     });
   } catch (err: any) {
     console.error('Organization onboarding error:', err);
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -69,6 +70,7 @@ router.get('/', authenticateJWT, requirePermission(Permission.SUPER_ADMIN_MANAGE
     const listRes = await dbClient.query('SELECT * FROM organizations ORDER BY created_at DESC');
     return res.json({ organizations: listRes.rows });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -83,6 +85,7 @@ router.get('/:orgId', authenticateJWT, async (req: Request, res: Response) => {
     if (orgRes.rowCount === 0) return res.status(404).json({ error: 'Organization not found.' });
     return res.json({ organization: orgRes.rows[0] });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -114,6 +117,7 @@ router.put('/:orgId', authenticateJWT, requirePermission(Permission.PERSATUAN_ED
 
     return res.json({ message: 'Settings updated successfully.', organization: orgRes.rows[0] });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });

@@ -15,6 +15,7 @@ router.get('/setup-status', async (_req: Request, res: Response) => {
     const result = await dbClient.query("SELECT 1 FROM users WHERE role = 'SUPER_ADMIN' LIMIT 1");
     return res.json({ setupRequired: result.rowCount === 0 });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -25,6 +26,7 @@ router.get('/registration-organizations', async (_req: Request, res: Response) =
       "SELECT id, name, state, martial_art_style FROM organizations WHERE status = 'ACTIVE' ORDER BY name");
     return res.json({ organizations: result.rows });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -37,6 +39,7 @@ router.get('/registration-organizations/:orgId/classes', async (req: Request, re
       [req.params.orgId]);
     return res.json({ classes: result.rows });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -86,6 +89,7 @@ router.post('/setup-admin', authAttemptLimit, async (req: Request, res: Response
     });
   } catch (err: any) {
     console.error('Setup admin error:', err);
+    console.error('[Internal database error]', err);
     return res.status(500).json({ error: 'Internal database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -170,6 +174,7 @@ router.post('/login', authAttemptLimit, async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error('Login error:', err);
+    console.error('[Internal server error]', err);
     return res.status(500).json({ error: 'Internal server error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -193,6 +198,7 @@ router.get('/me', authenticateJWT, async (req: Request, res: Response) => {
       }
     });
   } catch (err: any) {
+    console.error('[Internal database error]', err);
     return res.status(500).json({ error: 'Internal database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -228,6 +234,7 @@ router.post('/change-password', authAttemptLimit, authenticateJWT, async (req: R
 
     return res.json({ message: 'Password successfully updated in PostgreSQL database.' });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -305,6 +312,7 @@ router.post('/register-student', authAttemptLimit, async (req: Request, res: Res
       }
     });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -321,6 +329,7 @@ router.get('/student-registrations/pending', authenticateJWT, async (req: Reques
        ORDER BY s.registered_at DESC`, [req.user.organizationId, req.user.assignedClassIds || []]);
     return res.json({ registrations: result.rows });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -347,6 +356,7 @@ router.post('/student-registrations/:studentId/approve', authenticateJWT, async 
       [`audit_${Date.now()}_${Math.random().toString(36).slice(2)}`, 'Student Registration Approved', `Student ${row.id} activated`, req.user.role, req.user.email]);
     return res.json({ message: 'Student account activated.' });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -372,6 +382,7 @@ router.post('/student-registrations/:studentId/reject', authenticateJWT, async (
       [`audit_${Date.now()}_${Math.random().toString(36).slice(2)}`, 'Student Registration Rejected', `Student ${row.id} rejected`, req.user.role, req.user.email]);
     return res.json({ message: 'Student registration rejected.' });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -506,6 +517,7 @@ router.post('/register-parent', authAttemptLimit, async (req: Request, res: Resp
       });
     }
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -549,6 +561,7 @@ router.post('/parent-link-requests', authenticateJWT, async (req: Request, res: 
       [`audit_${Date.now()}_${Math.random().toString(36).slice(2)}`, 'Parent Link Request', `Parent ${user.id} requested link to ${studentId}`, user.role, user.email]);
     return res.status(201).json({ linkRequest: result.rows[0] });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -596,6 +609,7 @@ router.get('/parent-link-requests', authenticateJWT, async (req: Request, res: R
     const result = await dbClient.query(query, params);
     return res.json({ linkRequests: result.rows });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -669,6 +683,7 @@ router.post('/parent-link-requests/:linkId/approve', authenticateJWT, async (req
 
     return res.json({ message: `Approval recorded. Link status is now: ${newStatus}`, status: newStatus });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -733,6 +748,7 @@ router.post('/parent-link-requests/:linkId/reject', authenticateJWT, async (req:
 
     return res.json({ message: 'Link request rejected.' });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -757,6 +773,7 @@ router.post('/parent-links/:linkId/revoke', authenticateJWT, async (req: Request
       [`audit_${Date.now()}_${Math.random().toString(36).slice(2)}`, 'Parent Link Revoked', `Link ${link.id} revoked`, user.role, user.email]);
     return res.json({ message: 'Link revoked.' });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });

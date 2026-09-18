@@ -29,16 +29,23 @@ router.get('/organization/:orgId', authenticateJWT, async (req: Request, res: Re
     }
     const result = req.user.role === UserRole.MASTER
       ? await dbClient.query(
-        `SELECT p.*, s.full_name AS student_name FROM payments p
+        `SELECT p.*, s.full_name AS student_name, c.name AS class_name, u.full_name AS approved_by_name
+         FROM payments p
          JOIN students s ON s.id = p.student_id
+         LEFT JOIN classes c ON c.id = s.class_id
+         LEFT JOIN users u ON u.id = p.approved_by
          WHERE p.organization_id = $1 AND s.class_id = ANY($2::text[])
          ORDER BY p.created_at DESC`, [req.params.orgId, req.user.assignedClassIds || []])
       : await dbClient.query(
-        `SELECT p.*, s.full_name AS student_name FROM payments p
+        `SELECT p.*, s.full_name AS student_name, c.name AS class_name, u.full_name AS approved_by_name
+         FROM payments p
          JOIN students s ON s.id = p.student_id
+         LEFT JOIN classes c ON c.id = s.class_id
+         LEFT JOIN users u ON u.id = p.approved_by
          WHERE p.organization_id = $1 ORDER BY p.created_at DESC`, [req.params.orgId]);
     return res.json({ payments: result.rows });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -50,6 +57,7 @@ router.get('/student/:studentId', authenticateJWT, async (req: Request, res: Res
     const result = await dbClient.query('SELECT * FROM payments WHERE student_id = $1 ORDER BY created_at DESC', [req.params.studentId]);
     return res.json({ payments: result.rows });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -96,6 +104,7 @@ router.post('/submit-payment', authenticateJWT, async (req: Request, res: Respon
 
     return res.status(201).json({ message: 'Payment notice submitted for review.', payment: payRes.rows[0] });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -143,6 +152,7 @@ router.post('/:paymentId/approve', authenticateJWT, requirePermission(Permission
 
     return res.json({ message: 'Payment approved successfully in PostgreSQL.', payment: updatePayRes!.rows[0] });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -167,6 +177,7 @@ router.post('/:paymentId/reject', authenticateJWT, requirePermission(Permission.
       [`audit_${Date.now()}_${Math.random().toString(36).slice(2)}`, 'Payment Rejected', `Payment ${payment.id} rejected`, req.user!.role, req.user!.email]);
     return res.json({ payment: updated.rows[0] });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -218,6 +229,7 @@ router.post('/record-cash-payment', authenticateJWT, requirePermission(Permissio
 
     return res.status(201).json({ message: 'Cash payment recorded and receipt generated in PostgreSQL.', payment: payRes!.rows[0] });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });

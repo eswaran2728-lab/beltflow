@@ -2297,8 +2297,11 @@
               persatuan_id: p.organization_id,
               studentId: p.student_id,
               studentName: p.student_name || 'Student',
+              className: p.class_name || '—',
               amount: 'RM ' + parseFloat(p.amount).toFixed(2),
               date: new Date(p.created_at).toLocaleDateString(),
+              reviewedAt: p.approved_at ? new Date(p.approved_at).toLocaleDateString() : '',
+              reviewedBy: p.approved_by_name || '—',
               method: p.method || 'Online Banking',
               status: p.status,
               receiptNo: p.receipt_no,
@@ -2392,7 +2395,10 @@
             if (certsResult.ok && certsResult.data?.certificates) {
               certificates.push(...certsResult.data.certificates.map(c => ({
                 id: c.id, studentId: c.student_id, code: c.code, title: c.rank_or_title,
-                issueDate: c.issue_date, type: c.type, status: c.status
+                rankOrTitle: c.rank_or_title, studentName: c.student_name,
+                persatuanName: c.organization_name, masterName: c.master_name,
+                issueDate: c.issue_date, type: c.type, status: c.status,
+                notes: 'Has successfully fulfilled all syllabus requirements.'
               })));
             }
           }

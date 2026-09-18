@@ -49,6 +49,7 @@ router.post('/', authenticateJWT, requirePermission(Permission.PERSATUAN_MANAGE_
 
     return res.status(201).json({ message: 'Class created successfully in PostgreSQL.', class: classRes.rows[0] });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -62,6 +63,7 @@ router.get('/organization/:orgId', authenticateJWT, requirePermission(Permission
       : await dbClient.query('SELECT * FROM classes WHERE organization_id = $1 ORDER BY created_at DESC', [req.params.orgId]);
     return res.json({ classes: listRes.rows });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -114,6 +116,7 @@ router.post('/masters', authenticateJWT, requirePermission(Permission.PERSATUAN_
       }
     });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });

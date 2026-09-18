@@ -43,6 +43,7 @@ router.post('/progress', authenticateJWT, async (req: Request, res: Response) =>
 
     return res.json({ message: 'Skill progress updated in PostgreSQL.', progress: upsertRes.rows[0] });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -61,6 +62,7 @@ router.get('/student/:studentId', authenticateJWT, async (req: Request, res: Res
     );
     return res.json({ skills: listRes.rows });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });

@@ -60,32 +60,45 @@ repository and cannot be verified by running code here.
 
 ## 3. Backend / Production Environment Variables
 
+**Status: PARTIALLY VERIFIED** - all enforcement mechanisms below were
+exercised for real in Phase 8C against a real production-mode process;
+no *real* production host has had these variables set yet (external).
+
 Set on the actual hosting platform, never committed (`server/.env.example`
 documents these, with no values):
 
-- [ ] `JWT_SECRET` - required in production, server refuses to start
-      auth without it.
+- [x] `JWT_SECRET` - required in production, server refuses to sign a
+      token without it. **Verified (Phase 8C):** startup with it unset
+      fails the first login attempt safely (sanitized client error, real
+      error logged server-side).
 - [ ] `DATABASE_URL` - a real managed PostgreSQL instance, not the
       embedded PGlite fallback used for local dev.
+- [ ] `DATABASE_SSL` - **new in Phase 8C.** Leave unset for a managed
+      provider (defaults to SSL-on in production). Set to `disable` only
+      if your PostgreSQL instance genuinely has no SSL configured - Phase
+      8C found the backend could not connect at all otherwise.
 - [ ] `NODE_ENV=production`
 - [ ] `PORT` if the platform requires a specific value.
-- [ ] `CORS_ALLOWED_ORIGINS` - the real web client origin(s). If left
-      unset, the server logs a warning and allows all browser origins
-      (native Android calls are unaffected either way).
+- [x] `CORS_ALLOWED_ORIGINS` - the real web client origin(s).
+      **Hardened in Phase 8C: production now refuses to start at all if
+      this is unset** (previously silently allowed all browser origins -
+      verified fixed).
 
 ## 4. Database
 
-- [ ] `server/src/db/schema.sql` is idempotent (`CREATE TABLE IF NOT
+- [x] `server/src/db/schema.sql` is idempotent (`CREATE TABLE IF NOT
       EXISTS`, `ADD COLUMN IF NOT EXISTS`) and contains no destructive
-      statements - confirmed safe to run against an existing production
-      database on every startup.
-- [ ] **(external)** A backup procedure exists for the production
-      PostgreSQL instance (managed-provider automated backups, or a cron
-      `pg_dump`) with a defined retention window. Nothing in this repo
-      creates backups - the embedded PGlite mode used for local dev/tests
-      is a durable local cache, not a production backup strategy.
-- [ ] **(external)** A restore has actually been test-run at least once
-      against a non-production database.
+      statements - confirmed safe to run against an existing database on
+      every startup (Phase 8B).
+- [x] **Backup/restore mechanism verified end-to-end (Phase 8B, commit
+      `a850a4b`):** `pg_dump` → clean `pg_restore` → 19/19 table
+      reconciliation → live application recovery test, all against a
+      real PostgreSQL 16.4 instance. See [BACKUP_AND_RECOVERY.md](BACKUP_AND_RECOVERY.md).
+- [ ] **(external) Still NOT configured for any real environment:**
+      automated production backup scheduling, encryption at rest,
+      off-site/secondary-region copy, retention policy. Phase 8B/8C both
+      ran the drill against disposable test infrastructure - this item
+      remains open until a real production backup pipeline exists.
 - [ ] Take a manual backup immediately before deploying any future schema
       change, even though current migrations are additive/non-destructive.
 
@@ -98,11 +111,24 @@ documents these, with no values):
 
 ## 6. Regression (run before every release)
 
-- [ ] Backend: `test_adversarial_security.js` (20/20), `test_receipt_integrity.js`
+- [x] Backend: `test_adversarial_security.js` (20/20), `test_receipt_integrity.js`
       (7/7), `test_process_restart_persistence.js` (10/10),
-      `test_link_and_grading_gaps.js` (8/8).
+      `test_link_and_grading_gaps.js` (8/8), `test_production_hardening.js`
+      (15/15, new in Phase 8C) - all green as of Phase 8C, commit history
+      in this file's own repo.
 - [ ] Android: `compileDebugKotlin`, `testDebugUnitTest` (26/26 baseline),
       `assembleDebug`.
+
+## 6b. Production-Like Staging (Phase 8C)
+
+**Status: PARTIALLY VERIFIED.** A real production-mode backend, real
+PostgreSQL 16, and full five-role browser E2E against the production-built
+web client were exercised - see [STAGING_DEPLOYMENT.md](STAGING_DEPLOYMENT.md).
+Two real UI defects were found and fixed live (payment history / certificate
+display showing "undefined" fields). **Not covered:** a real public
+staging URL with actual HTTPS/TLS and reverse-proxy behavior - this
+sandbox had no such environment to test against (see
+STAGING_DEPLOYMENT.md §7, §16).
 
 ## 7. Rollback
 
@@ -120,10 +146,19 @@ Do **not** proceed to publishing/go-live (Phase 9) until:
 - ~~Signing-key identity is confirmed and remediated (§1).~~ **RESOLVED**
   - upload key rotated and registered with Google Play; new key is not
     valid for uploads until 2026-09-20 01:01 UTC (see §1).
-- Phase 7B real-device UAT is complete (§2) - still blocked pending a
-  physical Android device.
+- **Android Phase 7B: still BLOCKED / OPEN** - real-device UAT could not
+  be completed in this sandbox (no physical device connectivity
+  achievable - see the Phase 7B report). This is unrelated to and not
+  resolved by Phase 8B/8C.
 - Production environment variables are set on the real host, not assumed
-  (§3).
-- A backup has been verified restorable at least once (§4).
+  (§3) - the enforcement mechanisms are verified; a real host has not yet
+  had them set.
+- ~~A backup has been verified restorable at least once (§4).~~
+  **Mechanism RESOLVED** (Phase 8B/8C, disposable test infrastructure) -
+  production backup automation/off-site storage remains **NOT
+  CONFIGURED** for any real environment.
 - The current date/time is at or after the new upload key's activation
   time (§1) before any Play Console upload is attempted.
+- A real public staging environment (with real HTTPS) has been stood up
+  and this same UAT re-run against it (Phase 8C ran entirely against a
+  local sandbox backend - see STAGING_DEPLOYMENT.md §16).

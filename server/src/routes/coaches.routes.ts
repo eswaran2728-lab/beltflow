@@ -52,6 +52,7 @@ router.post('/', authenticateJWT, requirePermission(Permission.PERSATUAN_MANAGE_
 
     return res.status(201).json({ message: 'Coach registered successfully in PostgreSQL.', coach: insertRes.rows[0] });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -68,6 +69,7 @@ router.get('/organization/:orgId', authenticateJWT, requirePermission(Permission
     );
     return res.json({ coaches: listRes.rows });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });

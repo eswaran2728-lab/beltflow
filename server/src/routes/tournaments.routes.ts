@@ -36,6 +36,7 @@ router.post('/', authenticateJWT, requirePermission(Permission.PERSATUAN_MANAGE_
 
     return res.status(201).json({ message: 'Tournament scheduled in PostgreSQL.', tournament: insertRes.rows[0] });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -52,6 +53,7 @@ router.get('/organization/:orgId', authenticateJWT, async (req: Request, res: Re
     );
     return res.json({ tournaments: listRes.rows });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
@@ -118,6 +120,7 @@ router.post('/:id/results', authenticateJWT, requirePermission(Permission.PERSAT
       issuedCertificates
     });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });

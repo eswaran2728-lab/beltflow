@@ -15,6 +15,7 @@ router.get('/', authenticateJWT, requirePermission(Permission.AUDIT_LOG_VIEW_GLO
        ORDER BY timestamp DESC LIMIT 200`);
     return res.json({ logs: logsRes.rows });
   } catch (err: any) {
+    console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
