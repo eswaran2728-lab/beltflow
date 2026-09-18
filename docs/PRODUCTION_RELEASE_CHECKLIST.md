@@ -164,6 +164,28 @@ READY** (Phase 7B physical-device UAT still open/blocked, unrelated to
 and not resolved by this phase). This phase does **not** declare
 production go-live - all external gates in §8 remain open.
 
+## 6e. Final Go-Live Readiness & Production Deployment Preparation (Phase 9C)
+
+**Status: WEB APPLICATION RELEASE-CERTIFIED / WEB PRODUCTION GO-LIVE NOT
+READY.** A full infrastructure/operational-readiness audit was run
+against the certified RC (`9bb51df`, docs commit `42f6591`, tag
+`beltflow-web-rc1` - both pushed to `origin/main` this phase). The
+application itself requires no further code work: 0 P0, 0 P1, all
+Phase 9B security/regression evidence re-confirmed by targeted
+re-inspection (no huge suite re-run, since no code changed). **No
+production infrastructure exists yet** - hosting, the production
+PostgreSQL database, the production domain/HTTPS, backup automation,
+and monitoring are all genuinely unconfigured (not merely undocumented)
+- see [GO_LIVE_CHECKLIST.md](GO_LIVE_CHECKLIST.md) for the full gate
+matrix, the exact provisioning requirements for each gate, the
+deployment sequence, the mandatory post-deployment smoke test, and the
+incident/rollback triggers. Android remains explicitly out of scope for
+this release (excluded/deferred, Phase 7B still open) and does not
+block the web-only go-live decision. Production deployment requires
+explicit user authorization after every blocking gate in
+GO_LIVE_CHECKLIST.md §22 is closed - this phase does not authorize or
+perform any production deployment.
+
 ## 7. Rollback
 
 - [ ] Note the previous known-good git commit hash and, if applicable, the
@@ -172,6 +194,11 @@ production go-live - all external gates in §8 remain open.
       backend deploy to the previous build without a database migration
       conflict (schema changes here are additive-only, so this should be
       safe, but has not been runtime-exercised).
+- [x] **Actionable runbook documented (Phase 9C)** - see
+      [GO_LIVE_CHECKLIST.md](GO_LIVE_CHECKLIST.md) §18: identifying a bad
+      deployment, the application rollback procedure, environment/DB
+      compatibility notes, and the explicit rule that application
+      rollback must never trigger a database restore.
 
 ## 8. Go-Live Gate
 
@@ -183,16 +210,35 @@ Do **not** proceed to publishing/go-live (Phase 9) until:
 - **Android Phase 7B: still BLOCKED / OPEN** - real-device UAT could not
   be completed in this sandbox (no physical device connectivity
   achievable - see the Phase 7B report). This is unrelated to and not
-  resolved by Phase 8B/8C.
+  resolved by Phase 8B/8C/9C. Android is explicitly excluded/deferred
+  from the initial web-only production release (Phase 9C §17) and does
+  not block it.
 - Production environment variables are set on the real host, not assumed
   (§3) - the enforcement mechanisms are verified; a real host has not yet
-  had them set.
+  had them set. **Phase 9C confirms: no hosting platform has been
+  chosen yet, so this remains unset anywhere real** - see
+  GO_LIVE_CHECKLIST.md §3, §5.
 - ~~A backup has been verified restorable at least once (§4).~~
   **Mechanism RESOLVED** (Phase 8B/8C, disposable test infrastructure) -
   production backup automation/off-site storage remains **NOT
-  CONFIGURED** for any real environment.
+  CONFIGURED** for any real environment. **Phase 9C confirms this is
+  still genuinely unconfigured** (not merely undocumented) - see
+  GO_LIVE_CHECKLIST.md §8-§9.
 - The current date/time is at or after the new upload key's activation
   time (§1) before any Play Console upload is attempted.
 - A real public staging environment (with real HTTPS) has been stood up
   and this same UAT re-run against it (Phase 8C ran entirely against a
-  local sandbox backend - see STAGING_DEPLOYMENT.md §16).
+  local sandbox backend - see STAGING_DEPLOYMENT.md §16). **Phase 9C
+  confirms: no production domain/HTTPS exists yet** - see
+  GO_LIVE_CHECKLIST.md §6.
+- **(new, Phase 9C) No production PostgreSQL database exists yet** - see
+  GO_LIVE_CHECKLIST.md §4.
+- **(new, Phase 9C) No external monitoring/alerting is configured yet**
+  - see GO_LIVE_CHECKLIST.md §10.
+
+**WEB PRODUCTION GO-LIVE: NOT READY - INFRASTRUCTURE GATES REMAIN.**
+This is not blocked by any application defect (0 P0, 0 P1) - it is
+blocked strictly on infrastructure that has not been provisioned. See
+[GO_LIVE_CHECKLIST.md](GO_LIVE_CHECKLIST.md) §22 for the full gate
+matrix and §24 for the exact ordered list of remaining blocking
+actions.
