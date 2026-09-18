@@ -35,3 +35,12 @@ server/node_modules/
 
 # scratch/session-local test artifacts - never intended for the repo
 scratch/
+
+# database backups/dumps - never intended for the repo, may contain
+# real tenant/financial data even when produced from a test database
+*.dump
+*.sql.gz
+*.backup
+*.pgdump
+backups/
+db_backups/
