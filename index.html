@@ -1372,20 +1372,17 @@
               </select>
             </div>
             <div>
-              <label class="bf-label">Monthly Base Tuition (RM)</label>
-              <input type="number" id="setMonthlyFee" required value="120" class="bf-input">
-            </div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div>
               <label class="bf-label">Sibling Discount (%)</label>
               <input type="number" id="setSiblingDiscount" required value="10" class="bf-input">
             </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div>
               <label class="bf-label">Master Contact Phone</label>
               <input type="text" id="setMasterPhone" required class="bf-input">
             </div>
           </div>
+          <p style="font-size:11px;color:var(--bf-text-muted)">Monthly tuition fees are now set per class by each class's assigned Master (see the Classes tab), not here.</p>
           <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
             <button type="button" class="bf-btn bf-btn-outline" onclick="closeModal('editAcademySettingsModal')">Cancel</button>
             <button type="submit" class="bf-btn bf-btn-primary">Save Settings</button>
@@ -1562,6 +1559,34 @@
           <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
             <button type="button" class="bf-btn bf-btn-outline" onclick="closeModal('setupAdminModal')">Cancel</button>
             <button type="submit" class="bf-btn bf-btn-primary">Initialize Administrator</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CLASS MASTER — SET MONTHLY FEE (assigned Master only) -->
+  <div id="setClassFeeModal" class="modal-overlay">
+    <div class="modal-box" style="max-width:400px">
+      <div class="modal-header">
+        <div>
+          <h3>Set Class Monthly Fee</h3>
+          <p style="font-size:12px;color:var(--bf-text-muted)">Only affects future billing periods. Past payments and receipts are never changed.</p>
+        </div>
+        <button class="btn-close-modal" onclick="closeModal('setClassFeeModal')">
+          <i data-lucide="x" style="width:14px;height:14px"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="handleSetClassFee(event)" style="display:flex;flex-direction:column;gap:14px">
+          <input type="hidden" id="setClassFeeClassId">
+          <div>
+            <label class="bf-label">Monthly Fee (RM)</label>
+            <input type="number" id="setClassFeeAmount" required min="0.01" max="100000" step="0.01" class="bf-input">
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
+            <button type="button" class="bf-btn bf-btn-outline" onclick="closeModal('setClassFeeModal')">Cancel</button>
+            <button type="submit" class="bf-btn bf-btn-primary">Save Fee</button>
           </div>
         </form>
       </div>
@@ -2252,6 +2277,7 @@
               name: c.name,
               schedule: c.schedule,
               location: c.location,
+              monthly_fee: c.monthly_fee,
               status: c.status === 'ACTIVE' ? 'Active' : c.status
             }));
           }
@@ -2939,7 +2965,6 @@
         body: JSON.stringify({
           name: document.getElementById('setAcademyName').value.trim(),
           martialArtStyle: document.getElementById('setAcademyStyle').value,
-          baseMonthlyFee: Number(document.getElementById('setMonthlyFee').value),
           siblingDiscountPercent: Number(document.getElementById('setSiblingDiscount').value),
           phone: document.getElementById('setMasterPhone').value.trim()
         })
@@ -2955,6 +2980,31 @@
       showToast('Academy settings saved.');
       closeModal('editAcademySettingsModal');
       renderSidebar();
+      renderContent();
+    }
+
+    // ================= CLASS MASTER — MONTHLY FEE =================
+    function openSetClassFeeModal(classId, currentFee) {
+      document.getElementById('setClassFeeClassId').value = classId;
+      document.getElementById('setClassFeeAmount').value = currentFee;
+      openModal('setClassFeeModal');
+    }
+
+    async function handleSetClassFee(e) {
+      e.preventDefault();
+      const classId = document.getElementById('setClassFeeClassId').value;
+      const amount = document.getElementById('setClassFeeAmount').value;
+      const result = await fetchApi(`/classes/${classId}/fee`, {
+        method: 'PATCH',
+        body: JSON.stringify({ monthlyFee: Number(amount) })
+      });
+      if (!result.ok) {
+        showToast('Fee update failed: ' + (result.data?.error || result.error || 'Server error'));
+        return;
+      }
+      showToast('✅ Class monthly fee updated. Future billing will use the new amount.');
+      closeModal('setClassFeeModal');
+      await loadLivePortalData();
       renderContent();
     }
 
@@ -4138,6 +4188,7 @@
                     <th>Schedule</th>
                     <th>Location</th>
                     <th>Instructor</th>
+                    <th>Monthly Fee</th>
                     <th>Enrolled Count</th>
                     <th>Action</th>
                   </tr>
@@ -4145,7 +4196,7 @@
                 <tbody>
                   ${pClasses.length === 0 ? `
                     <tr>
-                      <td colspan="6">
+                      <td colspan="7">
                         <div class="empty-state">
                           <div class="empty-state-icon">🥋</div>
                           <div class="empty-state-title">No Classes Scheduled</div>
@@ -4162,6 +4213,7 @@
                         <td>${c.schedule}</td>
                         <td>${c.location || 'Main Mat'}</td>
                         <td><strong>${c.master_name || 'Master'}</strong></td>
+                        <td>RM ${Number(c.monthly_fee ?? 120).toFixed(2)} <span style="font-size:10px;color:var(--bf-text-muted)">(read only — set by Class Master)</span></td>
                         <td><strong>${enrolled}</strong> students</td>
                         <td>
                           <button class="bf-btn bf-btn-sm bf-btn-outline" onclick="activeCoachClassId = ${c.id}; switchRole('coach')">
@@ -4245,7 +4297,7 @@
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
             <div>
               <h2 style="font-size:22px;color:var(--bf-navy)">Billing, Sibling Discounts & Receipts</h2>
-              <p style="font-size:12px;color:var(--bf-text-muted)">${pName} · Base Monthly Fee: RM ${p ? (p.monthlyFee || 120) : 120} · Sibling Discount: ${p ? (p.siblingDiscountPercent || 10) : 10}%</p>
+              <p style="font-size:12px;color:var(--bf-text-muted)">${pName} · Class fees are set individually by each Class Master (see Classes tab) · Sibling Discount: ${p ? (p.siblingDiscountPercent || 10) : 10}%</p>
             </div>
             <button class="bf-btn bf-btn-primary" onclick="openManualPaymentModal()">
               <i data-lucide="receipt" style="width:14px;height:14px"></i>
@@ -4490,8 +4542,8 @@
                 <strong>Martial Arts Style:</strong> <span class="belt-badge" style="background:#e0f2fe;color:#0369a1">${style}</span><br>
                 <strong>Head Master:</strong> ${p ? p.master : 'Master'}<br>
                 <strong>Master WhatsApp:</strong> ${p ? p.phone : '+60123456789'}<br>
-                <strong>Base Tuition Fee:</strong> RM ${p ? (p.monthlyFee || 120) : 120} / month<br>
-                <strong>Sibling Discount:</strong> ${p ? (p.siblingDiscountPercent || 10) : 10}%
+                <strong>Sibling Discount:</strong> ${p ? (p.siblingDiscountPercent || 10) : 10}%<br>
+                <span style="font-size:11px;color:var(--bf-text-muted)">Monthly tuition is now set per class by each class's assigned Master — see the Classes tab for current fees.</span>
               </div>
               <button class="bf-btn bf-btn-primary" style="margin-top:16px" onclick="openEditSettingsModal()">
                 <i data-lucide="edit" style="width:14px;height:14px"></i>
@@ -4677,7 +4729,6 @@
       if (!activePersatuan) return;
       document.getElementById('setAcademyName').value = activePersatuan.name || '';
       document.getElementById('setAcademyStyle').value = activePersatuan.style || 'Silambam (Indian Martial Arts)';
-      document.getElementById('setMonthlyFee').value = activePersatuan.monthlyFee || 120;
       document.getElementById('setSiblingDiscount').value = activePersatuan.siblingDiscountPercent || 10;
       document.getElementById('setMasterPhone').value = activePersatuan.phone || '';
       openModal('editAcademySettingsModal');
@@ -4800,6 +4851,11 @@
                         <div style="font-size:12px;color:var(--bf-text-muted);display:flex;align-items:center;gap:6px">
                           <i data-lucide="clock" style="width:14px;height:14px"></i>
                           <span>${c.schedule}</span>
+                        </div>
+                        <div style="font-size:13px;font-weight:700;color:var(--bf-navy);margin-top:8px;display:flex;align-items:center;gap:6px">
+                          <i data-lucide="banknote" style="width:14px;height:14px"></i>
+                          <span>RM ${Number(c.monthly_fee ?? 120).toFixed(2)} / month</span>
+                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="padding:2px 8px;font-size:11px" onclick="openSetClassFeeModal('${c.id}', ${Number(c.monthly_fee ?? 120)})">Edit Fee</button>
                         </div>
                       </div>
 

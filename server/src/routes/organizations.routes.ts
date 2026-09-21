@@ -98,18 +98,21 @@ router.get('/:orgId', authenticateJWT, async (req: Request, res: Response) => {
 // Update organization settings (Tenant-scoped)
 router.put('/:orgId', authenticateJWT, requirePermission(Permission.PERSATUAN_EDIT_PROFILE), async (req: Request, res: Response) => {
   try {
-    const { name, martialArtStyle, baseMonthlyFee, siblingDiscountPercent, phone } = req.body;
+    // base_monthly_fee is intentionally NOT editable here — monthly tuition is
+    // now set per class by each class's assigned Master, not by the academy
+    // admin. The organization's base_monthly_fee column is kept only as a
+    // legacy default used once when a class is first created (see classes.routes.ts).
+    const { name, martialArtStyle, siblingDiscountPercent, phone } = req.body;
     const orgRes = await dbClient.query(
       `UPDATE organizations
        SET name = COALESCE($1, name),
            martial_art_style = COALESCE($2, martial_art_style),
-           base_monthly_fee = COALESCE($3, base_monthly_fee),
-           sibling_discount_percent = COALESCE($4, sibling_discount_percent),
-           phone = COALESCE($5, phone),
+           sibling_discount_percent = COALESCE($3, sibling_discount_percent),
+           phone = COALESCE($4, phone),
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $6
+       WHERE id = $5
        RETURNING *`,
-      [name || null, martialArtStyle || null, baseMonthlyFee || null, siblingDiscountPercent || null, phone || null, req.params.orgId]
+      [name || null, martialArtStyle || null, siblingDiscountPercent || null, phone || null, req.params.orgId]
     );
 
     if (orgRes.rowCount === 0) return res.status(404).json({ error: 'Organization not found.' });

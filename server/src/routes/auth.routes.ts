@@ -269,27 +269,28 @@ router.post('/register-student', authAttemptLimit, async (req: Request, res: Res
 
     // Confirm the organization exists — students may not self-assign to a fabricated org.
     const orgRes = await dbClient.query(
-      "SELECT id, base_monthly_fee FROM organizations WHERE id = $1 AND status = 'ACTIVE'",
+      "SELECT id FROM organizations WHERE id = $1 AND status = 'ACTIVE'",
       [organizationId]
     );
     if (orgRes.rowCount === 0) {
       return res.status(404).json({ error: 'Organization not found.' });
     }
-    const baseFee = Number(orgRes.rows[0].base_monthly_fee);
 
     const existing = await dbClient.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [cleanEmail]);
     if (existing.rowCount > 0) {
       return res.status(400).json({ error: 'An account with this email already exists.' });
     }
 
-    // Validate classId belongs to this org if supplied
+    // Validate classId belongs to this org if supplied, and use that class's
+    // own monthly fee as the student's tuition (not the org's legacy base fee).
     const classRes = await dbClient.query(
-      "SELECT id FROM classes WHERE id = $1 AND organization_id = $2 AND status = 'ACTIVE'",
+      "SELECT id, monthly_fee FROM classes WHERE id = $1 AND organization_id = $2 AND status = 'ACTIVE'",
       [classId, organizationId]
     );
     if (classRes.rowCount === 0) {
       return res.status(400).json({ error: 'The requested class is unavailable in this organization.' });
     }
+    const baseFee = Number(classRes.rows[0].monthly_fee);
 
     const userId   = `usr_stu_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     const studentId = `stu_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
@@ -436,9 +437,11 @@ router.post('/register-parent', authAttemptLimit, async (req: Request, res: Resp
     }
     const parentOrg = await dbClient.query("SELECT id FROM organizations WHERE id = $1 AND status = 'ACTIVE'", [targetOrgId]);
     if (!parentOrg.rowCount) return res.status(400).json({ error: 'Organization is not active or does not exist.' });
+    let selectedClassFee: number | null = null;
     if (classId) {
-      const selectedClass = await dbClient.query('SELECT id FROM classes WHERE id = $1 AND organization_id = $2', [classId, targetOrgId]);
+      const selectedClass = await dbClient.query('SELECT id, monthly_fee FROM classes WHERE id = $1 AND organization_id = $2', [classId, targetOrgId]);
       if (!selectedClass.rowCount) return res.status(400).json({ error: 'Class must belong to this organization.' });
+      selectedClassFee = parseFloat(selectedClass.rows[0].monthly_fee);
     }
 
     const parentId = `usr_parent_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
@@ -499,9 +502,9 @@ router.post('/register-parent', authAttemptLimit, async (req: Request, res: Resp
       });
     } else {
       // Creating a NEW child student — parent is the registering guardian, link is ACTIVE.
+      // Tuition is the assigned class's own fee, not the org's legacy base fee.
       const newStudentId = `stu_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-      const orgRes = await dbClient.query('SELECT base_monthly_fee FROM organizations WHERE id = $1', [targetOrgId]);
-      const baseFee = orgRes.rows[0]?.base_monthly_fee;
+      const baseFee = selectedClassFee ?? 120.0;
 
       await dbClient.query(
         `INSERT INTO students (id, organization_id, class_id, full_name, ic_number, phone, email, belt_rank, monthly_fee, has_sibling_discount, billing_status, status)

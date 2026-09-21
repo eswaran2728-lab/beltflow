@@ -133,7 +133,6 @@ export function checkUserPermission(params: PermissionCheckParams): boolean {
       case Permission.CLASS_MANAGE_SKILL_PROGRESS:
       case Permission.CLASS_SCORE_GRADING:
       case Permission.CLASS_SCORE_TOURNAMENT:
-      case Permission.CLASS_MANAGE_FEES:
       case Permission.CLASS_APPROVE_PAYMENT:
       case Permission.CLASS_RECORD_CASH_PAYMENT:
       case Permission.CLASS_APPROVE_STUDENT_REGISTRATION:
@@ -165,6 +164,12 @@ export function checkUserPermission(params: PermissionCheckParams): boolean {
       case Permission.CLASS_MANAGE_SKILL_PROGRESS:
       case Permission.CLASS_SCORE_GRADING:
       case Permission.CLASS_SCORE_TOURNAMENT:
+      // Only a Master assigned to the target class may manage its fee — the
+      // targetClassId/assignedClassIds check above already rejects any
+      // class the caller isn't assigned to, including classes in another
+      // organization (a Master's assignedClassIds is derived server-side
+      // from coach_class_assignments and can never span organizations).
+      case Permission.CLASS_MANAGE_FEES:
       case Permission.CLASS_APPROVE_PAYMENT:
       case Permission.CLASS_RECORD_CASH_PAYMENT:
       case Permission.CERTIFICATE_VIEW:

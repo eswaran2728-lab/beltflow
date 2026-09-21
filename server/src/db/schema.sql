@@ -52,9 +52,27 @@ CREATE TABLE IF NOT EXISTS classes (
     name VARCHAR(255) NOT NULL,
     schedule VARCHAR(255) NOT NULL,
     location VARCHAR(255) NOT NULL,
+    -- Monthly tuition fee, owned and set exclusively by the class's assigned
+    -- Master (see classes.routes.ts PATCH /:classId/fee). Persatuan Admins
+    -- may view it but may not edit it. Changing this value only affects
+    -- future billing — it is never applied retroactively to existing
+    -- payments/receipts, which store their own independent amount.
+    monthly_fee NUMERIC(10, 2) NOT NULL DEFAULT 120.00,
     status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Migration guard: existing deployments created before per-class fees existed
+-- get the column added and backfilled exactly once, from each class's own
+-- organization's legacy base_monthly_fee, so no class silently starts at the
+-- schema default (120.00) instead of the fee it was actually operating under.
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='classes' AND column_name='monthly_fee') THEN
+        ALTER TABLE classes ADD COLUMN monthly_fee NUMERIC(10, 2) NOT NULL DEFAULT 120.00;
+        UPDATE classes c SET monthly_fee = o.base_monthly_fee
+        FROM organizations o WHERE o.id = c.organization_id;
+    END IF;
+END $$;
 
 -- 5. Coach / Master Class Assignments
 CREATE TABLE IF NOT EXISTS coach_class_assignments (

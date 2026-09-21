@@ -31,9 +31,11 @@ router.post('/', authenticateJWT, requirePermission(Permission.PERSATUAN_MANAGE_
     if (!fullName || !orgId) {
       return res.status(400).json({ error: 'Full name and organizationId are required.' });
     }
+    let classFee: number | null = null;
     if (classId) {
-      const assigned = await dbClient.query('SELECT id FROM classes WHERE id = $1 AND organization_id = $2', [classId, orgId]);
+      const assigned = await dbClient.query('SELECT id, monthly_fee FROM classes WHERE id = $1 AND organization_id = $2', [classId, orgId]);
       if (!assigned.rowCount) return res.status(400).json({ error: 'Class must belong to this organization.' });
+      classFee = parseFloat(assigned.rows[0].monthly_fee);
     }
 
     const orgRes = await dbClient.query('SELECT base_monthly_fee, sibling_discount_percent FROM organizations WHERE id = $1', [orgId]);
@@ -41,7 +43,10 @@ router.post('/', authenticateJWT, requirePermission(Permission.PERSATUAN_MANAGE_
       return res.status(404).json({ error: 'Organization not found.' });
     }
 
-    const baseFee = parseFloat(orgRes.rows[0].base_monthly_fee) || 120.0;
+    // A student's tuition is the fee of the class they're assigned to; only
+    // an unassigned student (no classId yet) falls back to the org's legacy
+    // base fee, since there is no class fee to inherit.
+    const baseFee = classFee ?? (parseFloat(orgRes.rows[0].base_monthly_fee) || 120.0);
     const siblingDiscPct = orgRes.rows[0].sibling_discount_percent !== undefined ? parseFloat(orgRes.rows[0].sibling_discount_percent) : 10.0;
     const isSibling = Boolean(hasSiblingDiscount);
     const calculatedFee = isSibling ? Math.round(baseFee * (1 - (siblingDiscPct / 100))) : baseFee;
@@ -168,8 +173,19 @@ router.post('/transfer-requests/:transferId/:decision', authenticateJWT, async (
          updated_at = CURRENT_TIMESTAMP WHERE id = $1`, [transfer.id]);
       return res.json({ status: 'PENDING_NEW_MASTER' });
     }
-    await dbClient.query('UPDATE students SET class_id = $1 WHERE id = $2 AND class_id = $3',
-      [transfer.new_class_id, transfer.student_id, transfer.old_class_id]);
+    // The student now trains under the new class's fee going forward — this
+    // only changes the student's current tuition reference for future
+    // billing; it never touches any payment or receipt already recorded.
+    const newClassRes = await dbClient.query('SELECT monthly_fee FROM classes WHERE id = $1', [transfer.new_class_id]);
+    const newClassFee = parseFloat(newClassRes.rows[0]?.monthly_fee) || 120.0;
+    const studentRow = await dbClient.query('SELECT has_sibling_discount, organization_id FROM students WHERE id = $1', [transfer.student_id]);
+    const hasSibling = Boolean(studentRow.rows[0]?.has_sibling_discount);
+    const orgForDiscount = await dbClient.query('SELECT sibling_discount_percent FROM organizations WHERE id = $1', [studentRow.rows[0]?.organization_id]);
+    const siblingPct = orgForDiscount.rows[0]?.sibling_discount_percent !== undefined ? parseFloat(orgForDiscount.rows[0].sibling_discount_percent) : 10.0;
+    const recalculatedFee = hasSibling ? Math.round(newClassFee * (1 - (siblingPct / 100))) : newClassFee;
+
+    await dbClient.query('UPDATE students SET class_id = $1, monthly_fee = $2 WHERE id = $3 AND class_id = $4',
+      [transfer.new_class_id, recalculatedFee, transfer.student_id, transfer.old_class_id]);
     await dbClient.query(
       `UPDATE class_transfer_requests SET new_master_approved = true, status = 'APPROVED',
        updated_at = CURRENT_TIMESTAMP WHERE id = $1`, [transfer.id]);
