@@ -1218,6 +1218,7 @@
       <div class="modal-body">
         <form onsubmit="handleParentSubmitPayment(event)" style="display:flex;flex-direction:column;gap:14px">
           <div style="background:#f8fafc;padding:12px;border-radius:var(--radius-sm);border:1px solid var(--bf-border)" id="parentPaySummaryBox"></div>
+          <div id="parentPayMonthsBox"></div>
           <div>
             <label class="bf-label">Payment Method</label>
             <select id="parentPayMethod" class="bf-input">
@@ -1561,6 +1562,27 @@
             <button type="submit" class="bf-btn bf-btn-primary">Initialize Administrator</button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: MONTHLY DUES REPORT (Master of the class, or same-org Admin — read + record payment; Admin cannot edit the fee here) -->
+  <div id="monthlyDuesReportModal" class="modal-overlay">
+    <div class="modal-box" style="max-width:720px">
+      <div class="modal-header">
+        <div>
+          <h3>Monthly Dues Report</h3>
+          <p style="font-size:12px;color:var(--bf-text-muted)" id="monthlyDuesReportSubtitle"></p>
+        </div>
+        <button class="btn-close-modal" onclick="closeModal('monthlyDuesReportModal')">
+          <i data-lucide="x" style="width:14px;height:14px"></i>
+        </button>
+      </div>
+      <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+          <button class="bf-btn bf-btn-primary bf-btn-sm" onclick="generateMonthlyBillsForClass()">+ Generate This Month's Bills</button>
+        </div>
+        <div id="monthlyDuesReportBody"></div>
       </div>
     </div>
   </div>
@@ -2382,14 +2404,17 @@
           const ids = activeUser.linkedStudentIds || [];
           parents = [{ email: activeUser.email, studentIds: ids }];
           const results = await Promise.all(ids.map(id => fetchApi('/students/' + encodeURIComponent(id))));
-          students = results.filter(r => r.ok && r.data && r.data.student).map(r => {
+          students = await Promise.all(results.filter(r => r.ok && r.data && r.data.student).map(async r => {
             const s = r.data.student;
+            const duesRes = await fetchApi('/billing/monthly-dues/student/' + encodeURIComponent(s.id));
+            const dues = duesRes.ok ? duesRes.data : { monthsPendingCount: 0, totalPending: 0 };
             return { id: s.id, persatuan_id: s.organization_id, class_id: s.class_id,
               name: s.full_name, belt: s.belt_rank, beltClass: 'belt-white',
               className: s.class_name || 'Unassigned', attendance: null,
               billingStatus: s.billing_status, monthlyFee: Number(s.monthly_fee),
+              monthsPendingCount: dues.monthsPendingCount || 0, totalPending: Number(dues.totalPending) || 0,
               status: s.status === 'ACTIVE' ? 'Active' : s.status };
-          });
+          }));
 
           if (activeUser.organizationId) {
             const tourneyRes = await fetchApi('/tournaments/organization/' + activeUser.organizationId);
@@ -2414,10 +2439,13 @@
           const result = await fetchApi('/students/me');
           if (result.ok && result.data && result.data.student) {
             const s = result.data.student;
+            const duesRes = await fetchApi('/billing/monthly-dues/student/' + encodeURIComponent(s.id));
+            const dues = duesRes.ok ? duesRes.data : { monthsPendingCount: 0, totalPending: 0 };
             students = [{ id: s.id, persatuan_id: s.organization_id, class_id: s.class_id,
               name: s.full_name, email: s.email, belt: s.belt_rank, beltClass: 'belt-white',
               className: s.class_name || 'Unassigned', attendance: null,
               billingStatus: s.billing_status, monthlyFee: Number(s.monthly_fee),
+              monthsPendingCount: dues.monthsPendingCount || 0, totalPending: Number(dues.totalPending) || 0,
               status: s.status === 'ACTIVE' ? 'Active' : s.status }];
           }
           const available = await fetchApi('/auth/registration-organizations/' + activeUser.organizationId + '/classes');
@@ -3008,6 +3036,100 @@
       renderContent();
     }
 
+    // ================= MONTHLY DUES LEDGER =================
+    let activeMonthlyDuesClassId = null;
+
+    function escapeHtmlAttr(s) { return String(s).replace(/'/g, "\\'"); }
+
+    async function openMonthlyDuesReport(classId) {
+      activeMonthlyDuesClassId = classId;
+      const cls = classes.find(c => c.id == classId);
+      document.getElementById('monthlyDuesReportSubtitle').textContent = cls ? cls.name : '';
+      openModal('monthlyDuesReportModal');
+      await refreshMonthlyDuesReport();
+    }
+
+    async function refreshMonthlyDuesReport() {
+      const body = document.getElementById('monthlyDuesReportBody');
+      body.innerHTML = '<p style="font-size:13px;color:var(--bf-text-muted)">Loading…</p>';
+      const result = await fetchApi('/billing/monthly-dues/class/' + activeMonthlyDuesClassId);
+      if (!result.ok) {
+        body.innerHTML = '<p style="color:#dc2626">' + ((result.data && result.data.error) || 'Failed to load monthly dues.') + '</p>';
+        return;
+      }
+      const students = result.data.students || [];
+      if (students.length === 0) {
+        body.innerHTML = '<p style="font-size:13px;color:var(--bf-text-muted)">No active students in this class yet.</p>';
+        return;
+      }
+      body.innerHTML = students.map(s => `
+        <div class="bf-card" style="margin-bottom:12px;padding:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <div>
+              <strong>${s.studentName}</strong>
+              <div style="font-size:12px;color:var(--bf-text-muted)">Current Fee: RM ${s.currentFee.toFixed(2)} / month</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:12px;color:var(--bf-text-muted)">${s.monthsPendingCount} month(s) pending</div>
+              <div style="font-weight:800;color:${s.totalPending > 0 ? '#dc2626' : '#16a34a'}">RM ${s.totalPending.toFixed(2)} outstanding</div>
+            </div>
+          </div>
+          ${s.dues.length === 0 ? '<p style="font-size:12px;color:var(--bf-text-muted);margin-top:8px">No bills generated yet.</p>' : `
+            <table class="bf-table" style="margin-top:10px">
+              <thead><tr><th>Month</th><th>Fee</th><th>Paid</th><th>Remaining</th><th>Status</th><th></th></tr></thead>
+              <tbody>
+                ${s.dues.map(d => `
+                  <tr>
+                    <td>${d.billing_month}</td>
+                    <td>RM ${d.fee_amount.toFixed(2)}</td>
+                    <td>RM ${d.amount_paid.toFixed(2)}</td>
+                    <td>RM ${d.remaining.toFixed(2)}</td>
+                    <td><span class="belt-badge" style="background:${d.effective_status === 'Paid' ? '#dcfce7' : d.effective_status === 'Overdue' ? '#fee2e2' : d.effective_status === 'Partially Paid' ? '#fef3c7' : '#f1f5f9'};color:${d.effective_status === 'Paid' ? '#166534' : d.effective_status === 'Overdue' ? '#991b1b' : d.effective_status === 'Partially Paid' ? '#92400e' : '#475569'}">${d.effective_status}</span></td>
+                    <td>${d.effective_status !== 'Paid' ? `<button class="bf-btn bf-btn-sm bf-btn-outline" onclick="recordDuePayment('${s.studentId}', '${d.id}', ${d.remaining}, '${escapeHtmlAttr(s.studentName)}', '${d.billing_month}')">Record Payment</button>` : ''}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `}
+        </div>
+      `).join('');
+    }
+
+    async function generateMonthlyBillsForClass() {
+      const now = new Date();
+      const billingMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+      const result = await fetchApi('/billing/monthly-dues/generate', {
+        method: 'POST',
+        body: JSON.stringify({ classId: activeMonthlyDuesClassId, billingMonth })
+      });
+      if (!result.ok) {
+        showToast('Bill generation failed: ' + (result.data?.error || result.error || 'Server error'));
+        return;
+      }
+      showToast(`✅ Generated ${result.data.created} bill(s) for ${billingMonth} (${result.data.skipped} already existed).`);
+      await refreshMonthlyDuesReport();
+    }
+
+    async function recordDuePayment(studentId, dueId, remaining, studentName, billingMonth) {
+      const input = prompt(`Record payment for ${studentName} — ${billingMonth}\nOutstanding: RM ${remaining.toFixed(2)}\n\nEnter amount received (partial payments allowed):`, remaining.toFixed(2));
+      if (input === null) return;
+      const amount = parseFloat(input);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        showToast('Enter a valid amount greater than zero.');
+        return;
+      }
+      const result = await fetchApi('/billing/record-cash-payment', {
+        method: 'POST',
+        body: JSON.stringify({ studentId, amount, billingMonthIds: [dueId] })
+      });
+      if (!result.ok) {
+        showToast('Payment failed: ' + (result.data?.error || result.error || 'Server error'));
+        return;
+      }
+      showToast('✅ Payment recorded and applied to ' + billingMonth + '.');
+      await refreshMonthlyDuesReport();
+    }
+
     async function handleNewGrading(e) {
       e.preventDefault();
       if (!activePersatuan) return;
@@ -3534,7 +3656,7 @@
       renderContent();
     }
 
-    function openParentSubmitPayment() {
+    async function openParentSubmitPayment() {
       const parent = parents.find(p => p.email && p.email.toLowerCase() === loggedInUserEmail.toLowerCase());
       const childIds = parent ? (parent.studentIds || []) : [];
       const parentChildren = students.filter(s => childIds.includes(s.id));
@@ -3556,7 +3678,35 @@
         </div>
       `;
 
+      const monthsBox = document.getElementById('parentPayMonthsBox');
+      monthsBox.innerHTML = '<p style="font-size:12px;color:var(--bf-text-muted)">Loading pending months…</p>';
+      const duesRes = await fetchApi('/billing/monthly-dues/student/' + encodeURIComponent(child.id));
+      const pendingDues = duesRes.ok ? (duesRes.data.dues || []).filter(d => d.effective_status !== 'Paid') : [];
+      if (pendingDues.length === 0) {
+        monthsBox.innerHTML = '<p style="font-size:12px;color:var(--bf-text-muted)">No specific billing month selected — this payment will be recorded as a general fee payment.</p>';
+      } else {
+        monthsBox.innerHTML = `
+          <label class="bf-label">Which month(s) is this payment for?</label>
+          <div style="display:flex;flex-direction:column;gap:6px;max-height:140px;overflow-y:auto;border:1px solid var(--bf-border);border-radius:var(--radius-sm);padding:8px">
+            ${pendingDues.map(d => `
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px">
+                <input type="checkbox" class="parent-pay-month-cb" value="${d.id}" data-remaining="${d.remaining}" onchange="updateParentPayAmount()">
+                ${d.billing_month} — RM ${d.remaining.toFixed(2)} ${d.effective_status === 'Overdue' ? '<span style="color:#dc2626;font-weight:700">(Overdue)</span>' : ''}
+              </label>
+            `).join('')}
+          </div>
+          <p style="font-size:11px;color:var(--bf-text-muted);margin-top:6px" id="parentPaySelectedTotal">Select one or more months, or leave unselected for a general payment.</p>
+        `;
+      }
+
       openModal('parentSubmitPaymentModal');
+    }
+
+    function updateParentPayAmount() {
+      const checked = Array.from(document.querySelectorAll('.parent-pay-month-cb:checked'));
+      const total = checked.reduce((sum, cb) => sum + parseFloat(cb.dataset.remaining), 0);
+      const el = document.getElementById('parentPaySelectedTotal');
+      if (el) el.textContent = checked.length > 0 ? `Selected total: RM ${total.toFixed(2)}` : 'Select one or more months, or leave unselected for a general payment.';
     }
 
     async function handleParentSubmitPayment(e) {
@@ -3569,7 +3719,11 @@
 
       const method = document.getElementById('parentPayMethod').value;
       const notes = document.getElementById('parentPayNotes').value.trim();
-      const feeNum = Number(child.monthlyFee);
+      const checked = Array.from(document.querySelectorAll('.parent-pay-month-cb:checked'));
+      const billingMonthIds = checked.map(cb => cb.value);
+      const feeNum = billingMonthIds.length > 0
+        ? checked.reduce((sum, cb) => sum + parseFloat(cb.dataset.remaining), 0)
+        : Number(child.monthlyFee);
 
       const res = await fetchApi('/billing/submit-payment', {
         method: 'POST',
@@ -3577,7 +3731,8 @@
           studentId: child.id,
           amount: feeNum,
           method,
-          proofNotes: notes
+          proofNotes: notes,
+          ...(billingMonthIds.length > 0 && { billingMonthIds })
         })
       });
 
@@ -4215,10 +4370,11 @@
                         <td><strong>${c.master_name || 'Master'}</strong></td>
                         <td>RM ${Number(c.monthly_fee ?? 120).toFixed(2)} <span style="font-size:10px;color:var(--bf-text-muted)">(read only — set by Class Master)</span></td>
                         <td><strong>${enrolled}</strong> students</td>
-                        <td>
+                        <td style="display:flex;gap:6px;flex-wrap:wrap">
                           <button class="bf-btn bf-btn-sm bf-btn-outline" onclick="activeCoachClassId = ${c.id}; switchRole('coach')">
                             Enter Mat Coach View →
                           </button>
+                          <button class="bf-btn bf-btn-sm bf-btn-outline" onclick="openMonthlyDuesReport('${c.id}')">Monthly Dues Report</button>
                         </td>
                       </tr>
                     `;
@@ -4852,10 +5008,11 @@
                           <i data-lucide="clock" style="width:14px;height:14px"></i>
                           <span>${c.schedule}</span>
                         </div>
-                        <div style="font-size:13px;font-weight:700;color:var(--bf-navy);margin-top:8px;display:flex;align-items:center;gap:6px">
+                        <div style="font-size:13px;font-weight:700;color:var(--bf-navy);margin-top:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
                           <i data-lucide="banknote" style="width:14px;height:14px"></i>
                           <span>RM ${Number(c.monthly_fee ?? 120).toFixed(2)} / month</span>
                           <button class="bf-btn bf-btn-sm bf-btn-outline" style="padding:2px 8px;font-size:11px" onclick="openSetClassFeeModal('${c.id}', ${Number(c.monthly_fee ?? 120)})">Edit Fee</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="padding:2px 8px;font-size:11px" onclick="openMonthlyDuesReport('${c.id}')">Monthly Dues</button>
                         </div>
                       </div>
 
@@ -5277,6 +5434,11 @@
               <div class="kpi-subtext">${activeChild.sibling ? `${activePersatuan ? (activePersatuan.siblingDiscountPercent || 10) : 10}% Sibling Discount Applied` : 'Standard Tuition'}</div>
             </div>
             <div class="kpi-card">
+              <div class="kpi-title">Outstanding Balance</div>
+              <div class="kpi-value" style="font-size:20px;color:${(activeChild.totalPending || 0) > 0 ? '#dc2626' : 'var(--bf-success)'}">RM ${(activeChild.totalPending || 0).toFixed(2)}</div>
+              <div class="kpi-subtext">${activeChild.monthsPendingCount || 0} month(s) pending</div>
+            </div>
+            <div class="kpi-card">
               <div class="kpi-title">Earned Digital Certificates</div>
               <div class="kpi-value">${childCerts.length}</div>
               <div class="kpi-subtext">Official promotions & medals</div>
@@ -5644,14 +5806,15 @@
           </div>
 
           <div class="bf-card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;background:var(--bf-light-gray);padding:14px;border-radius:var(--radius-sm)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;background:var(--bf-light-gray);padding:14px;border-radius:var(--radius-sm);flex-wrap:wrap;gap:12px">
               <div>
                 <div style="font-size:12px;color:var(--bf-text-muted)">Current Tuition Fee</div>
                 <div style="font-size:20px;font-weight:800;color:var(--bf-navy)">RM ${student.monthlyFee || 120}.00 / month</div>
               </div>
-              <span class="status-badge ${student.billingStatus === 'Paid' ? 'status-active' : 'status-pending'}">
-                ${student.billingStatus === 'Paid' ? 'Paid' : 'Pending'}
-              </span>
+              <div style="text-align:right">
+                <div style="font-size:12px;color:var(--bf-text-muted)">${student.monthsPendingCount || 0} month(s) pending</div>
+                <div style="font-size:18px;font-weight:800;color:${(student.totalPending || 0) > 0 ? '#dc2626' : 'var(--bf-success)'}">RM ${(student.totalPending || 0).toFixed(2)} outstanding</div>
+              </div>
             </div>
 
             <h3 style="font-size:15px;margin-bottom:10px">Payment History</h3>

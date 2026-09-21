@@ -197,6 +197,52 @@ CREATE TABLE IF NOT EXISTS payments (
 CREATE UNIQUE INDEX IF NOT EXISTS payments_receipt_no_unique
     ON payments (receipt_no) WHERE receipt_no IS NOT NULL;
 
+-- Which specific billing month(s) (monthly_dues.id) a payment was submitted
+-- to cover. Nullable/legacy: older payments predating this ledger, and any
+-- payment not tied to a specific month, simply have this unset — never
+-- backfilled, since that would be inventing a fact that was never recorded.
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS billing_month_ids TEXT[];
+
+-- 9b. Monthly Billing Ledger — one immutable-once-generated row per student
+-- per calendar month. This is the actual source of truth for "how many
+-- months are pending" and "how much is outstanding" — never derived solely
+-- from students.billing_status, which is only a coarse last-payment flag.
+--
+-- fee_amount is captured AT GENERATION TIME from the student's current
+-- monthly_fee (itself kept in sync with the assigned class's monthly_fee —
+-- see classes.routes.ts PATCH /:classId/fee). A later class fee change can
+-- therefore only ever affect months generated AFTER the change; every
+-- already-generated row keeps the fee it was actually billed at, forever.
+CREATE TABLE IF NOT EXISTS monthly_dues (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    billing_month VARCHAR(7) NOT NULL, -- 'YYYY-MM'
+    fee_amount NUMERIC(10, 2) NOT NULL,
+    amount_paid NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+    -- 'Pending' | 'Partially Paid' | 'Paid'. 'Overdue' is deliberately NOT a
+    -- stored state — it is purely a function of the current date vs
+    -- billing_month and is computed at read time, so it can never go stale.
+    status VARCHAR(20) NOT NULL DEFAULT 'Pending',
+    generated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- One bill per student per month, full stop. Re-running generation for
+    -- a month that already has a row for that student is a safe no-op.
+    UNIQUE (student_id, billing_month)
+);
+
+-- Which payment(s) were applied to which monthly bill, and how much of that
+-- payment went to it — this is what makes partial payments and a single
+-- payment covering multiple months both safely representable without ever
+-- rewriting a payment's own stored amount/receipt_no.
+CREATE TABLE IF NOT EXISTS monthly_due_payments (
+    id TEXT PRIMARY KEY,
+    monthly_due_id TEXT NOT NULL REFERENCES monthly_dues(id) ON DELETE CASCADE,
+    payment_id TEXT NOT NULL REFERENCES payments(id) ON DELETE CASCADE,
+    amount_applied NUMERIC(10, 2) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 10. Belt Gradings & Candidates
 CREATE TABLE IF NOT EXISTS grading_events (
     id TEXT PRIMARY KEY,
