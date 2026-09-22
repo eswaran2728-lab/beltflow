@@ -15,6 +15,7 @@ import auditRoutes from './routes/audit.routes';
 import coachesRoutes from './routes/coaches.routes';
 import tournamentsRoutes from './routes/tournaments.routes';
 import skillsRoutes from './routes/skills.routes';
+import noticesRoutes from './routes/notices.routes';
 
 const app = express();
 
@@ -118,6 +119,7 @@ app.use('/api/v1/audit', auditRoutes);
 app.use('/api/v1/coaches', coachesRoutes);
 app.use('/api/v1/tournaments', tournamentsRoutes);
 app.use('/api/v1/skills', skillsRoutes);
+app.use('/api/v1/notices', noticesRoutes);
 
 // Global Error Handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

@@ -243,6 +243,149 @@ CREATE TABLE IF NOT EXISTS monthly_due_payments (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 9c. Training Groups, Schedules, Sessions & Notices
+--
+-- Real academy hierarchy: Persatuan -> class/location (existing `classes`
+-- table, e.g. "Sungai Pelek") -> assigned Master (existing
+-- coach_class_assignments) -> training groups (Kids/Teenagers/All Ages) ->
+-- schedules (the Master's recurring or one-time plan) -> sessions (an
+-- actual dated training event) -> attendance (one status per student per
+-- session). The Persatuan assigns a Master to a class/location ONCE via
+-- coach_class_assignments; everything below this level is the assigned
+-- Master's own operational domain, never the Persatuan's.
+--
+-- This block is purely additive: it introduces new tables only and never
+-- alters attendance_sessions/attendance_records, so every existing class,
+-- assignment, student, payment, due, receipt and attendance row is
+-- preserved exactly as-is. There is nothing to "migrate" data-wise for
+-- groups/schedules/sessions/notices, since they are new concepts with no
+-- prior representation — an existing class simply starts with zero groups
+-- until its assigned Master creates real ones.
+
+CREATE TABLE IF NOT EXISTS training_groups (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+    created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (class_id, name)
+);
+
+-- The assigned Master's manually-entered recurring or one-time plan. No
+-- fixed weekday/location enum by design — day_of_week and location are
+-- free text the Master types; start_time/end_time are free text (e.g.
+-- "5:00 PM") to match how the Master would naturally write it.
+CREATE TABLE IF NOT EXISTS class_schedules (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    group_id TEXT NOT NULL REFERENCES training_groups(id) ON DELETE CASCADE,
+    day_of_week VARCHAR(50) NOT NULL,
+    start_time VARCHAR(20) NOT NULL,
+    end_time VARCHAR(20) NOT NULL,
+    location VARCHAR(255) NOT NULL,
+    recurring BOOLEAN NOT NULL DEFAULT TRUE,
+    notes TEXT,
+    status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+    created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- An actual dated training event, whether generated from a recurring
+-- schedule or created directly as a one-time extra session (schedule_id is
+-- NULL for a pure extra session with no template). Deliberately a separate
+-- table from the legacy attendance_sessions (class_id, session_date) —
+-- that table has no concept of a group, so two groups meeting on the same
+-- calendar date under the same class/location could never coexist there.
+CREATE TABLE IF NOT EXISTS training_sessions (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    group_id TEXT NOT NULL REFERENCES training_groups(id) ON DELETE CASCADE,
+    schedule_id TEXT REFERENCES class_schedules(id) ON DELETE SET NULL,
+    session_date VARCHAR(20) NOT NULL, -- 'YYYY-MM-DD'
+    day_of_week VARCHAR(50) NOT NULL,
+    start_time VARCHAR(20) NOT NULL,
+    end_time VARCHAR(20) NOT NULL,
+    location VARCHAR(255) NOT NULL,
+    is_extra BOOLEAN NOT NULL DEFAULT FALSE,
+    notes TEXT,
+    -- 'Scheduled' | 'Completed' | 'Cancelled'
+    status VARCHAR(20) NOT NULL DEFAULT 'Scheduled',
+    cancelled_reason TEXT,
+    created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- Re-generating from the same schedule for the same date is a safe
+    -- no-op; a schedule-less (schedule_id NULL) extra session is never
+    -- deduplicated this way since NULL never equals NULL in a UNIQUE index.
+    UNIQUE (schedule_id, session_date)
+);
+
+-- One attendance status per student per actual session — distinct from the
+-- legacy attendance_records table, which has no session/group concept.
+CREATE TABLE IF NOT EXISTS session_attendance (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL REFERENCES training_sessions(id) ON DELETE CASCADE,
+    student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    -- 'Present' | 'Late' | 'Absent' | 'Excused'
+    status VARCHAR(20) NOT NULL DEFAULT 'Present',
+    marked_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    marked_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (session_id, student_id)
+);
+
+-- Persistent in-app notices — no external email/SMS/paid service. Visible
+-- only to students enrolled in the relevant class/group and their linked
+-- parents (enforced in notices.routes.ts by joining students/parent_student_links,
+-- never by trusting a client-supplied recipient list).
+CREATE TABLE IF NOT EXISTS notices (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    group_id TEXT REFERENCES training_groups(id) ON DELETE CASCADE, -- NULL = whole class
+    session_id TEXT REFERENCES training_sessions(id) ON DELETE SET NULL,
+    -- 'NEW_SCHEDULE' | 'SCHEDULE_CHANGE' | 'CANCELLED' | 'EXTRA_SESSION' | 'GENERAL'
+    type VARCHAR(30) NOT NULL,
+    message TEXT NOT NULL,
+    sender_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    sender_name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- A student's individually-set fee/discount ALWAYS takes precedence over
+-- the class's whole fee. When fee_override is true, changing the class fee
+-- (classes.routes.ts PATCH /:classId/fee) must skip this student entirely —
+-- their monthly_fee stays exactly what the Master set for them until the
+-- Master explicitly changes or clears the override.
+ALTER TABLE students ADD COLUMN IF NOT EXISTS fee_override BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS group_id TEXT REFERENCES training_groups(id) ON DELETE SET NULL;
+
+-- Audited, immutable, insert-only correction trail for an already-approved
+-- payment or an already-generated monthly due. Approved payments/issued
+-- receipts/generated dues are NEVER edited in place — every correction is a
+-- new row here recording the original and corrected values, who made the
+-- change and why, so the history can never be silently altered.
+CREATE TABLE IF NOT EXISTS payment_corrections (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    payment_id TEXT REFERENCES payments(id) ON DELETE SET NULL,
+    monthly_due_id TEXT REFERENCES monthly_dues(id) ON DELETE SET NULL,
+    original_amount NUMERIC(10, 2) NOT NULL,
+    corrected_amount NUMERIC(10, 2) NOT NULL,
+    original_status VARCHAR(50),
+    corrected_status VARCHAR(50),
+    reason TEXT NOT NULL,
+    corrected_by TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    corrected_by_name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 10. Belt Gradings & Candidates
 CREATE TABLE IF NOT EXISTS grading_events (
     id TEXT PRIMARY KEY,

@@ -80,7 +80,12 @@ async function run() {
   const orgId = org.body.organization.id;
   const cls = await req('POST', '/api/v1/classes', { organizationId: orgId, name: 'Restart Test Class', schedule: 'Mon' }, token);
   const stu = await req('POST', '/api/v1/students', { organizationId: orgId, classId: cls.body.class.id, fullName: 'Restart Test Student', email: 'pr-student@a.test', password: 'ProcStu2026!' }, token);
-  const pay = await req('POST', '/api/v1/billing/record-cash-payment', { studentId: stu.body.student.id, amount: 75 }, token);
+  // Cash-payment recording is Master-only (Persatuan Admin is view-only on
+  // finances) — assign a real Master to this class for the payment below.
+  await req('POST', '/api/v1/classes/masters', { organizationId: orgId, fullName: 'Real Master PR', email: 'pr-real-master@a.test', password: 'ProcRealMaster2026!', assignedClassIds: [cls.body.class.id] }, token);
+  const realMasterLogin = await req('POST', '/api/v1/auth/login', { email: 'pr-real-master@a.test', password: 'ProcRealMaster2026!' });
+  const masterToken = realMasterLogin.body.token;
+  const pay = await req('POST', '/api/v1/billing/record-cash-payment', { studentId: stu.body.student.id, amount: 75 }, masterToken);
 
   check('Setup created a Super Admin', setup.status === 201);
   check('Organization created', org.status === 201);

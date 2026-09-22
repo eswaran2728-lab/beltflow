@@ -1566,6 +1566,102 @@
     </div>
   </div>
 
+  <!-- MODAL: GROUPS & SCHEDULE (assigned Master manages; Admin can view classes but never opens this modal) -->
+  <div id="groupsScheduleModal" class="modal-overlay">
+    <div class="modal-box" style="max-width:760px">
+      <div class="modal-header">
+        <div>
+          <h3>Groups, Schedule & Sessions</h3>
+          <p style="font-size:12px;color:var(--bf-text-muted)" id="groupsScheduleSubtitle"></p>
+        </div>
+        <button class="btn-close-modal" onclick="closeModal('groupsScheduleModal')">
+          <i data-lucide="x" style="width:14px;height:14px"></i>
+        </button>
+      </div>
+      <div class="modal-body" style="max-height:74vh;overflow-y:auto">
+        <div id="groupsScheduleBody"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SESSION ATTENDANCE (assigned Master only) -->
+  <div id="sessionAttendanceModal" class="modal-overlay">
+    <div class="modal-box" style="max-width:600px">
+      <div class="modal-header">
+        <div>
+          <h3>Session Attendance</h3>
+          <p style="font-size:12px;color:var(--bf-text-muted)" id="sessionAttendanceSubtitle"></p>
+        </div>
+        <button class="btn-close-modal" onclick="closeModal('sessionAttendanceModal')">
+          <i data-lucide="x" style="width:14px;height:14px"></i>
+        </button>
+      </div>
+      <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+        <div id="sessionAttendanceBody"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: RECORD PAYMENT (replaces window.prompt for the Monthly Dues report's quick action) -->
+  <div id="recordDuePaymentModal" class="modal-overlay">
+    <div class="modal-box" style="max-width:420px">
+      <div class="modal-header">
+        <div>
+          <h3>Record Payment</h3>
+          <p style="font-size:12px;color:var(--bf-text-muted)" id="recordDuePaymentSubtitle"></p>
+        </div>
+        <button class="btn-close-modal" onclick="closeModal('recordDuePaymentModal')">
+          <i data-lucide="x" style="width:14px;height:14px"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="handleRecordDuePayment(event)" style="display:flex;flex-direction:column;gap:14px">
+          <input type="hidden" id="recordDuePaymentStudentId">
+          <input type="hidden" id="recordDuePaymentDueId">
+          <div>
+            <label class="bf-label">Amount Received (RM)</label>
+            <input type="number" id="recordDuePaymentAmount" required min="0.01" step="0.01" class="bf-input">
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
+            <button type="button" class="bf-btn bf-btn-outline" onclick="closeModal('recordDuePaymentModal')">Cancel</button>
+            <button type="submit" class="bf-btn bf-btn-primary">Record Payment</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ASSIGN / REPLACE MASTER (Persatuan Admin only) -->
+  <div id="assignMasterModal" class="modal-overlay">
+    <div class="modal-box" style="max-width:420px">
+      <div class="modal-header">
+        <div>
+          <h3>Assign / Replace Master</h3>
+          <p style="font-size:12px;color:var(--bf-text-muted)" id="assignMasterSubtitle"></p>
+        </div>
+        <button class="btn-close-modal" onclick="closeModal('assignMasterModal')">
+          <i data-lucide="x" style="width:14px;height:14px"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="handleAssignMaster(event)" style="display:flex;flex-direction:column;gap:14px">
+          <input type="hidden" id="assignMasterClassId">
+          <div>
+            <label class="bf-label">Master</label>
+            <select id="assignMasterSelect" class="bf-input">
+              <option value="">— Remove current Master —</option>
+            </select>
+          </div>
+          <p style="font-size:11px;color:var(--bf-text-muted)">Replacing or removing the Master revokes their access to this class immediately.</p>
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
+            <button type="button" class="bf-btn bf-btn-outline" onclick="closeModal('assignMasterModal')">Cancel</button>
+            <button type="submit" class="bf-btn bf-btn-primary">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: MONTHLY DUES REPORT (Master of the class, or same-org Admin — read + record payment; Admin cannot edit the fee here) -->
   <div id="monthlyDuesReportModal" class="modal-overlay">
     <div class="modal-box" style="max-width:720px">
@@ -1866,6 +1962,9 @@
     let classSessions = {};
     let skillProgress = {};
     let paymentReviews = [];
+    let myNotices = [];
+    let myUpcomingSessions = [];
+    let myAttendanceHistory = [];
     let gradings = [];
     let tournaments = [];
     let certificates = [];
@@ -2416,6 +2515,15 @@
               status: s.status === 'ACTIVE' ? 'Active' : s.status };
           }));
 
+          const noticesRes = await fetchApi('/notices/mine');
+          myNotices = noticesRes.ok ? (noticesRes.data.notices || []) : [];
+          if (ids.length > 0) {
+            const sessRes = await fetchApi('/students/' + encodeURIComponent(ids[0]) + '/sessions');
+            myUpcomingSessions = sessRes.ok ? (sessRes.data.sessions || []) : [];
+            const attRes = await fetchApi('/attendance/student/' + encodeURIComponent(ids[0]) + '/history');
+            myAttendanceHistory = attRes.ok ? (attRes.data.attendance || []) : [];
+          }
+
           if (activeUser.organizationId) {
             const tourneyRes = await fetchApi('/tournaments/organization/' + activeUser.organizationId);
             if (tourneyRes.ok && tourneyRes.data && tourneyRes.data.tournaments) {
@@ -2447,6 +2555,13 @@
               billingStatus: s.billing_status, monthlyFee: Number(s.monthly_fee),
               monthsPendingCount: dues.monthsPendingCount || 0, totalPending: Number(dues.totalPending) || 0,
               status: s.status === 'ACTIVE' ? 'Active' : s.status }];
+
+            const noticesRes = await fetchApi('/notices/mine');
+            myNotices = noticesRes.ok ? (noticesRes.data.notices || []) : [];
+            const sessRes = await fetchApi('/students/' + encodeURIComponent(s.id) + '/sessions');
+            myUpcomingSessions = sessRes.ok ? (sessRes.data.sessions || []) : [];
+            const attRes = await fetchApi('/attendance/student/' + encodeURIComponent(s.id) + '/history');
+            myAttendanceHistory = attRes.ok ? (attRes.data.attendance || []) : [];
           }
           const available = await fetchApi('/auth/registration-organizations/' + activeUser.organizationId + '/classes');
           transferClasses = available.ok && available.data?.classes ? available.data.classes : [];
@@ -3110,10 +3225,287 @@
       await refreshMonthlyDuesReport();
     }
 
-    async function recordDuePayment(studentId, dueId, remaining, studentName, billingMonth) {
-      const input = prompt(`Record payment for ${studentName} — ${billingMonth}\nOutstanding: RM ${remaining.toFixed(2)}\n\nEnter amount received (partial payments allowed):`, remaining.toFixed(2));
-      if (input === null) return;
-      const amount = parseFloat(input);
+// ================= GROUPS, SCHEDULE & SESSIONS (assigned Master only) =================
+    let activeGroupsScheduleClassId = null;
+
+    async function openGroupsScheduleModal(classId, className) {
+      activeGroupsScheduleClassId = classId;
+      document.getElementById('groupsScheduleSubtitle').textContent = className || '';
+      openModal('groupsScheduleModal');
+      await refreshGroupsScheduleModal();
+    }
+
+    async function refreshGroupsScheduleModal() {
+      const body = document.getElementById('groupsScheduleBody');
+      body.innerHTML = '<p style="font-size:13px;color:var(--bf-text-muted)">Loading…</p>';
+      const [groupsRes, schedulesRes, sessionsRes] = await Promise.all([
+        fetchApi('/classes/' + activeGroupsScheduleClassId + '/groups'),
+        fetchApi('/classes/' + activeGroupsScheduleClassId + '/schedules'),
+        fetchApi('/classes/' + activeGroupsScheduleClassId + '/sessions')
+      ]);
+      if (!groupsRes.ok) {
+        body.innerHTML = '<p style="color:#dc2626">' + ((groupsRes.data && groupsRes.data.error) || 'Failed to load.') + '</p>';
+        return;
+      }
+      const groups = groupsRes.data.groups || [];
+      const schedules = schedulesRes.ok ? (schedulesRes.data.schedules || []) : [];
+      const sessions = sessionsRes.ok ? (sessionsRes.data.sessions || []) : [];
+      const groupName = (gid) => (groups.find(g => g.id === gid) || {}).name || '—';
+      const canWrite = activeUser && activeUser.role === 'MASTER';
+
+      body.innerHTML = `
+        <div class="bf-card" style="margin-bottom:14px;padding:14px">
+          <h4 style="font-size:14px;margin-bottom:8px">Training Groups</h4>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:${canWrite ? '10px' : '0'}">
+            ${groups.length === 0 ? '<span style="font-size:12px;color:var(--bf-text-muted)">No groups yet.</span>' :
+              groups.map(g => `<span class="belt-badge" style="background:#e0f2fe;color:#0369a1">${g.name}</span>`).join('')}
+          </div>
+          ${canWrite ? `
+            <form onsubmit="handleCreateGroup(event)" style="display:flex;gap:8px;flex-wrap:wrap">
+              <input type="text" id="newGroupName" required placeholder="e.g. Kids" class="bf-input" style="flex:1;min-width:160px">
+              <button type="submit" class="bf-btn bf-btn-primary bf-btn-sm">+ Add Group</button>
+            </form>
+          ` : ''}
+        </div>
+
+        ${canWrite ? `
+        <div class="bf-card" style="margin-bottom:14px;padding:14px">
+          <h4 style="font-size:14px;margin-bottom:8px">Add Schedule (manual day, place & time)</h4>
+          <form onsubmit="handleCreateSchedule(event)" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <select id="newScheduleGroup" required class="bf-input">
+              <option value="">Group…</option>
+              ${groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
+            </select>
+            <input type="text" id="newScheduleDay" required placeholder="e.g. Sunday" class="bf-input">
+            <input type="text" id="newScheduleStart" required placeholder="e.g. 5:00 PM" class="bf-input">
+            <input type="text" id="newScheduleEnd" required placeholder="e.g. 7:30 PM" class="bf-input">
+            <input type="text" id="newScheduleLocation" required placeholder="e.g. Sungai Pelek" class="bf-input" style="grid-column:span 2">
+            <label style="font-size:12px;display:flex;align-items:center;gap:6px;grid-column:span 2">
+              <input type="checkbox" id="newScheduleRecurring" checked> Recurring weekly
+            </label>
+            <button type="submit" class="bf-btn bf-btn-primary bf-btn-sm" style="grid-column:span 2">+ Add Schedule</button>
+          </form>
+        </div>
+        ` : ''}
+
+        <div class="bf-card" style="margin-bottom:14px;padding:14px">
+          <h4 style="font-size:14px;margin-bottom:8px">Recurring Schedules</h4>
+          ${schedules.length === 0 ? '<p style="font-size:12px;color:var(--bf-text-muted)">No schedules yet.</p>' : `
+            <table class="bf-table"><thead><tr><th>Group</th><th>Day</th><th>Time</th><th>Location</th><th></th></tr></thead>
+            <tbody>
+              ${schedules.map(s => `
+                <tr>
+                  <td>${groupName(s.group_id)}</td>
+                  <td>${s.day_of_week}</td>
+                  <td>${s.start_time}–${s.end_time}</td>
+                  <td>${s.location}</td>
+                  <td>${canWrite ? `<button class="bf-btn bf-btn-sm bf-btn-outline" onclick="generateSessionFromSchedule('${s.id}', '${s.group_id}')">Generate Session</button>` : ''}</td>
+                </tr>
+              `).join('')}
+            </tbody></table>
+          `}
+        </div>
+
+        ${canWrite ? `
+        <div class="bf-card" style="margin-bottom:14px;padding:14px">
+          <h4 style="font-size:14px;margin-bottom:8px">Create Extra (One-Time) Session</h4>
+          <form onsubmit="handleCreateExtraSession(event)" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <select id="extraSessionGroup" required class="bf-input">
+              <option value="">Group…</option>
+              ${groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
+            </select>
+            <input type="date" id="extraSessionDate" required class="bf-input">
+            <input type="text" id="extraSessionDay" required placeholder="e.g. Friday" class="bf-input">
+            <input type="text" id="extraSessionLocation" required placeholder="e.g. Sungai Pelek" class="bf-input">
+            <input type="text" id="extraSessionStart" required placeholder="e.g. 7:00 PM" class="bf-input">
+            <input type="text" id="extraSessionEnd" required placeholder="e.g. 9:00 PM" class="bf-input">
+            <input type="text" id="extraSessionMessage" placeholder="Message to students/parents (optional)" class="bf-input" style="grid-column:span 2">
+            <button type="submit" class="bf-btn bf-btn-primary bf-btn-sm" style="grid-column:span 2">+ Create Extra Session</button>
+          </form>
+        </div>
+        ` : ''}
+
+        <div class="bf-card" style="padding:14px">
+          <h4 style="font-size:14px;margin-bottom:8px">Sessions</h4>
+          ${sessions.length === 0 ? '<p style="font-size:12px;color:var(--bf-text-muted)">No sessions yet.</p>' : `
+            <table class="bf-table"><thead><tr><th>Date</th><th>Group</th><th>Time</th><th>Location</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              ${sessions.map(s => `
+                <tr>
+                  <td>${s.session_date}${s.is_extra ? ' <span class="belt-badge" style="background:#fef3c7;color:#92400e;font-size:9px">EXTRA</span>' : ''}</td>
+                  <td>${groupName(s.group_id)}</td>
+                  <td>${s.start_time}–${s.end_time}</td>
+                  <td>${s.location}</td>
+                  <td><span class="belt-badge" style="background:${s.status === 'Cancelled' ? '#fee2e2' : s.status === 'Completed' ? '#dcfce7' : '#f1f5f9'};color:${s.status === 'Cancelled' ? '#991b1b' : s.status === 'Completed' ? '#166534' : '#475569'}">${s.status}</span></td>
+                  <td style="display:flex;gap:4px;flex-wrap:wrap">
+                    ${canWrite && s.status !== 'Cancelled' ? `<button class="bf-btn bf-btn-sm bf-btn-outline" onclick="openSessionAttendance('${s.id}')">Attendance</button>` : ''}
+                    ${canWrite && s.status === 'Scheduled' ? `<button class="bf-btn bf-btn-sm bf-btn-outline" onclick="cancelSession('${s.id}')">Cancel</button>` : ''}
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody></table>
+          `}
+        </div>
+      `;
+    }
+
+    async function handleCreateGroup(e) {
+      e.preventDefault();
+      const name = document.getElementById('newGroupName').value.trim();
+      const result = await fetchApi('/classes/' + activeGroupsScheduleClassId + '/groups', { method: 'POST', body: JSON.stringify({ name }) });
+      if (!result.ok) { showToast('Group creation failed: ' + (result.data?.error || result.error)); return; }
+      showToast('✅ Group "' + name + '" created.');
+      await refreshGroupsScheduleModal();
+    }
+
+    async function handleCreateSchedule(e) {
+      e.preventDefault();
+      const body = {
+        groupId: document.getElementById('newScheduleGroup').value,
+        dayOfWeek: document.getElementById('newScheduleDay').value.trim(),
+        startTime: document.getElementById('newScheduleStart').value.trim(),
+        endTime: document.getElementById('newScheduleEnd').value.trim(),
+        location: document.getElementById('newScheduleLocation').value.trim(),
+        recurring: document.getElementById('newScheduleRecurring').checked
+      };
+      const result = await fetchApi('/classes/' + activeGroupsScheduleClassId + '/schedules', { method: 'POST', body: JSON.stringify(body) });
+      if (!result.ok) { showToast('Schedule creation failed: ' + (result.data?.error || result.error)); return; }
+      showToast('✅ Schedule added.');
+      await refreshGroupsScheduleModal();
+    }
+
+    async function generateSessionFromSchedule(scheduleId, groupId) {
+      const sessionDate = new Date().toISOString().slice(0, 10);
+      const result = await fetchApi('/classes/' + activeGroupsScheduleClassId + '/sessions', {
+        method: 'POST',
+        body: JSON.stringify({ groupId, scheduleId, sessionDate })
+      });
+      if (!result.ok) { showToast('Session generation failed: ' + (result.data?.error || result.error)); return; }
+      showToast('✅ Session generated for ' + sessionDate + '.');
+      await refreshGroupsScheduleModal();
+    }
+
+    async function handleCreateExtraSession(e) {
+      e.preventDefault();
+      const body = {
+        groupId: document.getElementById('extraSessionGroup').value,
+        sessionDate: document.getElementById('extraSessionDate').value,
+        dayOfWeek: document.getElementById('extraSessionDay').value.trim(),
+        location: document.getElementById('extraSessionLocation').value.trim(),
+        startTime: document.getElementById('extraSessionStart').value.trim(),
+        endTime: document.getElementById('extraSessionEnd').value.trim(),
+        isExtra: true,
+        message: document.getElementById('extraSessionMessage').value.trim()
+      };
+      const result = await fetchApi('/classes/' + activeGroupsScheduleClassId + '/sessions', { method: 'POST', body: JSON.stringify(body) });
+      if (!result.ok) { showToast('Extra session creation failed: ' + (result.data?.error || result.error)); return; }
+      showToast('✅ Extra session created and students/parents notified.');
+      await refreshGroupsScheduleModal();
+    }
+
+    async function cancelSession(sessionId) {
+      const result = await fetchApi('/classes/sessions/' + sessionId, { method: 'PATCH', body: JSON.stringify({ status: 'Cancelled', cancelledReason: 'Cancelled by Master' }) });
+      if (!result.ok) { showToast('Cancel failed: ' + (result.data?.error || result.error)); return; }
+      showToast('✅ Session cancelled and students/parents notified.');
+      await refreshGroupsScheduleModal();
+    }
+
+    // ================= SESSION ATTENDANCE =================
+    let activeAttendanceSessionId = null;
+
+    async function openSessionAttendance(sessionId) {
+      activeAttendanceSessionId = sessionId;
+      openModal('sessionAttendanceModal');
+      const body = document.getElementById('sessionAttendanceBody');
+      body.innerHTML = '<p style="font-size:13px;color:var(--bf-text-muted)">Loading…</p>';
+      const result = await fetchApi('/attendance/session/' + sessionId + '/roster');
+      if (!result.ok) {
+        body.innerHTML = '<p style="color:#dc2626">' + ((result.data && result.data.error) || 'Failed to load roster.') + '</p>';
+        return;
+      }
+      const { session, roster } = result.data;
+      document.getElementById('sessionAttendanceSubtitle').textContent = `${session.session_date} · ${session.start_time}-${session.end_time} · ${session.location}`;
+      if (roster.length === 0) {
+        body.innerHTML = '<p style="font-size:13px;color:var(--bf-text-muted)">No students enrolled in this class/group yet.</p>';
+        return;
+      }
+      body.innerHTML = `
+        <form onsubmit="handleMarkAttendance(event)">
+          <table class="bf-table">
+            <thead><tr><th>Student</th><th>Status</th></tr></thead>
+            <tbody>
+              ${roster.map(s => `
+                <tr>
+                  <td>${s.full_name}</td>
+                  <td>
+                    <select class="bf-input attendance-status-select" data-student-id="${s.id}">
+                      ${['Present', 'Late', 'Absent', 'Excused'].map(st => `<option value="${st}" ${(s.attendance && s.attendance.status === st) || (!s.attendance && st === 'Present') ? 'selected' : ''}>${st}</option>`).join('')}
+                    </select>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
+            <button type="button" class="bf-btn bf-btn-outline" onclick="closeModal('sessionAttendanceModal')">Cancel</button>
+            <button type="submit" class="bf-btn bf-btn-primary">Save Attendance</button>
+          </div>
+        </form>
+      `;
+    }
+
+    async function handleMarkAttendance(e) {
+      e.preventDefault();
+      const selects = Array.from(document.querySelectorAll('.attendance-status-select'));
+      const records = selects.map(sel => ({ studentId: sel.dataset.studentId, status: sel.value }));
+      const result = await fetchApi('/attendance/session/' + activeAttendanceSessionId + '/mark', { method: 'POST', body: JSON.stringify({ records }) });
+      if (!result.ok) { showToast('Attendance save failed: ' + (result.data?.error || result.error)); return; }
+      showToast('✅ Attendance recorded for ' + records.length + ' students.');
+      closeModal('sessionAttendanceModal');
+      await refreshGroupsScheduleModal();
+    }
+
+    // ================= PERSATUAN: ASSIGN / REPLACE MASTER =================
+    let activeAssignMasterClassId = null;
+
+    async function openAssignMasterModal(classId, className) {
+      activeAssignMasterClassId = classId;
+      document.getElementById('assignMasterClassId').value = classId;
+      document.getElementById('assignMasterSubtitle').textContent = className || '';
+      const select = document.getElementById('assignMasterSelect');
+      const orgCoaches = coaches.filter(c => activePersatuan && c.persatuan_id == activePersatuan.id);
+      select.innerHTML = '<option value="">— Remove current Master —</option>' +
+        orgCoaches.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+      openModal('assignMasterModal');
+    }
+
+    async function handleAssignMaster(e) {
+      e.preventDefault();
+      const masterId = document.getElementById('assignMasterSelect').value;
+      const result = await fetchApi('/classes/' + activeAssignMasterClassId + '/assign-master', {
+        method: 'PATCH',
+        body: JSON.stringify({ masterId: masterId || null })
+      });
+      if (!result.ok) { showToast('Assignment failed: ' + (result.data?.error || result.error)); return; }
+      showToast(masterId ? '✅ Master assigned. Previous Master access revoked immediately.' : '✅ Master removed.');
+      closeModal('assignMasterModal');
+      await loadLivePortalData();
+      renderContent();
+    }
+
+    function recordDuePayment(studentId, dueId, remaining, studentName, billingMonth) {
+      document.getElementById('recordDuePaymentStudentId').value = studentId;
+      document.getElementById('recordDuePaymentDueId').value = dueId;
+      document.getElementById('recordDuePaymentAmount').value = remaining.toFixed(2);
+      document.getElementById('recordDuePaymentSubtitle').textContent = `${studentName} — ${billingMonth} (Outstanding: RM ${remaining.toFixed(2)})`;
+      openModal('recordDuePaymentModal');
+    }
+
+    async function handleRecordDuePayment(e) {
+      e.preventDefault();
+      const studentId = document.getElementById('recordDuePaymentStudentId').value;
+      const dueId = document.getElementById('recordDuePaymentDueId').value;
+      const amount = parseFloat(document.getElementById('recordDuePaymentAmount').value);
       if (!Number.isFinite(amount) || amount <= 0) {
         showToast('Enter a valid amount greater than zero.');
         return;
@@ -3126,7 +3518,8 @@
         showToast('Payment failed: ' + (result.data?.error || result.error || 'Server error'));
         return;
       }
-      showToast('✅ Payment recorded and applied to ' + billingMonth + '.');
+      showToast('✅ Payment recorded and applied.');
+      closeModal('recordDuePaymentModal');
       await refreshMonthlyDuesReport();
     }
 
@@ -4375,6 +4768,7 @@
                             Enter Mat Coach View →
                           </button>
                           <button class="bf-btn bf-btn-sm bf-btn-outline" onclick="openMonthlyDuesReport('${c.id}')">Monthly Dues Report</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-outline" onclick="openAssignMasterModal('${c.id}', '${escapeHtmlAttr(c.name)}')">Assign / Replace Master</button>
                         </td>
                       </tr>
                     `;
@@ -5013,6 +5407,7 @@
                           <span>RM ${Number(c.monthly_fee ?? 120).toFixed(2)} / month</span>
                           <button class="bf-btn bf-btn-sm bf-btn-outline" style="padding:2px 8px;font-size:11px" onclick="openSetClassFeeModal('${c.id}', ${Number(c.monthly_fee ?? 120)})">Edit Fee</button>
                           <button class="bf-btn bf-btn-sm bf-btn-outline" style="padding:2px 8px;font-size:11px" onclick="openMonthlyDuesReport('${c.id}')">Monthly Dues</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="padding:2px 8px;font-size:11px" onclick="openGroupsScheduleModal('${c.id}', '${escapeHtmlAttr(c.name)}')">Groups & Schedule</button>
                         </div>
                       </div>
 
@@ -5449,6 +5844,48 @@
               <div class="kpi-subtext">${activeChild.className}</div>
             </div>
           </div>
+
+          <div class="bf-card" style="margin-top:16px">
+            <h3 style="font-size:15px;margin-bottom:10px">Upcoming Sessions</h3>
+            ${myUpcomingSessions.length === 0 ? '<p style="font-size:12px;color:var(--bf-text-muted)">No upcoming sessions scheduled.</p>' :
+              myUpcomingSessions.map(s => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bf-border)">
+                  <div>
+                    <strong style="font-size:13px">${s.session_date}</strong> · ${s.day_of_week}, ${s.start_time}–${s.end_time}
+                    <div style="font-size:11px;color:var(--bf-text-muted)">${s.group_name} · ${s.location}${s.is_extra ? ' · <span style="color:#92400e">Extra Session</span>' : ''}</div>
+                  </div>
+                </div>
+              `).join('')}
+          </div>
+
+          <div class="bf-card" style="margin-top:16px">
+            <h3 style="font-size:15px;margin-bottom:10px">Notices</h3>
+            ${myNotices.length === 0 ? '<p style="font-size:12px;color:var(--bf-text-muted)">No notices yet.</p>' :
+              myNotices.slice(0, 8).map(n => `
+                <div style="padding:8px 0;border-bottom:1px solid var(--bf-border)">
+                  <span class="belt-badge" style="background:${n.type === 'CANCELLED' ? '#fee2e2' : n.type === 'EXTRA_SESSION' ? '#fef3c7' : '#e0f2fe'};color:${n.type === 'CANCELLED' ? '#991b1b' : n.type === 'EXTRA_SESSION' ? '#92400e' : '#0369a1'};font-size:9px">${n.type.replace('_', ' ')}</span>
+                  <div style="font-size:12px;color:var(--bf-navy);margin-top:4px">${n.message}</div>
+                  <div style="font-size:10px;color:var(--bf-text-muted)">${new Date(n.created_at).toLocaleString()} · ${n.sender_name}</div>
+                </div>
+              `).join('')}
+          </div>
+
+          <div class="bf-card" style="margin-top:16px">
+            <h3 style="font-size:15px;margin-bottom:10px">${activeChild.name}'s Attendance History</h3>
+            ${myAttendanceHistory.length === 0 ? '<p style="font-size:12px;color:var(--bf-text-muted)">No attendance recorded yet.</p>' : `
+              <table class="bf-table"><thead><tr><th>Date</th><th>Group</th><th>Time</th><th>Status</th></tr></thead>
+              <tbody>
+                ${myAttendanceHistory.slice(0, 15).map(a => `
+                  <tr>
+                    <td>${a.session_date}</td>
+                    <td>${a.group_name}</td>
+                    <td>${a.start_time}–${a.end_time}</td>
+                    <td><span class="belt-badge" style="background:${a.status === 'Present' ? '#dcfce7' : a.status === 'Absent' ? '#fee2e2' : '#fef3c7'};color:${a.status === 'Present' ? '#166534' : a.status === 'Absent' ? '#991b1b' : '#92400e'}">${a.status}</span></td>
+                  </tr>
+                `).join('')}
+              </tbody></table>
+            `}
+          </div>
         `;
       } else if (currentTab === 'payments') {
         view.innerHTML = `
@@ -5698,6 +6135,48 @@
               <div class="kpi-value">${studentCerts.length}</div>
               <div class="kpi-subtext">Verified awards</div>
             </div>
+          </div>
+
+          <div class="bf-card" style="margin-top:16px">
+            <h3 style="font-size:15px;margin-bottom:10px">Upcoming Sessions</h3>
+            ${myUpcomingSessions.length === 0 ? '<p style="font-size:12px;color:var(--bf-text-muted)">No upcoming sessions scheduled.</p>' :
+              myUpcomingSessions.map(s => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bf-border)">
+                  <div>
+                    <strong style="font-size:13px">${s.session_date}</strong> · ${s.day_of_week}, ${s.start_time}–${s.end_time}
+                    <div style="font-size:11px;color:var(--bf-text-muted)">${s.group_name} · ${s.location}${s.is_extra ? ' · <span style="color:#92400e">Extra Session</span>' : ''}</div>
+                  </div>
+                </div>
+              `).join('')}
+          </div>
+
+          <div class="bf-card" style="margin-top:16px">
+            <h3 style="font-size:15px;margin-bottom:10px">Notices</h3>
+            ${myNotices.length === 0 ? '<p style="font-size:12px;color:var(--bf-text-muted)">No notices yet.</p>' :
+              myNotices.slice(0, 8).map(n => `
+                <div style="padding:8px 0;border-bottom:1px solid var(--bf-border)">
+                  <span class="belt-badge" style="background:${n.type === 'CANCELLED' ? '#fee2e2' : n.type === 'EXTRA_SESSION' ? '#fef3c7' : '#e0f2fe'};color:${n.type === 'CANCELLED' ? '#991b1b' : n.type === 'EXTRA_SESSION' ? '#92400e' : '#0369a1'};font-size:9px">${n.type.replace('_', ' ')}</span>
+                  <div style="font-size:12px;color:var(--bf-navy);margin-top:4px">${n.message}</div>
+                  <div style="font-size:10px;color:var(--bf-text-muted)">${new Date(n.created_at).toLocaleString()} · ${n.sender_name}</div>
+                </div>
+              `).join('')}
+          </div>
+
+          <div class="bf-card" style="margin-top:16px">
+            <h3 style="font-size:15px;margin-bottom:10px">My Attendance History</h3>
+            ${myAttendanceHistory.length === 0 ? '<p style="font-size:12px;color:var(--bf-text-muted)">No attendance recorded yet.</p>' : `
+              <table class="bf-table"><thead><tr><th>Date</th><th>Group</th><th>Time</th><th>Status</th></tr></thead>
+              <tbody>
+                ${myAttendanceHistory.slice(0, 15).map(a => `
+                  <tr>
+                    <td>${a.session_date}</td>
+                    <td>${a.group_name}</td>
+                    <td>${a.start_time}–${a.end_time}</td>
+                    <td><span class="belt-badge" style="background:${a.status === 'Present' ? '#dcfce7' : a.status === 'Absent' ? '#fee2e2' : '#fef3c7'};color:${a.status === 'Present' ? '#166534' : a.status === 'Absent' ? '#991b1b' : '#92400e'}">${a.status}</span></td>
+                  </tr>
+                `).join('')}
+              </tbody></table>
+            `}
           </div>
         `;
       } else if (currentTab === 'skills') {

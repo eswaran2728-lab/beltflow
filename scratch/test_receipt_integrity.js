@@ -68,6 +68,11 @@ async function run() {
     const orgId = org.body.organization.id;
     const cls = await req(PORT, 'POST', '/api/v1/classes', { organizationId: orgId, name: 'A Class', schedule: 'Mon' }, token);
     const classId = cls.body.class.id;
+    // Payment approval/cash-recording is Master-only (Persatuan Admin is
+    // view-only on finances) — assign a Master to this class for those calls.
+    await req(PORT, 'POST', '/api/v1/classes/masters', { organizationId: orgId, fullName: 'Receipt Test Master', email: 'receipt-master@a.test', password: 'ReceiptMasterPass2026!', assignedClassIds: [classId] }, token);
+    const masterLogin = await req(PORT, 'POST', '/api/v1/auth/login', { email: 'receipt-master@a.test', password: 'ReceiptMasterPass2026!' });
+    const masterToken = masterLogin.body.token;
 
     console.log('--- SCHEMA: unique index exists ---');
     const idxRes = await dbClient.query(
@@ -80,7 +85,7 @@ async function run() {
     const stu2 = await req(PORT, 'POST', '/api/v1/students', { organizationId: orgId, classId, fullName: 'Student Two', email: 's2@a.test', password: 'StudentPass2026!' }, token);
     const studentId1 = stu1.body.student.id, studentId2 = stu2.body.student.id;
 
-    const cash1 = await req(PORT, 'POST', '/api/v1/billing/record-cash-payment', { studentId: studentId1, amount: 50 }, token);
+    const cash1 = await req(PORT, 'POST', '/api/v1/billing/record-cash-payment', { studentId: studentId1, amount: 50 }, masterToken);
     check('First cash payment succeeds with a receipt number', cash1.status === 201 && !!cash1.body.payment.receipt_no, cash1.body);
     const takenReceipt = cash1.body.payment.receipt_no;
 
@@ -105,7 +110,7 @@ async function run() {
     const stu3 = await req(PORT, 'POST', '/api/v1/students', { organizationId: orgId, classId, fullName: 'Student Three', email: 's3@a.test', password: 'StudentPass2026!' }, token);
     const studentId3 = stu3.body.student.id;
     const concurrentResults = await Promise.all(
-      Array.from({ length: 8 }, () => req(PORT, 'POST', '/api/v1/billing/record-cash-payment', { studentId: studentId3, amount: 20 }, token))
+      Array.from({ length: 8 }, () => req(PORT, 'POST', '/api/v1/billing/record-cash-payment', { studentId: studentId3, amount: 20 }, masterToken))
     );
     const allSucceeded = concurrentResults.every((r) => r.status === 201);
     check('8 concurrent cash payments all succeed (no crash from collision handling)', allSucceeded,
@@ -117,7 +122,7 @@ async function run() {
 
     console.log('\n--- EXISTING WORKFLOWS STILL WORK ---');
     const pay = await req(PORT, 'POST', '/api/v1/billing/submit-payment', { studentId: studentId1, amount: 120 }, token);
-    const approve = await req(PORT, 'POST', `/api/v1/billing/${pay.body.payment.id}/approve`, {}, token);
+    const approve = await req(PORT, 'POST', `/api/v1/billing/${pay.body.payment.id}/approve`, {}, masterToken);
     check('Payment submit + approve workflow still succeeds with a receipt', approve.status === 200 && !!approve.body.payment.receipt_no, approve.body);
 
     const dbReceipts = await dbClient.query('SELECT receipt_no FROM payments WHERE receipt_no IS NOT NULL');

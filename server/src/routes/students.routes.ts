@@ -4,10 +4,58 @@ import { Permission, UserRole } from '../security/rbac';
 import { hashPasswordServer } from '../security/crypto';
 import { validatePassword } from '../security/passwordPolicy';
 import { authenticateJWT, requirePermission } from '../middleware/auth';
-import { studentAccess } from '../security/access';
+import { studentAccess, assignedMasterAccess } from '../security/access';
 import { safeErrorMessage } from '../security/errors';
 
 const router = Router();
+
+// Assign/change a student's training group within their class — assigned
+// Master only. Determines which students appear in a given session's
+// attendance roster (see attendance.routes.ts GET /session/:sessionId/roster).
+router.patch('/:studentId/group', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const { groupId } = req.body;
+    const studentRes = await dbClient.query('SELECT * FROM students WHERE id = $1', [req.params.studentId]);
+    if (studentRes.rowCount === 0) return res.status(404).json({ error: 'Student not found.' });
+    const student = studentRes.rows[0];
+    if (!student.class_id || !(await assignedMasterAccess(req.user!, student.class_id))) {
+      return res.status(403).json({ error: 'Only the Master assigned to this student\'s class may change their group.' });
+    }
+    if (groupId) {
+      const group = await dbClient.query('SELECT id FROM training_groups WHERE id = $1 AND class_id = $2', [groupId, student.class_id]);
+      if (!group.rowCount) return res.status(400).json({ error: 'Group must belong to the student\'s class.' });
+    }
+    const updated = await dbClient.query('UPDATE students SET group_id = $1 WHERE id = $2 RETURNING *', [groupId || null, student.id]);
+    return res.json({ student: updated.rows[0] });
+  } catch (err: any) {
+    console.error('[Database error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
+// Upcoming (not-cancelled, today-or-later) sessions for this student's own
+// class + group — self, linked Parent, assigned Master, or same-org Admin
+// (studentAccess); Super Admin excluded.
+router.get('/:studentId/sessions', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const access = await studentAccess(req.user!, req.params.studentId);
+    if (!access.allowed) return res.status(403).json({ error: 'Session access denied.' });
+    const student = access.student;
+    if (!student.class_id || !student.group_id) return res.json({ sessions: [] });
+    const today = new Date().toISOString().slice(0, 10);
+    const result = await dbClient.query(
+      `SELECT ts.*, tg.name AS group_name FROM training_sessions ts
+       JOIN training_groups tg ON tg.id = ts.group_id
+       WHERE ts.class_id = $1 AND ts.group_id = $2 AND ts.session_date >= $3 AND ts.status != 'Cancelled'
+       ORDER BY ts.session_date ASC, ts.start_time ASC`,
+      [student.class_id, student.group_id, today]
+    );
+    return res.json({ sessions: result.rows });
+  } catch (err: any) {
+    console.error('[Database error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
 
 router.get('/me', authenticateJWT, async (req: Request, res: Response) => {
   if (req.user?.role !== UserRole.STUDENT) return res.status(403).json({ error: 'Student account required.' });

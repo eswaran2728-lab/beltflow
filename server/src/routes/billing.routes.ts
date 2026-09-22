@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { dbClient } from '../db/client';
 import { Permission, UserRole } from '../security/rbac';
 import { authenticateJWT, requirePermission } from '../middleware/auth';
-import { studentAccess, classAccess } from '../security/access';
+import { studentAccess, classAccess, assignedMasterAccess } from '../security/access';
 import { safeErrorMessage } from '../security/errors';
 
 const router = Router();
@@ -22,6 +22,21 @@ function isUniqueViolation(err: any): boolean {
 }
 
 const BILLING_MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+const MAX_FEE_AMOUNT = 100000;
+
+function newId(prefix: string): string {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function validateFeeAmount(value: unknown): { valid: boolean; amount?: number; error?: string } {
+  const amount = Number(value);
+  if (typeof value !== 'number' && typeof value !== 'string') return { valid: false, error: 'A fee amount is required.' };
+  if (!Number.isFinite(amount)) return { valid: false, error: 'Fee amount must be a valid number.' };
+  if (amount <= 0) return { valid: false, error: 'Fee amount must be greater than zero.' };
+  if (amount > MAX_FEE_AMOUNT) return { valid: false, error: `Fee amount must not exceed RM ${MAX_FEE_AMOUNT}.` };
+  if (Math.round(amount * 100) !== amount * 100) return { valid: false, error: 'Fee amount must have at most two decimal places.' };
+  return { valid: true, amount: Math.round(amount * 100) / 100 };
+}
 
 function currentBillingMonth(): string {
   return new Date().toISOString().slice(0, 7);
@@ -129,17 +144,17 @@ router.get('/student/:studentId', authenticateJWT, async (req: Request, res: Res
 // billing month. Safe to call repeatedly — the UNIQUE (student_id,
 // billing_month) constraint plus ON CONFLICT DO NOTHING makes this an
 // idempotent no-op for any student who already has a row for that month.
-// classAccess() restricts this to the class's assigned Master or the
-// Persatuan Admin of the same organization — never Super Admin, an
-// unassigned Master, or a cross-organization user.
+// assignedMasterAccess() restricts this to the class's assigned Master only
+// — the Persatuan Admin may view the resulting report (GET below) but may
+// never generate, edit, or approve dues/payments themselves.
 router.post('/monthly-dues/generate', authenticateJWT, async (req: Request, res: Response) => {
   try {
     const { classId, billingMonth } = req.body;
     if (!classId || !billingMonth || !BILLING_MONTH_RE.test(billingMonth)) {
       return res.status(400).json({ error: 'classId and billingMonth (format YYYY-MM) are required.' });
     }
-    if (!(await classAccess(req.user!, classId))) {
-      return res.status(403).json({ error: 'You are not authorized to generate bills for this class.' });
+    if (!(await assignedMasterAccess(req.user!, classId))) {
+      return res.status(403).json({ error: 'Only the Master assigned to this class may generate bills.' });
     }
     const cls = (await dbClient.query('SELECT organization_id FROM classes WHERE id = $1', [classId])).rows[0];
     const students = await dbClient.query(
@@ -302,7 +317,9 @@ router.post('/submit-payment', authenticateJWT, async (req: Request, res: Respon
   }
 });
 
-// Approve payment and generate official receipt (ADMIN_PERSATUAN or assigned MASTER; Super Admin denied)
+// Approve payment and generate official receipt — assigned MASTER only.
+// Persatuan Admin may view financial reports but may never approve a
+// payment (real-academy-operations redesign); Super Admin is denied.
 router.post('/:paymentId/approve', authenticateJWT, requirePermission(Permission.CLASS_APPROVE_PAYMENT), async (req: Request, res: Response) => {
   try {
     const payRes = await dbClient.query('SELECT * FROM payments WHERE id = $1', [req.params.paymentId]);
@@ -310,8 +327,8 @@ router.post('/:paymentId/approve', authenticateJWT, requirePermission(Permission
 
     const payment = payRes.rows[0];
     const access = await studentAccess(req.user!, payment.student_id);
-    if (!access.allowed || ![UserRole.ADMIN_PERSATUAN, UserRole.MASTER].includes(req.user!.role)) {
-      return res.status(403).json({ error: 'Payment approval access denied.' });
+    if (!access.allowed || req.user!.role !== UserRole.MASTER) {
+      return res.status(403).json({ error: 'Only the Master assigned to this student\'s class may approve payments.' });
     }
     if (payment.status !== 'Pending Review') return res.status(409).json({ error: 'Payment has already been reviewed.' });
 
@@ -375,8 +392,8 @@ router.post('/:paymentId/reject', authenticateJWT, requirePermission(Permission.
     const payment = result.rows[0];
     if (!payment) return res.status(404).json({ error: 'Payment not found.' });
     const access = await studentAccess(req.user!, payment.student_id);
-    if (!access.allowed || ![UserRole.ADMIN_PERSATUAN, UserRole.MASTER].includes(req.user!.role)) {
-      return res.status(403).json({ error: 'Payment review access denied.' });
+    if (!access.allowed || req.user!.role !== UserRole.MASTER) {
+      return res.status(403).json({ error: 'Only the Master assigned to this student\'s class may review payments.' });
     }
     if (payment.status !== 'Pending Review') return res.status(409).json({ error: 'Payment has already been reviewed.' });
     const reason = String(req.body.reason || '').trim();
@@ -394,7 +411,7 @@ router.post('/:paymentId/reject', authenticateJWT, requirePermission(Permission.
   }
 });
 
-// Record direct cash payment with immediate receipt (ADMIN_PERSATUAN or assigned MASTER)
+// Record direct cash payment with immediate receipt — assigned MASTER only.
 router.post('/record-cash-payment', authenticateJWT, requirePermission(Permission.CLASS_RECORD_CASH_PAYMENT), async (req: Request, res: Response) => {
   try {
     const { studentId, amount, method, proofNotes, billingMonthIds } = req.body;
@@ -406,8 +423,8 @@ router.post('/record-cash-payment', authenticateJWT, requirePermission(Permissio
     if (studentRes.rowCount === 0) return res.status(404).json({ error: 'Student not found.' });
     const student = studentRes.rows[0];
     const access = await studentAccess(req.user!, studentId);
-    if (!access.allowed || ![UserRole.ADMIN_PERSATUAN, UserRole.MASTER].includes(req.user!.role)) {
-      return res.status(403).json({ error: 'Cash payment access denied.' });
+    if (!access.allowed || req.user!.role !== UserRole.MASTER) {
+      return res.status(403).json({ error: 'Only the Master assigned to this student\'s class may record cash payments.' });
     }
 
     let monthIds: string[] | null = null;
@@ -466,6 +483,174 @@ router.post('/record-cash-payment', authenticateJWT, requirePermission(Permissio
     );
 
     return res.status(201).json({ message: 'Cash payment recorded and receipt generated in PostgreSQL.', payment: payRes!.rows[0] });
+  } catch (err: any) {
+    console.error('[Database error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
+// ================= INDIVIDUAL STUDENT FEE OVERRIDE =================
+// A student's own fee ALWAYS takes precedence over the class fee — setting
+// fee_override=true here means future class-wide fee changes (PATCH
+// /classes/:classId/fee) skip this student entirely. Assigned Master only.
+router.patch('/student/:studentId/fee', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const studentRes = await dbClient.query('SELECT * FROM students WHERE id = $1', [req.params.studentId]);
+    if (studentRes.rowCount === 0) return res.status(404).json({ error: 'Student not found.' });
+    const student = studentRes.rows[0];
+    if (!student.class_id || !(await assignedMasterAccess(req.user!, student.class_id))) {
+      return res.status(403).json({ error: 'Only the Master assigned to this student\'s class may set an individual fee.' });
+    }
+
+    const { monthlyFee, clearOverride } = req.body;
+    if (clearOverride) {
+      // Revert to following the class fee going forward.
+      const cls = await dbClient.query('SELECT monthly_fee FROM classes WHERE id = $1', [student.class_id]);
+      const updated = await dbClient.query(
+        'UPDATE students SET fee_override = FALSE, monthly_fee = $1 WHERE id = $2 RETURNING *',
+        [cls.rows[0].monthly_fee, student.id]
+      );
+      await dbClient.query(
+        `INSERT INTO audit_logs (id, action, details, user_role, user_email) VALUES ($1, $2, $3, $4, $5)`,
+        [newId('audit'), 'Student Fee Override Cleared', `Student ${student.id} reverted to class fee RM ${cls.rows[0].monthly_fee}`, req.user!.role, req.user!.email]
+      );
+      return res.json({ student: updated.rows[0] });
+    }
+
+    const feeCheck = validateFeeAmount(monthlyFee);
+    if (!feeCheck.valid) return res.status(400).json({ error: feeCheck.error });
+    const oldFee = Number(student.monthly_fee);
+
+    const updated = await dbClient.query(
+      'UPDATE students SET monthly_fee = $1, fee_override = TRUE WHERE id = $2 RETURNING *',
+      [feeCheck.amount, student.id]
+    );
+
+    await dbClient.query(
+      `INSERT INTO audit_logs (id, action, details, user_role, user_email) VALUES ($1, $2, $3, $4, $5)`,
+      [newId('audit'), 'Student Fee Override Set',
+       `Student ${student.id} (${student.full_name}), Class ${student.class_id}: RM ${oldFee.toFixed(2)} -> RM ${feeCheck.amount!.toFixed(2)} (override) by Master ${req.user!.id}`,
+       req.user!.role, req.user!.email]
+    );
+
+    return res.json({ student: updated.rows[0] });
+  } catch (err: any) {
+    console.error('[Database error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
+// ================= DUE CORRECTIONS (bulk & individual) =================
+// Corrects one or more NOT-fully-paid monthly_dues rows to a new fee
+// amount — e.g. bills were generated at the wrong fee before being caught.
+// Every affected row gets its own immutable payment_corrections entry
+// recording the original and corrected amount; the due's own remaining
+// balance is recalculated, never silently overwritten with no trace.
+// Assigned Master only. targetStudentId omitted = whole class.
+router.post('/monthly-dues/correct', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const { classId, billingMonth, studentId, newFeeAmount, reason } = req.body;
+    if (!classId || !billingMonth || !reason || !reason.trim()) {
+      return res.status(400).json({ error: 'classId, billingMonth, and reason are required.' });
+    }
+    if (!(await assignedMasterAccess(req.user!, classId))) {
+      return res.status(403).json({ error: 'Only the Master assigned to this class may correct dues.' });
+    }
+    const feeCheck = validateFeeAmount(newFeeAmount);
+    if (!feeCheck.valid) return res.status(400).json({ error: feeCheck.error });
+
+    const cls = (await dbClient.query('SELECT organization_id FROM classes WHERE id = $1', [classId])).rows[0];
+    const duesRes = await dbClient.query(
+      `SELECT * FROM monthly_dues
+       WHERE class_id = $1 AND billing_month = $2 AND status != 'Paid'
+         AND ($3::text IS NULL OR student_id = $3)`,
+      [classId, billingMonth, studentId || null]
+    );
+
+    let corrected = 0;
+    for (const due of duesRes.rows) {
+      const originalAmount = Number(due.fee_amount);
+      const newStatus = Number(due.amount_paid) >= feeCheck.amount!
+        ? 'Paid' : (Number(due.amount_paid) > 0 ? 'Partially Paid' : 'Pending');
+      await dbClient.query('UPDATE monthly_dues SET fee_amount = $1, status = $2 WHERE id = $3', [feeCheck.amount, newStatus, due.id]);
+      await dbClient.query(
+        `INSERT INTO payment_corrections (id, organization_id, class_id, student_id, monthly_due_id, original_amount, corrected_amount, reason, corrected_by, corrected_by_name)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        [newId('corr'), cls.organization_id, classId, due.student_id, due.id, originalAmount, feeCheck.amount, reason.trim(), req.user!.id, req.user!.email]
+      );
+      corrected++;
+    }
+
+    await dbClient.query(
+      `INSERT INTO audit_logs (id, action, details, user_role, user_email) VALUES ($1, $2, $3, $4, $5)`,
+      [newId('audit'), 'Monthly Dues Corrected',
+       `Class ${classId}, Month ${billingMonth}${studentId ? `, Student ${studentId}` : ' (whole class)'}: ${corrected} due(s) corrected to RM ${feeCheck.amount!.toFixed(2)}. Reason: ${reason.trim()}`,
+       req.user!.role, req.user!.email]
+    );
+
+    return res.json({ message: `${corrected} due(s) corrected.`, corrected });
+  } catch (err: any) {
+    console.error('[Database error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
+// ================= AUDITED PAYMENT CORRECTION =================
+// An already-approved payment/receipt is never silently edited: this
+// records an immutable payment_corrections row (original amount/status,
+// corrected amount/status, reason, Master, timestamp) BEFORE applying the
+// correction, so the full history survives even after the payment's own
+// amount is updated. Assigned Master only.
+router.post('/:paymentId/correct', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const { correctedAmount, correctedStatus, reason } = req.body;
+    if (!reason || !reason.trim()) return res.status(400).json({ error: 'A reason is required for every payment correction.' });
+    const payRes = await dbClient.query('SELECT * FROM payments WHERE id = $1', [req.params.paymentId]);
+    if (payRes.rowCount === 0) return res.status(404).json({ error: 'Payment not found.' });
+    const payment = payRes.rows[0];
+    const access = await studentAccess(req.user!, payment.student_id);
+    const studentClassId = access.student?.class_id;
+    if (!studentClassId || !(await assignedMasterAccess(req.user!, studentClassId))) {
+      return res.status(403).json({ error: 'Only the Master assigned to this student\'s class may correct this payment.' });
+    }
+    const feeCheck = validateFeeAmount(correctedAmount ?? payment.amount);
+    if (!feeCheck.valid) return res.status(400).json({ error: feeCheck.error });
+
+    await dbClient.query(
+      `INSERT INTO payment_corrections (id, organization_id, class_id, student_id, payment_id, original_amount, corrected_amount, original_status, corrected_status, reason, corrected_by, corrected_by_name)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+      [newId('corr'), payment.organization_id, studentClassId, payment.student_id, payment.id,
+       Number(payment.amount), feeCheck.amount, payment.status, correctedStatus || payment.status, reason.trim(), req.user!.id, req.user!.email]
+    );
+
+    const updated = await dbClient.query(
+      'UPDATE payments SET amount = $1, status = COALESCE($2, status) WHERE id = $3 RETURNING *',
+      [feeCheck.amount, correctedStatus || null, payment.id]
+    );
+
+    await dbClient.query(
+      `INSERT INTO audit_logs (id, action, details, user_role, user_email) VALUES ($1, $2, $3, $4, $5)`,
+      [newId('audit'), 'Payment Corrected',
+       `Payment ${payment.id}: RM ${Number(payment.amount).toFixed(2)} -> RM ${feeCheck.amount!.toFixed(2)}. Reason: ${reason.trim()}`,
+       req.user!.role, req.user!.email]
+    );
+
+    return res.json({ message: 'Payment corrected. Original values preserved in the audit trail.', payment: updated.rows[0] });
+  } catch (err: any) {
+    console.error('[Database error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
+// The full, immutable correction history for a student — Admin/Master
+// (view) or the student's own linked Parent/Student.
+router.get('/corrections/student/:studentId', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const access = await studentAccess(req.user!, req.params.studentId);
+    if (!access.allowed) return res.status(403).json({ error: 'Correction history access denied.' });
+    const result = await dbClient.query(
+      'SELECT * FROM payment_corrections WHERE student_id = $1 ORDER BY created_at DESC', [req.params.studentId]);
+    return res.json({ corrections: result.rows });
   } catch (err: any) {
     console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });

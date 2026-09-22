@@ -128,13 +128,17 @@ export function checkUserPermission(params: PermissionCheckParams): boolean {
       case Permission.PERSATUAN_VIEW_FINANCES:
       case Permission.CLASS_VIEW:
       case Permission.CLASS_ASSIGN_COACH:
-      case Permission.CLASS_MARK_ATTENDANCE:
+      // Deliberately NOT CLASS_MARK_ATTENDANCE, CLASS_APPROVE_PAYMENT, or
+      // CLASS_RECORD_CASH_PAYMENT: the real-academy-operations redesign
+      // makes daily training operations (sessions, attendance) and money
+      // handling (fees, dues, payments, receipts) exclusively the assigned
+      // Master's domain. The Persatuan Admin keeps full VIEW access
+      // (CLASS_VIEW_ATTENDANCE, PERSATUAN_VIEW_FINANCES, the monthly-dues
+      // report endpoints) but can never create/edit/approve any of it.
       case Permission.CLASS_VIEW_ATTENDANCE:
       case Permission.CLASS_MANAGE_SKILL_PROGRESS:
       case Permission.CLASS_SCORE_GRADING:
       case Permission.CLASS_SCORE_TOURNAMENT:
-      case Permission.CLASS_APPROVE_PAYMENT:
-      case Permission.CLASS_RECORD_CASH_PAYMENT:
       case Permission.CLASS_APPROVE_STUDENT_REGISTRATION:
       case Permission.CLASS_REQUEST_JOIN_APPROVE:
       case Permission.CLASS_TRANSFER_APPROVE:

@@ -89,6 +89,12 @@ async function run() {
     }, tokenB);
     const studentIdA = stuA.body.student.id, studentIdB = stuB.body.student.id;
 
+    // Payment approval is Master-only (Persatuan Admin is view-only on
+    // finances) — assign a Master to Class A for the approval tests below.
+    await req(PORT, 'POST', '/api/v1/classes/masters', { organizationId: orgIdA, fullName: 'Adversarial Master A', email: 'adv-master-a@a.test', password: 'AdvMasterAPass2026!', assignedClassIds: [classIdA] }, tokenA);
+    const masterLoginA = await req(PORT, 'POST', '/api/v1/auth/login', { email: 'adv-master-a@a.test', password: 'AdvMasterAPass2026!' });
+    const masterTokenA = masterLoginA.body.token;
+
     console.log('--- PHASE 2: IDOR / CROSS-TENANT ISOLATION ---');
     const crossStudent = await req(PORT, 'GET', `/api/v1/students/${studentIdB}`, null, tokenA);
     check('Academy A admin cannot read Academy B student', crossStudent.status === 403, crossStudent.body);
@@ -183,8 +189,8 @@ async function run() {
     const pay = await req(PORT, 'POST', '/api/v1/billing/submit-payment', { studentId: studentIdA, amount: 120 }, tokenA);
     const paymentId = pay.body.payment.id;
     const [appr1, appr2] = await Promise.all([
-      req(PORT, 'POST', `/api/v1/billing/${paymentId}/approve`, {}, tokenA),
-      req(PORT, 'POST', `/api/v1/billing/${paymentId}/approve`, {}, tokenA)
+      req(PORT, 'POST', `/api/v1/billing/${paymentId}/approve`, {}, masterTokenA),
+      req(PORT, 'POST', `/api/v1/billing/${paymentId}/approve`, {}, masterTokenA)
     ]);
     const statuses = [appr1.status, appr2.status].sort();
     check('Concurrent duplicate approval: exactly one 200 and one 409 (no double-approval)',
