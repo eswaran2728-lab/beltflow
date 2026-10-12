@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "BeltFlow",
+    "slug": "beltflow",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#0D2B47",
+    "ios": {
+      "bundleIdentifier": "com.beltflow.app",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.beltflow.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0D2B47",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store"
+    ]
+  }
+}
