@@ -1,9 +1,17 @@
 import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
 import { useColorScheme } from 'react-native';
-import { ThemeColors, lightThemeColors, darkThemeColors, BrandColors } from './colors';
+import { ThemeColors, lightThemeColors, darkThemeColors } from './colors';
 import { typography, TypographyScale } from './typography';
 import { spacing, borderRadius, elevation, layout, iconSize, ElevationTokens } from './spacing';
-import { BELT_RANKS, getBeltConfig, isLightBelt, BeltRankConfig } from './belts';
+import {
+  DEFAULT_BELT_TEMPLATE,
+  BeltLevelConfig,
+  resolveBeltDisplay,
+  isLightBelt,
+  getBeltTextColor,
+  getBeltBorderColor,
+  getBeltConfig,
+} from './belts';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -17,9 +25,12 @@ export interface ThemeContextValue {
   elevation: ElevationTokens;
   layout: typeof layout;
   iconSize: typeof iconSize;
-  belts: readonly BeltRankConfig[];
-  getBeltConfig: (name: string) => BeltRankConfig;
+  belts: readonly BeltLevelConfig[];
+  resolveBeltDisplay: (nameOrId: string) => ReturnType<typeof resolveBeltDisplay>;
+  getBeltTextColor: (hex: string) => string;
+  getBeltBorderColor: (hex: string) => string;
   isLightBelt: (hex: string) => boolean;
+  getBeltConfig: (name: string) => BeltLevelConfig;
   setThemeMode: (mode: ThemeMode) => void;
   toggleTheme: () => void;
 }
@@ -29,11 +40,13 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 export interface ThemeProviderProps {
   children: React.ReactNode;
   defaultMode?: ThemeMode;
+  persatuanBelts?: readonly BeltLevelConfig[];
 }
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   children,
   defaultMode = 'dark', // BeltFlow defaults to its signature dark navy theme
+  persatuanBelts,
 }) => {
   const systemColorScheme = useColorScheme();
   const [themeMode, setThemeModeState] = useState<ThemeMode>(defaultMode);
@@ -48,6 +61,14 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   const colors = useMemo(() => {
     return isDark ? darkThemeColors : lightThemeColors;
   }, [isDark]);
+
+  const activeBelts = useMemo(() => {
+    return persatuanBelts && persatuanBelts.length > 0 ? persatuanBelts : DEFAULT_BELT_TEMPLATE;
+  }, [persatuanBelts]);
+
+  const resolveBelt = useCallback((nameOrId: string) => {
+    return resolveBeltDisplay(nameOrId, activeBelts);
+  }, [activeBelts]);
 
   const setThemeMode = useCallback((mode: ThemeMode) => {
     setThemeModeState(mode);
@@ -70,12 +91,15 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     elevation,
     layout,
     iconSize,
-    belts: BELT_RANKS,
-    getBeltConfig,
+    belts: activeBelts,
+    resolveBeltDisplay: resolveBelt,
+    getBeltTextColor,
+    getBeltBorderColor,
     isLightBelt,
+    getBeltConfig,
     setThemeMode,
     toggleTheme,
-  }), [themeMode, isDark, colors, setThemeMode, toggleTheme]);
+  }), [themeMode, isDark, colors, activeBelts, resolveBelt, setThemeMode, toggleTheme]);
 
   return (
     <ThemeContext.Provider value={value}>
