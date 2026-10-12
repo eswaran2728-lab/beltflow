@@ -1,0 +1,70 @@
+import * as SecureStore from 'expo-secure-store';
+import { AuthUser } from '../types/auth';
+
+/**
+ * BeltFlow Mobile Secure Storage Service
+ *
+ * Utilizes hardware-backed Expo SecureStore (Android Keystore / iOS Keychain).
+ * Never uses unencrypted AsyncStorage or raw SQLite for sensitive JWT tokens.
+ * Strict zero-log policy for token data.
+ */
+
+const STORAGE_KEYS = {
+  AUTH_TOKEN: 'beltflow_auth_token',
+  USER_SESSION: 'beltflow_user_session',
+} as const;
+
+export async function getAuthToken(): Promise<string | null> {
+  try {
+    return await SecureStore.getItemAsync(STORAGE_KEYS.AUTH_TOKEN);
+  } catch {
+    return null;
+  }
+}
+
+export async function setAuthToken(token: string): Promise<void> {
+  if (!token || typeof token !== 'string') {
+    throw new Error('Invalid token provided for secure storage.');
+  }
+  await SecureStore.setItemAsync(STORAGE_KEYS.AUTH_TOKEN, token);
+}
+
+export async function removeAuthToken(): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(STORAGE_KEYS.AUTH_TOKEN);
+  } catch {
+    // Ignore deletion errors on already purged keys
+  }
+}
+
+export async function getUserSession(): Promise<AuthUser | null> {
+  try {
+    const raw = await SecureStore.getItemAsync(STORAGE_KEYS.USER_SESSION);
+    if (!raw) return null;
+    return JSON.parse(raw) as AuthUser;
+  } catch {
+    return null;
+  }
+}
+
+export async function setUserSession(user: AuthUser): Promise<void> {
+  if (!user || typeof user !== 'object') {
+    throw new Error('Invalid user payload provided for secure session storage.');
+  }
+  await SecureStore.setItemAsync(STORAGE_KEYS.USER_SESSION, JSON.stringify(user));
+}
+
+export async function removeUserSession(): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(STORAGE_KEYS.USER_SESSION);
+  } catch {
+    // Ignore deletion errors on already purged keys
+  }
+}
+
+export async function clearAuth(): Promise<void> {
+  await Promise.allSettled([
+    removeAuthToken(),
+    removeUserSession(),
+  ]);
+}
