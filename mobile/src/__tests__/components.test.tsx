@@ -217,6 +217,32 @@ describe('BeltFlow Reusable Mobile Components — Task 1.3', () => {
       expect(getByText('Legacy Red Belt 2022')).toBeTruthy();
     });
 
+    test('BeltBadge displays Dan indicators only from active Persatuan configured metadata, not merely for black color', async () => {
+      const syllabusWithNonDanBlack: BeltLevelConfig[] = [
+        { id: 'b_black_junior', name: 'Junior Black Belt', order: 8, colorHex: '#0F172A', isDanRank: false },
+        { id: 'b_master_dan2', name: 'Master Dan 2', order: 9, colorHex: '#0F172A', isDanRank: true, danLevel: 2 },
+      ];
+
+      const { queryByTestId, getByTestId, getByText } = await renderWithTheme(
+        <>
+          <BeltBadge beltName="Junior Black Belt" testID="badge-junior-black" showDanBadge />
+          <BeltBadge beltName="Master Dan 2" testID="badge-master-dan2" showDanBadge />
+          <BeltBadge beltName="Historical Dan Rank 2019" testID="badge-historical-dan" showDanBadge />
+        </>,
+        syllabusWithNonDanBlack
+      );
+
+      // Junior Black is black color, but isDanRank is false -> NO Dan pill
+      expect(queryByTestId('badge-junior-black-dan-pill')).toBeNull();
+
+      // Master Dan 2 has isDanRank: true, danLevel: 2 -> Dan pill rendered with "DAN 2"
+      expect(getByTestId('badge-master-dan2-dan-pill')).toBeTruthy();
+      expect(getByText('DAN 2')).toBeTruthy();
+
+      // Historical belt not in active syllabus -> NO Dan pill
+      expect(queryByTestId('badge-historical-dan-dan-pill')).toBeNull();
+    });
+
     test('SyncStatusBadge displays synchronization states', async () => {
       const { getByText } = await renderWithTheme(
         <>

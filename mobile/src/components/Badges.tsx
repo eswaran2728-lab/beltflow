@@ -109,7 +109,8 @@ export const BeltBadge: React.FC<BeltBadgeProps> = ({
   const finalColorHex = explicitColor || resolved.colorHex;
   const finalTextColor = resolved.textColor || getBeltTextColor(finalColorHex);
   const finalBorderColor = resolved.borderColor || getBeltBorderColor(finalColorHex);
-  const isDan = resolved.isDanRank || (showDanBadge && (beltName.toLowerCase().includes('dan') || beltName.toLowerCase().includes('asan')));
+  // Display Dan indicators only when explicitly configured in the active Persatuan's belt metadata
+  const isDan = Boolean(resolved.isDanRank);
 
   const sizeStyles = {
     sm: { paddingHorizontal: 6, paddingVertical: 2, fontSize: 10, dotSize: 6 },
@@ -170,7 +171,7 @@ export const BeltBadge: React.FC<BeltBadgeProps> = ({
           testID={`${testID || 'belt-badge'}-dan-pill`}
         >
           <Text style={[typography.caption, styles.danPillText]}>
-            DAN 1
+            {resolved.danLevel ? `DAN ${resolved.danLevel}` : 'DAN'}
           </Text>
         </View>
       )}

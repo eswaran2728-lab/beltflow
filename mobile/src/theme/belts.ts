@@ -213,6 +213,7 @@ export function resolveBeltDisplay(
   borderColor: string;
   order?: number;
   isDanRank?: boolean;
+  danLevel?: number;
 } {
   const query = (beltIdentifier || '').trim();
   const lower = query.toLowerCase();
@@ -237,6 +238,7 @@ export function resolveBeltDisplay(
       borderColor,
       order: match.order,
       isDanRank: match.isDanRank,
+      danLevel: match.danLevel,
     };
   }
 
@@ -259,6 +261,7 @@ export function resolveBeltDisplay(
     colorHex: derivedColor,
     textColor: getBeltTextColor(derivedColor),
     borderColor: getBeltBorderColor(derivedColor),
+    isDanRank: false,
   };
 }
 

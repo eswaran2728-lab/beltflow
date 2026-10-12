@@ -24,7 +24,7 @@ export const StatCard: React.FC<StatCardProps> = ({
   style,
   testID,
 }) => {
-  const { colors, typography, spacing } = useTheme();
+  const { colors, typography } = useTheme();
 
   return (
     <Card variant="standard" style={[styles.card, style]} testID={testID}>

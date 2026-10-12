@@ -109,7 +109,7 @@ export const Input: React.FC<InputProps> = ({
   );
 };
 
-export interface PasswordInputProps extends Omit<InputProps, 'secureTextEntry'> {}
+export type PasswordInputProps = Omit<InputProps, 'secureTextEntry'>;
 
 export const PasswordInput: React.FC<PasswordInputProps> = props => {
   const [isSecure, setIsSecure] = useState(true);
