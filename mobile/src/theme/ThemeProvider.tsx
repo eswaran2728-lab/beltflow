@@ -26,7 +26,7 @@ export interface ThemeContextValue {
   layout: typeof layout;
   iconSize: typeof iconSize;
   belts: readonly BeltLevelConfig[];
-  resolveBeltDisplay: (nameOrId: string) => ReturnType<typeof resolveBeltDisplay>;
+  resolveBeltDisplay: (nameOrId: string, customBelts?: readonly BeltLevelConfig[]) => ReturnType<typeof resolveBeltDisplay>;
   getBeltTextColor: (hex: string) => string;
   getBeltBorderColor: (hex: string) => string;
   isLightBelt: (hex: string) => boolean;
@@ -66,8 +66,8 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     return persatuanBelts && persatuanBelts.length > 0 ? persatuanBelts : DEFAULT_BELT_TEMPLATE;
   }, [persatuanBelts]);
 
-  const resolveBelt = useCallback((nameOrId: string) => {
-    return resolveBeltDisplay(nameOrId, activeBelts);
+  const resolveBelt = useCallback((nameOrId: string, overrideBelts?: readonly BeltLevelConfig[]) => {
+    return resolveBeltDisplay(nameOrId, overrideBelts || activeBelts);
   }, [activeBelts]);
 
   const setThemeMode = useCallback((mode: ThemeMode) => {
