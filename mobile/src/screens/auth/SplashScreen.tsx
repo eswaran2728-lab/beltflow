@@ -1,0 +1,113 @@
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { Shield } from 'lucide-react-native';
+import { useTheme } from '../../theme/ThemeProvider';
+import { authService } from '../../services/authService';
+import { AuthUser } from '../../types/auth';
+
+export interface SplashScreenProps {
+  onSessionRestored: (user: AuthUser) => void;
+  onUnauthenticated: () => void;
+}
+
+export const SplashScreen: React.FC<SplashScreenProps> = ({
+  onSessionRestored,
+  onUnauthenticated,
+}) => {
+  const { colors, typography, spacing } = useTheme();
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function checkSession() {
+      try {
+        const session = await authService.getStoredSession();
+        if (!isMounted) return;
+
+        if (session && session.user) {
+          onSessionRestored(session.user);
+        } else {
+          onUnauthenticated();
+        }
+      } catch {
+        if (isMounted) {
+          onUnauthenticated();
+        }
+      }
+    }
+
+    checkSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [onSessionRestored, onUnauthenticated]);
+
+  return (
+    <View
+      style={[styles.container, { backgroundColor: colors.background }]}
+      testID="splash-screen"
+      accessibilityRole="text"
+      accessibilityLabel="BeltFlow Splash Screen"
+    >
+      <View style={styles.brandContainer}>
+        <View
+          style={[
+            styles.iconWrapper,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
+          <Shield size={56} color={colors.buttonPrimaryBg} />
+        </View>
+
+        <Text style={[typography.display, styles.brandTitle, { color: colors.textPrimary }]}>
+          BeltFlow
+        </Text>
+
+        <Text style={[typography.bodyMedium, styles.brandSubtitle, { color: colors.textSecondary }]}>
+          Martial Arts Academy Management
+        </Text>
+      </View>
+
+      <View style={[styles.loaderContainer, { marginBottom: spacing.xxl }]}>
+        <ActivityIndicator size="large" color={colors.buttonPrimaryBg} />
+        <Text style={[typography.caption, { color: colors.textMuted, marginTop: 12 }]}>
+          Initializing session...
+        </Text>
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 48,
+  },
+  brandContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconWrapper: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  brandTitle: {
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  brandSubtitle: {
+    textAlign: 'center',
+  },
+  loaderContainer: {
+    alignItems: 'center',
+  },
+});
