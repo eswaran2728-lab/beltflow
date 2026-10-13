@@ -2,7 +2,7 @@ import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from './src/theme/ThemeProvider';
-import { AuthNavigator } from './src/navigation/AuthNavigator';
+import { AppNavigator } from './src/navigation/AppNavigator';
 
 function BeltFlowRoot() {
   const { isDark } = useTheme();
@@ -10,7 +10,7 @@ function BeltFlowRoot() {
   return (
     <>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <AuthNavigator />
+      <AppNavigator />
     </>
   );
 }

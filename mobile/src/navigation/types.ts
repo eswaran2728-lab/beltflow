@@ -1,14 +1,17 @@
+import { AuthUser, RoleType } from '../types/auth';
+
 /**
  * BeltFlow Mobile Navigation Route Types
  * Defines type-safe route hierarchies for all 5 authorized roles.
  */
 
-export type UserRole =
-  | 'SUPER_ADMIN'
-  | 'ADMIN_PERSATUAN'
-  | 'MASTER'
-  | 'PARENT'
-  | 'STUDENT';
+export type UserRole = RoleType;
+
+export interface RoleNavigatorProps {
+  user: AuthUser;
+  onLogout: () => void;
+  isOffline?: boolean;
+}
 
 export type RootStackParamList = {
   Auth: undefined;
@@ -18,44 +21,57 @@ export type RootStackParamList = {
   MasterRoot: undefined;
   ParentRoot: undefined;
   StudentRoot: undefined;
+  Unauthorized: undefined;
 };
 
 export type AuthStackParamList = {
+  Splash: undefined;
+  Welcome: undefined;
   Login: undefined;
+  ForgotPassword: undefined;
   VerifyCert: { certCode?: string };
 };
 
 export type SuperAdminTabParamList = {
-  Overview: undefined;
+  Home: undefined;
   Persatuans: undefined;
-  AuditLogs: undefined;
+  Audit: undefined;
+  Profile: undefined;
 };
 
 export type AdminPersatuanTabParamList = {
-  Dashboard: undefined;
-  Students: undefined;
-  Attendance: undefined;
-  Billing: undefined;
-  Settings: undefined;
+  Home: undefined;
+  Locations: undefined;
+  Masters: undefined;
+  Reports: undefined;
+  Profile: undefined;
+};
+
+export type MasterClassesStackParamList = {
+  ClassesList: undefined;
+  Students: { classId?: string } | undefined;
 };
 
 export type MasterTabParamList = {
+  Home: undefined;
   Classes: undefined;
-  MatAttendance: undefined;
-  Students: undefined;
+  Attendance: undefined;
   Grading: undefined;
+  Profile: undefined;
 };
 
 export type ParentTabParamList = {
+  Home: undefined;
   Children: undefined;
-  Attendance: undefined;
   Fees: undefined;
-  Certificates: undefined;
+  Notices: undefined;
+  Profile: undefined;
 };
 
 export type StudentTabParamList = {
-  Profile: undefined;
-  Syllabus: undefined;
+  Home: undefined;
+  Progress: undefined;
   Attendance: undefined;
   Certificates: undefined;
+  Profile: undefined;
 };

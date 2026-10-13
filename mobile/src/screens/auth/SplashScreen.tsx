@@ -6,17 +6,24 @@ import { authService } from '../../services/authService';
 import { AuthUser } from '../../types/auth';
 
 export interface SplashScreenProps {
-  onSessionRestored: (user: AuthUser) => void;
-  onUnauthenticated: () => void;
+  onSessionRestored?: (user: AuthUser) => void;
+  onUnauthenticated?: () => void;
+  /**
+   * When false, the splash only renders visuals; the parent (AppNavigator)
+   * performs server-verified session restoration instead. Defaults to true.
+   */
+  autoRestore?: boolean;
 }
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({
   onSessionRestored,
   onUnauthenticated,
+  autoRestore = true,
 }) => {
   const { colors, typography, spacing } = useTheme();
 
   useEffect(() => {
+    if (!autoRestore) return;
     let isMounted = true;
 
     async function checkSession() {
@@ -25,13 +32,13 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
         if (!isMounted) return;
 
         if (session && session.user) {
-          onSessionRestored(session.user);
+          onSessionRestored?.(session.user);
         } else {
-          onUnauthenticated();
+          onUnauthenticated?.();
         }
       } catch {
         if (isMounted) {
-          onUnauthenticated();
+          onUnauthenticated?.();
         }
       }
     }
@@ -41,7 +48,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [onSessionRestored, onUnauthenticated]);
+  }, [autoRestore, onSessionRestored, onUnauthenticated]);
 
   return (
     <View

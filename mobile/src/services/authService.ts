@@ -137,6 +137,95 @@ export const authService = {
   },
 
   /**
+   * Validates active session:
+   * - If online, verifies against /api/v1/auth/me, updates stored user, and rejects invalid/inactive sessions
+   * - If offline or network error, distinguishes cached identity (isVerifiedOnline: false, isOffline: true)
+   */
+  async validateStoredSession(options?: { forceOffline?: boolean }): Promise<SessionValidationResult> {
+    const session = await this.getStoredSession();
+    if (!session) {
+      return {
+        isValid: false,
+        user: null,
+        isVerifiedOnline: false,
+        isOffline: false,
+        reason: 'no_session',
+      };
+    }
+
+    if (options?.forceOffline) {
+      return {
+        isValid: true,
+        user: session.user,
+        isVerifiedOnline: false,
+        isOffline: true,
+        reason: 'cached_offline',
+      };
+    }
+
+    try {
+      const freshUser = await this.getProfile();
+      return {
+        isValid: true,
+        user: freshUser,
+        isVerifiedOnline: true,
+        isOffline: false,
+        reason: 'verified_online',
+      };
+    } catch (err: any) {
+      if (err?.isUnauthorized || err?.status === 401) {
+        await clearAuth();
+        notifySessionEnded();
+        return {
+          isValid: false,
+          user: null,
+          isVerifiedOnline: false,
+          isOffline: false,
+          reason: 'invalid_credentials',
+          error: err.message,
+        };
+      }
+
+      if (err?.status === 403) {
+        // Account inactive or awaiting approval
+        await clearAuth();
+        notifySessionEnded();
+        return {
+          isValid: false,
+          user: null,
+          isVerifiedOnline: false,
+          isOffline: false,
+          reason: 'inactive_account',
+          error: err.message,
+        };
+      }
+
+      // Network failure / timeout: preserve the locally cached identity, but it is
+      // NOT server-verified. Callers must not authorize sensitive online operations.
+      if (err?.isNetworkError || err?.isTimeout || err?.status === 0 || err?.status === 408) {
+        return {
+          isValid: true,
+          user: session.user,
+          isVerifiedOnline: false,
+          isOffline: true,
+          reason: 'cached_offline',
+        };
+      }
+
+      // Any other server failure (e.g. 5xx, malformed profile): server reachable but
+      // identity could not be verified. Keep cached identity, explicitly unverified.
+      return {
+        isValid: true,
+        user: session.user,
+        isVerifiedOnline: false,
+        isOffline: false,
+        reason: 'unverified_server_error',
+        error: err?.message,
+      };
+    }
+  },
+
+  /**
    * Register a listener for session termination (e.g. 401 unauthenticated or explicit logout)
    */
   onSessionEnded(listener: SessionEndListener): () => void {
@@ -146,3 +235,20 @@ export const authService = {
     };
   },
 };
+
+export interface SessionValidationResult {
+  isValid: boolean;
+  user: AuthUser | null;
+  isVerifiedOnline: boolean;
+  isOffline: boolean;
+  reason?:
+    | 'no_session'
+    | 'expired'
+    | 'invalid_credentials'
+    | 'inactive_account'
+    | 'verified_online'
+    | 'cached_offline'
+    | 'unverified_server_error';
+  error?: string;
+}
+
