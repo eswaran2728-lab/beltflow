@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ViewStyle,
   StyleProp,
+  RefreshControlProps,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
@@ -19,6 +20,7 @@ export interface ScreenContainerProps {
   children: React.ReactNode;
   scrollable?: boolean;
   padded?: boolean;
+  refreshControl?: React.ReactElement<RefreshControlProps>;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 }
@@ -27,6 +29,7 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
   children,
   scrollable = false,
   padded = true,
+  refreshControl,
   style,
   testID,
 }) => {
@@ -46,6 +49,7 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
               style,
             ]}
             showsVerticalScrollIndicator={false}
+            refreshControl={refreshControl}
           >
             {children}
           </ScrollView>

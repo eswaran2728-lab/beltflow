@@ -153,7 +153,14 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
 
       {onRetry ? (
         <View style={{ marginTop: spacing.lg }}>
-          <Button label="Try Again" onPress={onRetry} variant="secondary" size="md" />
+          <Button
+            label="Try Again"
+            onPress={onRetry}
+            variant="secondary"
+            size="md"
+            testID={testID ? `${testID}-retry` : 'btn-error-retry'}
+            accessibilityLabel="Retry failed operation"
+          />
         </View>
       ) : null}
     </View>
