@@ -1,7 +1,11 @@
 import { getDatabase } from '../connection';
 import { AttendanceMutation, AttendanceStatus, EnqueueAttendanceParams } from '../types';
 import { AuthUser } from '../../types/auth';
-import { assertAuthenticated, assertTenantAccess } from '../security/accessScope';
+import {
+  assertAuthenticated,
+  assertTenantAccess,
+  UnauthorizedClassError,
+} from '../security/accessScope';
 
 function generateMutationId(): string {
   return `mut_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
@@ -94,22 +98,35 @@ export const mutationQueueRepository = {
   },
 
   /**
-   * Fetches all pending mutations for the user's organization in FIFO order
+   * Fetches pending mutations for the authorized actor in FIFO order.
+   * Can optionally filter to a specific session.
    */
-  async getPendingMutations(user: AuthUser): Promise<AttendanceMutation[]> {
+  async getPendingMutations(user: AuthUser, sessionId?: string): Promise<AttendanceMutation[]> {
     assertAuthenticated(user);
     const db = getDatabase();
 
+    if (sessionId) {
+      return await db.getAllAsync<AttendanceMutation>(
+        `SELECT * FROM attendance_mutation_queue
+         WHERE organization_id = ? AND actor_id = ? AND session_id = ? AND queue_status = 'PENDING'
+         ORDER BY created_at ASC, sequence_number ASC;`,
+        user.organizationId,
+        user.id,
+        sessionId
+      );
+    }
+
     return await db.getAllAsync<AttendanceMutation>(
       `SELECT * FROM attendance_mutation_queue
-       WHERE organization_id = ? AND queue_status = 'PENDING'
+       WHERE organization_id = ? AND actor_id = ? AND queue_status = 'PENDING'
        ORDER BY created_at ASC, sequence_number ASC;`,
-      user.organizationId
+      user.organizationId,
+      user.id
     );
   },
 
   /**
-   * Retrieves single mutation by ID
+   * Retrieves single mutation by ID, asserting both organization and actor isolation
    */
   async getMutationById(user: AuthUser, id: string): Promise<AttendanceMutation | null> {
     assertAuthenticated(user);
@@ -122,9 +139,79 @@ export const mutationQueueRepository = {
 
     if (mutation) {
       assertTenantAccess(user, mutation.organization_id);
+      if (user.role === 'MASTER' && mutation.actor_id !== user.id) {
+        throw new UnauthorizedClassError(
+          `Access denied: Master ${user.id} cannot access mutation recorded by actor ${mutation.actor_id}.`
+        );
+      }
     }
 
     return mutation;
+  },
+
+  /**
+   * Quarantines all pending mutations for a specific actor (e.g. on logout or account switch).
+   * Prevents pending mutations from being uploaded under another user's session without data loss.
+   */
+  async quarantineMutationsForActor(actorId: string, reason: string): Promise<number> {
+    const db = getDatabase();
+    const result = await db.runAsync(
+      `UPDATE attendance_mutation_queue
+       SET queue_status = 'QUARANTINED', quarantine_reason = ?, updated_at = datetime('now')
+       WHERE actor_id = ? AND queue_status = 'PENDING';`,
+      reason,
+      actorId
+    );
+    return result.changes;
+  },
+
+  /**
+   * Restores quarantined mutations for an actor when they re-authenticate.
+   */
+  async restoreQuarantinedMutationsForActor(actorId: string): Promise<number> {
+    const db = getDatabase();
+    const result = await db.runAsync(
+      `UPDATE attendance_mutation_queue
+       SET queue_status = 'PENDING', quarantine_reason = NULL, updated_at = datetime('now')
+       WHERE actor_id = ? AND queue_status = 'QUARANTINED';`,
+      actorId
+    );
+    return result.changes;
+  },
+
+  /**
+   * Fetches quarantined mutations for the current actor.
+   */
+  async getQuarantinedMutations(user: AuthUser): Promise<AttendanceMutation[]> {
+    assertAuthenticated(user);
+    const db = getDatabase();
+
+    return await db.getAllAsync<AttendanceMutation>(
+      `SELECT * FROM attendance_mutation_queue
+       WHERE organization_id = ? AND actor_id = ? AND queue_status = 'QUARANTINED'
+       ORDER BY created_at ASC, sequence_number ASC;`,
+      user.organizationId,
+      user.id
+    );
+  },
+
+  /**
+   * Quarantines pending mutations if a Master's class assignment is revoked.
+   */
+  async quarantineMutationsForRevokedClass(user: AuthUser, classId: string): Promise<number> {
+    assertAuthenticated(user);
+    const db = getDatabase();
+
+    const result = await db.runAsync(
+      `UPDATE attendance_mutation_queue
+       SET queue_status = 'QUARANTINED', quarantine_reason = 'REVOKED_CLASS_ASSIGNMENT', updated_at = datetime('now')
+       WHERE organization_id = ? AND actor_id = ? AND queue_status = 'PENDING'
+       AND session_id IN (SELECT id FROM cached_training_sessions WHERE class_id = ?);`,
+      user.organizationId,
+      user.id,
+      classId
+    );
+    return result.changes;
   },
 
   /**

@@ -1,5 +1,8 @@
 import { DatabaseConnection, RunResult } from '../adapter';
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { DatabaseSync } = require('node:sqlite');
+
 /**
  * Node 22+ Native SQLite Adapter
  * Provides genuine, real SQLite database execution for Jest & Node environments.
@@ -9,9 +12,6 @@ export class NodeSqliteAdapter implements DatabaseConnection {
   private inTransaction = false;
 
   constructor(filePath: string = ':memory:') {
-    // Dynamic import to prevent bundler errors when bundled by Metro in React Native
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { DatabaseSync } = require('node:sqlite');
     this.db = new DatabaseSync(filePath);
     // Enforce foreign key constraints by default
     this.db.exec('PRAGMA foreign_keys = ON;');

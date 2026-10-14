@@ -35,7 +35,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "test": "jest",
+    "test": "jest --runInBand",
     "lint": "eslint ."
   },
   "private": true

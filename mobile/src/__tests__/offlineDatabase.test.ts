@@ -73,7 +73,7 @@ describe('BeltFlow Phase 2 Task 2.1 — Offline SQLite Database Foundation', () 
   // TEST 2: Migration Execution
   // --------------------------------------------------------------------------
   it('2. should execute initial migrations and record version 1', async () => {
-    const db = await initDatabase({ useMemory: true });
+    const db = await initDatabase({ useMemory: true, migrations: [v1InitialSchema] });
     const version = await getDatabaseVersion(db);
     expect(version).toBe(1);
 
@@ -97,7 +97,7 @@ describe('BeltFlow Phase 2 Task 2.1 — Offline SQLite Database Foundation', () 
   // TEST 3: Repeated Migration Safety (Idempotency)
   // --------------------------------------------------------------------------
   it('3. should be idempotent when running migrations repeatedly', async () => {
-    const db = await initDatabase({ useMemory: true });
+    const db = await initDatabase({ useMemory: true, migrations: [v1InitialSchema] });
     expect(await getDatabaseVersion(db)).toBe(1);
 
     // Run again
@@ -115,7 +115,7 @@ describe('BeltFlow Phase 2 Task 2.1 — Offline SQLite Database Foundation', () 
   // TEST 4: Database Version Upgrades
   // --------------------------------------------------------------------------
   it('4. should apply schema upgrades when new migration version is provided', async () => {
-    const db = await initDatabase({ useMemory: true });
+    const db = await initDatabase({ useMemory: true, migrations: [v1InitialSchema] });
 
     // Mock a version 2 migration that adds an auxiliary audit index
     const v2Upgrade: Migration = {

@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, RefreshControl } from 'react-native';
 import {
   Calendar,
   Users,
-  CheckSquare,
   Award,
   Clock,
   ArrowRight,
@@ -402,22 +401,7 @@ export const StudentsScreen: React.FC<RoleScreenProps> = props => {
   );
 };
 
-export const AttendanceScreen: React.FC<RoleScreenProps> = props => {
-  const { colors, iconSize } = useTheme();
-  return (
-    <RolePlaceholderBase
-      title="Attendance"
-      subtitle="Mat Session Marking & Verification"
-      role={UserRole.MASTER}
-      user={props.user}
-      onLogout={props.onLogout}
-      isOffline={props.isOffline}
-      testID="master-attendance-screen"
-      icon={<CheckSquare size={iconSize.lg} color={colors.buttonPrimaryBg} />}
-      scopeDescription="Attendance Scope: Session roll call, QR attendance scans, and persistent mat attendance records."
-    />
-  );
-};
+export { AttendanceScreen } from './AttendanceScreen';
 
 export const GradingScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();

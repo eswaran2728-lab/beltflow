@@ -1,8 +1,9 @@
 import { DatabaseConnection } from '../adapter';
 import { Migration } from './types';
 import { v1InitialSchema } from './v1_initial_schema';
+import { v2QuarantineSupport } from './v2_quarantine_support';
 
-export const ALL_MIGRATIONS: Migration[] = [v1InitialSchema];
+export const ALL_MIGRATIONS: Migration[] = [v1InitialSchema, v2QuarantineSupport];
 
 /**
  * Retrieves the highest migration version applied to the database.

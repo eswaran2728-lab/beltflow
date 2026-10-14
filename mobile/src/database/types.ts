@@ -5,7 +5,7 @@
 
 export type AttendanceStatus = 'Present' | 'Late' | 'Absent' | 'Excused';
 
-export type QueueStatus = 'PENDING' | 'IN_FLIGHT' | 'SYNCED' | 'FAILED' | 'CONFLICT';
+export type QueueStatus = 'PENDING' | 'IN_FLIGHT' | 'SYNCED' | 'FAILED' | 'CONFLICT' | 'QUARANTINED';
 
 export type ConflictResolution = 'PENDING' | 'RESOLVED_LOCAL' | 'RESOLVED_SERVER' | 'MANUAL_REQUIRED';
 
@@ -95,6 +95,7 @@ export interface AttendanceMutation {
   synced_at: string | null;
   correction_of_mutation_id: string | null;
   sequence_number: number;
+  quarantine_reason?: string | null;
 }
 
 /**

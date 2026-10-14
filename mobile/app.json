@@ -17,6 +17,7 @@
     },
     "android": {
       "package": "com.beltflow.app",
+      "allowBackup": false,
       "adaptiveIcon": {
         "backgroundColor": "#0D2B47",
         "foregroundImage": "./assets/android-icon-foreground.png",

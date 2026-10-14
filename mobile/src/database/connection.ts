@@ -3,12 +3,15 @@ import { runMigrations } from './migrations/migrator';
 import { NodeSqliteAdapter } from './adapters/nodeSqliteAdapter';
 import { ExpoSqliteAdapter } from './adapters/expoSqliteAdapter';
 
+import { Migration } from './migrations/types';
+
 let activeConnection: DatabaseConnection | null = null;
 
 export interface InitDatabaseOptions {
   useMemory?: boolean;
   dbName?: string;
   customAdapter?: DatabaseConnection;
+  migrations?: Migration[];
 }
 
 /**
@@ -35,7 +38,7 @@ export async function initDatabase(options: InitDatabaseOptions = {}): Promise<D
   await db.execAsync('PRAGMA foreign_keys = ON;');
 
   // Run migrations
-  await runMigrations(db);
+  await runMigrations(db, options.migrations);
 
   activeConnection = db;
   return activeConnection;
