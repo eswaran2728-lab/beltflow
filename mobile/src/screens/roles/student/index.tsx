@@ -87,7 +87,16 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
   );
 
   const currentBeltRank = data?.student?.beltRank || 'Unassigned';
-  const nextTargetBelt = getNextBeltLevel(currentBeltRank, belts);
+  const hasConfiguredBelts = Boolean(belts && belts.length > 0);
+  const nextTargetBelt = hasConfiguredBelts ? getNextBeltLevel(currentBeltRank, belts) : null;
+  const sortedBelts = hasConfiguredBelts ? [...belts].sort((a, b) => a.order - b.order) : [];
+  const highestBelt = sortedBelts.length > 0 ? sortedBelts[sortedBelts.length - 1] : null;
+  const isHighestRank = Boolean(
+    hasConfiguredBelts &&
+    highestBelt &&
+    (highestBelt.name.toLowerCase() === currentBeltRank.toLowerCase() ||
+     highestBelt.id.toLowerCase() === currentBeltRank.toLowerCase())
+  );
 
   if (loading && !data) {
     return (
@@ -204,9 +213,17 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
             <Text style={[typography.bodyMedium, { color: colors.textPrimary, flex: 1, fontWeight: '600' }]}>
               Next Target: {nextTargetBelt.name}
             </Text>
-          ) : (
-            <Text style={[typography.bodyMedium, { color: colors.textSecondary, flex: 1 }]}>
+          ) : !hasConfiguredBelts ? (
+            <Text style={[typography.bodyMedium, { color: colors.textSecondary, flex: 1 }]} testID="belt-progression-unavailable">
+              Belt progression unavailable — Organization curriculum not configured
+            </Text>
+          ) : isHighestRank ? (
+            <Text style={[typography.bodyMedium, { color: colors.textSecondary, flex: 1 }]} testID="belt-highest-rank-text">
               Highest Belt Rank Achieved
+            </Text>
+          ) : (
+            <Text style={[typography.bodyMedium, { color: colors.textSecondary, flex: 1 }]} testID="belt-progression-unavailable">
+              Belt progression unavailable for current rank: {currentBeltRank}
             </Text>
           )}
         </View>

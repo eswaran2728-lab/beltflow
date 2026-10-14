@@ -234,6 +234,65 @@ export const authService = {
       sessionEndListeners.delete(listener);
     };
   },
+
+  /**
+   * Revalidates the active session against /api/v1/auth/me upon reconnection.
+   * Checks for account or organization identity changes to protect against tenant state bleed.
+   */
+  async revalidateOnReconnect(currentUser?: AuthUser | null): Promise<{
+    isValid: boolean;
+    user: AuthUser | null;
+    accountChanged: boolean;
+    reason: string;
+    error?: string;
+  }> {
+    const session = await this.getStoredSession();
+    const baselineUser = currentUser || session?.user || null;
+    if (!session && !currentUser) {
+      return {
+        isValid: false,
+        user: null,
+        accountChanged: false,
+        reason: 'no_session',
+      };
+    }
+
+    try {
+      const freshUser = await this.getProfile();
+      const accountChanged = Boolean(
+        baselineUser &&
+          (baselineUser.id !== freshUser.id || baselineUser.organizationId !== freshUser.organizationId)
+      );
+
+      return {
+        isValid: true,
+        user: freshUser,
+        accountChanged,
+        reason: accountChanged ? 'account_changed' : 'revalidated',
+      };
+    } catch (err: any) {
+      if (err?.isUnauthorized || err?.status === 401 || err?.status === 403) {
+        await clearAuth();
+        notifySessionEnded();
+        return {
+          isValid: false,
+          user: null,
+          accountChanged: true,
+          reason: 'session_expired',
+          error: err.message,
+        };
+      }
+
+      // Backend error during revalidation - keep cached session
+      return {
+        isValid: true,
+        user: baselineUser,
+        accountChanged: false,
+        reason: 'revalidation_failed_cached',
+        error: err.message,
+      };
+    }
+  },
 };
 
 export interface SessionValidationResult {

@@ -4,6 +4,7 @@ import {
   TouchableOpacity,
   ViewStyle,
   StyleProp,
+  AccessibilityRole,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
 
@@ -17,6 +18,7 @@ export interface CardProps {
   style?: StyleProp<ViewStyle>;
   testID?: string;
   accessibilityLabel?: string;
+  accessibilityRole?: AccessibilityRole;
 }
 
 export const Card: React.FC<CardProps> = ({
@@ -27,6 +29,7 @@ export const Card: React.FC<CardProps> = ({
   style,
   testID,
   accessibilityLabel,
+  accessibilityRole,
 }) => {
   const { colors, borderRadius, spacing, elevation } = useTheme();
 
@@ -48,7 +51,7 @@ export const Card: React.FC<CardProps> = ({
         activeOpacity={0.8}
         style={[cardStyle, style]}
         testID={testID}
-        accessibilityRole="button"
+        accessibilityRole={accessibilityRole || 'button'}
         accessibilityLabel={accessibilityLabel}
       >
         {children}
@@ -57,7 +60,12 @@ export const Card: React.FC<CardProps> = ({
   }
 
   return (
-    <View style={[cardStyle, style]} testID={testID}>
+    <View
+      style={[cardStyle, style]}
+      testID={testID}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+    >
       {children}
     </View>
   );

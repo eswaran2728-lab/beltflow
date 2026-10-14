@@ -63,7 +63,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   }, [isDark]);
 
   const activeBelts = useMemo(() => {
-    return persatuanBelts && persatuanBelts.length > 0 ? persatuanBelts : DEFAULT_BELT_TEMPLATE;
+    return persatuanBelts !== undefined ? persatuanBelts : DEFAULT_BELT_TEMPLATE;
   }, [persatuanBelts]);
 
   const resolveBelt = useCallback((nameOrId: string, overrideBelts?: readonly BeltLevelConfig[]) => {
