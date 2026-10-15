@@ -20,7 +20,9 @@ import {
   RefreshCw,
   AlertTriangle,
   AlertCircle,
+  QrCode,
 } from 'lucide-react-native';
+import { QRScannerModal } from './QRScannerModal';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { resolveBeltDisplay } from '../../../theme/belts';
 import { ScreenContainer, ScreenHeader } from '../../../components/Layout';
@@ -74,6 +76,14 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [syncState, setSyncState] = useState<SyncEngineState>(offlineSyncService.getState());
+  const [showQRScanner, setShowQRScanner] = useState(false);
+
+  const handleQRAttendanceRecorded = async (studentId: string, status: AttendanceStatus) => {
+    setAttendanceMap(prev => ({ ...prev, [studentId]: status }));
+    setInitialAttendanceMap(prev => ({ ...prev, [studentId]: status }));
+    const counts = await offlineSyncService.refreshCounts(user);
+    setPendingCount(counts.pending);
+  };
 
   useEffect(() => {
     offlineSyncService.setUser(user);
@@ -522,18 +532,31 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
           </View>
         </View>
 
-        {/* Student Search Bar */}
-        <View style={[styles.searchBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Search size={iconSize.sm} color={colors.textSecondary} />
-          <TextInput
-            testID="input-student-search"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholder="Search students by name..."
-            placeholderTextColor={colors.textSecondary}
-            style={[styles.searchInput, { color: colors.textPrimary }]}
-            accessibilityLabel="Search students by name"
-          />
+        {/* Student Search Bar & QR Scanner Action Row */}
+        <View style={styles.searchAndScanRow}>
+          <View style={[styles.searchBox, { backgroundColor: colors.surface, borderColor: colors.border, flex: 1 }]}>
+            <Search size={iconSize.sm} color={colors.textSecondary} />
+            <TextInput
+              testID="input-student-search"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Search students by name..."
+              placeholderTextColor={colors.textSecondary}
+              style={[styles.searchInput, { color: colors.textPrimary }]}
+              accessibilityLabel="Search students by name"
+            />
+          </View>
+
+          <TouchableOpacity
+            testID="btn-open-qr-scanner"
+            onPress={() => setShowQRScanner(true)}
+            style={[styles.qrScanButton, { backgroundColor: colors.buttonPrimaryBg }]}
+            accessibilityRole="button"
+            accessibilityLabel="Open camera QR scanner for student attendance"
+          >
+            <QrCode size={18} color="#FFFFFF" />
+            <Text style={styles.qrScanButtonText}>Scan QR</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Roster State: Loading, Unavailable, or Student Cards */}
@@ -719,6 +742,18 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
           </Text>
         </View>
       </ScrollView>
+
+      {/* QR Scanner Camera Modal (Task 2.4) */}
+      <QRScannerModal
+        visible={showQRScanner}
+        onClose={() => setShowQRScanner(false)}
+        user={user}
+        activeSession={activeSession}
+        roster={students}
+        attendanceMap={attendanceMap}
+        isOffline={isOffline}
+        onAttendanceRecorded={handleQRAttendanceRecorded}
+      />
     </ScreenContainer>
   );
 };
@@ -1032,5 +1067,29 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textAlign: 'center',
     marginTop: 8,
+  },
+  searchAndScanRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  qrScanButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+  },
+  qrScanButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

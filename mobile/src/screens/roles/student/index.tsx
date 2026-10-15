@@ -22,6 +22,7 @@ import { StatusBadge, BeltBadge } from '../../../components/Badges';
 import { OfflineBanner, LoadingState, ErrorState } from '../../../components/Feedback';
 import { useDashboardData } from '../../../hooks/useDashboardData';
 import { dashboardService, StudentDashboardData } from '../../../services/dashboardService';
+import { StudentDigitalPass } from '../../../components/StudentDigitalPass';
 import { getNextBeltLevel } from '../../../theme/belts';
 
 export interface RoleScreenProps {
@@ -422,17 +423,39 @@ export const ProgressScreen: React.FC<RoleScreenProps> = props => {
 export const StudentAttendanceScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();
   return (
-    <RolePlaceholderBase
-      title="Attendance"
-      subtitle="Training Log & Session Attendance"
-      role={UserRole.STUDENT}
-      user={props.user}
-      onLogout={props.onLogout}
-      isOffline={props.isOffline}
-      testID="student-attendance-screen"
-      icon={<CheckSquare size={iconSize.lg} color={colors.buttonPrimaryBg} />}
-      scopeDescription="Attendance Log: View confirmed practice mat attendance, monthly check-in history, and training streaks."
-    />
+    <ScreenContainer scrollable testID="student-attendance-screen">
+      <ScreenHeader
+        title="Digital Attendance Pass"
+        subtitle="Official Roll-Call QR Credential"
+      />
+      {props.isOffline && (
+        <View style={{ marginBottom: 12 }}>
+          <OfflineBanner message="Operating in offline mode. Your digital pass remains valid for mat roll-call." />
+        </View>
+      )}
+      <StudentDigitalPass
+        student={{
+          id: props.user.id,
+          organizationId: props.user.organizationId || '',
+          fullName: props.user.fullName,
+          beltRank: (props.user as any).beltRank || 'White Belt',
+          status: 'ACTIVE',
+        }}
+        isOffline={props.isOffline}
+        testID="student-personal-pass"
+      />
+      <RolePlaceholderBase
+        title="Attendance Log"
+        subtitle="Training Log & Session Attendance"
+        role={UserRole.STUDENT}
+        user={props.user}
+        onLogout={props.onLogout}
+        isOffline={props.isOffline}
+        testID="student-attendance-log"
+        icon={<CheckSquare size={iconSize.lg} color={colors.buttonPrimaryBg} />}
+        scopeDescription="Attendance Log: View confirmed practice mat attendance, monthly check-in history, and training streaks."
+      />
+    </ScreenContainer>
   );
 };
 

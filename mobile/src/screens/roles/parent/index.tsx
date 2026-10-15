@@ -21,6 +21,7 @@ import { StatusBadge, BeltBadge } from '../../../components/Badges';
 import { OfflineBanner, LoadingState, ErrorState, EmptyState } from '../../../components/Feedback';
 import { useDashboardData } from '../../../hooks/useDashboardData';
 import { dashboardService, ParentDashboardData, ParentChildSummary } from '../../../services/dashboardService';
+import { ParentChildPassViewer, LinkedChildPassData } from '../../../components/ParentChildPassViewer';
 
 export interface RoleScreenProps {
   user: AuthUser;
@@ -392,18 +393,50 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
 
 export const ChildrenScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();
+  const fetcher = useCallback(() => {
+    return dashboardService.getParentDashboard(props.user);
+  }, [props.user]);
+  const { data } = useDashboardData<ParentDashboardData>({
+    fetcher,
+    isOffline: props.isOffline,
+  });
+
+  const childrenList: LinkedChildPassData[] = (data?.children || []).map(c => ({
+    id: c.id,
+    organizationId: props.user.organizationId || '',
+    fullName: c.fullName,
+    beltRank: c.beltRank,
+    status: (c as any).status || 'ACTIVE',
+  }));
+
   return (
-    <RolePlaceholderBase
-      title="Children"
-      subtitle="Approved Linked Students"
-      role={UserRole.PARENT}
-      user={props.user}
-      onLogout={props.onLogout}
-      isOffline={props.isOffline}
-      testID="parent-children-screen"
-      icon={<Users size={iconSize.lg} color={colors.buttonPrimaryBg} />}
-      scopeDescription="Linked Students: Monitor children's training attendance streaks, syllabus milestones, and grading eligibility."
-    />
+    <ScreenContainer scrollable testID="parent-children-screen">
+      <ScreenHeader
+        title="Children's Passes"
+        subtitle="Approved Linked Martial Artists"
+      />
+      {props.isOffline && (
+        <View style={{ marginBottom: 12 }}>
+          <OfflineBanner message="Operating in offline mode. Viewing locally cached student passes." />
+        </View>
+      )}
+      <ParentChildPassViewer
+        childrenList={childrenList}
+        isOffline={props.isOffline}
+        testID="parent-pass-viewer"
+      />
+      <RolePlaceholderBase
+        title="Student Progress Overview"
+        subtitle="Approved Linked Students"
+        role={UserRole.PARENT}
+        user={props.user}
+        onLogout={props.onLogout}
+        isOffline={props.isOffline}
+        testID="parent-children-overview"
+        icon={<Users size={iconSize.lg} color={colors.buttonPrimaryBg} />}
+        scopeDescription="Linked Students: Monitor children's training attendance streaks, syllabus milestones, and grading eligibility."
+      />
+    </ScreenContainer>
   );
 };
 

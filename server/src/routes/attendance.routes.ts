@@ -343,43 +343,50 @@ router.post('/sync', authenticateJWT, async (req: Request, res: Response) => {
           }
         }
 
-        // 7. Apply Mutation to session_attendance
-        await dbClient.query(
-          `INSERT INTO session_attendance (id, session_id, student_id, status, marked_by, marked_at, version, updated_at)
-           VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP)
-           ON CONFLICT (session_id, student_id)
-           DO UPDATE SET status = EXCLUDED.status, marked_by = EXCLUDED.marked_by, marked_at = CURRENT_TIMESTAMP,
-                         version = session_attendance.version + 1, updated_at = CURRENT_TIMESTAMP`,
-          [newId('satt'), sessionId, studentId, status, user.id]
-        );
+        // 7. Atomically Apply Mutation & Idempotency Ledger (Task 2.4 Pre-Task Review)
+        await dbClient.query('BEGIN');
+        try {
+          await dbClient.query(
+            `INSERT INTO session_attendance (id, session_id, student_id, status, marked_by, marked_at, version, updated_at)
+             VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP)
+             ON CONFLICT (session_id, student_id)
+             DO UPDATE SET status = EXCLUDED.status, marked_by = EXCLUDED.marked_by, marked_at = CURRENT_TIMESTAMP,
+                           version = session_attendance.version + 1, updated_at = CURRENT_TIMESTAMP`,
+            [newId('satt'), sessionId, studentId, status, user.id]
+          );
 
-        // Update session status to Completed
-        await dbClient.query(
-          'UPDATE training_sessions SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-          ['Completed', sess.id]
-        );
+          // Update session status to Completed
+          await dbClient.query(
+            'UPDATE training_sessions SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+            ['Completed', sess.id]
+          );
 
-        // Record in processed_sync_mutations for replay protection
-        await dbClient.query(
-          `INSERT INTO processed_sync_mutations (mutation_id, organization_id, actor_id, session_id, student_id, status, client_timestamp, processed_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)`,
-          [mutationId, user.organizationId, user.id, sessionId, studentId, status, clientTimestamp ? new Date(clientTimestamp) : new Date()]
-        );
+          // Record in processed_sync_mutations for replay protection
+          await dbClient.query(
+            `INSERT INTO processed_sync_mutations (mutation_id, organization_id, actor_id, session_id, student_id, status, client_timestamp, processed_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)`,
+            [mutationId, user.organizationId, user.id, sessionId, studentId, status, clientTimestamp ? new Date(clientTimestamp) : new Date()]
+          );
 
-        // Audit Log Entry
-        await dbClient.query(
-          `INSERT INTO audit_logs (id, action, details, user_role, user_email)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [
-            newId('audit'),
-            'Offline Attendance Synchronized',
-            `Mutation ${mutationId}: Session ${sessionId}, Student ${studentId} marked ${status} by Master ${user.email}`,
-            user.role,
-            user.email,
-          ]
-        );
+          // Audit Log Entry
+          await dbClient.query(
+            `INSERT INTO audit_logs (id, action, details, user_role, user_email)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [
+              newId('audit'),
+              'Offline Attendance Synchronized',
+              `Mutation ${mutationId}: Session ${sessionId}, Student ${studentId} marked ${status} by Master ${user.email}`,
+              user.role,
+              user.email,
+            ]
+          );
 
-        synced.push(mutationId);
+          await dbClient.query('COMMIT');
+          synced.push(mutationId);
+        } catch (txErr: any) {
+          await dbClient.query('ROLLBACK');
+          throw txErr;
+        }
       } catch (mutationErr: any) {
         errors.push({ mutationId, error: safeErrorMessage(mutationErr, 'Failed to process mutation.') });
       }

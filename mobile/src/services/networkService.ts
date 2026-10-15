@@ -19,6 +19,14 @@ class NetworkService {
     return { ...this.state };
   }
 
+  public isConnected(): boolean {
+    return this.state.status === 'online';
+  }
+
+  public isOnline(): boolean {
+    return this.state.status === 'online';
+  }
+
   public setState(updates: Partial<ConnectivityState>): void {
     const previousStatus = this.state.status;
     this.state = {

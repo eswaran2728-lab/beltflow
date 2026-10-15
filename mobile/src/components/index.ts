@@ -5,3 +5,5 @@ export * from './Badges';
 export * from './StatCard';
 export * from './Feedback';
 export * from './Layout';
+export * from './StudentDigitalPass';
+export * from './ParentChildPassViewer';

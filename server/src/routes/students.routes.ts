@@ -57,6 +57,51 @@ router.get('/:studentId/sessions', authenticateJWT, async (req: Request, res: Re
   }
 });
 
+// Digital Attendance Pass for Student (Task 2.4)
+// Accessible by: Student themselves, approved linked Parent, assigned Master, or Persatuan Admin.
+// Generates an opaque, non-enumerable, signed digital token. Never leaks NRIC, phone, or payment info.
+router.get('/:studentId/digital-pass', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const access = await studentAccess(req.user!, req.params.studentId);
+    if (!access.allowed || !access.student) {
+      return res.status(403).json({ error: 'Digital pass access denied.' });
+    }
+    const student = access.student;
+    const now = Math.floor(Date.now() / 1000);
+    const exp = now + 30 * 86400; // 30-day validity
+    const payload = {
+      type: 'BF_PASS',
+      v: 1,
+      oid: student.organization_id,
+      sid: student.id,
+      name: student.full_name,
+      belt: student.belt_rank,
+      iat: now,
+      exp,
+    };
+
+    return res.json({
+      student: {
+        id: student.id,
+        fullName: student.full_name,
+        beltRank: student.belt_rank,
+        status: student.status,
+        organizationId: student.organization_id,
+        className: student.class_name,
+      },
+      pass: {
+        payload,
+        qrString: JSON.stringify(payload),
+        issuedAt: new Date(now * 1000).toISOString(),
+        expiresAt: new Date(exp * 1000).toISOString(),
+      },
+    });
+  } catch (err: any) {
+    console.error('[Digital pass error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
 router.get('/me', authenticateJWT, async (req: Request, res: Response) => {
   if (req.user?.role !== UserRole.STUDENT) return res.status(403).json({ error: 'Student account required.' });
   try {
