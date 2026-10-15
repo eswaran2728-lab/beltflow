@@ -29,12 +29,28 @@ export async function classAccess(user: AuthUserContext, classId: string): Promi
     return true;
   }
   if (user.role === UserRole.MASTER) {
+    // Check if Master has an affiliation that is not ACTIVE
+    const affilCheck = await dbClient.query(
+      `SELECT status FROM master_affiliations WHERE master_id = $1 AND organization_id = $2 ORDER BY created_at DESC LIMIT 1`,
+      [user.id, user.organizationId]
+    );
+    if (affilCheck.rowCount > 0 && affilCheck.rows[0].status !== 'ACTIVE') {
+      return false;
+    }
+
+    // Check if Master has an application that is not APPROVED
+    const appCheck = await dbClient.query(
+      `SELECT status FROM master_applications WHERE user_id = $1 AND organization_id = $2 ORDER BY created_at DESC LIMIT 1`,
+      [user.id, user.organizationId]
+    );
+    if (appCheck.rowCount > 0 && appCheck.rows[0].status !== 'APPROVED') {
+      return false;
+    }
+
     // Check active class leadership
     const leadRes = await dbClient.query(
       `SELECT 1 FROM class_leaderships cl
-       LEFT JOIN master_affiliations ma ON ma.master_id = cl.master_id AND ma.organization_id = cl.organization_id
-       WHERE cl.class_id = $1 AND cl.master_id = $2 AND cl.is_active = TRUE
-         AND (ma.status IS NULL OR ma.status = 'ACTIVE')`,
+       WHERE cl.class_id = $1 AND cl.master_id = $2 AND cl.is_active = TRUE`,
       [classId, user.id]
     );
     if (leadRes.rowCount > 0) return true;
@@ -55,13 +71,22 @@ export async function assignedMasterAccess(user: AuthUserContext, classId: strin
     return false;
   }
 
-  // Check if Master has been suspended/ended in master_affiliations
+  // Check if Master has an affiliation that is not ACTIVE (PENDING, SUSPENDED, ENDED)
   const statusCheck = await dbClient.query(
     `SELECT status FROM master_affiliations WHERE master_id = $1 AND organization_id = $2 ORDER BY created_at DESC LIMIT 1`,
     [user.id, user.organizationId]
   );
   if (statusCheck.rowCount > 0 && statusCheck.rows[0].status !== 'ACTIVE') {
-    return false; // Suspended or ended masters strictly lose operational access
+    return false; // Non-active affiliation strictly loses operational access
+  }
+
+  // Check if Master has an application that is not APPROVED (e.g. REJECTED, SUBMITTED, NEEDS_INFORMATION)
+  const appCheck = await dbClient.query(
+    `SELECT status FROM master_applications WHERE user_id = $1 AND organization_id = $2 ORDER BY created_at DESC LIMIT 1`,
+    [user.id, user.organizationId]
+  );
+  if (appCheck.rowCount > 0 && appCheck.rows[0].status !== 'APPROVED') {
+    return false; // Non-approved applicant strictly cannot use legacy fallback
   }
 
   // Check active verified leadership in class_leaderships

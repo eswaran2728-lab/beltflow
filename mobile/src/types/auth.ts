@@ -21,6 +21,7 @@ export interface AuthUser {
   organizationId?: string | null;
   assignedClassIds?: string[];
   linkedStudentIds?: string[];
+  affiliationStatus?: string;
 }
 
 export interface LoginCredentials {

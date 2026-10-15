@@ -23,6 +23,9 @@ import { StatusBadge } from '../../../components/Badges';
 import { OfflineBanner, LoadingState, ErrorState } from '../../../components/Feedback';
 import { useDashboardData } from '../../../hooks/useDashboardData';
 import { dashboardService, AdminPersatuanDashboardData } from '../../../services/dashboardService';
+import { MasterApprovalsScreen } from './MasterApprovalsScreen';
+
+export { MasterApprovalsScreen };
 
 export interface RoleScreenProps {
   user: AuthUser;
@@ -377,21 +380,10 @@ export const LocationsScreen: React.FC<RoleScreenProps> = props => {
 };
 
 export const MastersScreen: React.FC<RoleScreenProps> = props => {
-  const { colors, iconSize } = useTheme();
-  return (
-    <RolePlaceholderBase
-      title="Masters"
-      subtitle="Academy Coaches & Instructors"
-      role={UserRole.ADMIN_PERSATUAN}
-      user={props.user}
-      onLogout={props.onLogout}
-      isOffline={props.isOffline}
-      testID="admin-persatuan-masters-screen"
-      icon={<Users size={iconSize.lg} color={colors.buttonPrimaryBg} />}
-      scopeDescription="Coaching Scope: Certified Silambam masters, class assignments, and coach credentials."
-    />
-  );
+  return <MasterApprovalsScreen {...props} />;
 };
+
+
 
 export const ReportsScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();

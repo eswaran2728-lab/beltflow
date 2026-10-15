@@ -11,6 +11,7 @@ import {
   AttendanceScreen,
   GradingScreen,
   MasterProfileScreen,
+  MasterApplicationStatusScreen,
 } from '../../screens/roles/master';
 import {
   RoleNavigatorProps,
@@ -41,8 +42,30 @@ export const MasterNavigator: React.FC<RoleNavigatorProps> = ({
 }) => {
   const { colors, iconSize } = useTheme();
 
+  // If master affiliation is not ACTIVE (e.g., PENDING, SUSPENDED, ENDED, UNVERIFIED),
+  // gate operational screens and present MasterApplicationStatusScreen
+  const isGated = Boolean(
+    user.affiliationStatus &&
+      ['PENDING', 'SUSPENDED', 'ENDED', 'UNVERIFIED', 'DRAFT', 'SUBMITTED', 'NEEDS_INFORMATION'].includes(
+        user.affiliationStatus
+      )
+  );
+
+  if (isGated) {
+    return (
+      <RoleNavigationContainer user={user}>
+        <MasterApplicationStatusScreen
+          user={user}
+          onLogout={onLogout}
+          isOffline={isOffline}
+        />
+      </RoleNavigationContainer>
+    );
+  }
+
   return (
     <RoleNavigationContainer user={user}>
+
     <Tab.Navigator
       screenOptions={{
         headerShown: false,

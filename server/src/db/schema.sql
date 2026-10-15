@@ -616,4 +616,28 @@ CREATE TABLE IF NOT EXISTS enrollment_applications (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Additive columns on master_applications (Task H03)
+ALTER TABLE master_applications ADD COLUMN IF NOT EXISTS applicant_name VARCHAR(255);
+ALTER TABLE master_applications ADD COLUMN IF NOT EXISTS qualifications TEXT;
+ALTER TABLE master_applications ADD COLUMN IF NOT EXISTS verification_details TEXT;
+ALTER TABLE master_applications ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+ALTER TABLE master_applications ADD COLUMN IF NOT EXISTS requested_information TEXT;
+ALTER TABLE master_applications ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ;
+
+-- 17. Notification & Event Outbox (Task H03)
+CREATE TABLE IF NOT EXISTS notification_outbox (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    event_type VARCHAR(100) NOT NULL, -- 'MasterApproved', 'MasterRejected', 'MasterInformationRequested'
+    aggregate_type VARCHAR(50) NOT NULL, -- 'master_application', 'class_application'
+    aggregate_id TEXT NOT NULL,
+    payload JSONB NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- 'PENDING', 'PROCESSED', 'FAILED'
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    processed_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_outbox_org_status ON notification_outbox(organization_id, status);
+
+
 

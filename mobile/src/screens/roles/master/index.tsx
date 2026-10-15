@@ -402,6 +402,7 @@ export const StudentsScreen: React.FC<RoleScreenProps> = props => {
 };
 
 export { AttendanceScreen } from './AttendanceScreen';
+export { MasterApplicationStatusScreen } from './MasterApplicationStatusScreen';
 
 export const GradingScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();
