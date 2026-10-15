@@ -493,3 +493,127 @@ CREATE INDEX IF NOT EXISTS idx_processed_sync_session_student ON processed_sync_
 ALTER TABLE session_attendance ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 1;
 ALTER TABLE session_attendance ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
+-- 16. Authority Relationships & Persatuan Approval Foundation (Task H02)
+
+-- A. Master Affiliations (durable relationship between a Master and an individual Persatuan)
+CREATE TABLE IF NOT EXISTS master_affiliations (
+    id TEXT PRIMARY KEY,
+    master_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- 'PENDING', 'ACTIVE', 'SUSPENDED', 'ENDED'
+    effective_from TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    effective_to TIMESTAMPTZ,
+    verification_provenance VARCHAR(50) NOT NULL DEFAULT 'DIRECT_REVIEW', -- 'LEGACY_MIGRATION', 'DIRECT_REVIEW', 'FEDERATION_TRANSFER'
+    reviewed_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    reviewed_at TIMESTAMPTZ,
+    review_notes TEXT,
+    version INT NOT NULL DEFAULT 1,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_master_affiliations_active
+    ON master_affiliations (master_id, organization_id) WHERE status = 'ACTIVE';
+CREATE INDEX IF NOT EXISTS idx_master_affiliations_org_status
+    ON master_affiliations (organization_id, status);
+
+-- B. Master Applications (supports future H03 lifecycle)
+CREATE TABLE IF NOT EXISTS master_applications (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    status VARCHAR(50) NOT NULL DEFAULT 'SUBMITTED', -- 'DRAFT', 'SUBMITTED', 'NEEDS_INFORMATION', 'APPROVED', 'REJECTED', 'WITHDRAWN'
+    documents_url TEXT,
+    experience_summary TEXT,
+    version INT NOT NULL DEFAULT 1,
+    reviewer_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    reviewed_at TIMESTAMPTZ,
+    review_notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- C. Class Proposals & Approval States (supports future H04 lifecycle)
+CREATE TABLE IF NOT EXISTS class_applications (
+    id TEXT PRIMARY KEY,
+    class_id TEXT REFERENCES classes(id) ON DELETE CASCADE,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    proposing_master_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    schedule VARCHAR(255) NOT NULL,
+    location VARCHAR(255) NOT NULL,
+    monthly_fee NUMERIC(10, 2) NOT NULL DEFAULT 120.00,
+    status VARCHAR(50) NOT NULL DEFAULT 'SUBMITTED', -- 'DRAFT', 'SUBMITTED', 'NEEDS_INFORMATION', 'APPROVED', 'REJECTED'
+    version INT NOT NULL DEFAULT 1,
+    reviewer_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    reviewed_at TIMESTAMPTZ,
+    review_notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Additive operational and enrollment columns on classes
+ALTER TABLE classes ADD COLUMN IF NOT EXISTS operational_status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE'; -- 'NOT_STARTED', 'ACTIVE', 'PAUSED', 'CLOSED'
+ALTER TABLE classes ADD COLUMN IF NOT EXISTS enrollment_availability VARCHAR(50) NOT NULL DEFAULT 'OPEN'; -- 'OPEN', 'WAITLIST', 'CLOSED'
+ALTER TABLE classes ADD COLUMN IF NOT EXISTS approval_status VARCHAR(50) NOT NULL DEFAULT 'APPROVED'; -- 'APPROVED', 'PENDING', 'REJECTED'
+
+-- D. Class Leadership History (prevents overlapping primary leaders, tracks substitutes)
+CREATE TABLE IF NOT EXISTS class_leaderships (
+    id TEXT PRIMARY KEY,
+    class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    master_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    leadership_type VARCHAR(50) NOT NULL DEFAULT 'PRIMARY', -- 'PRIMARY', 'SUBSTITUTE', 'INTERN'
+    effective_from TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    effective_to TIMESTAMPTZ,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    appointed_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    notes TEXT,
+    provenance VARCHAR(50) NOT NULL DEFAULT 'DIRECT_ASSIGNMENT', -- 'LEGACY_MIGRATION', 'DIRECT_ASSIGNMENT', 'HANDOVER'
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_class_leaderships_active_primary
+    ON class_leaderships (class_id) WHERE is_active = TRUE AND leadership_type = 'PRIMARY';
+CREATE INDEX IF NOT EXISTS idx_class_leaderships_master
+    ON class_leaderships (master_id, is_active);
+
+-- E. Canonical Student Enrollments & Applications (supports future H05 lifecycle)
+CREATE TABLE IF NOT EXISTS class_enrollments (
+    id TEXT PRIMARY KEY,
+    student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE', -- 'APPLIED', 'ACTIVE', 'TRANSFERRED', 'PAUSED', 'ENDED'
+    effective_from TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    effective_to TIMESTAMPTZ,
+    is_primary BOOLEAN NOT NULL DEFAULT TRUE,
+    provenance VARCHAR(50) NOT NULL DEFAULT 'MASTER_APPROVED', -- 'LEGACY_MIGRATION', 'MASTER_APPROVED', 'ADMIN_REGISTERED', 'TRANSFER'
+    approved_by_master_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    approved_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_class_enrollments_active_class
+    ON class_enrollments (student_id, class_id) WHERE status = 'ACTIVE';
+CREATE INDEX IF NOT EXISTS idx_class_enrollments_student
+    ON class_enrollments (student_id, status);
+
+CREATE TABLE IF NOT EXISTS enrollment_applications (
+    id TEXT PRIMARY KEY,
+    student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    guardian_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'SUBMITTED', -- 'DRAFT', 'SUBMITTED', 'NEEDS_INFORMATION', 'WAITLISTED', 'APPROVED', 'REJECTED', 'WITHDRAWN'
+    version INT NOT NULL DEFAULT 1,
+    reviewed_by_master_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    reviewed_at TIMESTAMPTZ,
+    review_notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+
