@@ -199,11 +199,19 @@ router.post('/sync', authenticateJWT, async (req: Request, res: Response) => {
       reason: string;
       serverStatus?: string | null;
       serverTimestamp?: string | null;
+      serverVersion?: number | null;
     }> = [];
     const errors: Array<{ mutationId: string; error: string }> = [];
 
     for (const m of mutations) {
-      const { mutationId, sessionId, studentId, status, clientTimestamp } = m;
+      const {
+        mutationId,
+        sessionId,
+        studentId,
+        status,
+        clientTimestamp,
+        baseVersion,
+      } = m;
 
       if (!mutationId || !sessionId || !studentId || !status) {
         errors.push({ mutationId: mutationId || 'unknown', error: 'Missing required mutation fields.' });
@@ -317,59 +325,152 @@ router.post('/sync', authenticateJWT, async (req: Request, res: Response) => {
           continue;
         }
 
-        // 6. Concurrency Check (Server-authoritative conflict check)
-        const existingAtt = await dbClient.query(
-          'SELECT * FROM session_attendance WHERE session_id = $1 AND student_id = $2',
-          [sessionId, studentId]
-        );
-
-        if (existingAtt.rowCount > 0) {
-          const currentRec = existingAtt.rows[0];
-          // If marked by another user and server mark was created AFTER client mutation timestamp
-          if (
-            currentRec.marked_by &&
-            currentRec.marked_by !== user.id &&
-            clientTimestamp &&
-            new Date(currentRec.marked_at).getTime() > new Date(clientTimestamp).getTime()
-          ) {
-            conflicts.push({
-              mutationId,
-              code: 'CONCURRENT_MODIFICATION',
-              reason: 'Attendance was updated by another instructor on the server.',
-              serverStatus: currentRec.status,
-              serverTimestamp: currentRec.marked_at,
-            });
-            continue;
+        // 6 & 7. Scoped Transaction with Optimistic Concurrency & Replay Protection
+        const txResult = await dbClient.transaction(async (tx) => {
+          // Inner idempotency check to guard against concurrent replay
+          const replayInTx = await tx.query(
+            'SELECT mutation_id FROM processed_sync_mutations WHERE mutation_id = $1',
+            [mutationId]
+          );
+          if (replayInTx.rowCount > 0) {
+            return { outcome: 'synced' as const };
           }
-        }
 
-        // 7. Atomically Apply Mutation & Idempotency Ledger (Task 2.4 Pre-Task Review)
-        await dbClient.query('BEGIN');
-        try {
-          await dbClient.query(
-            `INSERT INTO session_attendance (id, session_id, student_id, status, marked_by, marked_at, version, updated_at)
-             VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP)
-             ON CONFLICT (session_id, student_id)
-             DO UPDATE SET status = EXCLUDED.status, marked_by = EXCLUDED.marked_by, marked_at = CURRENT_TIMESTAMP,
-                           version = session_attendance.version + 1, updated_at = CURRENT_TIMESTAMP`,
-            [newId('satt'), sessionId, studentId, status, user.id]
+          // Lock or inspect existing session_attendance record
+          const existingAtt = await tx.query(
+            'SELECT * FROM session_attendance WHERE session_id = $1 AND student_id = $2 FOR UPDATE',
+            [sessionId, studentId]
           );
 
-          // Update session status to Completed
-          await dbClient.query(
+          if (existingAtt.rowCount > 0) {
+            const currentRec = existingAtt.rows[0];
+            const serverVersion = Number(currentRec.version ?? 1);
+
+            // Optimistic concurrency check if baseVersion provided
+            if (baseVersion !== undefined && baseVersion !== null) {
+              if (Number(baseVersion) !== serverVersion) {
+                return {
+                  outcome: 'conflict' as const,
+                  conflict: {
+                    mutationId,
+                    code: 'CONCURRENT_MODIFICATION',
+                    reason: `Attendance version mismatch (client baseVersion ${baseVersion}, server version ${serverVersion}).`,
+                    serverStatus: currentRec.status,
+                    serverTimestamp: currentRec.marked_at,
+                    serverVersion,
+                  },
+                };
+              }
+            } else {
+              // Legacy conflict check: marked by another user and server mark was created after client mutation
+              if (
+                currentRec.marked_by &&
+                currentRec.marked_by !== user.id &&
+                clientTimestamp &&
+                new Date(currentRec.marked_at).getTime() > new Date(clientTimestamp).getTime()
+              ) {
+                return {
+                  outcome: 'conflict' as const,
+                  conflict: {
+                    mutationId,
+                    code: 'CONCURRENT_MODIFICATION',
+                    reason: 'Attendance was updated by another instructor on the server.',
+                    serverStatus: currentRec.status,
+                    serverTimestamp: currentRec.marked_at,
+                    serverVersion,
+                  },
+                };
+              }
+            }
+
+            // Atomic SQL UPDATE enforcing version matching
+            const updateRes = await tx.query(
+              `UPDATE session_attendance
+               SET status = $1, marked_by = $2, marked_at = CURRENT_TIMESTAMP,
+                   version = version + 1, updated_at = CURRENT_TIMESTAMP
+               WHERE session_id = $3 AND student_id = $4 AND version = $5
+               RETURNING *`,
+              [status, user.id, sessionId, studentId, serverVersion]
+            );
+
+            if (updateRes.rowCount === 0) {
+              const reFetch = await tx.query(
+                'SELECT * FROM session_attendance WHERE session_id = $1 AND student_id = $2',
+                [sessionId, studentId]
+              );
+              const reRec = reFetch.rows[0];
+              return {
+                outcome: 'conflict' as const,
+                conflict: {
+                  mutationId,
+                  code: 'CONCURRENT_MODIFICATION',
+                  reason: 'Concurrent modification detected. Server record was modified concurrently.',
+                  serverStatus: reRec?.status,
+                  serverTimestamp: reRec?.marked_at,
+                  serverVersion: reRec ? Number(reRec.version) : undefined,
+                },
+              };
+            }
+          } else {
+            // First attendance mark: no existing record
+            if (baseVersion !== undefined && baseVersion !== null && Number(baseVersion) > 0) {
+              return {
+                outcome: 'conflict' as const,
+                conflict: {
+                  mutationId,
+                  code: 'CONCURRENT_MODIFICATION',
+                  reason: `Attendance record does not exist on server (client specified baseVersion ${baseVersion}).`,
+                  serverStatus: null,
+                  serverTimestamp: null,
+                  serverVersion: 0,
+                },
+              };
+            }
+
+            // Atomic INSERT with ON CONFLICT DO NOTHING to prevent race conditions
+            const insertRes = await tx.query(
+              `INSERT INTO session_attendance (id, session_id, student_id, status, marked_by, marked_at, version, updated_at)
+               VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP)
+               ON CONFLICT (session_id, student_id) DO NOTHING
+               RETURNING *`,
+              [newId('satt'), sessionId, studentId, status, user.id]
+            );
+
+            if (insertRes.rowCount === 0) {
+              const reFetch = await tx.query(
+                'SELECT * FROM session_attendance WHERE session_id = $1 AND student_id = $2',
+                [sessionId, studentId]
+              );
+              const reRec = reFetch.rows[0];
+              return {
+                outcome: 'conflict' as const,
+                conflict: {
+                  mutationId,
+                  code: 'CONCURRENT_MODIFICATION',
+                  reason: 'Concurrent attendance mark already recorded by another user.',
+                  serverStatus: reRec?.status,
+                  serverTimestamp: reRec?.marked_at,
+                  serverVersion: reRec ? Number(reRec.version) : undefined,
+                },
+              };
+            }
+          }
+
+          // Atomically update session status to Completed
+          await tx.query(
             'UPDATE training_sessions SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
             ['Completed', sess.id]
           );
 
-          // Record in processed_sync_mutations for replay protection
-          await dbClient.query(
+          // Atomically record in processed_sync_mutations for replay protection
+          await tx.query(
             `INSERT INTO processed_sync_mutations (mutation_id, organization_id, actor_id, session_id, student_id, status, client_timestamp, processed_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)`,
             [mutationId, user.organizationId, user.id, sessionId, studentId, status, clientTimestamp ? new Date(clientTimestamp) : new Date()]
           );
 
-          // Audit Log Entry
-          await dbClient.query(
+          // Atomically write audit log entry
+          await tx.query(
             `INSERT INTO audit_logs (id, action, details, user_role, user_email)
              VALUES ($1, $2, $3, $4, $5)`,
             [
@@ -381,11 +482,13 @@ router.post('/sync', authenticateJWT, async (req: Request, res: Response) => {
             ]
           );
 
-          await dbClient.query('COMMIT');
+          return { outcome: 'synced' as const };
+        });
+
+        if (txResult.outcome === 'conflict') {
+          conflicts.push(txResult.conflict);
+        } else {
           synced.push(mutationId);
-        } catch (txErr: any) {
-          await dbClient.query('ROLLBACK');
-          throw txErr;
         }
       } catch (mutationErr: any) {
         errors.push({ mutationId, error: safeErrorMessage(mutationErr, 'Failed to process mutation.') });

@@ -8,6 +8,10 @@ export interface SqlQueryResult<T = any> {
   rowCount: number;
 }
 
+export interface SqlTransactionClient {
+  query<T = any>(sql: string, params?: any[]): Promise<SqlQueryResult<T>>;
+}
+
 class PostgresDatabaseClient {
   private pgPool: Pool | null = null;
   private pglite: PGlite | null = null;
@@ -85,6 +89,61 @@ class PostgresDatabaseClient {
     if (this.pglite) {
       const res = await this.pglite.query<T>(sql, params);
       return { rows: res.rows, rowCount: res.rows.length };
+    }
+
+    throw new Error('Database client not initialized');
+  }
+
+  async transaction<T>(callback: (client: SqlTransactionClient) => Promise<T>): Promise<T> {
+    if (!this.isInitialized) {
+      await this.init();
+    }
+
+    if (this.pgPool) {
+      const client = await this.pgPool.connect();
+      try {
+        await client.query('BEGIN');
+        const txClient: SqlTransactionClient = {
+          query: async <R = any>(sql: string, params: any[] = []): Promise<SqlQueryResult<R>> => {
+            const res: any = await client.query(sql, params);
+            return { rows: res.rows, rowCount: res.rowCount || 0 };
+          }
+        };
+        const result = await callback(txClient);
+        await client.query('COMMIT');
+        return result;
+      } catch (err) {
+        try {
+          await client.query('ROLLBACK');
+        } catch (rbErr) {
+          console.error('[Database pool transaction rollback error]', rbErr);
+        }
+        throw err;
+      } finally {
+        client.release();
+      }
+    }
+
+    if (this.pglite) {
+      await this.pglite.query('BEGIN');
+      try {
+        const txClient: SqlTransactionClient = {
+          query: async <R = any>(sql: string, params: any[] = []): Promise<SqlQueryResult<R>> => {
+            const res = await this.pglite!.query<R>(sql, params);
+            return { rows: res.rows, rowCount: res.rows.length };
+          }
+        };
+        const result = await callback(txClient);
+        await this.pglite.query('COMMIT');
+        return result;
+      } catch (err) {
+        try {
+          await this.pglite.query('ROLLBACK');
+        } catch (rbErr) {
+          console.error('[PGlite transaction rollback error]', rbErr);
+        }
+        throw err;
+      }
     }
 
     throw new Error('Database client not initialized');

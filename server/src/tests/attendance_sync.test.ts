@@ -414,6 +414,192 @@ async function run() {
     );
     assert.equal(superAdminSync.status, 403);
 
+    // =========================================================================
+    // TEST 9: Scoped Transaction API — Commit and Rollback Verification
+    // =========================================================================
+    console.log('Test 9: Verify dbClient.transaction commits on success and rolls back on failure...');
+    assert(typeof (dbClient as any).transaction === 'function', 'dbClient.transaction must be implemented as a function');
+
+    // 9a. Commit verification
+    await (dbClient as any).transaction(async (tx: any) => {
+      await tx.query("INSERT INTO audit_logs (id, action, details, user_role, user_email) VALUES ($1, $2, $3, $4, $5)", [
+        'audit_tx_test_commit',
+        'Tx Commit Test',
+        'Committed successfully',
+        'SUPER_ADMIN',
+        'owner@sync.test.local'
+      ]);
+    });
+    const commitCheck = await dbClient.query('SELECT * FROM audit_logs WHERE id = $1', ['audit_tx_test_commit']);
+    assert.equal(commitCheck.rowCount, 1, 'Transaction write must commit and be visible');
+
+    // 9b. Rollback verification
+    let rollbackThrew = false;
+    try {
+      await (dbClient as any).transaction(async (tx: any) => {
+        await tx.query("INSERT INTO audit_logs (id, action, details, user_role, user_email) VALUES ($1, $2, $3, $4, $5)", [
+          'audit_tx_test_rollback',
+          'Tx Rollback Test',
+          'Should be rolled back',
+          'SUPER_ADMIN',
+          'owner@sync.test.local'
+        ]);
+        throw new Error('Forced transaction failure for testing rollback');
+      });
+    } catch (err: any) {
+      rollbackThrew = true;
+      assert.equal(err.message, 'Forced transaction failure for testing rollback');
+    }
+    assert.equal(rollbackThrew, true);
+    const rollbackCheck = await dbClient.query('SELECT * FROM audit_logs WHERE id = $1', ['audit_tx_test_rollback']);
+    assert.equal(rollbackCheck.rowCount, 0, 'Transaction write must be rolled back on error');
+
+    // =========================================================================
+    // TEST 10: Valid Attendance Correction (baseVersion match)
+    // =========================================================================
+    console.log('Test 10: Valid attendance correction with matching baseVersion...');
+    // student1 currently at version 1 (marked 'Present' in Test 1)
+    const currStudent1 = await dbClient.query('SELECT * FROM session_attendance WHERE session_id = $1 AND student_id = $2', [
+      session1.id,
+      student1.id,
+    ]);
+    assert.equal(currStudent1.rowCount, 1);
+    assert.equal(currStudent1.rows[0].version, 1);
+
+    const correctionRes = await call(
+      'POST',
+      '/attendance/sync',
+      {
+        mutations: [
+          {
+            mutationId: 'mut_test_corr_1',
+            sessionId: session1.id,
+            studentId: student1.id,
+            status: 'Late',
+            baseVersion: 1, // matches server version 1
+            clientTimestamp: new Date().toISOString(),
+          },
+        ],
+      },
+      masterA1.token
+    );
+    assert.equal(correctionRes.status, 200);
+    assert.deepEqual(correctionRes.data.synced, ['mut_test_corr_1']);
+    assert.equal(correctionRes.data.conflicts.length, 0);
+
+    const updatedStudent1 = await dbClient.query('SELECT * FROM session_attendance WHERE session_id = $1 AND student_id = $2', [
+      session1.id,
+      student1.id,
+    ]);
+    assert.equal(updatedStudent1.rows[0].status, 'Late');
+    assert.equal(updatedStudent1.rows[0].version, 2, 'Version must increment to 2 on correction');
+
+    // =========================================================================
+    // TEST 11: Stale baseVersion Rejection (CONCURRENT_MODIFICATION)
+    // =========================================================================
+    console.log('Test 11: Reject stale baseVersion mutation and preserve existing server record...');
+    // Server is now at version 2. Client submits with stale baseVersion = 1
+    const staleRes = await call(
+      'POST',
+      '/attendance/sync',
+      {
+        mutations: [
+          {
+            mutationId: 'mut_test_stale_1',
+            sessionId: session1.id,
+            studentId: student1.id,
+            status: 'Absent',
+            baseVersion: 1, // Stale! Server is version 2
+            clientTimestamp: new Date().toISOString(),
+          },
+        ],
+      },
+      masterA1.token
+    );
+    assert.equal(staleRes.status, 200);
+    assert.equal(staleRes.data.synced.length, 0);
+    assert.equal(staleRes.data.conflicts.length, 1);
+    assert.equal(staleRes.data.conflicts[0].code, 'CONCURRENT_MODIFICATION');
+
+    // Verify server record is PRESERVED (still 'Late' and version 2)
+    const preservedStudent1 = await dbClient.query('SELECT * FROM session_attendance WHERE session_id = $1 AND student_id = $2', [
+      session1.id,
+      student1.id,
+    ]);
+    assert.equal(preservedStudent1.rows[0].status, 'Late');
+    assert.equal(preservedStudent1.rows[0].version, 2);
+
+    // Verify stale mutation was NOT added to processed_sync_mutations
+    const staleProcessed = await dbClient.query('SELECT * FROM processed_sync_mutations WHERE mutation_id = $1', [
+      'mut_test_stale_1',
+    ]);
+    assert.equal(staleProcessed.rowCount, 0);
+
+    // =========================================================================
+    // TEST 12: Interrupted Synchronization Recovery & Atomic Ledger
+    // =========================================================================
+    console.log('Test 12: Interrupted sync recovery — successful mutation synced, invalid mutation rejected atomically...');
+    const mixedRes = await call(
+      'POST',
+      '/attendance/sync',
+      {
+        mutations: [
+          {
+            mutationId: 'mut_test_mixed_valid',
+            sessionId: session1.id,
+            studentId: student2.id,
+            status: 'Excused',
+            baseVersion: 1,
+            clientTimestamp: new Date().toISOString(),
+          },
+          {
+            mutationId: 'mut_test_mixed_invalid',
+            sessionId: session1.id,
+            studentId: studentInactive.id, // Inactive student
+            status: 'Present',
+            baseVersion: 1,
+            clientTimestamp: new Date().toISOString(),
+          },
+        ],
+      },
+      masterA1.token
+    );
+    assert.equal(mixedRes.status, 200);
+    assert.deepEqual(mixedRes.data.synced, ['mut_test_mixed_valid']);
+    assert.equal(mixedRes.data.conflicts.length, 1);
+    assert.equal(mixedRes.data.conflicts[0].mutationId, 'mut_test_mixed_invalid');
+    assert.equal(mixedRes.data.conflicts[0].code, 'STUDENT_REMOVED');
+
+    // Retry the batch with fixed mutation — valid mutation is replayed idempotently, new one is synced
+    const recoveryRes = await call(
+      'POST',
+      '/attendance/sync',
+      {
+        mutations: [
+          {
+            mutationId: 'mut_test_mixed_valid', // already processed
+            sessionId: session1.id,
+            studentId: student2.id,
+            status: 'Excused',
+            baseVersion: 1,
+            clientTimestamp: new Date().toISOString(),
+          },
+          {
+            mutationId: 'mut_test_recovered',
+            sessionId: session1.id,
+            studentId: student1.id,
+            status: 'Present',
+            baseVersion: 2, // matches version 2
+            clientTimestamp: new Date().toISOString(),
+          },
+        ],
+      },
+      masterA1.token
+    );
+    assert.equal(recoveryRes.status, 200);
+    assert.deepEqual(recoveryRes.data.synced, ['mut_test_mixed_valid', 'mut_test_recovered']);
+    assert.equal(recoveryRes.data.conflicts.length, 0);
+
     console.log('✅ All Offline Attendance Sync Server Integration Tests Passed!');
   } finally {
     server.close();

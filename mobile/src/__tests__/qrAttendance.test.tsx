@@ -564,7 +564,7 @@ describe('BeltFlow Phase 2 Task 2.4 — QR Attendance Scanner & Student Digital 
       studentId: studentA1.id,
       status: 'Present',
     });
-    expect(mutation.mutationId).toBeDefined();
+    expect(mutation.id).toBeDefined();
 
     const pending = await mutationQueueRepository.getPendingMutations(masterA);
     expect(pending.length).toBe(1);
