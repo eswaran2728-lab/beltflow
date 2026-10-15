@@ -17,6 +17,9 @@ import {
   Save,
   CheckCircle2,
   CloudOff,
+  RefreshCw,
+  AlertTriangle,
+  AlertCircle,
 } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { resolveBeltDisplay } from '../../../theme/belts';
@@ -29,6 +32,10 @@ import {
   masterAttendanceService,
   AttendanceContext,
 } from '../../../services/masterAttendanceService';
+import {
+  offlineSyncService,
+  SyncEngineState,
+} from '../../../services/offlineSyncService';
 import {
   CachedClass,
   CachedTrainingGroup,
@@ -52,6 +59,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
   // State
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [manualSyncing, setManualSyncing] = useState(false);
   const [classes, setClasses] = useState<CachedClass[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [groups, setGroups] = useState<CachedTrainingGroup[]>([]);
@@ -64,6 +72,16 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
   const [pendingCount, setPendingCount] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [syncState, setSyncState] = useState<SyncEngineState>(offlineSyncService.getState());
+
+  useEffect(() => {
+    offlineSyncService.setUser(user);
+    const unsub = offlineSyncService.onSyncStateChange(setSyncState);
+    return () => {
+      unsub();
+    };
+  }, [user]);
 
   // Load Context on class/group switch
   const loadContext = useCallback(async (classId?: string, groupId?: string) => {
@@ -172,7 +190,29 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
     return false;
   }, [students, attendanceMap, initialAttendanceMap]);
 
-  // Save attendance locally
+  // Manual sync trigger
+  const handleManualSync = async () => {
+    if (isOffline) {
+      Alert.alert('Offline Mode', 'Cannot synchronize while device is offline.');
+      return;
+    }
+    try {
+      setManualSyncing(true);
+      setErrorMessage(null);
+      const res = await offlineSyncService.syncNow(user);
+      if (res.error) {
+        Alert.alert('Sync Feedback', res.error);
+      } else {
+        await loadContext();
+      }
+    } catch (err: any) {
+      Alert.alert('Sync Error', err.message || 'Synchronization failed.');
+    } finally {
+      setManualSyncing(false);
+    }
+  };
+
+  // Save attendance locally with robust failure protection
   const handleSaveAttendance = async () => {
     if (!activeSession) {
       Alert.alert('Session Required', 'No active training session found for this class.');
@@ -182,6 +222,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
     try {
       setSaving(true);
       setSaveSuccessMsg(null);
+      setSaveError(null);
 
       let savedCount = 0;
       for (const student of students) {
@@ -200,12 +241,21 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
       }
 
       setInitialAttendanceMap({ ...attendanceMap });
-      setPendingCount(prev => prev + savedCount);
+      setSaveError(null);
+      const counts = await offlineSyncService.refreshCounts(user);
+      setPendingCount(counts.pending);
       setSaveSuccessMsg(
-        `Saved locally to queue (${savedCount} updated, ${pendingCount + savedCount} total pending sync).`
+        `Saved locally to queue (${savedCount} updated, ${counts.pending} total pending sync).`
       );
+
+      // Auto-trigger sync if connected
+      if (!isOffline) {
+        void offlineSyncService.syncNow(user, { silent: true });
+      }
     } catch (err: any) {
-      Alert.alert('Save Error', err.message || 'Failed to save attendance locally.');
+      // Failed local persistence must never appear saved
+      setSaveError(err.message || 'Storage write failed.');
+      Alert.alert('Save Failed', 'Could not save attendance to local storage. Unsaved changes are present.');
     } finally {
       setSaving(false);
     }
@@ -228,16 +278,76 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
           </View>
         )}
 
-        {/* Unsynchronized Mutations Badge */}
+        {/* Syncing Progress Banner */}
+        {syncState.status === 'syncing' && (
+          <View testID="attendance-syncing-banner" style={[styles.syncingContainer, { backgroundColor: '#EFF6FF', borderColor: '#3B82F6' }]}>
+            <ActivityIndicator size="small" color="#2563EB" />
+            <Text style={[styles.syncingText, { color: '#1E40AF' }]}>
+              Synchronizing attendance records with server...
+            </Text>
+          </View>
+        )}
+
+        {/* Sync Conflict Alert Banner */}
+        {syncState.conflictCount > 0 && (
+          <View testID="attendance-conflict-badge" style={[styles.conflictContainer, { backgroundColor: '#FEF2F2', borderColor: '#EF4444' }]}>
+            <AlertTriangle size={iconSize.sm} color="#B91C1C" />
+            <Text style={[styles.conflictText, { color: '#B91C1C' }]}>
+              {syncState.conflictCount} attendance conflict(s) require review.
+            </Text>
+          </View>
+        )}
+
+        {/* Local Storage Save Failure Banner */}
+        {saveError && (
+          <View testID="attendance-save-failure-banner" style={[styles.failureContainer, { backgroundColor: '#FFF1F2', borderColor: '#E11D48' }]}>
+            <AlertCircle size={iconSize.sm} color="#BE123C" />
+            <View style={styles.failureTextContainer}>
+              <Text style={[styles.failureTitle, { color: '#9F1239' }]}>Save Failed</Text>
+              <Text style={[styles.failureSubtitle, { color: '#BE123C' }]}>
+                Unsaved changes present. {saveError}
+              </Text>
+            </View>
+            <TouchableOpacity
+              testID="btn-retry-save"
+              onPress={handleSaveAttendance}
+              style={styles.retryButton}
+              accessibilityRole="button"
+              accessibilityLabel="Retry saving attendance"
+            >
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Unsynchronized Mutations Badge with Sync Now Button */}
         {pendingCount > 0 && (
           <View
             testID="attendance-unsynced-badge"
             style={[styles.unsyncedContainer, { backgroundColor: colors.badgeWarningBg, borderColor: colors.badgeWarningText }]}
           >
-            <CloudOff size={iconSize.sm} color={colors.badgeWarningText} />
-            <Text style={[styles.unsyncedText, { color: colors.badgeWarningText }]}>
-              {pendingCount} unsynchronized record(s) pending sync
-            </Text>
+            <View style={styles.unsyncedRow}>
+              <CloudOff size={iconSize.sm} color={colors.badgeWarningText} />
+              <Text style={[styles.unsyncedText, { color: colors.badgeWarningText }]}>
+                {pendingCount} unsynchronized record(s) pending sync
+              </Text>
+            </View>
+
+            {!isOffline && (
+              <TouchableOpacity
+                testID="btn-sync-now"
+                onPress={handleManualSync}
+                disabled={manualSyncing || syncState.status === 'syncing'}
+                style={styles.syncNowButton}
+                accessibilityRole="button"
+                accessibilityLabel="Sync attendance records now"
+              >
+                <RefreshCw size={12} color="#FFFFFF" />
+                <Text style={styles.syncNowButtonText}>
+                  {manualSyncing ? 'Syncing...' : 'Sync Now'}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -621,7 +731,7 @@ const styles = StyleSheet.create({
   bannerMargin: {
     marginBottom: 12,
   },
-  unsyncedContainer: {
+  syncingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 10,
@@ -629,10 +739,89 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 12,
   },
+  syncingText: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  conflictContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  conflictText: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  failureContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  failureTextContainer: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  failureTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  failureSubtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  retryButton: {
+    backgroundColor: '#E11D48',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  unsyncedContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  unsyncedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
   unsyncedText: {
     fontSize: 13,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  syncNowButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0D2B47',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  syncNowButtonText: {
+    color: '#F59E0B',
+    fontSize: 12,
+    fontWeight: '700',
+    marginLeft: 4,
   },
   successContainer: {
     flexDirection: 'row',

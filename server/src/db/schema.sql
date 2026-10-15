@@ -474,3 +474,22 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     user_email VARCHAR(255) NOT NULL,
     timestamp TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 15. Offline Attendance Synchronization & Replay Protection (Task 2.3)
+CREATE TABLE IF NOT EXISTS processed_sync_mutations (
+    mutation_id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    actor_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    session_id TEXT NOT NULL REFERENCES training_sessions(id) ON DELETE CASCADE,
+    student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    status VARCHAR(20) NOT NULL,
+    client_timestamp TIMESTAMPTZ,
+    processed_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_processed_sync_org_actor ON processed_sync_mutations(organization_id, actor_id);
+CREATE INDEX IF NOT EXISTS idx_processed_sync_session_student ON processed_sync_mutations(session_id, student_id);
+
+ALTER TABLE session_attendance ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 1;
+ALTER TABLE session_attendance ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP;
+

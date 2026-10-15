@@ -177,4 +177,224 @@ router.get('/student/:studentId/history', authenticateJWT, async (req: Request, 
   }
 });
 
+// ================= AUTOMATIC OFFLINE ATTENDANCE SYNC (Task 2.3) =================
+// Accepts batch attendance mutations from the mobile SQLite queue.
+// Guarantees server-authoritative validation, replay protection, and structured conflict codes.
+router.post('/sync', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const user = req.user!;
+    if (user.role !== UserRole.MASTER) {
+      return res.status(403).json({ error: 'Only assigned Masters can synchronize attendance mutations.' });
+    }
+
+    const { mutations } = req.body;
+    if (!Array.isArray(mutations)) {
+      return res.status(400).json({ error: 'mutations array is required.' });
+    }
+
+    const synced: string[] = [];
+    const conflicts: Array<{
+      mutationId: string;
+      code: string;
+      reason: string;
+      serverStatus?: string | null;
+      serverTimestamp?: string | null;
+    }> = [];
+    const errors: Array<{ mutationId: string; error: string }> = [];
+
+    for (const m of mutations) {
+      const { mutationId, sessionId, studentId, status, clientTimestamp } = m;
+
+      if (!mutationId || !sessionId || !studentId || !status) {
+        errors.push({ mutationId: mutationId || 'unknown', error: 'Missing required mutation fields.' });
+        continue;
+      }
+
+      try {
+        // 1. Idempotency Check (Persistent Replay Protection)
+        const replayRes = await dbClient.query(
+          'SELECT mutation_id FROM processed_sync_mutations WHERE mutation_id = $1',
+          [mutationId]
+        );
+        if (replayRes.rowCount > 0) {
+          // Already successfully processed: acknowledge idempotently
+          synced.push(mutationId);
+          continue;
+        }
+
+        // 2. Session Validation & Tenant Ownership
+        const sessRes = await dbClient.query(
+          `SELECT ts.*, c.organization_id AS class_org_id
+           FROM training_sessions ts
+           JOIN classes c ON c.id = ts.class_id
+           WHERE ts.id = $1`,
+          [sessionId]
+        );
+
+        if (sessRes.rowCount === 0) {
+          conflicts.push({
+            mutationId,
+            code: 'SESSION_NOT_FOUND',
+            reason: 'The specified training session does not exist on the server.',
+          });
+          continue;
+        }
+
+        const sess = sessRes.rows[0];
+
+        // Cross-Tenant Protection
+        if (!user.organizationId || sess.class_org_id !== user.organizationId) {
+          conflicts.push({
+            mutationId,
+            code: 'CROSS_TENANT_REJECTED',
+            reason: 'Session belongs to a different organization.',
+          });
+          continue;
+        }
+
+        // Session Closed / Cancelled
+        if (sess.status === 'Cancelled') {
+          conflicts.push({
+            mutationId,
+            code: 'SESSION_CLOSED',
+            reason: 'Training session has been cancelled on the server.',
+          });
+          continue;
+        }
+
+        // 3. Master Assignment Verification (Re-derived dynamically)
+        const hasAccess = await assignedMasterAccess(user, sess.class_id);
+        if (!hasAccess) {
+          conflicts.push({
+            mutationId,
+            code: 'MASTER_ASSIGNMENT_REVOKED',
+            reason: 'Master is no longer assigned to teach this class.',
+          });
+          continue;
+        }
+
+        // 4. Allowed Status
+        if (!VALID_ATTENDANCE_STATUSES.includes(status)) {
+          conflicts.push({
+            mutationId,
+            code: 'INVALID_STATUS',
+            reason: `Status "${status}" is not permitted. Must be one of ${VALID_ATTENDANCE_STATUSES.join(', ')}.`,
+          });
+          continue;
+        }
+
+        // 5. Student Enrollment & Active Status
+        const studentRes = await dbClient.query(
+          'SELECT id, class_id, group_id, status, organization_id FROM students WHERE id = $1',
+          [studentId]
+        );
+
+        if (studentRes.rowCount === 0 || studentRes.rows[0].organization_id !== user.organizationId) {
+          conflicts.push({
+            mutationId,
+            code: 'STUDENT_NOT_FOUND',
+            reason: 'Student does not exist in this organization.',
+          });
+          continue;
+        }
+
+        const student = studentRes.rows[0];
+        if (student.status !== 'ACTIVE') {
+          conflicts.push({
+            mutationId,
+            code: 'STUDENT_REMOVED',
+            reason: 'Student is inactive or has been removed from the roster.',
+          });
+          continue;
+        }
+
+        if (student.class_id !== sess.class_id || (sess.group_id && student.group_id !== sess.group_id)) {
+          conflicts.push({
+            mutationId,
+            code: 'STUDENT_TRANSFERRED',
+            reason: 'Student has been transferred to another class or training group.',
+          });
+          continue;
+        }
+
+        // 6. Concurrency Check (Server-authoritative conflict check)
+        const existingAtt = await dbClient.query(
+          'SELECT * FROM session_attendance WHERE session_id = $1 AND student_id = $2',
+          [sessionId, studentId]
+        );
+
+        if (existingAtt.rowCount > 0) {
+          const currentRec = existingAtt.rows[0];
+          // If marked by another user and server mark was created AFTER client mutation timestamp
+          if (
+            currentRec.marked_by &&
+            currentRec.marked_by !== user.id &&
+            clientTimestamp &&
+            new Date(currentRec.marked_at).getTime() > new Date(clientTimestamp).getTime()
+          ) {
+            conflicts.push({
+              mutationId,
+              code: 'CONCURRENT_MODIFICATION',
+              reason: 'Attendance was updated by another instructor on the server.',
+              serverStatus: currentRec.status,
+              serverTimestamp: currentRec.marked_at,
+            });
+            continue;
+          }
+        }
+
+        // 7. Apply Mutation to session_attendance
+        await dbClient.query(
+          `INSERT INTO session_attendance (id, session_id, student_id, status, marked_by, marked_at, version, updated_at)
+           VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP)
+           ON CONFLICT (session_id, student_id)
+           DO UPDATE SET status = EXCLUDED.status, marked_by = EXCLUDED.marked_by, marked_at = CURRENT_TIMESTAMP,
+                         version = session_attendance.version + 1, updated_at = CURRENT_TIMESTAMP`,
+          [newId('satt'), sessionId, studentId, status, user.id]
+        );
+
+        // Update session status to Completed
+        await dbClient.query(
+          'UPDATE training_sessions SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+          ['Completed', sess.id]
+        );
+
+        // Record in processed_sync_mutations for replay protection
+        await dbClient.query(
+          `INSERT INTO processed_sync_mutations (mutation_id, organization_id, actor_id, session_id, student_id, status, client_timestamp, processed_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)`,
+          [mutationId, user.organizationId, user.id, sessionId, studentId, status, clientTimestamp ? new Date(clientTimestamp) : new Date()]
+        );
+
+        // Audit Log Entry
+        await dbClient.query(
+          `INSERT INTO audit_logs (id, action, details, user_role, user_email)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [
+            newId('audit'),
+            'Offline Attendance Synchronized',
+            `Mutation ${mutationId}: Session ${sessionId}, Student ${studentId} marked ${status} by Master ${user.email}`,
+            user.role,
+            user.email,
+          ]
+        );
+
+        synced.push(mutationId);
+      } catch (mutationErr: any) {
+        errors.push({ mutationId, error: safeErrorMessage(mutationErr, 'Failed to process mutation.') });
+      }
+    }
+
+    return res.json({
+      message: `Processed ${mutations.length} mutations.`,
+      synced,
+      conflicts,
+      errors,
+    });
+  } catch (err: any) {
+    console.error('[Sync error]', err);
+    return res.status(500).json({ error: 'Database error during sync', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
 export default router;

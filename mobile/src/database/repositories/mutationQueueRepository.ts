@@ -167,16 +167,91 @@ export const mutationQueueRepository = {
 
   /**
    * Restores quarantined mutations for an actor when they re-authenticate.
+   * Keeps AUTH_REVOKED and REVOKED_CLASS_ASSIGNMENT quarantined pending manual reconciliation.
    */
   async restoreQuarantinedMutationsForActor(actorId: string): Promise<number> {
     const db = getDatabase();
     const result = await db.runAsync(
       `UPDATE attendance_mutation_queue
        SET queue_status = 'PENDING', quarantine_reason = NULL, updated_at = datetime('now')
-       WHERE actor_id = ? AND queue_status = 'QUARANTINED';`,
+       WHERE actor_id = ? AND queue_status = 'QUARANTINED'
+         AND quarantine_reason NOT IN ('AUTH_REVOKED', 'REVOKED_CLASS_ASSIGNMENT');`,
       actorId
     );
     return result.changes;
+  },
+
+  /**
+   * Restores quarantined mutations verifying assigned class scope and preserving revoked status.
+   */
+  async restoreEligibleQuarantinedMutations(user: AuthUser, assignedClassIds?: string[]): Promise<number> {
+    assertAuthenticated(user);
+    const db = getDatabase();
+
+    if (assignedClassIds && assignedClassIds.length > 0) {
+      const placeholders = assignedClassIds.map(() => '?').join(',');
+      const result = await db.runAsync(
+        `UPDATE attendance_mutation_queue
+         SET queue_status = 'PENDING', quarantine_reason = NULL, updated_at = datetime('now')
+         WHERE actor_id = ? AND organization_id = ? AND queue_status = 'QUARANTINED'
+           AND quarantine_reason NOT IN ('AUTH_REVOKED', 'REVOKED_CLASS_ASSIGNMENT')
+           AND session_id IN (
+             SELECT id FROM cached_training_sessions WHERE class_id IN (${placeholders})
+           );`,
+        user.id,
+        user.organizationId,
+        ...assignedClassIds
+      );
+      return result.changes;
+    }
+
+    return await this.restoreQuarantinedMutationsForActor(user.id);
+  },
+
+  /**
+   * Resets interrupted IN_FLIGHT mutations back to PENDING (e.g. after crash/restart)
+   */
+  async resetInFlightMutations(actorId: string): Promise<number> {
+    const db = getDatabase();
+    const result = await db.runAsync(
+      `UPDATE attendance_mutation_queue
+       SET queue_status = 'PENDING', updated_at = datetime('now')
+       WHERE actor_id = ? AND queue_status = 'IN_FLIGHT';`,
+      actorId
+    );
+    return result.changes;
+  },
+
+  /**
+   * Marks a mutation as CONFLICT when rejected by server reconciliation
+   */
+  async markMutationConflict(user: AuthUser, id: string, reason: string): Promise<void> {
+    const mutation = await this.getMutationById(user, id);
+    if (!mutation) throw new Error(`Mutation ${id} not found.`);
+
+    const db = getDatabase();
+    await db.runAsync(
+      `UPDATE attendance_mutation_queue
+       SET queue_status = 'CONFLICT', last_error = ?, updated_at = datetime('now')
+       WHERE id = ?;`,
+      reason,
+      id
+    );
+  },
+
+  /**
+   * Counts mutations currently flagged as CONFLICT for an actor
+   */
+  async getConflictCount(user: AuthUser): Promise<number> {
+    assertAuthenticated(user);
+    const db = getDatabase();
+    const row = await db.getFirstAsync<{ count: number }>(
+      `SELECT COUNT(*) as count FROM attendance_mutation_queue
+       WHERE organization_id = ? AND actor_id = ? AND queue_status = 'CONFLICT';`,
+      user.organizationId,
+      user.id
+    );
+    return row?.count || 0;
   },
 
   /**
