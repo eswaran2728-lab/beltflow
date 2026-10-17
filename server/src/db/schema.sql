@@ -533,7 +533,7 @@ CREATE TABLE IF NOT EXISTS master_applications (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- C. Class Proposals & Approval States (supports future H04 lifecycle)
+-- C. Class Proposals & Approval States (H04 lifecycle)
 CREATE TABLE IF NOT EXISTS class_applications (
     id TEXT PRIMARY KEY,
     class_id TEXT REFERENCES classes(id) ON DELETE CASCADE,
@@ -542,8 +542,19 @@ CREATE TABLE IF NOT EXISTS class_applications (
     name VARCHAR(255) NOT NULL,
     schedule VARCHAR(255) NOT NULL,
     location VARCHAR(255) NOT NULL,
+    venue_details TEXT,
+    age_eligibility VARCHAR(100),
+    training_level VARCHAR(100),
+    program_type VARCHAR(100),
+    capacity INT NOT NULL DEFAULT 30,
+    enrollment_availability VARCHAR(50) NOT NULL DEFAULT 'OPEN', -- 'OPEN', 'WAITLIST', 'CLOSED'
+    description TEXT,
+    contact_channel VARCHAR(255),
     monthly_fee NUMERIC(10, 2) NOT NULL DEFAULT 120.00,
-    status VARCHAR(50) NOT NULL DEFAULT 'SUBMITTED', -- 'DRAFT', 'SUBMITTED', 'NEEDS_INFORMATION', 'APPROVED', 'REJECTED'
+    status VARCHAR(50) NOT NULL DEFAULT 'DRAFT', -- 'DRAFT', 'SUBMITTED', 'NEEDS_INFORMATION', 'APPROVED', 'REJECTED', 'WITHDRAWN'
+    requested_information TEXT,
+    rejection_reason TEXT,
+    submitted_at TIMESTAMPTZ,
     version INT NOT NULL DEFAULT 1,
     reviewer_id TEXT REFERENCES users(id) ON DELETE SET NULL,
     reviewed_at TIMESTAMPTZ,
@@ -552,10 +563,32 @@ CREATE TABLE IF NOT EXISTS class_applications (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Additive operational and enrollment columns on classes
+-- Migration guard: add new columns to class_applications if already created
+ALTER TABLE class_applications ADD COLUMN IF NOT EXISTS venue_details TEXT;
+ALTER TABLE class_applications ADD COLUMN IF NOT EXISTS age_eligibility VARCHAR(100);
+ALTER TABLE class_applications ADD COLUMN IF NOT EXISTS training_level VARCHAR(100);
+ALTER TABLE class_applications ADD COLUMN IF NOT EXISTS program_type VARCHAR(100);
+ALTER TABLE class_applications ADD COLUMN IF NOT EXISTS capacity INT NOT NULL DEFAULT 30;
+ALTER TABLE class_applications ADD COLUMN IF NOT EXISTS enrollment_availability VARCHAR(50) NOT NULL DEFAULT 'OPEN';
+ALTER TABLE class_applications ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE class_applications ADD COLUMN IF NOT EXISTS contact_channel VARCHAR(255);
+ALTER TABLE class_applications ADD COLUMN IF NOT EXISTS requested_information TEXT;
+ALTER TABLE class_applications ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+ALTER TABLE class_applications ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ;
+
+-- Additive operational, enrollment and proposal provenance columns on classes
 ALTER TABLE classes ADD COLUMN IF NOT EXISTS operational_status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE'; -- 'NOT_STARTED', 'ACTIVE', 'PAUSED', 'CLOSED'
 ALTER TABLE classes ADD COLUMN IF NOT EXISTS enrollment_availability VARCHAR(50) NOT NULL DEFAULT 'OPEN'; -- 'OPEN', 'WAITLIST', 'CLOSED'
 ALTER TABLE classes ADD COLUMN IF NOT EXISTS approval_status VARCHAR(50) NOT NULL DEFAULT 'APPROVED'; -- 'APPROVED', 'PENDING', 'REJECTED'
+ALTER TABLE classes ADD COLUMN IF NOT EXISTS venue_details TEXT;
+ALTER TABLE classes ADD COLUMN IF NOT EXISTS age_eligibility VARCHAR(100);
+ALTER TABLE classes ADD COLUMN IF NOT EXISTS training_level VARCHAR(100);
+ALTER TABLE classes ADD COLUMN IF NOT EXISTS program_type VARCHAR(100);
+ALTER TABLE classes ADD COLUMN IF NOT EXISTS capacity INT NOT NULL DEFAULT 30;
+ALTER TABLE classes ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE classes ADD COLUMN IF NOT EXISTS contact_channel VARCHAR(255);
+ALTER TABLE classes ADD COLUMN IF NOT EXISTS proposing_master_id TEXT REFERENCES users(id) ON DELETE SET NULL;
+ALTER TABLE classes ADD COLUMN IF NOT EXISTS application_id TEXT REFERENCES class_applications(id) ON DELETE SET NULL;
 
 -- D. Class Leadership History (prevents overlapping primary leaders, tracks substitutes)
 CREATE TABLE IF NOT EXISTS class_leaderships (

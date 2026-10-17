@@ -354,35 +354,9 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
   );
 };
 
-export const ClassesScreen: React.FC<RoleScreenProps> = props => {
-  const { colors, iconSize } = useTheme();
-
-  return (
-    <RolePlaceholderBase
-      title="Assigned Classes"
-      subtitle="Training Timetable & Class Roster"
-      role={UserRole.MASTER}
-      user={props.user}
-      onLogout={props.onLogout}
-      isOffline={props.isOffline}
-      testID="master-classes-screen"
-      icon={<Calendar size={iconSize.lg} color={colors.buttonPrimaryBg} />}
-      scopeDescription="Class Scope: Inspect syllabus schedules, assigned cohorts, and class-specific student registrations."
-      actionButtons={
-        <Button
-          label="View Class Students"
-          onPress={() => props.navigation?.navigate('Students')}
-          variant="secondary"
-          size="md"
-          fullWidth
-          rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
-          testID="btn-view-class-students"
-          accessibilityLabel="View Class Students via nested stack"
-        />
-      }
-    />
-  );
-};
+export { ClassesScreen } from './ClassesScreen';
+export { CreateClassScreen } from './CreateClassScreen';
+export { ClassProposalStatusScreen } from './ClassProposalStatusScreen';
 
 export const StudentsScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();

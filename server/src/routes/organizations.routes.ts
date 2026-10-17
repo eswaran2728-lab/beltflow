@@ -130,4 +130,56 @@ router.put('/:orgId', authenticateJWT, requirePermission(Permission.PERSATUAN_ED
   }
 });
 
+// Discovery: List available approved & active classes for a Persatuan (Public/Student/Parent discovery)
+router.get('/:id/available-classes', async (req: Request, res: Response) => {
+  try {
+    const orgId = req.params.id;
+
+    // Verify organization exists
+    const orgRes = await dbClient.query('SELECT id, name, status FROM organizations WHERE id = $1', [orgId]);
+    if (orgRes.rowCount === 0) {
+      return res.status(404).json({ error: 'Organization not found.' });
+    }
+
+    const classesRes = await dbClient.query(
+      `SELECT c.id, c.organization_id, c.name, c.schedule, c.location, c.venue_details,
+              c.age_eligibility, c.training_level, c.program_type, c.capacity,
+              c.enrollment_availability, c.monthly_fee, c.description, c.contact_channel,
+              o.name AS persatuan_name
+       FROM classes c
+       JOIN organizations o ON o.id = c.organization_id
+       WHERE c.organization_id = $1
+         AND c.approval_status = 'APPROVED'
+         AND c.operational_status = 'ACTIVE'
+         AND c.enrollment_availability IN ('OPEN', 'WAITLIST')
+       ORDER BY c.name ASC`,
+      [orgId]
+    );
+
+    // Safe public projection: strictly redacts student rosters, internal notes, billing, and attendance
+    const classes = classesRes.rows.map((row) => ({
+      id: row.id,
+      organizationId: row.organization_id,
+      persatuanName: row.persatuan_name,
+      name: row.name,
+      schedule: row.schedule,
+      location: row.location,
+      venueDetails: row.venue_details,
+      ageEligibility: row.age_eligibility,
+      trainingLevel: row.training_level,
+      programType: row.program_type,
+      capacity: Number(row.capacity),
+      enrollmentAvailability: row.enrollment_availability,
+      monthlyFee: Number(row.monthly_fee),
+      description: row.description,
+      contactChannel: row.contact_channel,
+    }));
+
+    return res.json({ classes });
+  } catch (err: any) {
+    console.error('[Available classes discovery error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'Failed to retrieve available classes.') });
+  }
+});
+
 export default router;

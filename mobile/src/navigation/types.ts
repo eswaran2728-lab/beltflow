@@ -50,6 +50,8 @@ export type AdminPersatuanTabParamList = {
 export type MasterClassesStackParamList = {
   ClassesList: undefined;
   Students: { classId?: string } | undefined;
+  CreateClass: undefined;
+  ClassProposalStatus: undefined;
 };
 
 export type MasterTabParamList = {

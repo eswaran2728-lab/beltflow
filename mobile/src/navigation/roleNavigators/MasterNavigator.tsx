@@ -7,6 +7,8 @@ import { RoleNavigationContainer } from '../RoleNavigationContainer';
 import {
   MasterHomeScreen,
   ClassesScreen,
+  CreateClassScreen,
+  ClassProposalStatusScreen,
   StudentsScreen,
   AttendanceScreen,
   GradingScreen,
@@ -30,6 +32,12 @@ function MasterClassesStackNavigator(props: RoleNavigatorProps) {
       </ClassesStack.Screen>
       <ClassesStack.Screen name="Students">
         {navProps => <StudentsScreen {...props} {...navProps} />}
+      </ClassesStack.Screen>
+      <ClassesStack.Screen name="CreateClass">
+        {navProps => <CreateClassScreen {...props} {...navProps} />}
+      </ClassesStack.Screen>
+      <ClassesStack.Screen name="ClassProposalStatus">
+        {navProps => <ClassProposalStatusScreen {...props} {...navProps} />}
       </ClassesStack.Screen>
     </ClassesStack.Navigator>
   );

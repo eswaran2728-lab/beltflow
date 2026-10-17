@@ -417,12 +417,14 @@ export async function assignClassLeadership(params: {
   appointedBy?: string;
   notes?: string;
   provenance?: string;
+  client?: { query: (sql: string, params?: any[]) => Promise<any> };
 }): Promise<ClassLeadershipRecord> {
   const type = params.leadershipType || 'PRIMARY';
   const provenance = params.provenance || 'DIRECT_ASSIGNMENT';
+  const db = params.client || dbClient;
 
   // 1. Verify class exists and belongs to organization
-  const classRes = await dbClient.query(
+  const classRes = await db.query(
     'SELECT id, organization_id FROM classes WHERE id = $1',
     [params.classId]
   );
@@ -431,7 +433,7 @@ export async function assignClassLeadership(params: {
   }
 
   // 2. Verify Master has ACTIVE affiliation with the organization
-  const affilRes = await dbClient.query(
+  const affilRes = await db.query(
     `SELECT id FROM master_affiliations WHERE master_id = $1 AND organization_id = $2 AND status = 'ACTIVE'`,
     [params.masterId, params.organizationId]
   );
@@ -441,7 +443,7 @@ export async function assignClassLeadership(params: {
 
   // 3. If PRIMARY, prevent overlapping active primary leaders
   if (type === 'PRIMARY') {
-    const existingLeader = await dbClient.query(
+    const existingLeader = await db.query(
       `SELECT master_id FROM class_leaderships
        WHERE class_id = $1 AND is_active = TRUE AND leadership_type = 'PRIMARY'`,
       [params.classId]
@@ -452,7 +454,7 @@ export async function assignClassLeadership(params: {
   }
 
   const id = `clead_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  const insertRes = await dbClient.query(
+  const insertRes = await db.query(
     `INSERT INTO class_leaderships (
        id, class_id, master_id, organization_id, leadership_type, effective_from, effective_to,
        is_active, appointed_by, notes, provenance
@@ -474,18 +476,18 @@ export async function assignClassLeadership(params: {
 
   // Backward compatibility: keep classes.main_master_id and coach_class_assignments in sync
   if (type === 'PRIMARY') {
-    await dbClient.query(
+    await db.query(
       'UPDATE classes SET main_master_id = $1, master_id = $1 WHERE id = $2',
       [params.masterId, params.classId]
     );
-    await dbClient.query(
+    await db.query(
       `INSERT INTO coach_class_assignments (coach_id, class_id, is_main_master)
        VALUES ($1, $2, TRUE)
        ON CONFLICT (coach_id, class_id) DO UPDATE SET is_main_master = TRUE`,
       [params.masterId, params.classId]
     );
   } else {
-    await dbClient.query(
+    await db.query(
       `INSERT INTO coach_class_assignments (coach_id, class_id, is_main_master)
        VALUES ($1, $2, FALSE)
        ON CONFLICT (coach_id, class_id) DO NOTHING`,

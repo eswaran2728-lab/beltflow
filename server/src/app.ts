@@ -17,6 +17,7 @@ import tournamentsRoutes from './routes/tournaments.routes';
 import skillsRoutes from './routes/skills.routes';
 import noticesRoutes from './routes/notices.routes';
 import masterApplicationsRoutes from './routes/masterApplications.routes';
+import classApplicationsRoutes from './routes/classApplications.routes';
 
 const app = express();
 
@@ -122,6 +123,8 @@ app.use('/api/v1/tournaments', tournamentsRoutes);
 app.use('/api/v1/skills', skillsRoutes);
 app.use('/api/v1/notices', noticesRoutes);
 app.use('/api/v1/master-applications', masterApplicationsRoutes);
+app.use('/api/v1/class-applications', classApplicationsRoutes);
+app.use('/api/v1/persatuans', organizationRoutes);
 
 // Global Error Handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

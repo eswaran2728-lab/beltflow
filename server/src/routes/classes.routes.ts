@@ -181,6 +181,106 @@ router.patch('/:classId/fee', authenticateJWT, requirePermission(Permission.CLAS
   }
 });
 
+// Update class operational settings (Assigned Master or Persatuan Admin)
+router.patch('/:id', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const classId = req.params.id;
+    const user = req.user!;
+    const classRes = await dbClient.query('SELECT * FROM classes WHERE id = $1', [classId]);
+    if (classRes.rowCount === 0) {
+      return res.status(404).json({ error: 'Class not found.' });
+    }
+    const cls = classRes.rows[0];
+
+    // Check authorization:
+    // If MASTER, must be assigned to this class or active primary leader in class_leaderships
+    if (user.role === UserRole.MASTER) {
+      const isAssigned = user.assignedClassIds?.includes(cls.id);
+      const isPrimary = await dbClient.query(
+        'SELECT 1 FROM class_leaderships WHERE class_id = $1 AND master_id = $2 AND is_active = TRUE',
+        [cls.id, user.id]
+      );
+      if (!isAssigned && isPrimary.rowCount === 0) {
+        return res.status(403).json({ error: 'You are not authorized to configure this class.' });
+      }
+    } else if (user.role === UserRole.ADMIN_PERSATUAN) {
+      if (user.organizationId !== cls.organization_id) {
+        return res.status(403).json({ error: 'Cross-organization class update denied.' });
+      }
+    } else {
+      return res.status(403).json({ error: 'Unauthorized to configure class.' });
+    }
+
+    const { description, venueDetails, schedule, capacity, enrollmentAvailability, operationalStatus, contactChannel } = req.body;
+
+    const updates: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (description !== undefined) {
+      updates.push(`description = $${idx++}`);
+      values.push(description?.trim() || null);
+    }
+    if (venueDetails !== undefined) {
+      updates.push(`venue_details = $${idx++}`);
+      values.push(venueDetails?.trim() || null);
+    }
+    if (schedule !== undefined) {
+      updates.push(`schedule = $${idx++}`);
+      values.push(schedule?.trim());
+    }
+    if (capacity !== undefined) {
+      const capNum = Number(capacity);
+      if (isNaN(capNum) || capNum <= 0) {
+        return res.status(400).json({ error: 'Capacity must be a positive integer.' });
+      }
+      updates.push(`capacity = $${idx++}`);
+      values.push(capNum);
+    }
+    if (enrollmentAvailability !== undefined) {
+      if (!['OPEN', 'WAITLIST', 'CLOSED'].includes(enrollmentAvailability)) {
+        return res.status(400).json({ error: 'Invalid enrollment availability status.' });
+      }
+      updates.push(`enrollment_availability = $${idx++}`);
+      values.push(enrollmentAvailability);
+    }
+    if (operationalStatus !== undefined) {
+      if (!['NOT_STARTED', 'ACTIVE', 'PAUSED', 'CLOSED'].includes(operationalStatus)) {
+        return res.status(400).json({ error: 'Invalid operational status.' });
+      }
+      updates.push(`operational_status = $${idx++}`);
+      values.push(operationalStatus);
+    }
+    if (contactChannel !== undefined) {
+      updates.push(`contact_channel = $${idx++}`);
+      values.push(contactChannel?.trim() || null);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No update fields provided.' });
+    }
+
+    values.push(classId);
+    const updateRes = await dbClient.query(
+      `UPDATE classes SET ${updates.join(', ')} WHERE id = $${idx} RETURNING *`,
+      values
+    );
+
+    await dbClient.query(
+      `INSERT INTO audit_logs (id, action, details, user_role, user_email)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [`audit_${Date.now()}_${Math.random().toString(36).slice(2)}`, 'Class Updated',
+       `Class ${cls.id} (${cls.name}) operational details updated by ${user.role} ${user.id}`,
+       user.role, user.email]
+    );
+
+    return res.json({ message: 'Class updated successfully.', class: updateRes.rows[0] });
+  } catch (err: any) {
+    console.error('[Database error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
 // Register Master / Instructor (ADMIN_PERSATUAN)
 router.post('/masters', authenticateJWT, requirePermission(Permission.PERSATUAN_MANAGE_COACHES), async (req: Request, res: Response) => {
   try {
