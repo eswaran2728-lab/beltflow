@@ -727,6 +727,361 @@ router.patch('/sessions/:sessionId', authenticateJWT, async (req: Request, res: 
 });
 
 // -------------------------------------------------------------------------
+// TASK H10: Class Scheduling & Membership Foundation
+// -------------------------------------------------------------------------
+
+// POST /classes/:classId/schedules/generate-sessions — Recurring Schedule Session Generator
+router.post('/:classId/schedules/generate-sessions', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const classId = req.params.classId;
+    if (!(await assignedMasterAccess(req.user!, classId))) {
+      return res.status(403).json({ error: 'Only the assigned Master may generate recurring sessions.' });
+    }
+
+    const { startDate, endDate, groupIds } = req.body;
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: 'startDate and endDate in YYYY-MM-DD format are required.' });
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) {
+      return res.status(400).json({ error: 'Invalid date range: startDate must be <= endDate.' });
+    }
+
+    const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays > 90) {
+      return res.status(400).json({ error: 'Session generation range cannot exceed 90 days.' });
+    }
+
+    let scheduleQuery = `SELECT * FROM class_schedules WHERE class_id = $1 AND status = 'ACTIVE' AND recurring = TRUE`;
+    const params: any[] = [classId];
+    if (Array.isArray(groupIds) && groupIds.length > 0) {
+      scheduleQuery += ` AND group_id = ANY($2)`;
+      params.push(groupIds);
+    }
+    const schedulesRes = await dbClient.query(scheduleQuery, params);
+    if (schedulesRes.rowCount === 0) {
+      return res.json({ message: 'No active recurring schedules found.', generatedCount: 0, skippedCount: 0, sessions: [] });
+    }
+
+    const dayNameMap: Record<number, string[]> = {
+      0: ['sunday', 'sun'],
+      1: ['monday', 'mon'],
+      2: ['tuesday', 'tue'],
+      3: ['wednesday', 'wed'],
+      4: ['thursday', 'thu'],
+      5: ['friday', 'fri'],
+      6: ['saturday', 'sat'],
+    };
+
+    const generated = [];
+    let skipped = 0;
+
+    const current = new Date(start);
+    while (current <= end) {
+      const dayIdx = current.getDay();
+      const validNames = dayNameMap[dayIdx];
+      const dateStr = current.toISOString().slice(0, 10);
+
+      for (const sched of schedulesRes.rows) {
+        const schedDay = (sched.day_of_week || '').trim().toLowerCase();
+        const matches = validNames.some(n => schedDay.includes(n));
+        if (matches) {
+          const sessId = newId('tsess');
+          const insertRes = await dbClient.query(
+            `INSERT INTO training_sessions 
+              (id, organization_id, class_id, group_id, schedule_id, session_date, day_of_week, start_time, end_time, location, is_extra, created_by)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, FALSE, $11)
+             ON CONFLICT (schedule_id, session_date) DO NOTHING
+             RETURNING *`,
+            [
+              sessId,
+              sched.organization_id,
+              sched.class_id,
+              sched.group_id,
+              sched.id,
+              dateStr,
+              sched.day_of_week,
+              sched.start_time,
+              sched.end_time,
+              sched.location,
+              req.user!.id,
+            ]
+          );
+
+          if (insertRes.rowCount > 0) {
+            generated.push(insertRes.rows[0]);
+          } else {
+            skipped++;
+          }
+        }
+      }
+      current.setDate(current.getDate() + 1);
+    }
+
+    await dbClient.query(
+      `INSERT INTO audit_logs (id, action, details, user_role, user_email) VALUES ($1, $2, $3, $4, $5)`,
+      [newId('audit'), 'Recurring Sessions Generated', `Class ${classId}: generated ${generated.length} sessions, skipped ${skipped} existing between ${startDate} and ${endDate}`, req.user!.role, req.user!.email]
+    );
+
+    return res.status(201).json({
+      message: `Generated ${generated.length} sessions (${skipped} existing skipped).`,
+      generatedCount: generated.length,
+      skippedCount: skipped,
+      sessions: generated,
+    });
+  } catch (err: any) {
+    console.error('[Generate Sessions error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
+// PATCH /classes/sessions/:sessionId/cancel — Dedicated Session Cancellation
+router.patch('/sessions/:sessionId/cancel', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const { reason, notifyGroup } = req.body;
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ error: 'Cancellation reason is required.' });
+    }
+
+    const sessRes = await dbClient.query('SELECT * FROM training_sessions WHERE id = $1', [req.params.sessionId]);
+    if (sessRes.rowCount === 0) {
+      return res.status(404).json({ error: 'Session not found.' });
+    }
+    const sess = sessRes.rows[0];
+
+    if (!(await assignedMasterAccess(req.user!, sess.class_id))) {
+      return res.status(403).json({ error: 'Only the assigned Master may cancel this session.' });
+    }
+
+    const updated = await dbClient.query(
+      `UPDATE training_sessions 
+       SET status = 'Cancelled', cancelled_reason = $1, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2 RETURNING *`,
+      [reason.trim(), sess.id]
+    );
+
+    if (notifyGroup !== false) {
+      await dbClient.query(
+        `INSERT INTO notices (id, organization_id, class_id, group_id, session_id, type, message, sender_id, sender_name)
+         VALUES ($1, $2, $3, $4, $5, 'CANCELLED', $6, $7, $8)`,
+        [
+          newId('notice'),
+          sess.organization_id,
+          sess.class_id,
+          sess.group_id,
+          sess.id,
+          `Session on ${sess.session_date} (${sess.start_time}-${sess.end_time}) has been cancelled. Reason: ${reason.trim()}`,
+          req.user!.id,
+          req.user!.email,
+        ]
+      );
+    }
+
+    await dbClient.query(
+      `INSERT INTO audit_logs (id, action, details, user_role, user_email) VALUES ($1, $2, $3, $4, $5)`,
+      [newId('audit'), 'Session Cancelled', `Session ${sess.id} cancelled. Reason: ${reason.trim()}`, req.user!.role, req.user!.email]
+    );
+
+    return res.json({
+      message: 'Session cancelled successfully.',
+      session: updated.rows[0],
+    });
+  } catch (err: any) {
+    console.error('[Cancel Session error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
+// GET /classes/sessions/:sessionId/roster — Session Attendance Roster
+router.get('/sessions/:sessionId/roster', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const sessRes = await dbClient.query('SELECT * FROM training_sessions WHERE id = $1', [req.params.sessionId]);
+    if (sessRes.rowCount === 0) {
+      return res.status(404).json({ error: 'Session not found.' });
+    }
+    const sess = sessRes.rows[0];
+
+    if (!(await classAccess(req.user!, sess.class_id))) {
+      return res.status(403).json({ error: 'You are not authorized to view this session roster.' });
+    }
+
+    const rosterRes = await dbClient.query(
+      `SELECT s.id, s.full_name, s.ic_number, s.belt_rank, s.phone, s.status AS student_status,
+              ce.status AS enrollment_status, ce.effective_from,
+              COALESCE(sa.status, 'Unmarked') AS attendance_status,
+              sa.marked_at, sa.marked_by
+       FROM students s
+       JOIN class_enrollments ce ON ce.student_id = s.id AND ce.class_id = $1 AND ce.status = 'ACTIVE'
+       LEFT JOIN session_attendance sa ON sa.session_id = $2 AND sa.student_id = s.id
+       WHERE s.status = 'ACTIVE'
+       ORDER BY s.full_name ASC`,
+      [sess.class_id, sess.id]
+    );
+
+    return res.json({
+      session: sess,
+      roster: rosterRes.rows,
+      totalCount: rosterRes.rowCount,
+    });
+  } catch (err: any) {
+    console.error('[Session Roster error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
+// GET /classes/:classId/memberships — Canonical Class Membership Foundation
+router.get('/:classId/memberships', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    if (!(await classAccess(req.user!, req.params.classId))) {
+      return res.status(403).json({ error: 'You are not authorized to view memberships for this class.' });
+    }
+
+    const statusFilter = req.query.status as string;
+    let query = `
+      SELECT ce.id AS enrollment_id, ce.status AS enrollment_status, ce.effective_from, ce.effective_to,
+             ce.provenance, ce.approved_at,
+             s.id AS student_id, s.full_name, s.ic_number, s.belt_rank, s.phone, s.email,
+             s.monthly_fee, s.has_sibling_discount, s.billing_status, s.status AS student_status,
+             COUNT(DISTINCT ts.id) AS total_class_sessions,
+             COUNT(DISTINCT sa.id) FILTER (WHERE sa.status IN ('Present', 'Late')) AS attended_sessions_count
+      FROM class_enrollments ce
+      JOIN students s ON s.id = ce.student_id
+      LEFT JOIN training_sessions ts ON ts.class_id = ce.class_id AND ts.status = 'Completed'
+      LEFT JOIN session_attendance sa ON sa.session_id = ts.id AND sa.student_id = s.id
+      WHERE ce.class_id = $1
+    `;
+    const params: any[] = [req.params.classId];
+    if (statusFilter && statusFilter !== 'ALL') {
+      params.push(statusFilter);
+      query += ` AND ce.status = $${params.length}`;
+    }
+    query += ` GROUP BY ce.id, s.id ORDER BY s.full_name ASC`;
+
+    const membersRes = await dbClient.query(query, params);
+    const memberships = membersRes.rows.map(m => {
+      const total = parseInt(m.total_class_sessions, 10) || 0;
+      const attended = parseInt(m.attended_sessions_count, 10) || 0;
+      const attendanceRate = total > 0 ? Math.round((attended / total) * 100) : 100;
+      return {
+        ...m,
+        attendanceRate,
+      };
+    });
+
+    return res.json({
+      classId: req.params.classId,
+      memberships,
+      totalCount: memberships.length,
+    });
+  } catch (err: any) {
+    console.error('[Class Memberships error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
+// PATCH /classes/:classId/memberships/:studentId/status — Lifecycle Membership State Transitions
+router.patch('/:classId/memberships/:studentId/status', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    if (!(await assignedMasterAccess(req.user!, req.params.classId))) {
+      return res.status(403).json({ error: 'Only the assigned Master may manage class membership statuses.' });
+    }
+
+    const { status, reason } = req.body;
+    const allowed = ['ACTIVE', 'PAUSED', 'ENDED'];
+    if (!allowed.includes(status)) {
+      return res.status(400).json({ error: `Invalid status. Must be one of: ${allowed.join(', ')}` });
+    }
+
+    const enrollRes = await dbClient.query(
+      'SELECT * FROM class_enrollments WHERE class_id = $1 AND student_id = $2',
+      [req.params.classId, req.params.studentId]
+    );
+    if (enrollRes.rowCount === 0) {
+      return res.status(404).json({ error: 'Student enrollment not found in this class.' });
+    }
+    const current = enrollRes.rows[0];
+
+    const effectiveTo = status === 'ENDED' ? 'CURRENT_TIMESTAMP' : 'NULL';
+    const updated = await dbClient.query(
+      `UPDATE class_enrollments
+       SET status = $1,
+           effective_to = ${effectiveTo},
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2 RETURNING *`,
+      [status, current.id]
+    );
+
+    if (status === 'ENDED') {
+      const otherActive = await dbClient.query(
+        "SELECT id FROM class_enrollments WHERE student_id = $1 AND status = 'ACTIVE' AND id != $2",
+        [req.params.studentId, current.id]
+      );
+      if (otherActive.rowCount === 0) {
+        await dbClient.query("UPDATE students SET status = 'INACTIVE' WHERE id = $1", [req.params.studentId]);
+      }
+    } else if (status === 'ACTIVE') {
+      await dbClient.query("UPDATE students SET status = 'ACTIVE' WHERE id = $1", [req.params.studentId]);
+    }
+
+    await dbClient.query(
+      `INSERT INTO audit_logs (id, action, details, user_role, user_email) VALUES ($1, $2, $3, $4, $5)`,
+      [
+        newId('audit'),
+        'Membership Status Changed',
+        `Student ${req.params.studentId} in Class ${req.params.classId}: ${current.status} -> ${status}${reason ? ' (' + reason + ')' : ''}`,
+        req.user!.role,
+        req.user!.email,
+      ]
+    );
+
+    return res.json({
+      message: 'Membership status updated successfully.',
+      enrollment: updated.rows[0],
+    });
+  } catch (err: any) {
+    console.error('[Membership Status Update error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
+// GET /classes/:classId/capacity-status — Capacity & Enrollment Status
+router.get('/:classId/capacity-status', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    if (!(await classAccess(req.user!, req.params.classId))) {
+      return res.status(403).json({ error: 'You are not authorized to view this class capacity.' });
+    }
+
+    const classRes = await dbClient.query('SELECT id, name, capacity, enrollment_availability FROM classes WHERE id = $1', [req.params.classId]);
+    if (classRes.rowCount === 0) return res.status(404).json({ error: 'Class not found.' });
+    const cls = classRes.rows[0];
+
+    const activeCountRes = await dbClient.query(
+      "SELECT COUNT(*) AS count FROM class_enrollments WHERE class_id = $1 AND status = 'ACTIVE'",
+      [cls.id]
+    );
+    const enrolledCount = parseInt(activeCountRes.rows[0].count, 10) || 0;
+    const capacity = cls.capacity || 30;
+    const availableSpots = Math.max(0, capacity - enrolledCount);
+    const isAtCapacity = enrolledCount >= capacity;
+
+    return res.json({
+      classId: cls.id,
+      className: cls.name,
+      capacity,
+      enrolledCount,
+      availableSpots,
+      isAtCapacity,
+      enrollmentAvailability: cls.enrollment_availability,
+    });
+  } catch (err: any) {
+    console.error('[Capacity Status error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
+// -------------------------------------------------------------------------
 // TASK H06: Master Class Workspace, Authorized Rosters & Class Settings
 // -------------------------------------------------------------------------
 
