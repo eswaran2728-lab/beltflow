@@ -24,9 +24,6 @@ import { OfflineBanner, LoadingState, ErrorState } from '../../../components/Fee
 import { useDashboardData } from '../../../hooks/useDashboardData';
 import { dashboardService, AdminPersatuanDashboardData } from '../../../services/dashboardService';
 import { MasterApprovalsScreen } from './MasterApprovalsScreen';
-import { ClassApprovalsScreen } from './ClassApprovalsScreen';
-
-export { MasterApprovalsScreen, ClassApprovalsScreen };
 
 export interface RoleScreenProps {
   user: AuthUser;
@@ -465,3 +462,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
 });
+
+export * from './MasterApprovalsScreen';
+export * from './ClassApprovalsScreen';
+export * from './HandoverApprovalsScreen';

@@ -700,5 +700,34 @@ CREATE TABLE IF NOT EXISTS notification_outbox (
 
 CREATE INDEX IF NOT EXISTS idx_outbox_org_status ON notification_outbox(organization_id, status);
 
+-- 18. Class Leadership Handover & Delegation (Task H07)
+ALTER TABLE class_leaderships ADD COLUMN IF NOT EXISTS capabilities VARCHAR(100) DEFAULT 'ALL';
+ALTER TABLE class_leaderships ADD COLUMN IF NOT EXISTS session_id TEXT;
+
+CREATE TABLE IF NOT EXISTS class_handover_requests (
+    id TEXT PRIMARY KEY,
+    class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    outgoing_master_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    incoming_master_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    initiated_by TEXT NOT NULL REFERENCES users(id),
+    status VARCHAR(50) NOT NULL DEFAULT 'REQUESTED', -- 'REQUESTED', 'INCOMING_ACCEPTED', 'PERSATUAN_APPROVED', 'COMPLETED', 'REJECTED', 'CANCELLED'
+    reason TEXT,
+    effective_date TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    incoming_accepted_at TIMESTAMPTZ,
+    admin_approved_by TEXT REFERENCES users(id),
+    admin_approved_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    rejection_reason TEXT,
+    version INT NOT NULL DEFAULT 1,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_handover_class ON class_handover_requests(class_id, status);
+CREATE INDEX IF NOT EXISTS idx_handover_org ON class_handover_requests(organization_id, status);
+CREATE INDEX IF NOT EXISTS idx_handover_incoming ON class_handover_requests(incoming_master_id, status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_active_handover_per_class ON class_handover_requests(class_id) WHERE status IN ('REQUESTED', 'INCOMING_ACCEPTED', 'PERSATUAN_APPROVED');
+
 
 

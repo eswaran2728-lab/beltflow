@@ -828,6 +828,22 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
                 testID="btn-save-settings"
               />
             </Card>
+
+            <Card style={styles.card}>
+              <Text style={[typography.titleMedium, { color: colors.textPrimary, marginBottom: spacing.xs }]}>
+                Class Leadership & Governance
+              </Text>
+              <Text style={[typography.caption, { color: colors.textMuted, marginBottom: spacing.sm }]}>
+                Initiate a permanent Master handover or appoint a temporary substitute with limited attendance delegation.
+              </Text>
+              <Button
+                label="Manage Leadership & Handover"
+                onPress={() => navigation?.navigate?.('ClassHandover', { classId, className: workspaceData?.class?.name })}
+                variant="outline"
+                size="md"
+                testID="btn-manage-leadership"
+              />
+            </Card>
           </View>
         )}
       </ScrollView>
