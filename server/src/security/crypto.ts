@@ -71,63 +71,151 @@ export function verifyAuthToken(token: string): AuthUserContext {
 }
 
 // ============================================================================
-// Cryptographically Secure QR Attendance Pass Signing (SEC-QR-001)
+// Asymmetric Ed25519 QR Attendance Pass Cryptography (SEC-QR-001 Resolved)
 // ============================================================================
 
-export const ACTIVE_QR_KEY_ID = 'bf_qr_k1';
-export const DEFAULT_QR_SECRET = 'bf_qr_secret_phase2_key_2026';
+import nacl from 'tweetnacl';
 
-export function getQrKeyRing(): Record<string, string> {
-  const primarySecret = process.env.QR_SIGNING_SECRET || DEFAULT_QR_SECRET;
-  const keys: Record<string, string> = {
-    [ACTIVE_QR_KEY_ID]: primarySecret,
+export const ACTIVE_QR_KEY_ID = 'bf_ed25519_k1';
+export const HISTORICAL_QR_KEY_ID = 'bf_ed25519_k0';
+export const QR_ISSUER = 'beltflow-authority';
+export const QR_AUDIENCE = 'beltflow-attendance';
+
+interface Ed25519KeyEntry {
+  publicKeyHex: string;
+  secretKey: Uint8Array;
+}
+
+let ed25519KeyRingCache: Record<string, Ed25519KeyEntry> | null = null;
+
+function initEd25519KeyRing(): Record<string, Ed25519KeyEntry> {
+  if (ed25519KeyRingCache) return ed25519KeyRingCache;
+
+  // Active Key (k1)
+  const seedK1 = crypto
+    .createHash('sha256')
+    .update(process.env.QR_ED25519_PRIVATE_KEY_SEED || 'beltflow_ed25519_primary_seed_phase2_2026')
+    .digest();
+  const kp1 = nacl.sign.keyPair.fromSeed(new Uint8Array(seedK1));
+
+  // Historical Key (k0) for rotation continuity
+  const seedK0 = crypto
+    .createHash('sha256')
+    .update(process.env.QR_ED25519_PREVIOUS_SEED || 'beltflow_ed25519_previous_seed_phase2_2025')
+    .digest();
+  const kp0 = nacl.sign.keyPair.fromSeed(new Uint8Array(seedK0));
+
+  ed25519KeyRingCache = {
+    [ACTIVE_QR_KEY_ID]: {
+      publicKeyHex: Buffer.from(kp1.publicKey).toString('hex'),
+      secretKey: kp1.secretKey,
+    },
+    [HISTORICAL_QR_KEY_ID]: {
+      publicKeyHex: Buffer.from(kp0.publicKey).toString('hex'),
+      secretKey: kp0.secretKey,
+    },
   };
-  if (process.env.QR_PREVIOUS_KEY_SECRET) {
-    keys.bf_qr_k0 = process.env.QR_PREVIOUS_KEY_SECRET;
+
+  return ed25519KeyRingCache;
+}
+
+export function getEd25519PrivateKey(kid: string): Uint8Array | null {
+  const ring = initEd25519KeyRing();
+  return ring[kid]?.secretKey || null;
+}
+
+export function getQrVerificationKeys(): {
+  activeKid: string;
+  supportedKids: string[];
+  algorithm: 'Ed25519';
+  publicKeys: Record<string, string>;
+} {
+  const ring = initEd25519KeyRing();
+  const publicKeys: Record<string, string> = {};
+  for (const [kid, entry] of Object.entries(ring)) {
+    publicKeys[kid] = entry.publicKeyHex;
   }
-  return keys;
+  return {
+    activeKid: ACTIVE_QR_KEY_ID,
+    supportedKids: Object.keys(publicKeys),
+    algorithm: 'Ed25519',
+    publicKeys,
+  };
 }
 
 export function generateQrPassCanonicalString(params: {
   v: number;
   kid: string;
+  iss: string;
+  aud: string;
   oid: string;
   sid: string;
   iat: number;
   exp: number;
-  nonce?: string;
+  nonce: string;
 }): string {
-  return `BF_PASS:${params.v}:${params.kid}:${params.oid}:${params.sid}:${params.iat}:${params.exp}:${params.nonce || ''}`;
+  return `BF_PASS:v=${params.v}:kid=${params.kid}:iss=${params.iss}:aud=${params.aud}:oid=${params.oid}:sid=${params.sid}:iat=${params.iat}:exp=${params.exp}:nonce=${params.nonce}`;
 }
 
 export function signQrPassPayload(params: {
   v?: number;
   kid?: string;
+  iss?: string;
+  aud?: string;
   oid: string;
   sid: string;
   iat: number;
   exp: number;
   nonce?: string;
-}): { sig: string; kid: string; v: number; nonce: string } {
+}): { sig: string; kid: string; v: number; iss: string; aud: string; nonce: string } {
   const v = params.v ?? 2;
   const kid = params.kid ?? ACTIVE_QR_KEY_ID;
+  const iss = params.iss ?? QR_ISSUER;
+  const aud = params.aud ?? QR_AUDIENCE;
   const nonce = params.nonce ?? crypto.randomBytes(8).toString('hex');
-  const keyRing = getQrKeyRing();
-  const secret = keyRing[kid] || keyRing[ACTIVE_QR_KEY_ID];
-  const canonical = generateQrPassCanonicalString({ ...params, v, kid, nonce });
-  const sig = crypto.createHmac('sha256', secret).update(canonical).digest('hex');
-  return { sig, kid, v, nonce };
+
+  const secretKey = getEd25519PrivateKey(kid);
+  if (!secretKey) {
+    throw new Error(`Signing key not found for kid: ${kid}`);
+  }
+
+  const canonical = generateQrPassCanonicalString({
+    v,
+    kid,
+    iss,
+    aud,
+    oid: params.oid,
+    sid: params.sid,
+    iat: params.iat,
+    exp: params.exp,
+    nonce,
+  });
+
+  const canonicalBytes = Buffer.from(canonical, 'utf8');
+  const sigBytes = nacl.sign.detached(new Uint8Array(canonicalBytes), secretKey);
+  const sig = Buffer.from(sigBytes).toString('hex');
+
+  return { sig, kid, v, iss, aud, nonce };
 }
 
 export interface QrPassVerificationResult {
   valid: boolean;
-  errorCode?: 'MISSING_SIGNATURE' | 'UNKNOWN_KEY_ID' | 'INVALID_SIGNATURE' | 'EXPIRED_PASS';
+  errorCode?:
+    | 'MISSING_SIGNATURE'
+    | 'UNKNOWN_KEY_ID'
+    | 'INVALID_SIGNATURE'
+    | 'EXPIRED_PASS'
+    | 'UNSUPPORTED_VERSION'
+    | 'INVALID_ISSUER'
+    | 'INVALID_AUDIENCE';
   errorMessage?: string;
 }
 
 export function verifyQrPassPayload(params: {
   v: number;
   kid?: string;
+  iss?: string;
+  aud?: string;
   oid: string;
   sid: string;
   iat: number;
@@ -136,6 +224,14 @@ export function verifyQrPassPayload(params: {
   sig?: string;
   currentTimeSeconds?: number;
 }): QrPassVerificationResult {
+  if (params.v !== 2) {
+    return {
+      valid: false,
+      errorCode: 'UNSUPPORTED_VERSION',
+      errorMessage: 'Unsupported pass version. Only v2 asymmetric Ed25519 passes are accepted.',
+    };
+  }
+
   if (!params.sig) {
     return { valid: false, errorCode: 'MISSING_SIGNATURE', errorMessage: 'Digital pass signature is missing.' };
   }
@@ -145,23 +241,47 @@ export function verifyQrPassPayload(params: {
     return { valid: false, errorCode: 'EXPIRED_PASS', errorMessage: 'Student digital pass has expired.' };
   }
 
+  if (params.iss && params.iss !== QR_ISSUER) {
+    return { valid: false, errorCode: 'INVALID_ISSUER', errorMessage: 'Invalid pass issuer authority.' };
+  }
+
+  if (params.aud && params.aud !== QR_AUDIENCE) {
+    return { valid: false, errorCode: 'INVALID_AUDIENCE', errorMessage: 'Invalid pass audience scope.' };
+  }
+
   const kid = params.kid || ACTIVE_QR_KEY_ID;
-  const keyRing = getQrKeyRing();
-  const secret = keyRing[kid];
-  if (!secret) {
+  const keyRing = getQrVerificationKeys().publicKeys;
+  const publicKeyHex = keyRing[kid];
+  if (!publicKeyHex) {
     return { valid: false, errorCode: 'UNKNOWN_KEY_ID', errorMessage: 'Pass signed with unknown or revoked key ID.' };
   }
 
-  const canonical = generateQrPassCanonicalString({ ...params, kid });
-  const expectedSig = crypto.createHmac('sha256', secret).update(canonical).digest('hex');
+  const canonical = generateQrPassCanonicalString({
+    v: params.v,
+    kid,
+    iss: params.iss || QR_ISSUER,
+    aud: params.aud || QR_AUDIENCE,
+    oid: params.oid,
+    sid: params.sid,
+    iat: params.iat,
+    exp: params.exp,
+    nonce: params.nonce || '',
+  });
 
-  const actualBuf = Buffer.from(params.sig, 'hex');
-  const expectedBuf = Buffer.from(expectedSig, 'hex');
-  if (actualBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(actualBuf, expectedBuf)) {
+  const canonicalBytes = new Uint8Array(Buffer.from(canonical, 'utf8'));
+  const sigBytes = new Uint8Array(Buffer.from(params.sig, 'hex'));
+  const pubBytes = new Uint8Array(Buffer.from(publicKeyHex, 'hex'));
+
+  if (sigBytes.length !== 64 || pubBytes.length !== 32) {
+    return { valid: false, errorCode: 'INVALID_SIGNATURE', errorMessage: 'Malformed signature or public key length.' };
+  }
+
+  const isValid = nacl.sign.detached.verify(canonicalBytes, sigBytes, pubBytes);
+  if (!isValid) {
     return {
       valid: false,
       errorCode: 'INVALID_SIGNATURE',
-      errorMessage: 'Tampered pass or invalid cryptographic signature (SEC-QR-001).',
+      errorMessage: 'Cryptographic signature verification failed.',
     };
   }
 

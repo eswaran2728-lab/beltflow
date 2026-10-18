@@ -18,7 +18,8 @@
     "react-native-qrcode-svg": "^6.3.26",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
-    "react-native-svg": "15.15.4"
+    "react-native-svg": "15.15.4",
+    "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
     "@testing-library/react-native": "^14.1.0",

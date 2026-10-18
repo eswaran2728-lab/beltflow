@@ -7,7 +7,19 @@ import { rosterRepository } from '../database/repositories/rosterRepository';
 import { sessionRepository } from '../database/repositories/sessionRepository';
 import { mutationQueueRepository } from '../database/repositories/mutationQueueRepository';
 import { databaseLifecycle } from '../database/lifecycle';
-import { qrPassService, StudentQRPayload } from '../services/qrPassService';
+import {
+  qrPassService,
+  StudentQRPayload,
+  ACTIVE_QR_KEY_ID,
+  HISTORICAL_QR_KEY_ID,
+  QR_ISSUER,
+  QR_AUDIENCE,
+  DEFAULT_PINNED_PUBLIC_KEY,
+  HISTORICAL_PINNED_PUBLIC_KEY,
+} from '../services/qrPassService';
+import nacl from 'tweetnacl';
+import crypto from 'crypto';
+import { utf8Encode } from '../utils/crypto';
 import { masterAttendanceService } from '../services/masterAttendanceService';
 import { offlineSyncService } from '../services/offlineSyncService';
 import { networkService } from '../services/networkService';
@@ -125,6 +137,83 @@ describe('BeltFlow Phase 2 Task 2.4 — QR Attendance Scanner & Student Digital 
     status: 'Scheduled',
   };
 
+  // Cryptographic authority test keypairs (matching server derivation and mobile pinned keys)
+  const testSigningKeyPairK1 = nacl.sign.keyPair.fromSeed(
+    crypto.createHash('sha256').update('beltflow_ed25519_primary_seed_phase2_2026').digest()
+  );
+  const testSigningKeyPairK0 = nacl.sign.keyPair.fromSeed(
+    crypto.createHash('sha256').update('beltflow_ed25519_previous_seed_phase2_2025').digest()
+  );
+
+  function createSignedTestPass(
+    student: {
+      id: string;
+      organizationId?: string;
+      organization_id?: string;
+      fullName?: string;
+      full_name?: string;
+      beltRank?: string;
+      belt_rank?: string;
+      status?: string;
+    },
+    options: {
+      expiresInDays?: number;
+      issuedAt?: number;
+      version?: number;
+      kid?: string;
+      nonce?: string;
+      iss?: string;
+      aud?: string;
+      keyPair?: nacl.SignKeyPair;
+      tamperPayload?: boolean;
+      tamperSignature?: boolean;
+      omitSignature?: boolean;
+    } = {}
+  ): StudentQRPayload {
+    const iat = options.issuedAt ?? Math.floor(Date.now() / 1000);
+    const exp = iat + (options.expiresInDays ?? 30) * 86400;
+    const version = options.version ?? 2;
+    const kid = options.kid ?? ACTIVE_QR_KEY_ID;
+    const iss = options.iss ?? QR_ISSUER;
+    const aud = options.aud ?? QR_AUDIENCE;
+    const nonce = options.nonce ?? 'testnonce123';
+    const kp =
+      options.keyPair ??
+      (kid === HISTORICAL_QR_KEY_ID ? testSigningKeyPairK0 : testSigningKeyPairK1);
+
+    const oid = options.tamperPayload
+      ? 'org_persatuan_malicious'
+      : (student.organizationId || student.organization_id || currentOrgId);
+    const sid = student.id;
+
+    const canonical = `BF_PASS:v=${version}:kid=${kid}:iss=${iss}:aud=${aud}:oid=${oid}:sid=${sid}:iat=${iat}:exp=${exp}:nonce=${nonce}`;
+    let sig = '';
+
+    if (!options.omitSignature) {
+      const sigBytes = nacl.sign.detached(utf8Encode(canonical), kp.secretKey);
+      sig = Buffer.from(sigBytes).toString('hex');
+      if (options.tamperSignature) {
+        sig = sig.substring(0, 10) + '0000' + sig.substring(14);
+      }
+    }
+
+    return {
+      type: 'BF_PASS',
+      v: version,
+      kid,
+      iss,
+      aud,
+      oid,
+      sid,
+      name: student.fullName || student.full_name,
+      belt: student.beltRank || student.belt_rank,
+      iat,
+      exp,
+      nonce,
+      sig,
+    };
+  }
+
   beforeEach(async () => {
     jest.clearAllMocks();
     mockCameraPermission = { granted: true, canAskAgain: true };
@@ -154,7 +243,7 @@ describe('BeltFlow Phase 2 Task 2.4 — QR Attendance Scanner & Student Digital 
 
   // Test 1: Valid QR pass creation
   test('1. Valid QR pass creation with tamper-evident signature and no PII', () => {
-    const payload = qrPassService.createStudentPassPayload({
+    const payload = createSignedTestPass({
       id: studentA1.id,
       organizationId: studentA1.organization_id,
       fullName: studentA1.full_name,
@@ -177,6 +266,7 @@ describe('BeltFlow Phase 2 Task 2.4 — QR Attendance Scanner & Student Digital 
     expect(parsed?.sid).toBe(studentA1.id);
     expect(parsed?.oid).toBe(studentA1.organization_id);
     expect(parsed?.sig).toBeDefined();
+    expect(parsed?.sig?.length).toBe(128); // 64 bytes = 128 hex chars
     expect(parsed?.iat).toBeLessThanOrEqual(Math.floor(Date.now() / 1000));
   });
 
@@ -186,7 +276,8 @@ describe('BeltFlow Phase 2 Task 2.4 — QR Attendance Scanner & Student Digital 
       'https://google.com/malicious',
       'NOT_VALID_JSON_AT_ALL',
       '{"type":"OTHER_FORMAT","id":"123"}',
-      JSON.stringify({ type: 'BF_PASS', v: 2 }), // unsupported version
+      JSON.stringify({ type: 'BF_PASS', v: 99 }), // invalid version
+      JSON.stringify({ type: 'BF_PASS', v: 1, oid: 'org_a', sid: 'stu_1', iat: 100, exp: 200 }), // legacy v1 rejected
     ];
 
     for (const badScan of badScans) {
@@ -196,13 +287,13 @@ describe('BeltFlow Phase 2 Task 2.4 — QR Attendance Scanner & Student Digital 
         roster: [studentA1],
       });
       expect(result.isValid).toBe(false);
-      expect(result.errorCode).toBe('INVALID_QR_FORMAT');
+      expect(['INVALID_QR_FORMAT', 'UNSUPPORTED_VERSION']).toContain(result.errorCode);
     }
   });
 
   // Test 3: Unauthorized student rejection (student not in roster)
   test('3. Unauthorized student rejection when student is not in authorized class roster', () => {
-    const unrosteredPayload = qrPassService.createStudentPassPayload({
+    const unrosteredPayload = createSignedTestPass({
       id: 'stu_unknown_person',
       organizationId: currentOrgId,
       fullName: 'Unknown Person',
@@ -224,7 +315,7 @@ describe('BeltFlow Phase 2 Task 2.4 — QR Attendance Scanner & Student Digital 
 
   // Test 4: Cross-Persatuan rejection
   test('4. Cross-Persatuan rejection when pass belongs to a different academy', () => {
-    const foreignPayload = qrPassService.createStudentPassPayload({
+    const foreignPayload = createSignedTestPass({
       id: studentB.id,
       organizationId: studentB.organization_id, // org_persatuan_b
       fullName: studentB.full_name,
@@ -255,7 +346,7 @@ describe('BeltFlow Phase 2 Task 2.4 — QR Attendance Scanner & Student Digital 
       status: 'ACTIVE',
     };
 
-    const payload = qrPassService.createStudentPassPayload({
+    const payload = createSignedTestPass({
       id: studentFromOtherClass.id,
       organizationId: studentFromOtherClass.organization_id,
       fullName: studentFromOtherClass.full_name,
@@ -314,7 +405,7 @@ describe('BeltFlow Phase 2 Task 2.4 — QR Attendance Scanner & Student Digital 
 
   // Test 8: Offline scan with missing roster rejects safely
   test('8. Offline scan with missing or un-cached roster rejects verification', () => {
-    const payload = qrPassService.createStudentPassPayload({
+    const payload = createSignedTestPass({
       id: 'stu_uncached',
       organizationId: currentOrgId,
       fullName: 'Uncached Student',
@@ -457,7 +548,7 @@ describe('BeltFlow Phase 2 Task 2.4 — QR Attendance Scanner & Student Digital 
   // Test 13: Expired or revoked QR behavior
   test('13. Expired or revoked QR codes are rejected', () => {
     // A. Expired token (issued in past, expired)
-    const expiredPayload = qrPassService.createStudentPassPayload(
+    const expiredPayload = createSignedTestPass(
       {
         id: studentA1.id,
         organizationId: studentA1.organization_id,
@@ -479,7 +570,7 @@ describe('BeltFlow Phase 2 Task 2.4 — QR Attendance Scanner & Student Digital 
     expect(expiredResult.errorCode).toBe('EXPIRED_PASS');
 
     // B. Revoked / Inactive membership
-    const inactivePayload = qrPassService.createStudentPassPayload({
+    const inactivePayload = createSignedTestPass({
       id: studentA2Inactive.id,
       organizationId: studentA2Inactive.organization_id,
       fullName: studentA2Inactive.full_name,
@@ -501,7 +592,7 @@ describe('BeltFlow Phase 2 Task 2.4 — QR Attendance Scanner & Student Digital 
   // Test 14: SQLite save failure handling
   test('14. SQLite save failure handles local database error gracefully without crash', async () => {
     const mockOnAttendanceRecorded = jest.fn();
-    const payload = qrPassService.createStudentPassPayload({
+    const payload = createSignedTestPass({
       id: studentA1.id,
       organizationId: studentA1.organization_id,
       fullName: studentA1.full_name,
@@ -601,7 +692,7 @@ describe('BeltFlow Phase 2 Task 2.4 — QR Attendance Scanner & Student Digital 
       [studentA1.id]: 'Present',
     };
 
-    const payload = qrPassService.createStudentPassPayload({
+    const payload = createSignedTestPass({
       id: studentA1.id,
       organizationId: studentA1.organization_id,
       fullName: studentA1.full_name,
@@ -654,7 +745,7 @@ describe('BeltFlow Phase 2 Task 2.4 — QR Attendance Scanner & Student Digital 
 
   // Test 17: Concurrent scan prevention
   test('17. Concurrent scan prevention debounce lock ignores rapid duplicate scan events', async () => {
-    const payload = qrPassService.createStudentPassPayload({
+    const payload = createSignedTestPass({
       id: studentA1.id,
       organizationId: studentA1.organization_id,
       fullName: studentA1.full_name,
@@ -730,8 +821,8 @@ describe('BeltFlow Phase 2 Task 2.4 — QR Attendance Scanner & Student Digital 
 
   // Test 20: Cryptographic signature verification and tamper detection (SEC-QR-001)
   test('20. Cryptographic signature verification and tamper detection (SEC-QR-001)', () => {
-    // 1. Create a valid v2 signed pass
-    const payload = qrPassService.createStudentPassPayload({
+    // 1. Create a valid v2 signed pass with Ed25519
+    const payload = createSignedTestPass({
       id: studentA1.id,
       organizationId: studentA1.organization_id,
       fullName: studentA1.full_name,
@@ -742,62 +833,140 @@ describe('BeltFlow Phase 2 Task 2.4 — QR Attendance Scanner & Student Digital 
     const parsed = qrPassService.parsePayload(qrPassService.serializePayload(payload));
     expect(parsed).not.toBeNull();
     expect(parsed?.v).toBe(2);
-    expect(parsed?.kid).toBe('bf_qr_k1');
+    expect(parsed?.kid).toBe(ACTIVE_QR_KEY_ID);
+    expect(parsed?.iss).toBe(QR_ISSUER);
+    expect(parsed?.aud).toBe(QR_AUDIENCE);
     expect(parsed?.nonce).toBeDefined();
     expect(parsed?.sig).toBeDefined();
+    expect(parsed?.sig?.length).toBe(128); // 64 bytes = 128 hex chars
 
-    // 2. Tamper with sid in payload -> Cryptographic signature MUST reject with INVALID_SIGNATURE
-    const tamperedPayload: StudentQRPayload = {
-      ...parsed!,
-      sid: 'stu_malicious_attacker',
-    };
-    const tamperedRaw = JSON.stringify(tamperedPayload);
-
-    const validation = qrPassService.validateScannedPass(tamperedRaw, {
+    // Valid pass offline verification succeeds
+    const validResult = qrPassService.validateScannedPass(JSON.stringify(payload), {
       currentOrgId,
       session: activeSessionA,
       roster: [studentA1],
     });
+    expect(validResult.isValid).toBe(true);
 
-    expect(validation.isValid).toBe(false);
-    expect(validation.errorCode).toBe('INVALID_SIGNATURE');
-    expect(validation.errorMessage).toContain('SEC-QR-001');
+    // 2. Tamper with sid in payload -> Cryptographic signature MUST reject with INVALID_SIGNATURE
+    const tamperedSidPayload: StudentQRPayload = {
+      ...payload,
+      sid: 'stu_malicious_attacker',
+    };
+    const tamperedSidResult = qrPassService.validateScannedPass(JSON.stringify(tamperedSidPayload), {
+      currentOrgId,
+      session: activeSessionA,
+      roster: [studentA1],
+    });
+    expect(tamperedSidResult.isValid).toBe(false);
+    expect(tamperedSidResult.errorCode).toBe('INVALID_SIGNATURE');
+    expect(tamperedSidResult.errorMessage).toContain('SEC-QR-001');
 
-    // 3. Untampered valid pass for an unrostered student -> Rejects with STUDENT_NOT_FOUND
-    const unrosteredPayload = qrPassService.createStudentPassPayload({
+    // 3. Tamper with oid in payload -> Rejected with INVALID_SIGNATURE
+    const tamperedOidPayload: StudentQRPayload = {
+      ...payload,
+      oid: 'org_persatuan_forged',
+    };
+    const tamperedOidResult = qrPassService.validateScannedPass(JSON.stringify(tamperedOidPayload), {
+      currentOrgId,
+      session: activeSessionA,
+      roster: [studentA1],
+    });
+    expect(tamperedOidResult.isValid).toBe(false);
+    expect(tamperedOidResult.errorCode).toBe('INVALID_SIGNATURE');
+
+    // 4. Tamper with exp in payload -> Rejected with INVALID_SIGNATURE
+    const tamperedExpPayload: StudentQRPayload = {
+      ...payload,
+      exp: payload.exp + 100000,
+    };
+    const tamperedExpResult = qrPassService.validateScannedPass(JSON.stringify(tamperedExpPayload), {
+      currentOrgId,
+      session: activeSessionA,
+      roster: [studentA1],
+    });
+    expect(tamperedExpResult.isValid).toBe(false);
+    expect(tamperedExpResult.errorCode).toBe('INVALID_SIGNATURE');
+
+    // 5. Corrupted signature bytes -> Rejected with INVALID_SIGNATURE
+    const corruptedSigPayload: StudentQRPayload = {
+      ...payload,
+      sig: '00'.repeat(64),
+    };
+    const corruptedSigResult = qrPassService.validateScannedPass(JSON.stringify(corruptedSigPayload), {
+      currentOrgId,
+      session: activeSessionA,
+      roster: [studentA1],
+    });
+    expect(corruptedSigResult.isValid).toBe(false);
+    expect(corruptedSigResult.errorCode).toBe('INVALID_SIGNATURE');
+
+    // 6. Wrong issuer -> Rejected with INVALID_ISSUER
+    const wrongIssuerPayload = createSignedTestPass(
+      studentA1,
+      { iss: 'untrusted-rogue-authority' }
+    );
+    const wrongIssuerResult = qrPassService.validateScannedPass(JSON.stringify(wrongIssuerPayload), {
+      currentOrgId,
+      session: activeSessionA,
+      roster: [studentA1],
+    });
+    expect(wrongIssuerResult.isValid).toBe(false);
+    expect(wrongIssuerResult.errorCode).toBe('INVALID_ISSUER');
+
+    // 7. Wrong audience -> Rejected with INVALID_AUDIENCE
+    const wrongAudiencePayload = createSignedTestPass(
+      studentA1,
+      { aud: 'wrong-audience-scope' }
+    );
+    const wrongAudienceResult = qrPassService.validateScannedPass(JSON.stringify(wrongAudiencePayload), {
+      currentOrgId,
+      session: activeSessionA,
+      roster: [studentA1],
+    });
+    expect(wrongAudienceResult.isValid).toBe(false);
+    expect(wrongAudienceResult.errorCode).toBe('INVALID_AUDIENCE');
+
+    // 8. Missing signature -> Rejected with INVALID_SIGNATURE
+    const missingSigPayload = createSignedTestPass(studentA1, { omitSignature: true });
+    const missingSigResult = qrPassService.validateScannedPass(JSON.stringify(missingSigPayload), {
+      currentOrgId,
+      session: activeSessionA,
+      roster: [studentA1],
+    });
+    expect(missingSigResult.isValid).toBe(false);
+    expect(missingSigResult.errorCode).toBe('INVALID_SIGNATURE');
+
+    // 9. Untampered valid pass for an unrostered student -> Rejects with STUDENT_NOT_FOUND
+    const unrosteredPayload = createSignedTestPass({
       id: 'stu_legit_but_unrostered',
       organizationId: currentOrgId,
       fullName: 'Legit Student',
       beltRank: 'White Belt',
       status: 'ACTIVE',
     });
-    const unrosteredRaw = JSON.stringify(unrosteredPayload);
-
-    const unrosteredResult = qrPassService.validateScannedPass(unrosteredRaw, {
+    const unrosteredResult = qrPassService.validateScannedPass(JSON.stringify(unrosteredPayload), {
       currentOrgId,
       session: activeSessionA,
       roster: [studentA1], // only studentA1 in roster
     });
-
     expect(unrosteredResult.isValid).toBe(false);
     expect(unrosteredResult.errorCode).toBe('STUDENT_NOT_FOUND');
+
+    // 10. Client possessing ONLY public key cannot sign a valid credential
+    const clientPublicKeyBytes = Buffer.from(DEFAULT_PINNED_PUBLIC_KEY, 'hex');
+    expect(() => {
+      nacl.sign.detached(utf8Encode('test message'), clientPublicKeyBytes);
+    }).toThrow();
   });
 
   // Test 21: Key rotation support and unknown key rejection
   test('21. Key rotation support validates older active keys and rejects unknown keys', () => {
-    // Register older rotating key bf_qr_k0
-    qrPassService.addTrustedKey('bf_qr_k0', 'old_rotated_secret_key');
-
-    // Pass created with previous key bf_qr_k0
-    const passOlderKey = qrPassService.createStudentPassPayload(
-      {
-        id: studentA1.id,
-        organizationId: currentOrgId,
-        fullName: studentA1.full_name,
-        beltRank: studentA1.belt_rank,
-        status: 'ACTIVE',
-      },
-      { kid: 'bf_qr_k0', secret: 'old_rotated_secret_key' }
+    // 1. Pass created and signed with historical key bf_ed25519_k0
+    expect(Buffer.from(testSigningKeyPairK0.publicKey).toString('hex')).toBe(HISTORICAL_PINNED_PUBLIC_KEY);
+    const passOlderKey = createSignedTestPass(
+      studentA1,
+      { kid: HISTORICAL_QR_KEY_ID }
     );
 
     const validWithOldKey = qrPassService.validateScannedPass(JSON.stringify(passOlderKey), {
@@ -807,16 +976,26 @@ describe('BeltFlow Phase 2 Task 2.4 — QR Attendance Scanner & Student Digital 
     });
     expect(validWithOldKey.isValid).toBe(true);
 
-    // Pass created with unknown / forged key ID
-    const passUnknownKey = qrPassService.createStudentPassPayload(
-      {
-        id: studentA1.id,
-        organizationId: currentOrgId,
-        fullName: studentA1.full_name,
-        beltRank: studentA1.belt_rank,
-        status: 'ACTIVE',
-      },
-      { kid: 'bf_unknown_key_99', secret: 'some_random_secret' }
+    // 2. Dynamic key rotation: Register new active keypair bf_ed25519_k2
+    const keyPairK2 = nacl.sign.keyPair();
+    const publicKeyK2Hex = Buffer.from(keyPairK2.publicKey).toString('hex');
+    qrPassService.addTrustedKey('bf_ed25519_k2', publicKeyK2Hex);
+
+    const passNewKey = createSignedTestPass(
+      studentA1,
+      { kid: 'bf_ed25519_k2', keyPair: keyPairK2 }
+    );
+    const validWithNewKey = qrPassService.validateScannedPass(JSON.stringify(passNewKey), {
+      currentOrgId,
+      session: activeSessionA,
+      roster: [studentA1],
+    });
+    expect(validWithNewKey.isValid).toBe(true);
+
+    // 3. Pass created with unknown / forged key ID -> Rejected with UNKNOWN_KEY_ID
+    const passUnknownKey = createSignedTestPass(
+      studentA1,
+      { kid: 'bf_unknown_key_99' }
     );
 
     const rejectedUnknownKey = qrPassService.validateScannedPass(JSON.stringify(passUnknownKey), {
@@ -827,7 +1006,7 @@ describe('BeltFlow Phase 2 Task 2.4 — QR Attendance Scanner & Student Digital 
     expect(rejectedUnknownKey.isValid).toBe(false);
     expect(rejectedUnknownKey.errorCode).toBe('UNKNOWN_KEY_ID');
 
-    // Reset trusted keys
+    // 4. Reset trusted keys restores defaults
     qrPassService.resetTrustedKeys();
   });
 

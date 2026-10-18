@@ -1,26 +1,13 @@
-import { hmacSha256, sha256Hex, timingSafeEqual } from '../utils/crypto';
+import { sha256Hex, timingSafeEqual, hexToBytes, utf8Encode } from '../utils/crypto';
+import nacl from 'tweetnacl';
 import crypto from 'crypto';
 
 describe('Cryptographic Utilities (SEC-QR-001)', () => {
   test('sha256Hex produces identical digest to Node crypto', () => {
-    const inputs = ['', 'test', 'BeltFlow V2.0', 'BF_PASS:2:bf_qr_k1:org_123:stu_456:1700000000:1702592000:nonce_abc'];
+    const inputs = ['', 'test', 'BeltFlow V2.0', 'BF_PASS:v=2:kid=bf_ed25519_k1:iss=beltflow-authority:aud=beltflow-attendance:oid=org_123:sid=stu_456:iat=1700000000:exp=1702592000:nonce=nonce_abc'];
     for (const input of inputs) {
       const expected = crypto.createHash('sha256').update(input).digest('hex');
       const actual = sha256Hex(input);
-      expect(actual).toBe(expected);
-    }
-  });
-
-  test('hmacSha256 produces identical signature to Node crypto', () => {
-    const testCases = [
-      { key: 'test_key', data: 'test_data' },
-      { key: 'bf_qr_secret_phase2_key_2026', data: 'BF_PASS:2:bf_qr_k1:org_persatuan_a:stu_a1:1700000000:1702592000:nonce_12345' },
-      { key: 'a_very_long_key_that_exceeds_sixty_four_bytes_to_test_key_hashing_in_hmac_sha256_properly', data: 'arbitrary payload' },
-    ];
-
-    for (const { key, data } of testCases) {
-      const expected = crypto.createHmac('sha256', key).update(data).digest('hex');
-      const actual = hmacSha256(key, data);
       expect(actual).toBe(expected);
     }
   });
@@ -34,4 +21,56 @@ describe('Cryptographic Utilities (SEC-QR-001)', () => {
     expect(timingSafeEqual(a, c)).toBe(false);
     expect(timingSafeEqual(a, 'short')).toBe(false);
   });
+
+  test('hexToBytes and utf8Encode conversions are accurate and reversible', () => {
+    const hex = '9be104dc180101c12e16df1ca611f72818268fa376522891b3513edcab53fd17';
+    const bytes = hexToBytes(hex);
+    expect(bytes.length).toBe(32);
+    expect(Buffer.from(bytes).toString('hex')).toBe(hex);
+
+    const str = 'BeltFlow Ed25519 Authority';
+    const utf8 = utf8Encode(str);
+    expect(Buffer.from(utf8).toString('utf8')).toBe(str);
+  });
+
+  test('Ed25519 detached signature verification with TweetNaCl (SEC-QR-001)', () => {
+    // Generate server-side test keypair
+    const keyPair = nacl.sign.keyPair();
+    const publicKeyBytes = keyPair.publicKey;
+    const secretKeyBytes = keyPair.secretKey;
+
+    const message = 'BF_PASS:v=2:kid=bf_ed25519_k1:iss=beltflow-authority:aud=beltflow-attendance:oid=org_a:sid=stu_1:iat=1700000000:exp=1702592000:nonce=n1';
+    const msgBytes = utf8Encode(message);
+
+    // Server signs with secret key
+    const sigBytes = nacl.sign.detached(msgBytes, secretKeyBytes);
+    expect(sigBytes.length).toBe(64);
+
+    // Client verifies offline with ONLY public key
+    const isValid = nacl.sign.detached.verify(msgBytes, sigBytes, publicKeyBytes);
+    expect(isValid).toBe(true);
+
+    // Tampered message fails verification
+    const tamperedMessage = 'BF_PASS:v=2:kid=bf_ed25519_k1:iss=beltflow-authority:aud=beltflow-attendance:oid=org_a:sid=stu_FORGED:iat=1700000000:exp=1702592000:nonce=n1';
+    const isTamperedValid = nacl.sign.detached.verify(utf8Encode(tamperedMessage), sigBytes, publicKeyBytes);
+    expect(isTamperedValid).toBe(false);
+
+    // Tampered signature fails verification
+    const tamperedSig = new Uint8Array(sigBytes);
+    tamperedSig[0] ^= 0xff;
+    const isTamperedSigValid = nacl.sign.detached.verify(msgBytes, tamperedSig, publicKeyBytes);
+    expect(isTamperedSigValid).toBe(false);
+
+    // Verification fails with wrong public key
+    const anotherKeyPair = nacl.sign.keyPair();
+    const isWrongKeyValid = nacl.sign.detached.verify(msgBytes, sigBytes, anotherKeyPair.publicKey);
+    expect(isWrongKeyValid).toBe(false);
+
+    // Untrusted client with ONLY public key cannot sign a valid credential
+    expect(() => {
+      // Trying to sign with 32-byte public key throws or produces invalid signature
+      nacl.sign.detached(msgBytes, publicKeyBytes);
+    }).toThrow();
+  });
 });
+

@@ -6,7 +6,9 @@ import {
   signQrPassPayload,
   verifyQrPassPayload,
   ACTIVE_QR_KEY_ID,
-  getQrKeyRing,
+  getQrVerificationKeys,
+  QR_ISSUER,
+  QR_AUDIENCE,
 } from '../security/crypto';
 import { validatePassword } from '../security/passwordPolicy';
 import { authenticateJWT, requirePermission } from '../middleware/auth';
@@ -76,24 +78,27 @@ router.get('/:studentId/digital-pass', authenticateJWT, async (req: Request, res
     const now = Math.floor(Date.now() / 1000);
     const exp = now + 30 * 86400; // 30-day validity
     
-    // Cryptographically sign the pass payload (SEC-QR-001)
-    const { sig, kid, v, nonce } = signQrPassPayload({
+    // Cryptographically sign the pass payload with Ed25519 (SEC-QR-001)
+    const { sig, kid, v, iss, aud, nonce } = signQrPassPayload({
       v: 2,
       kid: ACTIVE_QR_KEY_ID,
+      iss: QR_ISSUER,
+      aud: QR_AUDIENCE,
       oid: student.organization_id,
       sid: student.id,
       iat: now,
       exp,
     });
 
+    // Zero PII embedded in payload
     const payload = {
       type: 'BF_PASS',
       v,
       kid,
+      iss,
+      aud,
       oid: student.organization_id,
       sid: student.id,
-      name: student.full_name,
-      belt: student.belt_rank,
       iat: now,
       exp,
       nonce,
@@ -122,25 +127,23 @@ router.get('/:studentId/digital-pass', authenticateJWT, async (req: Request, res
   }
 });
 
-// Key Rotation Metadata for Offline / Online Verification (SEC-QR-001)
+// Key Rotation Metadata for Offline / Online Verification (SEC-QR-001 Resolved)
+// Returns public verification keys only. Private signing keys are NEVER distributed.
 router.get('/qr/verification-keys', authenticateJWT, async (req: Request, res: Response) => {
   try {
-    const keyRing = getQrKeyRing();
-    const supportedKids = Object.keys(keyRing);
+    const keysInfo = getQrVerificationKeys();
     return res.json({
-      activeKid: ACTIVE_QR_KEY_ID,
-      supportedKids,
-      algorithm: 'HS256',
-      // In trusted tenant operational contexts (Master / Persatuan Admin syncing for offline verification),
-      // we provide the key ring map so the mobile device can verify signatures offline.
-      keys: keyRing,
+      activeKid: keysInfo.activeKid,
+      supportedKids: keysInfo.supportedKids,
+      algorithm: keysInfo.algorithm,
+      publicKeys: keysInfo.publicKeys,
     });
   } catch (err: any) {
     return res.status(500).json({ error: safeErrorMessage(err, 'Failed to fetch verification keys.') });
   }
 });
 
-// Server-side QR Pass Verification & Roll-Call Validation (SEC-QR-001)
+// Server-side QR Pass Verification & Roll-Call Validation (SEC-QR-001 Resolved)
 router.post('/qr/verify-pass', authenticateJWT, async (req: Request, res: Response) => {
   try {
     const { qrString, expectedClassId, expectedSessionId } = req.body;
@@ -155,14 +158,24 @@ router.post('/qr/verify-pass', authenticateJWT, async (req: Request, res: Respon
       return res.status(400).json({ valid: false, errorCode: 'INVALID_QR_FORMAT', errorMessage: 'Malformed JSON in QR pass.' });
     }
 
-    if (!parsed || parsed.type !== 'BF_PASS' || (parsed.v !== 1 && parsed.v !== 2)) {
+    if (!parsed || parsed.type !== 'BF_PASS') {
       return res.status(400).json({ valid: false, errorCode: 'INVALID_QR_FORMAT', errorMessage: 'Unsupported QR pass format.' });
+    }
+
+    if (parsed.v !== 2) {
+      return res.status(403).json({
+        valid: false,
+        errorCode: 'UNSUPPORTED_VERSION',
+        errorMessage: 'Legacy v1 pass rejected. Asymmetric Ed25519 v2 credentials required.',
+      });
     }
 
     // Cryptographic signature verification
     const sigResult = verifyQrPassPayload({
       v: parsed.v,
       kid: parsed.kid,
+      iss: parsed.iss,
+      aud: parsed.aud,
       oid: parsed.oid,
       sid: parsed.sid,
       iat: parsed.iat,
