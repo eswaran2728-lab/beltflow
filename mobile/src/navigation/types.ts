@@ -53,6 +53,7 @@ export type MasterClassesStackParamList = {
   CreateClass: undefined;
   ClassProposalStatus: undefined;
   ClassEnrollmentInbox: { classId: string; className?: string };
+  ClassWorkspace: { classId: string; className?: string };
 };
 
 export type MasterTabParamList = {

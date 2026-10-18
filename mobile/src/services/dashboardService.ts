@@ -1,6 +1,8 @@
 import { apiClient } from './apiClient';
 import { AuthUser } from '../types/auth';
 import { authService } from './authService';
+import { mutationQueueRepository } from '../database/repositories/mutationQueueRepository';
+import { conflictRepository } from '../database/repositories/conflictRepository';
 
 // ----------------------------------------------------------------------------
 // Type Definitions for Dashboard Models
@@ -63,10 +65,15 @@ export interface AdminPersatuanDashboardData {
 }
 
 export interface MasterDashboardData {
+  hasApprovedClasses?: boolean;
   assignedClassesCount: number;
   assignedStudentsCount: number;
   todaySessionsCount: number;
   pendingGradingCount: number;
+  pendingApplicationsCount?: number;
+  pendingProposalsCount?: number;
+  offlineSyncPendingCount?: number;
+  offlineConflictCount?: number;
   classes: {
     id: string;
     name: string;
@@ -90,6 +97,16 @@ export interface MasterDashboardData {
     status: string;
     candidateCount?: number;
   }[];
+  recentNotices?: {
+    id: string;
+    message: string;
+    sender_name?: string;
+    created_at?: string;
+  }[];
+  onboarding?: {
+    message: string;
+    action: string;
+  };
 }
 
 export interface ParentChildSummary {
@@ -333,6 +350,58 @@ export const dashboardService = {
       }
     }
 
+    // 1. Try to fetch official backend operational dashboard aggregation
+    try {
+      const serverDash: any = await apiClient.get('/api/v1/dashboard/master');
+      if (serverDash && (serverDash.hasApprovedClasses !== undefined || serverDash.todayClasses !== undefined)) {
+        let offlineSyncPendingCount = 0;
+        let offlineConflictCount = 0;
+        try {
+          const pending = await mutationQueueRepository.getPendingMutations(user);
+          offlineSyncPendingCount = pending ? pending.length : 0;
+          const conflicts = await conflictRepository.getConflicts(user, true);
+          offlineConflictCount = conflicts ? conflicts.length : 0;
+        } catch {
+          // In web environment or unit tests where SQLite is not loaded
+        }
+
+        const data: MasterDashboardData = {
+          hasApprovedClasses: serverDash.hasApprovedClasses !== false,
+          assignedClassesCount: (serverDash.todayClasses || []).length,
+          assignedStudentsCount: serverDash.activeStudentCount ?? 0,
+          todaySessionsCount: (serverDash.todaySessions || []).length,
+          pendingGradingCount: 0,
+          pendingApplicationsCount: serverDash.pendingApplicationsCount ?? 0,
+          pendingProposalsCount: serverDash.pendingProposalsCount ?? 0,
+          offlineSyncPendingCount,
+          offlineConflictCount,
+          classes: (serverDash.todayClasses || []).map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            location: c.location,
+            monthlyFee: parseFloat(c.monthly_fee) || 0,
+          })),
+          todaySessions: (serverDash.todaySessions || []).map((s: any) => ({
+            id: s.id,
+            classId: s.class_id,
+            sessionDate: s.session_date,
+            startTime: s.start_time,
+            endTime: s.end_time,
+            location: s.location,
+            status: s.status,
+          })),
+          recentGradingEvents: [],
+          recentNotices: serverDash.recentNotices || [],
+          onboarding: serverDash.onboarding,
+        };
+
+        dashboardCache.set(cacheKey, { data, cachedAt: Date.now() });
+        return data;
+      }
+    } catch {
+      // Fallback to legacy endpoint queries if offline or dashboard endpoint error
+    }
+
     const [classesRes, studentsRes, gradingRes] = await Promise.all([
       apiClient.get<{ classes: any[] }>(`/api/v1/classes/organization/${orgId}`).catch(() => ({ classes: [] })),
       apiClient.get<{ students: any[] }>(`/api/v1/students/organization/${orgId}`).catch(() => ({ students: [] })),
@@ -364,6 +433,7 @@ export const dashboardService = {
     const pendingGrading = gradingEvents.filter(e => e.status !== 'COMPLETED');
 
     const data: MasterDashboardData = {
+      hasApprovedClasses: classes.length > 0,
       assignedClassesCount: classes.length,
       assignedStudentsCount: students.length,
       todaySessionsCount: todaySessions.length,

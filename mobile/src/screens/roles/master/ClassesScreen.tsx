@@ -159,14 +159,19 @@ export const ClassesScreen: React.FC<ClassesScreenProps> = ({
                         {cls.name}
                       </Text>
                       <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                        {cls.schedule}
+                        {cls.schedule} • {cls.venue_details || cls.location || 'Dojo'}
+                      </Text>
+                      <Text style={[typography.caption, { color: colors.buttonPrimaryBg, marginTop: 2, fontWeight: '600' }]}>
+                        Capacity: {cls.capacity ?? 30} • Availability: {cls.enrollment_availability || 'OPEN'}
                       </Text>
                     </View>
-                    <StatusBadge status="ACTIVE" label="Approved" variant="success" />
+                    <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                      <StatusBadge status={cls.operational_status || 'ACTIVE'} label={cls.operational_status || 'Approved'} variant="success" />
+                    </View>
                   </View>
 
                   {/* Operational actions: ONLY allowed for approved classes */}
-                  <View style={[styles.operationalActions, { flexDirection: 'row', gap: spacing.xs, justifyContent: 'flex-end' }]}>
+                  <View style={[styles.operationalActions, { flexDirection: 'row', gap: spacing.xs, justifyContent: 'flex-end', marginTop: spacing.sm }]}>
                     <Button
                       label="Applications"
                       onPress={() => navigation?.navigate?.('ClassEnrollmentInbox', { classId: cls.id, className: cls.name })}
@@ -174,14 +179,16 @@ export const ClassesScreen: React.FC<ClassesScreenProps> = ({
                       size="sm"
                       testID={`btn-inbox-${cls.id}`}
                     />
-                    <Button
-                      label="Manage Class"
-                      onPress={() => navigation?.navigate?.('Attendance', { classId: cls.id })}
-                      variant="secondary"
-                      size="sm"
-                      rightIcon={<ArrowRight size={iconSize.sm} color={colors.buttonSecondaryText} />}
-                      testID={`btn-operate-${cls.id}`}
-                    />
+                    <View testID={`btn-operate-${cls.id}`}>
+                      <Button
+                        label="Open Workspace"
+                        onPress={() => navigation?.navigate?.('ClassWorkspace', { classId: cls.id, className: cls.name })}
+                        variant="primary"
+                        size="sm"
+                        rightIcon={<ArrowRight size={iconSize.sm} color={colors.buttonPrimaryText} />}
+                        testID={`btn-workspace-${cls.id}`}
+                      />
+                    </View>
                   </View>
                 </Card>
               ))

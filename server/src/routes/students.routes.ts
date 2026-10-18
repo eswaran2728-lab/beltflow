@@ -320,7 +320,15 @@ router.get('/:studentId', authenticateJWT, async (req: Request, res: Response) =
       return res.status(403).json({ error: 'Access Denied: Not authorized to view this student record.' });
     }
 
-    return res.json({ student: access.student });
+    const studentData = { ...access.student };
+    if (req.user?.role === UserRole.MASTER) {
+      studentData.is_teaching_view = true;
+      if (studentData.ic_number && studentData.ic_number.length > 4) {
+        studentData.ic_number = `******-**-${studentData.ic_number.slice(-4)}`;
+      }
+    }
+
+    return res.json({ student: studentData });
   } catch (err: any) {
     console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });

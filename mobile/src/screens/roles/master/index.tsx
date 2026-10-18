@@ -149,6 +149,47 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
 
       {renderIdentityCard()}
 
+      {/* Offline Pending Sync and Conflict Alerts */}
+      {(data?.offlineSyncPendingCount && data.offlineSyncPendingCount > 0) || (data?.offlineConflictCount && data.offlineConflictCount > 0) ? (
+        <Card variant="standard" style={{ padding: 12, marginBottom: spacing.md, backgroundColor: colors.surfaceElevated, borderColor: colors.border }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1 }}>
+              {data.offlineSyncPendingCount ? (
+                <Text style={[typography.caption, { color: colors.buttonPrimaryBg, fontWeight: '700' }]} testID="badge-offline-pending-sync">
+                  Pending Sync: {data.offlineSyncPendingCount} attendance mutation(s) queued
+                </Text>
+              ) : null}
+              {data.offlineConflictCount ? (
+                <Text style={[typography.caption, { color: colors.badgeWarningText, fontWeight: '700', marginTop: 2 }]} testID="badge-attendance-conflicts">
+                  Sync Conflicts: {data.offlineConflictCount} conflict(s) require review
+                </Text>
+              ) : null}
+            </View>
+          </View>
+        </Card>
+      ) : null}
+
+      {/* Onboarding State: For Master with no approved classes */}
+      {data?.hasApprovedClasses === false ? (
+        <Card variant="standard" style={{ padding: 20, alignItems: 'center', marginBottom: spacing.md }} testID="master-onboarding-card">
+          <Calendar size={iconSize.lg} color={colors.buttonPrimaryBg} />
+          <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginTop: spacing.sm, textAlign: 'center' }]}>
+            Welcome to BeltFlow Class Management
+          </Text>
+          <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginTop: spacing.xs, textAlign: 'center' }]}>
+            {data?.onboarding?.message || 'You currently have no active approved classes. Propose a new class to your Persatuan to start enrolling students.'}
+          </Text>
+          <Button
+            label="Propose a New Class"
+            onPress={() => navigation?.navigate?.('Classes', { screen: 'CreateClass' })}
+            variant="primary"
+            size="md"
+            style={{ marginTop: spacing.md }}
+            testID="btn-onboarding-propose-class"
+          />
+        </Card>
+      ) : null}
+
       {/* Master Coaching Stat Metrics */}
       <View style={[styles.statsGrid, { gap: spacing.sm, marginBottom: spacing.md }]}>
         <StatCard
@@ -172,6 +213,18 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
       </View>
 
       <View style={[styles.statsGrid, { gap: spacing.sm, marginBottom: spacing.md }]}>
+        <StatCard
+          title="Pending Apps"
+          value={data?.pendingApplicationsCount ?? 0}
+          icon={<Users size={iconSize.md} color={colors.badgeWarningText} />}
+          testID="stat-master-applications"
+        />
+        <StatCard
+          title="Class Proposals"
+          value={data?.pendingProposalsCount ?? 0}
+          icon={<Calendar size={iconSize.md} color={colors.buttonPrimaryBg} />}
+          testID="stat-master-proposals"
+        />
         <StatCard
           title="Pending Gradings"
           value={data?.pendingGradingCount ?? 0}
@@ -249,6 +302,13 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
                     {cls.location} • Fee: RM {cls.monthlyFee}/mo
                   </Text>
                 </View>
+                <Button
+                  label="Workspace"
+                  onPress={() => navigation?.navigate?.('Classes', { screen: 'ClassWorkspace', params: { classId: cls.id, className: cls.name } })}
+                  variant="primary"
+                  size="sm"
+                  testID={`btn-home-workspace-${cls.id}`}
+                />
               </View>
             ))}
           </View>
@@ -358,6 +418,7 @@ export { ClassesScreen } from './ClassesScreen';
 export { CreateClassScreen } from './CreateClassScreen';
 export { ClassProposalStatusScreen } from './ClassProposalStatusScreen';
 export { ClassEnrollmentInboxScreen } from './ClassEnrollmentInboxScreen';
+export { ClassWorkspaceScreen } from './ClassWorkspaceScreen';
 
 export const StudentsScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();

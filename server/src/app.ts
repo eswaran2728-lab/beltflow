@@ -19,6 +19,7 @@ import noticesRoutes from './routes/notices.routes';
 import masterApplicationsRoutes from './routes/masterApplications.routes';
 import classApplicationsRoutes from './routes/classApplications.routes';
 import enrollmentApplicationsRoutes from './routes/enrollmentApplications.routes';
+import dashboardRoutes from './routes/dashboard.routes';
 
 const app = express();
 
@@ -126,6 +127,7 @@ app.use('/api/v1/notices', noticesRoutes);
 app.use('/api/v1/master-applications', masterApplicationsRoutes);
 app.use('/api/v1/class-applications', classApplicationsRoutes);
 app.use('/api/v1/enrollment-applications', enrollmentApplicationsRoutes);
+app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/persatuans', organizationRoutes);
 
 // Global Error Handler

@@ -589,6 +589,7 @@ ALTER TABLE classes ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE classes ADD COLUMN IF NOT EXISTS contact_channel VARCHAR(255);
 ALTER TABLE classes ADD COLUMN IF NOT EXISTS proposing_master_id TEXT REFERENCES users(id) ON DELETE SET NULL;
 ALTER TABLE classes ADD COLUMN IF NOT EXISTS application_id TEXT REFERENCES class_applications(id) ON DELETE SET NULL;
+ALTER TABLE classes ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 1;
 
 -- D. Class Leadership History (prevents overlapping primary leaders, tracks substitutes)
 CREATE TABLE IF NOT EXISTS class_leaderships (

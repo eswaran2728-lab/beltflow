@@ -10,6 +10,7 @@ import {
   CreateClassScreen,
   ClassProposalStatusScreen,
   ClassEnrollmentInboxScreen,
+  ClassWorkspaceScreen,
   StudentsScreen,
   AttendanceScreen,
   GradingScreen,
@@ -30,6 +31,9 @@ function MasterClassesStackNavigator(props: RoleNavigatorProps) {
     <ClassesStack.Navigator screenOptions={{ headerShown: false }}>
       <ClassesStack.Screen name="ClassesList">
         {navProps => <ClassesScreen {...props} {...navProps} />}
+      </ClassesStack.Screen>
+      <ClassesStack.Screen name="ClassWorkspace">
+        {navProps => <ClassWorkspaceScreen {...props} {...navProps} />}
       </ClassesStack.Screen>
       <ClassesStack.Screen name="Students">
         {navProps => <StudentsScreen {...props} {...navProps} />}

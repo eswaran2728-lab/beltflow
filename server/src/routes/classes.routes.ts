@@ -726,4 +726,247 @@ router.patch('/sessions/:sessionId', authenticateJWT, async (req: Request, res: 
   }
 });
 
+// -------------------------------------------------------------------------
+// TASK H06: Master Class Workspace, Authorized Rosters & Class Settings
+// -------------------------------------------------------------------------
+
+// GET /classes/:classId/workspace — Master Operational Workspace Summary
+router.get('/:classId/workspace', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    if (!(await assignedMasterAccess(req.user!, req.params.classId))) {
+      return res.status(403).json({ error: 'You are not authorized to access this class workspace.' });
+    }
+
+    const classRes = await dbClient.query(
+      `SELECT c.*, o.name AS organization_name
+       FROM classes c
+       JOIN organizations o ON o.id = c.organization_id
+       WHERE c.id = $1`,
+      [req.params.classId]
+    );
+    if (!classRes.rowCount) {
+      return res.status(404).json({ error: 'Class not found.' });
+    }
+    const classRow = classRes.rows[0];
+
+    // Canonical active enrollment count
+    const activeCountRes = await dbClient.query(
+      "SELECT COUNT(*)::int AS count FROM class_enrollments WHERE class_id = $1 AND status = 'ACTIVE'",
+      [req.params.classId]
+    );
+    const activeStudentsCount = activeCountRes.rows[0]?.count || 0;
+    const capacity = classRow.capacity || 30;
+    const availableSpots = Math.max(0, capacity - activeStudentsCount);
+
+    // Pending and waitlisted enrollment application counts
+    const appsCountRes = await dbClient.query(
+      `SELECT
+         COUNT(*) FILTER (WHERE status = 'SUBMITTED' OR status = 'UNDER_REVIEW' OR status = 'NEEDS_INFORMATION')::int AS pending_count,
+         COUNT(*) FILTER (WHERE status = 'WAITLISTED')::int AS waitlisted_count
+       FROM enrollment_applications
+       WHERE class_id = $1`,
+      [req.params.classId]
+    );
+    const pendingApplicationsCount = appsCountRes.rows[0]?.pending_count || 0;
+    const waitlistedApplicationsCount = appsCountRes.rows[0]?.waitlisted_count || 0;
+
+    // Training groups for this class
+    const groupsRes = await dbClient.query(
+      'SELECT * FROM training_groups WHERE class_id = $1 ORDER BY name ASC',
+      [req.params.classId]
+    );
+
+    // Today's sessions
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const todaySessionsRes = await dbClient.query(
+      `SELECT ts.*, tg.name AS group_name
+       FROM training_sessions ts
+       LEFT JOIN training_groups tg ON tg.id = ts.group_id
+       WHERE ts.class_id = $1 AND (ts.session_date = CURRENT_DATE::text OR ts.session_date = $2)
+       ORDER BY ts.start_time ASC`,
+      [req.params.classId, todayStr]
+    );
+
+    // Upcoming sessions
+    const upcomingSessionsRes = await dbClient.query(
+      `SELECT ts.*, tg.name AS group_name
+       FROM training_sessions ts
+       LEFT JOIN training_groups tg ON tg.id = ts.group_id
+       WHERE ts.class_id = $1 AND ts.session_date >= $2
+       ORDER BY ts.session_date ASC, ts.start_time ASC
+       LIMIT 10`,
+      [req.params.classId, todayStr]
+    );
+
+    // Recent notices for this class or organization
+    const noticesRes = await dbClient.query(
+      `SELECT * FROM notices
+       WHERE class_id = $1 OR (class_id IS NULL AND organization_id = $2)
+       ORDER BY created_at DESC
+       LIMIT 10`,
+      [req.params.classId, classRow.organization_id]
+    );
+
+    return res.json({
+      class: classRow,
+      activeStudentsCount,
+      availableSpots,
+      pendingApplicationsCount,
+      waitlistedApplicationsCount,
+      trainingGroups: groupsRes.rows,
+      todaySessions: todaySessionsRes.rows,
+      upcomingSessions: upcomingSessionsRes.rows,
+      recentNotices: noticesRes.rows,
+    });
+  } catch (err: any) {
+    console.error('[Class Workspace error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
+// GET /classes/:classId/students — Authorized Canonical Class Roster
+router.get('/:classId/students', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    if (!(await assignedMasterAccess(req.user!, req.params.classId))) {
+      return res.status(403).json({ error: 'You are not authorized to view this class roster.' });
+    }
+
+    const limit = Math.min(Math.max(1, parseInt(req.query.limit as string) || 50), 100);
+    const offset = Math.max(0, parseInt(req.query.offset as string) || 0);
+    const search = (req.query.search as string || '').trim();
+    const groupId = (req.query.groupId as string || '').trim();
+
+    const conditions = ["ce.class_id = $1", "ce.status = 'ACTIVE'"];
+    const params: any[] = [req.params.classId];
+
+    if (search) {
+      params.push(`%${search}%`);
+      conditions.push(`(s.full_name ILIKE $${params.length} OR s.ic_number ILIKE $${params.length})`);
+    }
+    if (groupId) {
+      params.push(groupId);
+      conditions.push(`s.group_id = $${params.length}`);
+    }
+
+    const whereClause = conditions.join(' AND ');
+
+    const countRes = await dbClient.query(
+      `SELECT COUNT(*)::int AS total
+       FROM class_enrollments ce
+       JOIN students s ON s.id = ce.student_id
+       WHERE ${whereClause}`,
+      params
+    );
+    const total = countRes.rows[0]?.total || 0;
+
+    const dataParams = [...params, limit, offset];
+    const dataRes = await dbClient.query(
+      `SELECT
+         s.id,
+         s.full_name,
+         s.belt_rank,
+         s.group_id,
+         tg.name AS group_name,
+         s.status AS student_status,
+         ce.status AS enrollment_status,
+         ce.effective_from AS enrolled_at,
+         s.ic_number
+       FROM class_enrollments ce
+       JOIN students s ON s.id = ce.student_id
+       LEFT JOIN training_groups tg ON tg.id = s.group_id
+       WHERE ${whereClause}
+       ORDER BY s.full_name ASC
+       LIMIT $${dataParams.length - 1} OFFSET $${dataParams.length}`,
+      dataParams
+    );
+
+    // Protect sensitive child data: mask IC in standard roster views
+    const students = dataRes.rows.map((row) => ({
+      ...row,
+      ic_number: row.ic_number && row.ic_number.length > 4 ? `******-**-${row.ic_number.slice(-4)}` : '****',
+    }));
+
+    return res.json({
+      students,
+      pagination: {
+        total,
+        limit,
+        offset,
+      },
+    });
+  } catch (err: any) {
+    console.error('[Class Students error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
+// PATCH /classes/:classId/settings — Update Permitted Class Settings
+router.patch('/:classId/settings', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    if (!(await assignedMasterAccess(req.user!, req.params.classId))) {
+      return res.status(403).json({ error: 'You are not authorized to update this class settings.' });
+    }
+
+    const {
+      venueDetails,
+      contactChannel,
+      operationalStatus,
+      enrollmentAvailability,
+      description,
+      expectedVersion,
+    } = req.body;
+
+    if (expectedVersion !== undefined) {
+      const vCheck = await dbClient.query('SELECT version FROM classes WHERE id = $1', [req.params.classId]);
+      if (vCheck.rowCount && vCheck.rows[0].version !== expectedVersion) {
+        return res.status(409).json({ error: 'Version conflict. Settings have been modified by another request.' });
+      }
+    }
+
+    const updated = await dbClient.query(
+      `UPDATE classes SET
+         venue_details = COALESCE($1, venue_details),
+         contact_channel = COALESCE($2, contact_channel),
+         operational_status = COALESCE($3, operational_status),
+         enrollment_availability = COALESCE($4, enrollment_availability),
+         description = COALESCE($5, description),
+         version = COALESCE(version, 1) + 1
+       WHERE id = $6
+       RETURNING *`,
+      [
+        venueDetails?.trim() ?? null,
+        contactChannel?.trim() ?? null,
+        operationalStatus?.trim() ?? null,
+        enrollmentAvailability?.trim() ?? null,
+        description?.trim() ?? null,
+        req.params.classId,
+      ]
+    );
+
+    if (!updated.rowCount) {
+      return res.status(404).json({ error: 'Class not found.' });
+    }
+
+    await dbClient.query(
+      `INSERT INTO audit_logs (id, action, details, user_role, user_email)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [
+        newId('audit'),
+        'Class Settings Updated',
+        `Class ${req.params.classId} settings updated by Master`,
+        req.user!.role,
+        req.user!.email,
+      ]
+    );
+
+    return res.json({
+      message: 'Class settings updated successfully',
+      class: updated.rows[0],
+    });
+  } catch (err: any) {
+    console.error('[Class Settings error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
 export default router;
