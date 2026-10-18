@@ -114,6 +114,55 @@ router.get('/organization/:orgId', authenticateJWT, requirePermission(Permission
   }
 });
 
+// Master class enrollment inbox (assigned Master only)
+router.get('/:classId/enrollment-applications', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const user = req.user!;
+    if (user.role !== UserRole.MASTER) {
+      return res.status(403).json({ error: 'Master role required.' });
+    }
+
+    const classRes = await dbClient.query('SELECT * FROM classes WHERE id = $1', [req.params.classId]);
+    if (classRes.rowCount === 0) return res.status(404).json({ error: 'Class not found.' });
+    const cls = classRes.rows[0];
+
+    if (cls.organization_id !== user.organizationId) {
+      return res.status(403).json({ error: 'Cross-organization class access denied.' });
+    }
+
+    // Verify Master is assigned or holds leadership
+    const leadershipRes = await dbClient.query(
+      'SELECT 1 FROM class_leaderships WHERE class_id = $1 AND master_id = $2 AND is_active = TRUE',
+      [cls.id, user.id]
+    );
+    if (leadershipRes.rowCount === 0) {
+      const coachRes = await dbClient.query(
+        'SELECT 1 FROM coach_class_assignments WHERE class_id = $1 AND coach_id = $2',
+        [cls.id, user.id]
+      );
+      if (coachRes.rowCount === 0) {
+        return res.status(403).json({ error: 'Master is not assigned to this class.' });
+      }
+    }
+
+    const result = await dbClient.query(
+      `SELECT ea.*, s.full_name AS student_full_name, s.ic_number AS student_ic, s.belt_rank AS student_belt,
+              s.phone AS student_phone, u.full_name AS guardian_name, u.phone AS guardian_phone
+       FROM enrollment_applications ea
+       JOIN students s ON s.id = ea.student_id
+       LEFT JOIN users u ON u.id = ea.guardian_id
+       WHERE ea.class_id = $1
+       ORDER BY ea.created_at DESC`,
+      [cls.id]
+    );
+
+    return res.json({ applications: result.rows });
+  } catch (err: any) {
+    console.error('[Class enrollment applications error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'Failed to fetch applications.') });
+  }
+});
+
 // Set a class's monthly tuition fee (assigned MASTER only). requirePermission
 // derives targetClassId from req.params.classId and rejects any Master not
 // assigned to it (see rbac.ts) — Persatuan Admins, Super Admin, Parents,

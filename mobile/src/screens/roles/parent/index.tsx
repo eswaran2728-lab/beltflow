@@ -492,6 +492,7 @@ export const ParentProfileScreen: React.FC<RoleScreenProps> = props => {
 };
 
 export { AvailableClassesScreen } from './AvailableClassesScreen';
+export { MyApplicationsScreen } from '../student/MyApplicationsScreen';
 
 const styles = StyleSheet.create({
   identityCard: {

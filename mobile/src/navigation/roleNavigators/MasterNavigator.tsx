@@ -9,6 +9,7 @@ import {
   ClassesScreen,
   CreateClassScreen,
   ClassProposalStatusScreen,
+  ClassEnrollmentInboxScreen,
   StudentsScreen,
   AttendanceScreen,
   GradingScreen,
@@ -38,6 +39,9 @@ function MasterClassesStackNavigator(props: RoleNavigatorProps) {
       </ClassesStack.Screen>
       <ClassesStack.Screen name="ClassProposalStatus">
         {navProps => <ClassProposalStatusScreen {...props} {...navProps} />}
+      </ClassesStack.Screen>
+      <ClassesStack.Screen name="ClassEnrollmentInbox">
+        {navProps => <ClassEnrollmentInboxScreen {...props} {...navProps} />}
       </ClassesStack.Screen>
     </ClassesStack.Navigator>
   );

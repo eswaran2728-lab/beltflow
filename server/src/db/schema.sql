@@ -649,6 +649,33 @@ CREATE TABLE IF NOT EXISTS enrollment_applications (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Additive columns on enrollment_applications (Task H05)
+ALTER TABLE enrollment_applications ADD COLUMN IF NOT EXISTS applicant_type VARCHAR(50) NOT NULL DEFAULT 'STUDENT'; -- 'STUDENT', 'PARENT'
+ALTER TABLE enrollment_applications ADD COLUMN IF NOT EXISTS submitted_by_user_id TEXT REFERENCES users(id) ON DELETE SET NULL;
+ALTER TABLE enrollment_applications ADD COLUMN IF NOT EXISTS student_name VARCHAR(255);
+ALTER TABLE enrollment_applications ADD COLUMN IF NOT EXISTS ic_number VARCHAR(50);
+ALTER TABLE enrollment_applications ADD COLUMN IF NOT EXISTS date_of_birth VARCHAR(20);
+ALTER TABLE enrollment_applications ADD COLUMN IF NOT EXISTS gender VARCHAR(20);
+ALTER TABLE enrollment_applications ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+ALTER TABLE enrollment_applications ADD COLUMN IF NOT EXISTS emergency_contact_name VARCHAR(255);
+ALTER TABLE enrollment_applications ADD COLUMN IF NOT EXISTS emergency_contact_phone VARCHAR(50);
+ALTER TABLE enrollment_applications ADD COLUMN IF NOT EXISTS medical_notes TEXT;
+ALTER TABLE enrollment_applications ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE enrollment_applications ADD COLUMN IF NOT EXISTS requested_information TEXT;
+ALTER TABLE enrollment_applications ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+ALTER TABLE enrollment_applications ADD COLUMN IF NOT EXISTS consent_accepted BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE enrollment_applications ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ;
+ALTER TABLE enrollment_applications ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(255);
+ALTER TABLE enrollment_applications ADD COLUMN IF NOT EXISTS idempotency_payload_hash VARCHAR(64);
+
+CREATE INDEX IF NOT EXISTS idx_enrollment_applications_org_status ON enrollment_applications(organization_id, status);
+CREATE INDEX IF NOT EXISTS idx_enrollment_applications_class_status ON enrollment_applications(class_id, status);
+CREATE INDEX IF NOT EXISTS idx_enrollment_applications_student ON enrollment_applications(student_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_enrollment_applications_idempotency ON enrollment_applications(idempotency_key) WHERE idempotency_key IS NOT NULL;
+
+-- Additive columns on class_enrollments (Task H05)
+ALTER TABLE class_enrollments ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 1;
+
 -- Additive columns on master_applications (Task H03)
 ALTER TABLE master_applications ADD COLUMN IF NOT EXISTS applicant_name VARCHAR(255);
 ALTER TABLE master_applications ADD COLUMN IF NOT EXISTS qualifications TEXT;

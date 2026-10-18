@@ -493,6 +493,8 @@ export const StudentProfileScreen: React.FC<RoleScreenProps> = props => {
   );
 };
 
+export { MyApplicationsScreen } from './MyApplicationsScreen';
+
 const styles = StyleSheet.create({
   identityCard: {
     padding: 16,

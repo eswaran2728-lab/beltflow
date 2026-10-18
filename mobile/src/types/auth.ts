@@ -22,6 +22,7 @@ export interface AuthUser {
   assignedClassIds?: string[];
   linkedStudentIds?: string[];
   affiliationStatus?: string;
+  phone?: string;
 }
 
 export interface LoginCredentials {

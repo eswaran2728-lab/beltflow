@@ -357,6 +357,7 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
 export { ClassesScreen } from './ClassesScreen';
 export { CreateClassScreen } from './CreateClassScreen';
 export { ClassProposalStatusScreen } from './ClassProposalStatusScreen';
+export { ClassEnrollmentInboxScreen } from './ClassEnrollmentInboxScreen';
 
 export const StudentsScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();

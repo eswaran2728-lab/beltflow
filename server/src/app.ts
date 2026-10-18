@@ -18,6 +18,7 @@ import skillsRoutes from './routes/skills.routes';
 import noticesRoutes from './routes/notices.routes';
 import masterApplicationsRoutes from './routes/masterApplications.routes';
 import classApplicationsRoutes from './routes/classApplications.routes';
+import enrollmentApplicationsRoutes from './routes/enrollmentApplications.routes';
 
 const app = express();
 
@@ -124,6 +125,7 @@ app.use('/api/v1/skills', skillsRoutes);
 app.use('/api/v1/notices', noticesRoutes);
 app.use('/api/v1/master-applications', masterApplicationsRoutes);
 app.use('/api/v1/class-applications', classApplicationsRoutes);
+app.use('/api/v1/enrollment-applications', enrollmentApplicationsRoutes);
 app.use('/api/v1/persatuans', organizationRoutes);
 
 // Global Error Handler

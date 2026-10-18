@@ -44,3 +44,5 @@ scratch/
 *.pgdump
 backups/
 db_backups/
+.claude/
+Codex Image*.png

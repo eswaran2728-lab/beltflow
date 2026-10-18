@@ -166,7 +166,14 @@ export const ClassesScreen: React.FC<ClassesScreenProps> = ({
                   </View>
 
                   {/* Operational actions: ONLY allowed for approved classes */}
-                  <View style={styles.operationalActions}>
+                  <View style={[styles.operationalActions, { flexDirection: 'row', gap: spacing.xs, justifyContent: 'flex-end' }]}>
+                    <Button
+                      label="Applications"
+                      onPress={() => navigation?.navigate?.('ClassEnrollmentInbox', { classId: cls.id, className: cls.name })}
+                      variant="outline"
+                      size="sm"
+                      testID={`btn-inbox-${cls.id}`}
+                    />
                     <Button
                       label="Manage Class"
                       onPress={() => navigation?.navigate?.('Attendance', { classId: cls.id })}

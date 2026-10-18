@@ -52,6 +52,7 @@ export type MasterClassesStackParamList = {
   Students: { classId?: string } | undefined;
   CreateClass: undefined;
   ClassProposalStatus: undefined;
+  ClassEnrollmentInbox: { classId: string; className?: string };
 };
 
 export type MasterTabParamList = {

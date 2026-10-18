@@ -1,5 +1,17 @@
+import crypto from 'crypto';
 import { dbClient, SqlTransactionClient } from '../db/client';
 import { AuthUserContext, UserRole } from './rbac';
+
+export class AuthorityError extends Error {
+  statusCode: number;
+  code: string;
+  constructor(message: string, statusCode: number = 400, code: string = 'AUTHORITY_ERROR') {
+    super(message);
+    this.name = 'AuthorityError';
+    this.statusCode = statusCode;
+    this.code = code;
+  }
+}
 
 export enum AuthorityCapability {
   MASTER_AFFILIATION_MANAGE = 'MASTER_AFFILIATION_MANAGE',
@@ -766,3 +778,574 @@ export async function getLegacyReconciliationReport(orgId?: string): Promise<Leg
     })),
   };
 }
+
+/**
+ * Atomic Master Approval for Student Class Enrollment (Task H05)
+ */
+export async function approveEnrollment(params: {
+  applicationId: string;
+  expectedVersion: number;
+  idempotencyKey?: string;
+  reviewerMasterId: string;
+  notes?: string;
+}): Promise<{ application: any; student: any; enrollment: any; idempotentReplay?: boolean }> {
+  return await dbClient.transaction(async (txClient) => {
+    // 1. Authenticate Master
+    const masterRes = await txClient.query(
+      'SELECT id, organization_id, email, full_name, role, status FROM users WHERE id = $1',
+      [params.reviewerMasterId]
+    );
+    if (masterRes.rowCount === 0) {
+      throw new AuthorityError('Master user not found.', 404, 'MASTER_NOT_FOUND');
+    }
+    const master = masterRes.rows[0];
+    if (master.role !== UserRole.MASTER || master.status !== 'ACTIVE') {
+      throw new AuthorityError('Only active Masters can approve student enrollment.', 403, 'ROLE_UNAUTHORIZED');
+    }
+
+    // 2. Lock application and inspect status & idempotency
+    const appRes = await txClient.query(
+      'SELECT * FROM enrollment_applications WHERE id = $1 FOR UPDATE',
+      [params.applicationId]
+    );
+    if (appRes.rowCount === 0) {
+      throw new AuthorityError('Enrollment application not found.', 404, 'APPLICATION_NOT_FOUND');
+    }
+    const app = appRes.rows[0];
+
+    const payloadHash = params.idempotencyKey
+      ? crypto.createHash('sha256').update(JSON.stringify({ decision: 'APPROVE', notes: params.notes || null })).digest('hex')
+      : null;
+
+    if (params.idempotencyKey && app.idempotency_key === params.idempotencyKey) {
+      if (app.idempotency_payload_hash && app.idempotency_payload_hash !== payloadHash) {
+        throw new AuthorityError('Payload mismatch for existing idempotency key.', 422, 'IDEMPOTENCY_PAYLOAD_MISMATCH');
+      }
+      if (app.status === 'APPROVED') {
+        const stuRes = await txClient.query('SELECT * FROM students WHERE id = $1', [app.student_id]);
+        const enrRes = await txClient.query(
+          "SELECT * FROM class_enrollments WHERE student_id = $1 AND class_id = $2 AND status = 'ACTIVE' LIMIT 1",
+          [app.student_id, app.class_id]
+        );
+        return {
+          application: app,
+          student: stuRes.rows[0] || null,
+          enrollment: enrRes.rows[0] || null,
+          idempotentReplay: true,
+        };
+      }
+    }
+
+    // 3. Validate expectedVersion
+    if (Number(app.version) !== Number(params.expectedVersion)) {
+      throw new AuthorityError(
+        `Stale application version. Expected ${params.expectedVersion}, but current version is ${app.version}.`,
+        409,
+        'VERSION_CONFLICT'
+      );
+    }
+
+    // 4. Verify application status
+    if (app.status === 'APPROVED') {
+      throw new AuthorityError('Application is already approved.', 409, 'ALREADY_APPROVED');
+    }
+    if (!['SUBMITTED', 'WAITLISTED', 'NEEDS_INFORMATION', 'DRAFT'].includes(app.status)) {
+      throw new AuthorityError(`Application cannot be approved from current status: ${app.status}.`, 400, 'INVALID_STATUS');
+    }
+
+    // 5. Verify active Master affiliation with this organization
+    const affilRes = await txClient.query(
+      `SELECT id, status, effective_from, effective_to FROM master_affiliations
+       WHERE master_id = $1 AND organization_id = $2
+       ORDER BY created_at DESC LIMIT 1`,
+      [master.id, app.organization_id]
+    );
+    if (affilRes.rowCount === 0 || affilRes.rows[0].status !== 'ACTIVE') {
+      // Check legacy fallback
+      const legacyCheck = await txClient.query(
+        'SELECT 1 FROM coach_class_assignments WHERE coach_id = $1',
+        [master.id]
+      );
+      if (legacyCheck.rowCount === 0) {
+        throw new AuthorityError('Master does not have an active verified affiliation with this organization.', 403, 'AFFILIATION_NOT_ACTIVE');
+      }
+    } else {
+      const affil = affilRes.rows[0];
+      const now = new Date();
+      if (affil.effective_from && new Date(affil.effective_from) > now) {
+        throw new AuthorityError('Master affiliation effective date is in the future.', 403, 'AFFILIATION_NOT_EFFECTIVE');
+      }
+      if (affil.effective_to && new Date(affil.effective_to) < now) {
+        throw new AuthorityError('Master affiliation has expired.', 403, 'AFFILIATION_EXPIRED');
+      }
+    }
+
+    // 6. Lock Class & verify class status, availability and capacity
+    const classRes = await txClient.query(
+      'SELECT * FROM classes WHERE id = $1 FOR UPDATE',
+      [app.class_id]
+    );
+    if (classRes.rowCount === 0) {
+      throw new AuthorityError('Class not found.', 404, 'CLASS_NOT_FOUND');
+    }
+    const cls = classRes.rows[0];
+
+    if (cls.organization_id !== app.organization_id) {
+      throw new AuthorityError('Cross-organization enrollment is strictly prohibited.', 403, 'CROSS_ORGANIZATION');
+    }
+    if (cls.approval_status !== 'APPROVED') {
+      throw new AuthorityError('Class proposal is not approved by Persatuan Admin.', 400, 'CLASS_NOT_APPROVED');
+    }
+    if (cls.operational_status !== 'ACTIVE') {
+      throw new AuthorityError('Class is not in active operational status.', 400, 'CLASS_NOT_ACTIVE');
+    }
+    if (cls.enrollment_availability === 'CLOSED') {
+      throw new AuthorityError('Class is closed for new enrollments.', 409, 'CLASS_CLOSED');
+    }
+
+    // 7. Verify current Master authority over this class
+    const leadershipRes = await txClient.query(
+      `SELECT is_active, leadership_type, effective_from, effective_to
+       FROM class_leaderships
+       WHERE class_id = $1 AND master_id = $2 AND is_active = TRUE
+       LIMIT 1`,
+      [cls.id, master.id]
+    );
+    if (leadershipRes.rowCount === 0) {
+      const legAssign = await txClient.query(
+        'SELECT 1 FROM coach_class_assignments WHERE class_id = $1 AND coach_id = $2',
+        [cls.id, master.id]
+      );
+      if (legAssign.rowCount === 0) {
+        throw new AuthorityError('Master does not hold active leadership for this class.', 403, 'NOT_CLASS_LEADER');
+      }
+    }
+
+    // 8. Atomically check capacity
+    const capRes = await txClient.query(
+      "SELECT count(*)::int AS active_count FROM class_enrollments WHERE class_id = $1 AND status = 'ACTIVE'",
+      [cls.id]
+    );
+    const activeCount = Number(capRes.rows[0]?.active_count || 0);
+    const capacityLimit = Number(cls.capacity || 30);
+    if (activeCount >= capacityLimit) {
+      throw new AuthorityError(`Class capacity reached (${activeCount}/${capacityLimit}). Cannot enroll student.`, 409, 'CAPACITY_REACHED');
+    }
+
+    // 9. Lock Student and verify tenant isolation
+    const stuRes = await txClient.query(
+      'SELECT * FROM students WHERE id = $1 FOR UPDATE',
+      [app.student_id]
+    );
+    if (stuRes.rowCount === 0) {
+      throw new AuthorityError('Student record not found.', 404, 'STUDENT_NOT_FOUND');
+    }
+    const stu = stuRes.rows[0];
+    if (stu.organization_id !== app.organization_id) {
+      throw new AuthorityError('Student does not belong to the same organization as the class.', 403, 'CROSS_ORGANIZATION');
+    }
+
+    // 10. Update Student to ACTIVE and link class_id (preserving canonical student ID)
+    const classFee = Number(cls.monthly_fee || 120.0);
+    const updatedStuRes = await txClient.query(
+      `UPDATE students SET
+         class_id = $1,
+         status = 'ACTIVE',
+         monthly_fee = CASE WHEN fee_override = TRUE THEN monthly_fee ELSE $2 END,
+         registered_at = COALESCE(registered_at, CURRENT_TIMESTAMP)
+       WHERE id = $3
+       RETURNING *`,
+      [cls.id, classFee, stu.id]
+    );
+    const updatedStudent = updatedStuRes.rows[0];
+
+    // If student has user_id, activate user account if PENDING_VERIFICATION
+    if (stu.user_id) {
+      await txClient.query(
+        "UPDATE users SET status = 'ACTIVE', updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND status = 'PENDING_VERIFICATION'",
+        [stu.user_id]
+      );
+    }
+
+    // 11. Create or activate class_enrollments record
+    const existingEnr = await txClient.query(
+      'SELECT id, status FROM class_enrollments WHERE student_id = $1 AND class_id = $2',
+      [stu.id, cls.id]
+    );
+    let enrollment: any;
+    if (existingEnr.rowCount > 0) {
+      const enrUpd = await txClient.query(
+        `UPDATE class_enrollments SET
+           status = 'ACTIVE',
+           effective_from = CURRENT_TIMESTAMP,
+           effective_to = NULL,
+           approved_by_master_id = $1,
+           approved_at = CURRENT_TIMESTAMP,
+           version = version + 1,
+           updated_at = CURRENT_TIMESTAMP
+         WHERE student_id = $2 AND class_id = $3
+         RETURNING *`,
+        [master.id, stu.id, cls.id]
+      );
+      enrollment = enrUpd.rows[0];
+    } else {
+      const enrId = `enr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const enrIns = await txClient.query(
+        `INSERT INTO class_enrollments (
+           id, student_id, class_id, organization_id, status, effective_from,
+           is_primary, provenance, approved_by_master_id, approved_at, version
+         ) VALUES ($1, $2, $3, $4, 'ACTIVE', CURRENT_TIMESTAMP, TRUE, 'MASTER_APPROVED', $5, CURRENT_TIMESTAMP, 1)
+         RETURNING *`,
+        [enrId, stu.id, cls.id, cls.organization_id, master.id]
+      );
+      enrollment = enrIns.rows[0];
+    }
+
+    // 12. Update application to APPROVED with version increment & idempotency hash
+    const updAppRes = await txClient.query(
+      `UPDATE enrollment_applications SET
+         status = 'APPROVED',
+         reviewed_by_master_id = $1,
+         reviewed_at = CURRENT_TIMESTAMP,
+         review_notes = $2,
+         version = version + 1,
+         idempotency_key = COALESCE($3, idempotency_key),
+         idempotency_payload_hash = COALESCE($4, idempotency_payload_hash),
+         updated_at = CURRENT_TIMESTAMP
+       WHERE id = $5
+       RETURNING *`,
+      [master.id, params.notes || null, params.idempotencyKey || null, payloadHash, app.id]
+    );
+    const updatedApplication = updAppRes.rows[0];
+
+    // 13. Audit Log
+    const auditId = `audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    await txClient.query(
+      `INSERT INTO audit_logs (id, action, details, user_role, user_email)
+       VALUES ($1, 'Student Enrollment Approved', $2, 'MASTER', $3)`,
+      [auditId, `Enrollment approved for application ${app.id}, student ${stu.id} into class ${cls.id} (${cls.name})`, master.email]
+    );
+
+    // 14. Notification Outbox
+    const outboxId = `out_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    await txClient.query(
+      `INSERT INTO notification_outbox (id, organization_id, event_type, aggregate_type, aggregate_id, payload, status)
+       VALUES ($1, $2, 'StudentEnrollmentApproved', 'enrollment_application', $3, $4, 'PENDING')`,
+      [
+        outboxId,
+        cls.organization_id,
+        app.id,
+        JSON.stringify({
+          applicationId: app.id,
+          studentId: stu.id,
+          studentName: stu.full_name,
+          classId: cls.id,
+          className: cls.name,
+          approvedByMasterId: master.id,
+          approvedAt: new Date().toISOString(),
+        }),
+      ]
+    );
+
+    return {
+      application: updatedApplication,
+      student: updatedStudent,
+      enrollment,
+      idempotentReplay: false,
+    };
+  });
+}
+
+/**
+ * Master requests further information for student enrollment application
+ */
+export async function requestInformationEnrollment(params: {
+  applicationId: string;
+  expectedVersion: number;
+  idempotencyKey?: string;
+  reviewerMasterId: string;
+  requestedInformation?: string;
+}): Promise<any> {
+  return await dbClient.transaction(async (txClient) => {
+    const masterRes = await txClient.query(
+      'SELECT id, organization_id, email, role, status FROM users WHERE id = $1',
+      [params.reviewerMasterId]
+    );
+    if (masterRes.rowCount === 0 || masterRes.rows[0].role !== UserRole.MASTER || masterRes.rows[0].status !== 'ACTIVE') {
+      throw new AuthorityError('Only active Masters can review enrollment.', 403, 'ROLE_UNAUTHORIZED');
+    }
+    const master = masterRes.rows[0];
+
+    const appRes = await txClient.query(
+      'SELECT * FROM enrollment_applications WHERE id = $1 FOR UPDATE',
+      [params.applicationId]
+    );
+    if (appRes.rowCount === 0) {
+      throw new AuthorityError('Enrollment application not found.', 404, 'APPLICATION_NOT_FOUND');
+    }
+    const app = appRes.rows[0];
+
+    const payloadHash = params.idempotencyKey
+      ? crypto.createHash('sha256').update(JSON.stringify({ decision: 'REQUEST_INFORMATION', info: params.requestedInformation?.trim() || null })).digest('hex')
+      : null;
+
+    if (params.idempotencyKey && app.idempotency_key === params.idempotencyKey) {
+      if (app.idempotency_payload_hash && app.idempotency_payload_hash !== payloadHash) {
+        throw new AuthorityError('Payload mismatch for existing idempotency key.', 422, 'IDEMPOTENCY_PAYLOAD_MISMATCH');
+      }
+      return app;
+    }
+
+    if (!params.requestedInformation || !params.requestedInformation.trim()) {
+      throw new AuthorityError('requestedInformation is required.', 400, 'REQUESTED_INFO_REQUIRED');
+    }
+
+    if (Number(app.version) !== Number(params.expectedVersion)) {
+      throw new AuthorityError(
+        `Stale application version. Expected ${params.expectedVersion}, but current version is ${app.version}.`,
+        409,
+        'VERSION_CONFLICT'
+      );
+    }
+
+    // Verify master authority over class
+    const leadershipRes = await txClient.query(
+      'SELECT 1 FROM class_leaderships WHERE class_id = $1 AND master_id = $2 AND is_active = TRUE',
+      [app.class_id, master.id]
+    );
+    if (leadershipRes.rowCount === 0) {
+      const legAssign = await txClient.query(
+        'SELECT 1 FROM coach_class_assignments WHERE class_id = $1 AND coach_id = $2',
+        [app.class_id, master.id]
+      );
+      if (legAssign.rowCount === 0) {
+        throw new AuthorityError('Master does not hold active leadership for this class.', 403, 'NOT_CLASS_LEADER');
+      }
+    }
+
+    const upd = await txClient.query(
+      `UPDATE enrollment_applications SET
+         status = 'NEEDS_INFORMATION',
+         requested_information = $1,
+         reviewed_by_master_id = $2,
+         reviewed_at = CURRENT_TIMESTAMP,
+         version = version + 1,
+         idempotency_key = COALESCE($3, idempotency_key),
+         idempotency_payload_hash = COALESCE($4, idempotency_payload_hash),
+         updated_at = CURRENT_TIMESTAMP
+       WHERE id = $5 RETURNING *`,
+      [params.requestedInformation.trim(), master.id, params.idempotencyKey || null, payloadHash, app.id]
+    );
+
+    const auditId = `audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    await txClient.query(
+      `INSERT INTO audit_logs (id, action, details, user_role, user_email)
+       VALUES ($1, 'Student Enrollment Information Requested', $2, 'MASTER', $3)`,
+      [auditId, `Information requested for application ${app.id}: ${params.requestedInformation.trim()}`, master.email]
+    );
+
+    const outboxId = `out_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    await txClient.query(
+      `INSERT INTO notification_outbox (id, organization_id, event_type, aggregate_type, aggregate_id, payload, status)
+       VALUES ($1, $2, 'StudentEnrollmentInformationRequested', 'enrollment_application', $3, $4, 'PENDING')`,
+      [outboxId, app.organization_id, app.id, JSON.stringify({ applicationId: app.id, studentId: app.student_id, classId: app.class_id, requestedInformation: params.requestedInformation.trim() })]
+    );
+
+    return upd.rows[0];
+  });
+}
+
+/**
+ * Master rejects student enrollment application
+ */
+export async function rejectEnrollment(params: {
+  applicationId: string;
+  expectedVersion: number;
+  idempotencyKey?: string;
+  reviewerMasterId: string;
+  rejectionReason?: string;
+}): Promise<any> {
+  return await dbClient.transaction(async (txClient) => {
+    const masterRes = await txClient.query(
+      'SELECT id, organization_id, email, role, status FROM users WHERE id = $1',
+      [params.reviewerMasterId]
+    );
+    if (masterRes.rowCount === 0 || masterRes.rows[0].role !== UserRole.MASTER || masterRes.rows[0].status !== 'ACTIVE') {
+      throw new AuthorityError('Only active Masters can review enrollment.', 403, 'ROLE_UNAUTHORIZED');
+    }
+    const master = masterRes.rows[0];
+
+    const appRes = await txClient.query(
+      'SELECT * FROM enrollment_applications WHERE id = $1 FOR UPDATE',
+      [params.applicationId]
+    );
+    if (appRes.rowCount === 0) {
+      throw new AuthorityError('Enrollment application not found.', 404, 'APPLICATION_NOT_FOUND');
+    }
+    const app = appRes.rows[0];
+
+    const payloadHash = params.idempotencyKey
+      ? crypto.createHash('sha256').update(JSON.stringify({ decision: 'REJECT', reason: params.rejectionReason?.trim() || null })).digest('hex')
+      : null;
+
+    if (params.idempotencyKey && app.idempotency_key === params.idempotencyKey) {
+      if (app.idempotency_payload_hash && app.idempotency_payload_hash !== payloadHash) {
+        throw new AuthorityError('Payload mismatch for existing idempotency key.', 422, 'IDEMPOTENCY_PAYLOAD_MISMATCH');
+      }
+      return app;
+    }
+
+    if (!params.rejectionReason || !params.rejectionReason.trim()) {
+      throw new AuthorityError('rejectionReason is required.', 400, 'REJECTION_REASON_REQUIRED');
+    }
+
+    if (Number(app.version) !== Number(params.expectedVersion)) {
+      throw new AuthorityError(
+        `Stale application version. Expected ${params.expectedVersion}, but current version is ${app.version}.`,
+        409,
+        'VERSION_CONFLICT'
+      );
+    }
+
+    // Verify master authority over class
+    const leadershipRes = await txClient.query(
+      'SELECT 1 FROM class_leaderships WHERE class_id = $1 AND master_id = $2 AND is_active = TRUE',
+      [app.class_id, master.id]
+    );
+    if (leadershipRes.rowCount === 0) {
+      const legAssign = await txClient.query(
+        'SELECT 1 FROM coach_class_assignments WHERE class_id = $1 AND coach_id = $2',
+        [app.class_id, master.id]
+      );
+      if (legAssign.rowCount === 0) {
+        throw new AuthorityError('Master does not hold active leadership for this class.', 403, 'NOT_CLASS_LEADER');
+      }
+    }
+
+    const upd = await txClient.query(
+      `UPDATE enrollment_applications SET
+         status = 'REJECTED',
+         rejection_reason = $1,
+         reviewed_by_master_id = $2,
+         reviewed_at = CURRENT_TIMESTAMP,
+         version = version + 1,
+         idempotency_key = COALESCE($3, idempotency_key),
+         idempotency_payload_hash = COALESCE($4, idempotency_payload_hash),
+         updated_at = CURRENT_TIMESTAMP
+       WHERE id = $5 RETURNING *`,
+      [params.rejectionReason.trim(), master.id, params.idempotencyKey || null, payloadHash, app.id]
+    );
+
+    const auditId = `audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    await txClient.query(
+      `INSERT INTO audit_logs (id, action, details, user_role, user_email)
+       VALUES ($1, 'Student Enrollment Rejected', $2, 'MASTER', $3)`,
+      [auditId, `Enrollment rejected for application ${app.id}: ${params.rejectionReason.trim()}`, master.email]
+    );
+
+    const outboxId = `out_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    await txClient.query(
+      `INSERT INTO notification_outbox (id, organization_id, event_type, aggregate_type, aggregate_id, payload, status)
+       VALUES ($1, $2, 'StudentEnrollmentRejected', 'enrollment_application', $3, $4, 'PENDING')`,
+      [outboxId, app.organization_id, app.id, JSON.stringify({ applicationId: app.id, studentId: app.student_id, classId: app.class_id, rejectionReason: params.rejectionReason.trim() })]
+    );
+
+    return upd.rows[0];
+  });
+}
+
+/**
+ * Master waitlists student enrollment application
+ */
+export async function waitlistEnrollment(params: {
+  applicationId: string;
+  expectedVersion: number;
+  idempotencyKey?: string;
+  reviewerMasterId: string;
+  notes?: string;
+}): Promise<any> {
+  return await dbClient.transaction(async (txClient) => {
+    const masterRes = await txClient.query(
+      'SELECT id, organization_id, email, role, status FROM users WHERE id = $1',
+      [params.reviewerMasterId]
+    );
+    if (masterRes.rowCount === 0 || masterRes.rows[0].role !== UserRole.MASTER || masterRes.rows[0].status !== 'ACTIVE') {
+      throw new AuthorityError('Only active Masters can review enrollment.', 403, 'ROLE_UNAUTHORIZED');
+    }
+    const master = masterRes.rows[0];
+
+    const appRes = await txClient.query(
+      'SELECT * FROM enrollment_applications WHERE id = $1 FOR UPDATE',
+      [params.applicationId]
+    );
+    if (appRes.rowCount === 0) {
+      throw new AuthorityError('Enrollment application not found.', 404, 'APPLICATION_NOT_FOUND');
+    }
+    const app = appRes.rows[0];
+
+    if (Number(app.version) !== Number(params.expectedVersion)) {
+      throw new AuthorityError(
+        `Stale application version. Expected ${params.expectedVersion}, but current version is ${app.version}.`,
+        409,
+        'VERSION_CONFLICT'
+      );
+    }
+
+    const payloadHash = params.idempotencyKey
+      ? crypto.createHash('sha256').update(JSON.stringify({ decision: 'WAITLIST', notes: params.notes || null })).digest('hex')
+      : null;
+
+    if (params.idempotencyKey && app.idempotency_key === params.idempotencyKey) {
+      if (app.idempotency_payload_hash && app.idempotency_payload_hash !== payloadHash) {
+        throw new AuthorityError('Payload mismatch for existing idempotency key.', 422, 'IDEMPOTENCY_PAYLOAD_MISMATCH');
+      }
+      return app;
+    }
+
+    // Verify master authority over class
+    const leadershipRes = await txClient.query(
+      'SELECT 1 FROM class_leaderships WHERE class_id = $1 AND master_id = $2 AND is_active = TRUE',
+      [app.class_id, master.id]
+    );
+    if (leadershipRes.rowCount === 0) {
+      const legAssign = await txClient.query(
+        'SELECT 1 FROM coach_class_assignments WHERE class_id = $1 AND coach_id = $2',
+        [app.class_id, master.id]
+      );
+      if (legAssign.rowCount === 0) {
+        throw new AuthorityError('Master does not hold active leadership for this class.', 403, 'NOT_CLASS_LEADER');
+      }
+    }
+
+    const upd = await txClient.query(
+      `UPDATE enrollment_applications SET
+         status = 'WAITLISTED',
+         review_notes = $1,
+         reviewed_by_master_id = $2,
+         reviewed_at = CURRENT_TIMESTAMP,
+         version = version + 1,
+         idempotency_key = COALESCE($3, idempotency_key),
+         idempotency_payload_hash = COALESCE($4, idempotency_payload_hash),
+         updated_at = CURRENT_TIMESTAMP
+       WHERE id = $5 RETURNING *`,
+      [params.notes || 'Waitlisted by Master', master.id, params.idempotencyKey || null, payloadHash, app.id]
+    );
+
+    const auditId = `audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    await txClient.query(
+      `INSERT INTO audit_logs (id, action, details, user_role, user_email)
+       VALUES ($1, 'Student Enrollment Waitlisted', $2, 'MASTER', $3)`,
+      [auditId, `Enrollment waitlisted for application ${app.id}`, master.email]
+    );
+
+    const outboxId = `out_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    await txClient.query(
+      `INSERT INTO notification_outbox (id, organization_id, event_type, aggregate_type, aggregate_id, payload, status)
+       VALUES ($1, $2, 'StudentEnrollmentWaitlisted', 'enrollment_application', $3, $4, 'PENDING')`,
+      [outboxId, app.organization_id, app.id, JSON.stringify({ applicationId: app.id, studentId: app.student_id, classId: app.class_id })]
+    );
+
+    return upd.rows[0];
+  });
+}
+
