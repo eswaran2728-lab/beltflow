@@ -779,5 +779,53 @@ CREATE TABLE IF NOT EXISTS student_rank_history (
 
 CREATE INDEX IF NOT EXISTS idx_student_rank_history_student ON student_rank_history(student_id, awarded_at DESC);
 
+-- ============================================================================
+-- 15. Task H11: Protected Student Safety, Consent, Notices & Acknowledgements
+-- ============================================================================
+
+ALTER TABLE notices ADD COLUMN IF NOT EXISTS requires_acknowledgement BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE notices ADD COLUMN IF NOT EXISTS acknowledgement_deadline TIMESTAMPTZ;
+
+-- Protected Student Safety Profiles (Emergency contact, medical disclosures, allergies, and signed consent)
+CREATE TABLE IF NOT EXISTS student_safety_profiles (
+    id TEXT PRIMARY KEY,
+    student_id TEXT NOT NULL UNIQUE REFERENCES students(id) ON DELETE CASCADE,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    emergency_contact_name VARCHAR(255) NOT NULL,
+    emergency_contact_phone VARCHAR(50) NOT NULL,
+    emergency_contact_relationship VARCHAR(100) NOT NULL,
+    medical_conditions TEXT,
+    allergies TEXT,
+    dietary_restrictions TEXT,
+    blood_type VARCHAR(10),
+    activity_consent_given BOOLEAN NOT NULL DEFAULT TRUE,
+    medical_consent_given BOOLEAN NOT NULL DEFAULT TRUE,
+    photo_consent_given BOOLEAN NOT NULL DEFAULT FALSE,
+    consent_signed_by VARCHAR(255) NOT NULL,
+    consent_signed_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by TEXT NOT NULL REFERENCES users(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_student_safety_org ON student_safety_profiles(organization_id);
+CREATE INDEX IF NOT EXISTS idx_student_safety_student ON student_safety_profiles(student_id);
+
+-- Cryptographically Audited Notice Acknowledgements
+CREATE TABLE IF NOT EXISTS notice_acknowledgements (
+    id TEXT PRIMARY KEY,
+    notice_id TEXT NOT NULL REFERENCES notices(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    student_id TEXT REFERENCES students(id) ON DELETE CASCADE,
+    acknowledged_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ip_address VARCHAR(45),
+    notes TEXT,
+    UNIQUE (notice_id, user_id, student_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_notice_ack_notice ON notice_acknowledgements(notice_id);
+CREATE INDEX IF NOT EXISTS idx_notice_ack_user ON notice_acknowledgements(user_id);
+CREATE INDEX IF NOT EXISTS idx_notice_ack_student ON notice_acknowledgements(student_id);
+
 
 

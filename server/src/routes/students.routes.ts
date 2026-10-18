@@ -460,4 +460,142 @@ router.get('/:studentId', authenticateJWT, async (req: Request, res: Response) =
   }
 });
 
+// ============================================================================
+// Task H11: Protected Student Safety Profile Endpoints
+// ============================================================================
+
+// Get student safety profile (Emergency contact, medical, allergies, consent)
+// Strictly restricted to authorized assigned Master, linked Parent, or Student themselves.
+router.get('/:studentId/safety', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const access = await studentAccess(req.user!, req.params.studentId);
+    if (!access.student) return res.status(404).json({ error: 'Student not found.' });
+    if (!access.allowed) {
+      return res.status(403).json({ error: 'Access Denied: Not authorized to view student safety profile.' });
+    }
+
+    const safetyRes = await dbClient.query(
+      `SELECT * FROM student_safety_profiles WHERE student_id = $1`,
+      [req.params.studentId]
+    );
+
+    if (safetyRes.rowCount === 0) {
+      return res.json({
+        hasProfile: false,
+        safetyProfile: null,
+      });
+    }
+
+    return res.json({
+      hasProfile: true,
+      safetyProfile: safetyRes.rows[0],
+    });
+  } catch (err: any) {
+    console.error('[Database error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
+// Create or update student safety profile & medical / activity consents
+router.put('/:studentId/safety', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const access = await studentAccess(req.user!, req.params.studentId);
+    if (!access.student) return res.status(404).json({ error: 'Student not found.' });
+    if (!access.allowed) {
+      return res.status(403).json({ error: 'Access Denied: Not authorized to update student safety profile.' });
+    }
+
+    const {
+      emergencyContactName,
+      emergencyContactPhone,
+      emergencyContactRelationship,
+      medicalConditions,
+      allergies,
+      dietaryRestrictions,
+      bloodType,
+      activityConsentGiven = true,
+      medicalConsentGiven = true,
+      photoConsentGiven = false,
+      consentSignedBy,
+    } = req.body;
+
+    if (!emergencyContactName || !emergencyContactName.trim()) {
+      return res.status(400).json({ error: 'Emergency contact name is required.' });
+    }
+    if (!emergencyContactPhone || !emergencyContactPhone.trim()) {
+      return res.status(400).json({ error: 'Emergency contact phone is required.' });
+    }
+    if (!emergencyContactRelationship || !emergencyContactRelationship.trim()) {
+      return res.status(400).json({ error: 'Emergency contact relationship is required.' });
+    }
+    if (!consentSignedBy || !consentSignedBy.trim()) {
+      return res.status(400).json({ error: 'Consent signature is required.' });
+    }
+
+    const safetyId = `safe_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const student = access.student;
+
+    const upsertRes = await dbClient.query(
+      `INSERT INTO student_safety_profiles (
+         id, student_id, organization_id, emergency_contact_name, emergency_contact_phone,
+         emergency_contact_relationship, medical_conditions, allergies, dietary_restrictions,
+         blood_type, activity_consent_given, medical_consent_given, photo_consent_given,
+         consent_signed_by, updated_by, updated_at
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP)
+       ON CONFLICT (student_id) DO UPDATE SET
+         emergency_contact_name = EXCLUDED.emergency_contact_name,
+         emergency_contact_phone = EXCLUDED.emergency_contact_phone,
+         emergency_contact_relationship = EXCLUDED.emergency_contact_relationship,
+         medical_conditions = EXCLUDED.medical_conditions,
+         allergies = EXCLUDED.allergies,
+         dietary_restrictions = EXCLUDED.dietary_restrictions,
+         blood_type = EXCLUDED.blood_type,
+         activity_consent_given = EXCLUDED.activity_consent_given,
+         medical_consent_given = EXCLUDED.medical_consent_given,
+         photo_consent_given = EXCLUDED.photo_consent_given,
+         consent_signed_by = EXCLUDED.consent_signed_by,
+         updated_by = EXCLUDED.updated_by,
+         updated_at = CURRENT_TIMESTAMP
+       RETURNING *`,
+      [
+        safetyId,
+        student.id,
+        student.organization_id,
+        emergencyContactName.trim(),
+        emergencyContactPhone.trim(),
+        emergencyContactRelationship.trim(),
+        medicalConditions?.trim() || null,
+        allergies?.trim() || null,
+        dietaryRestrictions?.trim() || null,
+        bloodType?.trim() || null,
+        Boolean(activityConsentGiven),
+        Boolean(medicalConsentGiven),
+        Boolean(photoConsentGiven),
+        consentSignedBy.trim(),
+        req.user!.id,
+      ]
+    );
+
+    await dbClient.query(
+      `INSERT INTO audit_logs (id, action, details, user_role, user_email)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [
+        `audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        'Student Safety Profile Updated',
+        `Safety & consent profile updated for student ${student.full_name} (${student.id}) by ${req.user!.email}`,
+        req.user!.role,
+        req.user!.email,
+      ]
+    );
+
+    return res.status(200).json({
+      message: 'Student safety profile updated successfully.',
+      safetyProfile: upsertRes.rows[0],
+    });
+  } catch (err: any) {
+    console.error('[Database error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
 export default router;
