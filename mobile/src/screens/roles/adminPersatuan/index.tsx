@@ -337,6 +337,15 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
             testID="shortcut-ap-masters"
           />
           <Button
+            label="Belt Curriculum & Ranks"
+            onPress={() => navigation?.navigate('Curriculum')}
+            variant="secondary"
+            size="md"
+            fullWidth
+            rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
+            testID="shortcut-ap-curriculum"
+          />
+          <Button
             label="Academy Reports"
             onPress={() => navigation?.navigate('Reports')}
             variant="secondary"
@@ -466,3 +475,4 @@ const styles = StyleSheet.create({
 export * from './MasterApprovalsScreen';
 export * from './ClassApprovalsScreen';
 export * from './HandoverApprovalsScreen';
+export * from './CurriculumManagementScreen';

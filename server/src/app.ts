@@ -21,6 +21,7 @@ import classApplicationsRoutes from './routes/classApplications.routes';
 import enrollmentApplicationsRoutes from './routes/enrollmentApplications.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import handoverRoutes from './routes/handover.routes';
+import curriculumRoutes from './routes/curriculum.routes';
 
 const app = express();
 
@@ -130,6 +131,7 @@ app.use('/api/v1/class-applications', classApplicationsRoutes);
 app.use('/api/v1/enrollment-applications', enrollmentApplicationsRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/persatuans', organizationRoutes);
+app.use('/api/v1/curriculums', curriculumRoutes);
 app.use('/api/v1', handoverRoutes);
 
 // Global Error Handler

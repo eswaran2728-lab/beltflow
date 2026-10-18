@@ -729,5 +729,55 @@ CREATE INDEX IF NOT EXISTS idx_handover_org ON class_handover_requests(organizat
 CREATE INDEX IF NOT EXISTS idx_handover_incoming ON class_handover_requests(incoming_master_id, status);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_active_handover_per_class ON class_handover_requests(class_id) WHERE status IN ('REQUESTED', 'INCOMING_ACCEPTED', 'PERSATUAN_APPROVED');
 
+-- 19. Persatuan-Configurable Belt Curriculum (Tenant-Owned Versioning) (Task H09)
+CREATE TABLE IF NOT EXISTS persatuan_curriculums (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    system_name VARCHAR(255) NOT NULL,
+    martial_art_style VARCHAR(100) NOT NULL,
+    version INT NOT NULL DEFAULT 1,
+    status VARCHAR(50) NOT NULL DEFAULT 'DRAFT', -- 'DRAFT', 'PUBLISHED', 'ARCHIVED'
+    created_by TEXT REFERENCES users(id),
+    published_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_curriculum_org_status ON persatuan_curriculums(organization_id, status);
+CREATE INDEX IF NOT EXISTS idx_curriculum_version ON persatuan_curriculums(organization_id, version);
+
+CREATE TABLE IF NOT EXISTS curriculum_belt_ranks (
+    id TEXT PRIMARY KEY,
+    curriculum_id TEXT NOT NULL REFERENCES persatuan_curriculums(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    rank_order INT NOT NULL,
+    color_hex VARCHAR(50) NOT NULL,
+    text_color VARCHAR(50),
+    border_color VARCHAR(50),
+    min_months INT NOT NULL DEFAULT 0,
+    min_sessions INT NOT NULL DEFAULT 0,
+    grading_fee NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+    syllabus_category VARCHAR(100),
+    description TEXT,
+    is_dan_rank BOOLEAN NOT NULL DEFAULT FALSE,
+    dan_level INT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_curriculum_ranks_curriculum ON curriculum_belt_ranks(curriculum_id, rank_order);
+
+CREATE TABLE IF NOT EXISTS student_rank_history (
+    id TEXT PRIMARY KEY,
+    student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    curriculum_id TEXT REFERENCES persatuan_curriculums(id) ON DELETE SET NULL,
+    rank_name VARCHAR(100) NOT NULL,
+    awarded_by_master_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    certificate_number VARCHAR(100),
+    notes TEXT,
+    awarded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_student_rank_history_student ON student_rank_history(student_id, awarded_at DESC);
+
 
 
