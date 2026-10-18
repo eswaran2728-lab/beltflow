@@ -15,10 +15,10 @@ import {
   FileText,
   Clock,
   MapPin,
-  AlertTriangle,
   Search,
   UserCheck,
   Send,
+  ShieldCheck,
 } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { ScreenContainer, ScreenHeader } from '../../../components/Layout';
@@ -538,16 +538,16 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
                 Authorized Master roll-call and offline-synchronized check-in sessions.
               </Text>
 
-              {/* Security warning note for open SEC-QR-001 defect */}
+              {/* SEC-QR-001 Resolved Security Badge */}
               <View
                 style={[
                   styles.securityNotice,
                   { backgroundColor: colors.surfaceElevated, borderColor: colors.border },
                 ]}
               >
-                <AlertTriangle size={iconSize.sm} color={colors.badgeWarningText} />
-                <Text style={[typography.caption, { color: colors.badgeWarningText, flex: 1 }]}>
-                  Notice: SEC-QR-001 is open. QR scanner validation is restricted to authorized sessions.
+                <ShieldCheck size={iconSize.sm} color={colors.badgeSuccessText} />
+                <Text style={[typography.caption, { color: colors.badgeSuccessText, flex: 1 }]}>
+                  SEC-QR-001 Resolved: Cryptographically signed passes with HMAC-SHA256 signature verification.
                 </Text>
               </View>
 

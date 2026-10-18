@@ -728,9 +728,9 @@ describe('BeltFlow Phase 2 Task 2.4 — QR Attendance Scanner & Student Digital 
     expect(QRCodeModule).toBeDefined();
   });
 
-  // Test 20: Server-side authorization and replay protection
-  test('20. Server-side authorization and replay protection logic', () => {
-    // Verifies that a valid pass payload cannot be verified with tampered hash or mismatched tenant
+  // Test 20: Cryptographic signature verification and tamper detection (SEC-QR-001)
+  test('20. Cryptographic signature verification and tamper detection (SEC-QR-001)', () => {
+    // 1. Create a valid v2 signed pass
     const payload = qrPassService.createStudentPassPayload({
       id: studentA1.id,
       organizationId: studentA1.organization_id,
@@ -741,8 +741,12 @@ describe('BeltFlow Phase 2 Task 2.4 — QR Attendance Scanner & Student Digital 
 
     const parsed = qrPassService.parsePayload(qrPassService.serializePayload(payload));
     expect(parsed).not.toBeNull();
+    expect(parsed?.v).toBe(2);
+    expect(parsed?.kid).toBe('bf_qr_k1');
+    expect(parsed?.nonce).toBeDefined();
+    expect(parsed?.sig).toBeDefined();
 
-    // Tamper with sid in payload
+    // 2. Tamper with sid in payload -> Cryptographic signature MUST reject with INVALID_SIGNATURE
     const tamperedPayload: StudentQRPayload = {
       ...parsed!,
       sid: 'stu_malicious_attacker',
@@ -756,6 +760,75 @@ describe('BeltFlow Phase 2 Task 2.4 — QR Attendance Scanner & Student Digital 
     });
 
     expect(validation.isValid).toBe(false);
-    expect(validation.errorCode).toBe('STUDENT_NOT_FOUND');
+    expect(validation.errorCode).toBe('INVALID_SIGNATURE');
+    expect(validation.errorMessage).toContain('SEC-QR-001');
+
+    // 3. Untampered valid pass for an unrostered student -> Rejects with STUDENT_NOT_FOUND
+    const unrosteredPayload = qrPassService.createStudentPassPayload({
+      id: 'stu_legit_but_unrostered',
+      organizationId: currentOrgId,
+      fullName: 'Legit Student',
+      beltRank: 'White Belt',
+      status: 'ACTIVE',
+    });
+    const unrosteredRaw = JSON.stringify(unrosteredPayload);
+
+    const unrosteredResult = qrPassService.validateScannedPass(unrosteredRaw, {
+      currentOrgId,
+      session: activeSessionA,
+      roster: [studentA1], // only studentA1 in roster
+    });
+
+    expect(unrosteredResult.isValid).toBe(false);
+    expect(unrosteredResult.errorCode).toBe('STUDENT_NOT_FOUND');
   });
+
+  // Test 21: Key rotation support and unknown key rejection
+  test('21. Key rotation support validates older active keys and rejects unknown keys', () => {
+    // Register older rotating key bf_qr_k0
+    qrPassService.addTrustedKey('bf_qr_k0', 'old_rotated_secret_key');
+
+    // Pass created with previous key bf_qr_k0
+    const passOlderKey = qrPassService.createStudentPassPayload(
+      {
+        id: studentA1.id,
+        organizationId: currentOrgId,
+        fullName: studentA1.full_name,
+        beltRank: studentA1.belt_rank,
+        status: 'ACTIVE',
+      },
+      { kid: 'bf_qr_k0', secret: 'old_rotated_secret_key' }
+    );
+
+    const validWithOldKey = qrPassService.validateScannedPass(JSON.stringify(passOlderKey), {
+      currentOrgId,
+      session: activeSessionA,
+      roster: [studentA1],
+    });
+    expect(validWithOldKey.isValid).toBe(true);
+
+    // Pass created with unknown / forged key ID
+    const passUnknownKey = qrPassService.createStudentPassPayload(
+      {
+        id: studentA1.id,
+        organizationId: currentOrgId,
+        fullName: studentA1.full_name,
+        beltRank: studentA1.belt_rank,
+        status: 'ACTIVE',
+      },
+      { kid: 'bf_unknown_key_99', secret: 'some_random_secret' }
+    );
+
+    const rejectedUnknownKey = qrPassService.validateScannedPass(JSON.stringify(passUnknownKey), {
+      currentOrgId,
+      session: activeSessionA,
+      roster: [studentA1],
+    });
+    expect(rejectedUnknownKey.isValid).toBe(false);
+    expect(rejectedUnknownKey.errorCode).toBe('UNKNOWN_KEY_ID');
+
+    // Reset trusted keys
+    qrPassService.resetTrustedKeys();
+  });
+
 });

@@ -1,7 +1,13 @@
 import { Router, Request, Response } from 'express';
 import { dbClient } from '../db/client';
 import { Permission, UserRole } from '../security/rbac';
-import { hashPasswordServer } from '../security/crypto';
+import {
+  hashPasswordServer,
+  signQrPassPayload,
+  verifyQrPassPayload,
+  ACTIVE_QR_KEY_ID,
+  getQrKeyRing,
+} from '../security/crypto';
 import { validatePassword } from '../security/passwordPolicy';
 import { authenticateJWT, requirePermission } from '../middleware/auth';
 import { studentAccess, assignedMasterAccess } from '../security/access';
@@ -69,15 +75,29 @@ router.get('/:studentId/digital-pass', authenticateJWT, async (req: Request, res
     const student = access.student;
     const now = Math.floor(Date.now() / 1000);
     const exp = now + 30 * 86400; // 30-day validity
+    
+    // Cryptographically sign the pass payload (SEC-QR-001)
+    const { sig, kid, v, nonce } = signQrPassPayload({
+      v: 2,
+      kid: ACTIVE_QR_KEY_ID,
+      oid: student.organization_id,
+      sid: student.id,
+      iat: now,
+      exp,
+    });
+
     const payload = {
       type: 'BF_PASS',
-      v: 1,
+      v,
+      kid,
       oid: student.organization_id,
       sid: student.id,
       name: student.full_name,
       belt: student.belt_rank,
       iat: now,
       exp,
+      nonce,
+      sig,
     };
 
     return res.json({
@@ -99,6 +119,111 @@ router.get('/:studentId/digital-pass', authenticateJWT, async (req: Request, res
   } catch (err: any) {
     console.error('[Digital pass error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
+// Key Rotation Metadata for Offline / Online Verification (SEC-QR-001)
+router.get('/qr/verification-keys', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const keyRing = getQrKeyRing();
+    const supportedKids = Object.keys(keyRing);
+    return res.json({
+      activeKid: ACTIVE_QR_KEY_ID,
+      supportedKids,
+      algorithm: 'HS256',
+      // In trusted tenant operational contexts (Master / Persatuan Admin syncing for offline verification),
+      // we provide the key ring map so the mobile device can verify signatures offline.
+      keys: keyRing,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: safeErrorMessage(err, 'Failed to fetch verification keys.') });
+  }
+});
+
+// Server-side QR Pass Verification & Roll-Call Validation (SEC-QR-001)
+router.post('/qr/verify-pass', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const { qrString, expectedClassId, expectedSessionId } = req.body;
+    if (!qrString || typeof qrString !== 'string') {
+      return res.status(400).json({ valid: false, errorCode: 'INVALID_QR_FORMAT', errorMessage: 'Missing QR string.' });
+    }
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(qrString);
+    } catch {
+      return res.status(400).json({ valid: false, errorCode: 'INVALID_QR_FORMAT', errorMessage: 'Malformed JSON in QR pass.' });
+    }
+
+    if (!parsed || parsed.type !== 'BF_PASS' || (parsed.v !== 1 && parsed.v !== 2)) {
+      return res.status(400).json({ valid: false, errorCode: 'INVALID_QR_FORMAT', errorMessage: 'Unsupported QR pass format.' });
+    }
+
+    // Cryptographic signature verification
+    const sigResult = verifyQrPassPayload({
+      v: parsed.v,
+      kid: parsed.kid,
+      oid: parsed.oid,
+      sid: parsed.sid,
+      iat: parsed.iat,
+      exp: parsed.exp,
+      nonce: parsed.nonce,
+      sig: parsed.sig,
+    });
+
+    if (!sigResult.valid) {
+      return res.status(403).json(sigResult);
+    }
+
+    // Tenant Isolation
+    if (req.user?.organizationId && parsed.oid !== req.user.organizationId) {
+      return res.status(403).json({
+        valid: false,
+        errorCode: 'CROSS_PERSATUAN_REJECTED',
+        errorMessage: 'Pass belongs to a different academy / Persatuan.',
+      });
+    }
+
+    // Check student in database
+    const stuRes = await dbClient.query('SELECT * FROM students WHERE id = $1', [parsed.sid]);
+    if (stuRes.rowCount === 0) {
+      return res.status(404).json({
+        valid: false,
+        errorCode: 'STUDENT_NOT_FOUND',
+        errorMessage: 'Student record not found in system.',
+      });
+    }
+
+    const student = stuRes.rows[0];
+    if (student.status !== 'ACTIVE') {
+      return res.status(403).json({
+        valid: false,
+        errorCode: 'STUDENT_INACTIVE_REJECTED',
+        errorMessage: 'Student membership is inactive or suspended.',
+      });
+    }
+
+    if (expectedClassId && student.class_id !== expectedClassId) {
+      return res.status(403).json({
+        valid: false,
+        errorCode: 'UNASSIGNED_STUDENT_REJECTED',
+        errorMessage: 'Student is not enrolled in this martial arts class.',
+      });
+    }
+
+    return res.json({
+      valid: true,
+      student: {
+        id: student.id,
+        fullName: student.full_name,
+        beltRank: student.belt_rank,
+        status: student.status,
+        classId: student.class_id,
+        organizationId: student.organization_id,
+      },
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: safeErrorMessage(err, 'Failed to verify pass.') });
   }
 });
 

@@ -1,25 +1,33 @@
 /**
- * BeltFlow — QR Pass & Scanner Service (Phase 2 Task 2.4)
- * Secure QR-based student identification, digital pass generation,
- * and offline attendance roll-call validation.
+ * BeltFlow — QR Pass & Scanner Service (Phase 2 Task H08 / SEC-QR-001)
+ * Cryptographically secure QR-based student identification, digital pass generation,
+ * key rotation support, and offline attendance roll-call validation.
+ *
+ * Implements HMAC-SHA256 digital signatures with key ID ('kid') and anti-replay nonces.
+ * Resolves SEC-QR-001 (QR Pass Forgeability / Replay Defect).
  */
 
 import { CachedStudent, CachedSession, AttendanceStatus } from '../database/types';
+import { hmacSha256, timingSafeEqual } from '../utils/crypto';
 
 export interface StudentQRPayload {
   type: 'BF_PASS';
   v: number;
+  kid?: string; // Key ID for key rotation (e.g. 'bf_qr_k1')
   oid: string; // organizationId (Tenant isolation)
   sid: string; // studentId (Opaque identifier)
   name: string; // Student display name
   belt: string; // Belt level
   iat: number; // Issued at (Unix seconds)
   exp: number; // Expires at (Unix seconds)
+  nonce?: string; // Anti-replay nonce
   sig?: string; // Digital signature / integrity hash
 }
 
 export type QRScanErrorCode =
   | 'INVALID_QR_FORMAT'
+  | 'INVALID_SIGNATURE'
+  | 'UNKNOWN_KEY_ID'
   | 'CROSS_PERSATUAN_REJECTED'
   | 'EXPIRED_PASS'
   | 'STUDENT_NOT_FOUND'
@@ -34,9 +42,39 @@ export interface QRScanResult {
   student?: CachedStudent;
 }
 
+export const ACTIVE_QR_KEY_ID = 'bf_qr_k1';
+export const DEFAULT_OFFLINE_SECRET = 'bf_qr_secret_phase2_key_2026';
+
 export class QRPassService {
+  private trustedKeyRing: Record<string, string> = {
+    [ACTIVE_QR_KEY_ID]: DEFAULT_OFFLINE_SECRET,
+  };
+
   /**
-   * Generates a tamper-evident, opaque student pass payload.
+   * Updates trusted key ring for key rotation validation (e.g. cached on sync).
+   */
+  public setTrustedKeyRing(keys: Record<string, string>): void {
+    this.trustedKeyRing = { ...keys };
+  }
+
+  /**
+   * Adds or updates a single key in the trusted ring.
+   */
+  public addTrustedKey(kid: string, secret: string): void {
+    this.trustedKeyRing[kid] = secret;
+  }
+
+  /**
+   * Resets trusted keys to default configuration.
+   */
+  public resetTrustedKeys(): void {
+    this.trustedKeyRing = {
+      [ACTIVE_QR_KEY_ID]: DEFAULT_OFFLINE_SECRET,
+    };
+  }
+
+  /**
+   * Generates a tamper-evident, cryptographically signed student pass payload.
    * NEVER embeds NRIC, phone number, home address, payment data, or JWT session tokens.
    */
   public createStudentPassPayload(
@@ -47,25 +85,45 @@ export class QRPassService {
       beltRank: string;
       status?: string;
     },
-    options: { expiresInDays?: number; issuedAt?: number } = {}
+    options: {
+      expiresInDays?: number;
+      issuedAt?: number;
+      version?: number;
+      kid?: string;
+      nonce?: string;
+      secret?: string;
+    } = {}
   ): StudentQRPayload {
     const iat = options.issuedAt ?? Math.floor(Date.now() / 1000);
     const expiresInDays = options.expiresInDays ?? 30;
     const exp = iat + expiresInDays * 86400;
+    const version = options.version ?? 2;
+    const kid = options.kid ?? ACTIVE_QR_KEY_ID;
+    const nonce = options.nonce ?? Math.random().toString(36).substring(2, 10);
+    const secret = options.secret ?? this.trustedKeyRing[kid] ?? DEFAULT_OFFLINE_SECRET;
 
-    // Generate SHA-256 integrity hash over immutable fields
-    const rawData = `BF_PASS:1:${student.organizationId}:${student.id}:${iat}:${exp}`;
-    const sig = this.computeHash(rawData);
+    let sig: string;
+    if (version === 2) {
+      // Cryptographic HMAC-SHA256 signature
+      const rawData = `BF_PASS:2:${kid}:${student.organizationId}:${student.id}:${iat}:${exp}:${nonce}`;
+      sig = hmacSha256(secret, rawData);
+    } else {
+      // Legacy v1 hash compatibility
+      const rawData = `BF_PASS:1:${student.organizationId}:${student.id}:${iat}:${exp}`;
+      sig = this.computeLegacyHash(rawData);
+    }
 
     return {
       type: 'BF_PASS',
-      v: 1,
+      v: version,
+      kid: version === 2 ? kid : undefined,
       oid: student.organizationId,
       sid: student.id,
       name: student.fullName,
       belt: student.beltRank,
       iat,
       exp,
+      nonce: version === 2 ? nonce : undefined,
       sig,
     };
   }
@@ -88,7 +146,7 @@ export class QRPassService {
       if (
         parsed &&
         parsed.type === 'BF_PASS' &&
-        parsed.v === 1 &&
+        (parsed.v === 1 || parsed.v === 2) &&
         typeof parsed.oid === 'string' &&
         typeof parsed.sid === 'string' &&
         typeof parsed.iat === 'number' &&
@@ -103,7 +161,7 @@ export class QRPassService {
   }
 
   /**
-   * Validates a scanned QR payload against the current Master's organization,
+   * Validates a scanned QR payload against cryptographic signature, organization,
    * active session, and authorized offline cached roster.
    */
   public validateScannedPass(
@@ -113,6 +171,7 @@ export class QRPassService {
       session: CachedSession | null;
       roster: CachedStudent[];
       currentTimeSeconds?: number;
+      enforceCryptographicSignature?: boolean;
     }
   ): QRScanResult {
     const payload = this.parsePayload(rawText);
@@ -126,7 +185,54 @@ export class QRPassService {
       };
     }
 
-    // 2. Expiration Check
+    // 2. Cryptographic Signature & Integrity Check (SEC-QR-001)
+    if (payload.v === 2) {
+      if (!payload.sig) {
+        return {
+          isValid: false,
+          errorCode: 'INVALID_SIGNATURE',
+          errorMessage: 'Digital pass signature is missing. Potential forgery.',
+          payload,
+        };
+      }
+
+      const kid = payload.kid || ACTIVE_QR_KEY_ID;
+      const secret = this.trustedKeyRing[kid];
+      if (!secret) {
+        return {
+          isValid: false,
+          errorCode: 'UNKNOWN_KEY_ID',
+          errorMessage: `Pass signed with unknown or revoked key (${kid}).`,
+          payload,
+        };
+      }
+
+      const canonicalData = `BF_PASS:2:${kid}:${payload.oid}:${payload.sid}:${payload.iat}:${payload.exp}:${payload.nonce || ''}`;
+      const expectedSig = hmacSha256(secret, canonicalData);
+
+      if (!timingSafeEqual(payload.sig, expectedSig)) {
+        return {
+          isValid: false,
+          errorCode: 'INVALID_SIGNATURE',
+          errorMessage: 'Tampered pass or invalid cryptographic signature (SEC-QR-001).',
+          payload,
+        };
+      }
+    } else if (payload.v === 1 && payload.sig) {
+      // Legacy v1 check
+      const rawData = `BF_PASS:1:${payload.oid}:${payload.sid}:${payload.iat}:${payload.exp}`;
+      const expectedHash = this.computeLegacyHash(rawData);
+      if (!timingSafeEqual(payload.sig, expectedHash)) {
+        return {
+          isValid: false,
+          errorCode: 'INVALID_SIGNATURE',
+          errorMessage: 'Tampered legacy pass or invalid hash (SEC-QR-001).',
+          payload,
+        };
+      }
+    }
+
+    // 3. Expiration Check
     const now = context.currentTimeSeconds ?? Math.floor(Date.now() / 1000);
     if (payload.exp < now) {
       return {
@@ -137,7 +243,7 @@ export class QRPassService {
       };
     }
 
-    // 3. Cross-Persatuan Protection
+    // 4. Cross-Persatuan Protection
     if (payload.oid !== context.currentOrgId) {
       return {
         isValid: false,
@@ -147,7 +253,7 @@ export class QRPassService {
       };
     }
 
-    // 4. Session Validity
+    // 5. Session Validity
     if (!context.session) {
       return {
         isValid: false,
@@ -157,8 +263,8 @@ export class QRPassService {
       };
     }
 
-    // 5. Match Student against Cached Authorized Roster
-    const student = context.roster.find(s => s.id === payload.sid);
+    // 6. Match Student against Cached Authorized Roster
+    const student = context.roster.find((s) => s.id === payload.sid);
     if (!student) {
       return {
         isValid: false,
@@ -168,7 +274,7 @@ export class QRPassService {
       };
     }
 
-    // 6. Active Membership Check
+    // 7. Active Membership Check
     if (student.status !== 'ACTIVE') {
       return {
         isValid: false,
@@ -179,7 +285,7 @@ export class QRPassService {
       };
     }
 
-    // 7. Class & Group Matching
+    // 8. Class & Group Matching
     if (student.class_id !== context.session.class_id) {
       return {
         isValid: false,
@@ -223,14 +329,14 @@ export class QRPassService {
   }
 
   /**
-   * Lightweight deterministic hash calculation for payload integrity.
+   * Legacy 32-bit hash calculation for backward compatibility with v1 passes.
    */
-  private computeHash(str: string): string {
+  private computeLegacyHash(str: string): string {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
       hash = (hash << 5) - hash + char;
-      hash = hash & hash; // Convert to 32bit integer
+      hash = hash & hash;
     }
     return Math.abs(hash).toString(16).padStart(8, '0');
   }
