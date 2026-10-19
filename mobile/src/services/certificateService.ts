@@ -8,6 +8,9 @@ export interface VerifiedCertificate {
   masterName: string;
   issueDate: string;
   type: string;
+  status?: string;
+  revokedAt?: string;
+  revocationReason?: string;
 }
 
 export interface CertificateVerificationResponse {
@@ -26,9 +29,9 @@ export const certificateService = {
     }
 
     return await apiClient.post<CertificateVerificationResponse>(
-      '/api/v1/certificates/verify',
-      { code: code.trim().toUpperCase() },
-      { requiresAuth: false } // Attempt verification call
+      '/api/v1/certificates/public-verify',
+      { codeOrToken: code.trim(), code: code.trim().toUpperCase() },
+      { requiresAuth: false }
     );
   },
 };

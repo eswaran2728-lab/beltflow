@@ -442,22 +442,7 @@ export { MasterApplicationStatusScreen } from './MasterApplicationStatusScreen';
 export { ClassHandoverScreen } from './ClassHandoverScreen';
 export { IncomingHandoversScreen } from './IncomingHandoversScreen';
 
-export const GradingScreen: React.FC<RoleScreenProps> = props => {
-  const { colors, iconSize } = useTheme();
-  return (
-    <RolePlaceholderBase
-      title="Grading"
-      subtitle="Belt Promotion & Form Evaluations"
-      role={UserRole.MASTER}
-      user={props.user}
-      onLogout={props.onLogout}
-      isOffline={props.isOffline}
-      testID="master-grading-screen"
-      icon={<Award size={iconSize.lg} color={colors.buttonPrimaryBg} />}
-      scopeDescription="Grading Authority: Conduct belt examinations according to the active Persatuan's configurable belt progression."
-    />
-  );
-};
+export { MasterGradingScreen as GradingScreen } from './MasterGradingScreen';
 
 export const MasterProfileScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();

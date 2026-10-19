@@ -123,7 +123,7 @@ export const DEFAULT_RANKS: DefaultRankTemplate[] = [
 /**
  * Seed default published curriculum if none exists for the organization.
  */
-async function getOrCreateActiveCurriculum(organizationId: string, style = 'Silambam') {
+export async function getOrCreateActiveCurriculum(organizationId: string, style = 'Silambam') {
   const publishedRes = await dbClient.query(
     `SELECT * FROM persatuan_curriculums 
      WHERE organization_id = $1 AND status = 'PUBLISHED' 

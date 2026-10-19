@@ -88,21 +88,40 @@ interface Ed25519KeyEntry {
 
 let ed25519KeyRingCache: Record<string, Ed25519KeyEntry> | null = null;
 
+export function resetEd25519KeyRingForTesting(): void {
+  ed25519KeyRingCache = null;
+}
+
+export function getQrEd25519Seed(envVar: string, fallbackDevSeed: string): string {
+  const seed = process.env[envVar];
+  if (!seed) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(`FATAL SECURITY CONFIGURATION: Production requires ${envVar} to be configured with high-entropy secret material.`);
+    }
+    return fallbackDevSeed;
+  }
+  if (process.env.NODE_ENV === 'production') {
+    if (seed === fallbackDevSeed) {
+      throw new Error(`FATAL SECURITY CONFIGURATION: Hardcoded development seed cannot be activated in production.`);
+    }
+    if (seed.length < 32) {
+      throw new Error(`FATAL SECURITY CONFIGURATION: Production ${envVar} must provide at least 32 characters of high-entropy key material.`);
+    }
+  }
+  return seed;
+}
+
 function initEd25519KeyRing(): Record<string, Ed25519KeyEntry> {
   if (ed25519KeyRingCache) return ed25519KeyRingCache;
 
   // Active Key (k1)
-  const seedK1 = crypto
-    .createHash('sha256')
-    .update(process.env.QR_ED25519_PRIVATE_KEY_SEED || 'beltflow_ed25519_primary_seed_phase2_2026')
-    .digest();
+  const seedK1Str = getQrEd25519Seed('QR_ED25519_PRIVATE_KEY_SEED', 'beltflow_ed25519_primary_seed_phase2_2026');
+  const seedK1 = crypto.createHash('sha256').update(seedK1Str).digest();
   const kp1 = nacl.sign.keyPair.fromSeed(new Uint8Array(seedK1));
 
   // Historical Key (k0) for rotation continuity
-  const seedK0 = crypto
-    .createHash('sha256')
-    .update(process.env.QR_ED25519_PREVIOUS_SEED || 'beltflow_ed25519_previous_seed_phase2_2025')
-    .digest();
+  const seedK0Str = getQrEd25519Seed('QR_ED25519_PREVIOUS_SEED', 'beltflow_ed25519_previous_seed_phase2_2025');
+  const seedK0 = crypto.createHash('sha256').update(seedK0Str).digest();
   const kp0 = nacl.sign.keyPair.fromSeed(new Uint8Array(seedK0));
 
   ed25519KeyRingCache = {

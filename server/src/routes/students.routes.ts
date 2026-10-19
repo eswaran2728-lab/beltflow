@@ -611,4 +611,51 @@ router.put('/:studentId/safety', authenticateJWT, async (req: Request, res: Resp
   }
 });
 
+// Student and Linked Parent Progress View (Task H12)
+router.get('/:studentId/progress', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const access = await studentAccess(req.user!, req.params.studentId);
+    if (!access.allowed || !access.student) {
+      return res.status(403).json({ error: 'Access denied to student progress.' });
+    }
+    const student = access.student;
+
+    const rankHistoryRes = await dbClient.query(
+      `SELECT * FROM student_rank_history
+       WHERE student_id = $1
+       ORDER BY awarded_at DESC`,
+      [student.id]
+    );
+
+    const skillsRes = await dbClient.query(
+      `SELECT ss.*, s.name as skill_name, s.category
+       FROM student_skills ss
+       JOIN skills s ON s.id = ss.skill_id
+       WHERE ss.student_id = $1
+       ORDER BY ss.updated_at DESC`,
+      [student.id]
+    );
+
+    const certsRes = await dbClient.query(
+      `SELECT id, code, rank_or_title, issue_date, status, verification_token, organization_name, master_name
+       FROM certificates
+       WHERE student_id = $1
+       ORDER BY issue_date DESC, created_at DESC`,
+      [student.id]
+    );
+
+    return res.json({
+      studentId: student.id,
+      fullName: student.full_name,
+      currentBelt: student.belt_rank,
+      rankHistory: rankHistoryRes.rows,
+      skills: skillsRes.rows,
+      certificates: certsRes.rows,
+    });
+  } catch (err: any) {
+    console.error('[Database error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
 export default router;

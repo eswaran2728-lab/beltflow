@@ -48,6 +48,82 @@ router.post('/progress', authenticateJWT, async (req: Request, res: Response) =>
   }
 });
 
+// Master Records Structured Skill Assessment (Task H12)
+router.post('/assess', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const { studentId, skillId, skillName, category, level, criteria, notes } = req.body;
+    if (!studentId || !skillId) {
+      return res.status(400).json({ error: 'studentId and skillId are required.' });
+    }
+
+    // Role check: Only authorized MASTER or ADMIN_PERSATUAN can assess skills
+    if (req.user!.role === UserRole.STUDENT || req.user!.role === UserRole.PARENT) {
+      return res.status(403).json({ error: 'Students and parents are not authorized to record skill assessments.' });
+    }
+
+    const access = await studentAccess(req.user!, studentId);
+    if (!access.student) return res.status(404).json({ error: 'Student not found.' });
+    if (!access.allowed) return res.status(403).json({ error: 'Access denied to assess this student.' });
+
+    const orgId = access.student.organization_id;
+
+    // Ensure skill definition exists in catalog
+    await dbClient.query(
+      `INSERT INTO skills (id, organization_id, name, category, description)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (id) DO UPDATE
+       SET name = EXCLUDED.name, category = EXCLUDED.category`,
+      [skillId, orgId, skillName || skillId, category || 'Technique', notes || '']
+    );
+
+    const criteriaJson = typeof criteria === 'object' && criteria !== null ? JSON.stringify(criteria) : null;
+    const effectiveLevel = level || 'Proficient';
+
+    const upsertRes = await dbClient.query(
+      `INSERT INTO student_skills (
+         student_id, skill_id, level, notes, assessed_by_master_id,
+         assessment_criteria, assessment_date, updated_at
+       ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_DATE, CURRENT_TIMESTAMP)
+       ON CONFLICT (student_id, skill_id) DO UPDATE SET
+         level = EXCLUDED.level,
+         notes = EXCLUDED.notes,
+         assessed_by_master_id = EXCLUDED.assessed_by_master_id,
+         assessment_criteria = EXCLUDED.assessment_criteria,
+         assessment_date = CURRENT_DATE,
+         updated_at = CURRENT_TIMESTAMP
+       RETURNING *`,
+      [
+        studentId,
+        skillId,
+        effectiveLevel,
+        notes || '',
+        req.user!.id,
+        criteriaJson,
+      ]
+    );
+
+    await dbClient.query(
+      `INSERT INTO audit_logs (id, action, details, user_role, user_email)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [
+        `audit_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        'Skill Assessed',
+        `Master assessed skill ${skillName || skillId} as ${effectiveLevel} for student ${access.student.full_name} (${studentId})`,
+        req.user!.role,
+        req.user!.email,
+      ]
+    );
+
+    return res.json({
+      message: 'Structured skill assessment recorded successfully.',
+      assessment: upsertRes.rows[0],
+    });
+  } catch (err: any) {
+    console.error('[Database error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
 // Get skill progress for student
 router.get('/student/:studentId', authenticateJWT, async (req: Request, res: Response) => {
   try {

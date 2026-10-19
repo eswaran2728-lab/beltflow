@@ -117,18 +117,61 @@ export const VerifyCertificateScreen: React.FC<VerifyCertificateScreenProps> = (
         {/* Verified Certificate Display */}
         {verifiedCert ? (
           <View style={{ marginTop: spacing.lg }}>
-            <Card variant="elevated" style={styles.verifiedCard} testID="card-verified-cert">
+            <Card
+              variant="elevated"
+              style={[
+                styles.verifiedCard,
+                verifiedCert.status === 'REVOKED' ? { borderColor: colors.badgeDangerText } : { borderColor: '#10B981' }
+              ]}
+              testID="card-verified-cert"
+            >
               {/* Header Badge */}
               <View style={styles.certHeaderRow}>
                 <View style={styles.verifiedBadge}>
-                  <CheckCircle size={20} color={colors.badgeSuccessText} style={{ marginRight: 6 }} />
-                  <Text style={[typography.caption, { color: colors.badgeSuccessText, fontWeight: '700' }]}>
-                    OFFICIALLY VERIFIED
+                  <CheckCircle
+                    size={20}
+                    color={verifiedCert.status === 'REVOKED' ? colors.badgeDangerText : colors.badgeSuccessText}
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text
+                    style={[
+                      typography.caption,
+                      {
+                        color: verifiedCert.status === 'REVOKED' ? colors.badgeDangerText : colors.badgeSuccessText,
+                        fontWeight: '700'
+                      }
+                    ]}
+                  >
+                    {verifiedCert.status === 'REVOKED' ? 'CERTIFICATE REVOKED' : 'OFFICIALLY VERIFIED'}
                   </Text>
                 </View>
 
-                <StatusBadge status="ACTIVE" label="Valid" variant="success" />
+                {verifiedCert.status === 'REVOKED' ? (
+                  <StatusBadge status="CANCELLED" label="Revoked" variant="danger" />
+                ) : (
+                  <StatusBadge status="ACTIVE" label="Valid" variant="success" />
+                )}
               </View>
+
+              {verifiedCert.status === 'REVOKED' && verifiedCert.revocationReason ? (
+                <View
+                  style={{
+                    backgroundColor: colors.badgeDangerBg,
+                    padding: 10,
+                    borderRadius: 8,
+                    marginBottom: 14,
+                    borderWidth: 1,
+                    borderColor: colors.badgeDangerText,
+                  }}
+                >
+                  <Text style={[typography.caption, { color: colors.badgeDangerText, fontWeight: '700' }]}>
+                    REVOCATION NOTICE:
+                  </Text>
+                  <Text style={[typography.caption, { color: colors.textPrimary, marginTop: 2 }]}>
+                    {verifiedCert.revocationReason}
+                  </Text>
+                </View>
+              ) : null}
 
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
 

@@ -827,5 +827,75 @@ CREATE INDEX IF NOT EXISTS idx_notice_ack_notice ON notice_acknowledgements(noti
 CREATE INDEX IF NOT EXISTS idx_notice_ack_user ON notice_acknowledgements(user_id);
 CREATE INDEX IF NOT EXISTS idx_notice_ack_student ON notice_acknowledgements(student_id);
 
+-- ============================================================================
+-- 16. Task H12: Belt Grading, Readiness, Progression & Certificate Verification
+-- ============================================================================
+
+-- Additive enhancements to grading_events
+ALTER TABLE grading_events ADD COLUMN IF NOT EXISTS curriculum_id TEXT REFERENCES persatuan_curriculums(id) ON DELETE SET NULL;
+ALTER TABLE grading_events ADD COLUMN IF NOT EXISTS status VARCHAR(50) NOT NULL DEFAULT 'SCHEDULED';
+ALTER TABLE grading_events ADD COLUMN IF NOT EXISTS registration_deadline TIMESTAMPTZ;
+ALTER TABLE grading_events ADD COLUMN IF NOT EXISTS chief_examiner_id TEXT REFERENCES users(id) ON DELETE SET NULL;
+ALTER TABLE grading_events ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 1;
+
+CREATE INDEX IF NOT EXISTS idx_grading_events_org_status ON grading_events(organization_id, status);
+
+-- Additive enhancements to grading_candidates
+ALTER TABLE grading_candidates ADD COLUMN IF NOT EXISTS target_rank_id TEXT REFERENCES curriculum_belt_ranks(id) ON DELETE SET NULL;
+ALTER TABLE grading_candidates ADD COLUMN IF NOT EXISTS examiner_id TEXT REFERENCES users(id) ON DELETE SET NULL;
+ALTER TABLE grading_candidates ADD COLUMN IF NOT EXISTS examiner_score NUMERIC(5, 2);
+ALTER TABLE grading_candidates ADD COLUMN IF NOT EXISTS assessment_criteria JSONB;
+ALTER TABLE grading_candidates ADD COLUMN IF NOT EXISTS certificate_id TEXT REFERENCES certificates(id) ON DELETE SET NULL;
+ALTER TABLE grading_candidates ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 1;
+ALTER TABLE grading_candidates ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+CREATE INDEX IF NOT EXISTS idx_grading_candidates_event ON grading_candidates(grading_event_id);
+CREATE INDEX IF NOT EXISTS idx_grading_candidates_student ON grading_candidates(student_id);
+
+-- Additive enhancements to certificates (Public verification, revocation & curriculum link)
+ALTER TABLE certificates ADD COLUMN IF NOT EXISTS verification_token VARCHAR(100);
+ALTER TABLE certificates ADD COLUMN IF NOT EXISTS curriculum_id TEXT REFERENCES persatuan_curriculums(id) ON DELETE SET NULL;
+ALTER TABLE certificates ADD COLUMN IF NOT EXISTS curriculum_version INT;
+ALTER TABLE certificates ADD COLUMN IF NOT EXISTS rank_id TEXT REFERENCES curriculum_belt_ranks(id) ON DELETE SET NULL;
+ALTER TABLE certificates ADD COLUMN IF NOT EXISTS grading_event_id TEXT REFERENCES grading_events(id) ON DELETE SET NULL;
+ALTER TABLE certificates ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ;
+ALTER TABLE certificates ADD COLUMN IF NOT EXISTS revocation_reason TEXT;
+ALTER TABLE certificates ADD COLUMN IF NOT EXISTS revoked_by_id TEXT REFERENCES users(id) ON DELETE SET NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_certificates_verif_token ON certificates(verification_token) WHERE verification_token IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_certificates_code ON certificates(code);
+CREATE INDEX IF NOT EXISTS idx_certificates_student ON certificates(student_id);
+
+-- Additive enhancements to student_skills (Assessor, curriculum & structured criteria)
+ALTER TABLE student_skills ADD COLUMN IF NOT EXISTS assessed_by_master_id TEXT REFERENCES users(id) ON DELETE SET NULL;
+ALTER TABLE student_skills ADD COLUMN IF NOT EXISTS curriculum_id TEXT REFERENCES persatuan_curriculums(id) ON DELETE SET NULL;
+ALTER TABLE student_skills ADD COLUMN IF NOT EXISTS assessment_criteria JSONB;
+ALTER TABLE student_skills ADD COLUMN IF NOT EXISTS assessment_date VARCHAR(20);
+
+-- Additive enhancements to student_rank_history
+ALTER TABLE student_rank_history ADD COLUMN IF NOT EXISTS organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE;
+ALTER TABLE student_rank_history ADD COLUMN IF NOT EXISTS rank_id TEXT REFERENCES curriculum_belt_ranks(id) ON DELETE SET NULL;
+ALTER TABLE student_rank_history ADD COLUMN IF NOT EXISTS grading_event_id TEXT REFERENCES grading_events(id) ON DELETE SET NULL;
+ALTER TABLE student_rank_history ADD COLUMN IF NOT EXISTS certificate_id TEXT REFERENCES certificates(id) ON DELETE SET NULL;
+ALTER TABLE student_rank_history ADD COLUMN IF NOT EXISTS rank_order INT;
+ALTER TABLE student_rank_history ADD COLUMN IF NOT EXISTS is_dan_rank BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE student_rank_history ADD COLUMN IF NOT EXISTS dan_level INT;
+ALTER TABLE student_rank_history ADD COLUMN IF NOT EXISTS belt_color_hex VARCHAR(50);
+
+-- Enumeration-resistant Public Certificate Verification Audit & Rate-Limiting Log
+CREATE TABLE IF NOT EXISTS certificate_verification_attempts (
+    id TEXT PRIMARY KEY,
+    client_ip_hash VARCHAR(64) NOT NULL,
+    searched_reference VARCHAR(100) NOT NULL,
+    verified BOOLEAN NOT NULL,
+    result_status VARCHAR(50) NOT NULL,
+    is_rate_limited BOOLEAN NOT NULL DEFAULT FALSE,
+    attempted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+ALTER TABLE certificate_verification_attempts ADD COLUMN IF NOT EXISTS is_rate_limited BOOLEAN NOT NULL DEFAULT FALSE;
+
+CREATE INDEX IF NOT EXISTS idx_cert_verif_ip_time ON certificate_verification_attempts(client_ip_hash, attempted_at DESC);
+
+
 
 
