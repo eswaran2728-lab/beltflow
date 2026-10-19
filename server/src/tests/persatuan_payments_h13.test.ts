@@ -590,7 +590,7 @@ async function runTests() {
     );
     const pubCertRes = await makeRequest(server, 'POST', '/certificates/public-verify', { codeOrToken: testCertCode });
     assert.equal(pubCertRes.status, 200);
-    assert.equal(pubCertRes.data.certificate.studentName, 'Muhammad Harith Danial');
+    assert.equal(pubCertRes.data.certificate.studentName, undefined, 'Public endpoint must not leak unmasked student name');
     assert.equal(pubCertRes.data.certificate.maskedStudentName, 'M******d H****h D****l', 'Must supply masked name for safe public display');
     console.log('✅ Requirement 40 Passed: Public certificate verification data minimization reviewed and masked projection verified.');
 

@@ -992,3 +992,41 @@ ALTER TABLE payments ADD COLUMN IF NOT EXISTS gateway_transaction_id VARCHAR(255
 ALTER TABLE payments ADD COLUMN IF NOT EXISTS amount_cents INTEGER;
 ALTER TABLE payments ADD COLUMN IF NOT EXISTS currency VARCHAR(3) DEFAULT 'MYR';
 ALTER TABLE payments ADD COLUMN IF NOT EXISTS is_online_gateway BOOLEAN DEFAULT FALSE;
+
+-- ----------------------------------------------------------------------------
+-- Task H14: Academy Onboarding, Legacy Migration & Family Dues Partitioning
+-- ----------------------------------------------------------------------------
+
+-- 44. Import Batches (Auditable legacy import execution history)
+CREATE TABLE IF NOT EXISTS import_batches (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    initiated_by TEXT NOT NULL REFERENCES users(id),
+    idempotency_key TEXT UNIQUE NOT NULL,
+    source_filename VARCHAR(255),
+    status VARCHAR(50) NOT NULL DEFAULT 'COMMITTED',
+    total_rows INT NOT NULL DEFAULT 0,
+    imported_students_count INT NOT NULL DEFAULT 0,
+    imported_guardians_count INT NOT NULL DEFAULT 0,
+    imported_ranks_count INT NOT NULL DEFAULT 0,
+    skipped_duplicates_count INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_import_batches_org ON import_batches(organization_id);
+
+-- 45. Import Preview Records (Dry-run validation items before commit)
+CREATE TABLE IF NOT EXISTS import_preview_records (
+    id TEXT PRIMARY KEY,
+    preview_id TEXT NOT NULL,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    created_by TEXT NOT NULL REFERENCES users(id),
+    row_index INT NOT NULL,
+    raw_data JSONB NOT NULL,
+    status VARCHAR(50) NOT NULL, -- 'VALID' | 'DUPLICATE' | 'MALFORMED' | 'WRONG_TENANT' | 'UNVERIFIED_PARENT'
+    error_message TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_import_preview_records_prev ON import_preview_records(preview_id);
+

@@ -421,7 +421,8 @@ async function runTests() {
     assert.equal(pubCheckByCode.status, 200, 'Public user should verify certificate by code without login');
     assert.equal(pubCheckByCode.data.verified, true);
     assert.equal(pubCheckByCode.data.status, 'VALID');
-    assert.equal(pubCheckByCode.data.certificate.studentName, 'Dinesh Kumar');
+    assert.equal(pubCheckByCode.data.certificate.studentName, undefined, 'Public endpoint must not leak unmasked student name');
+    assert.equal(pubCheckByCode.data.certificate.maskedStudentName, 'D****h K***r', 'Masked student name must be returned');
     assert.equal(pubCheckByCode.data.certificate.rankOrTitle, 'Yellow Belt');
     assert.equal(pubCheckByCode.data.certificate.organizationName, 'Persatuan Silambam A');
 

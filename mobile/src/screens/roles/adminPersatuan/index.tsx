@@ -24,6 +24,9 @@ import { OfflineBanner, LoadingState, ErrorState } from '../../../components/Fee
 import { useDashboardData } from '../../../hooks/useDashboardData';
 import { dashboardService, AdminPersatuanDashboardData } from '../../../services/dashboardService';
 import { MasterApprovalsScreen } from './MasterApprovalsScreen';
+import { AdminAcademySetupScreen } from './AdminAcademySetupScreen';
+
+export { AdminAcademySetupScreen };
 
 export interface RoleScreenProps {
   user: AuthUser;
@@ -319,6 +322,15 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
         </Text>
         <View style={{ gap: spacing.sm }}>
           <Button
+            label="Academy Setup & Legacy Imports"
+            onPress={() => navigation?.navigate('AcademySetup')}
+            variant="primary"
+            size="md"
+            fullWidth
+            rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonPrimaryText} />}
+            testID="shortcut-ap-onboarding"
+          />
+          <Button
             label="Locations & Venues"
             onPress={() => navigation?.navigate('Locations')}
             variant="secondary"
@@ -397,6 +409,10 @@ export const LocationsScreen: React.FC<RoleScreenProps> = props => {
 
 export const MastersScreen: React.FC<RoleScreenProps> = props => {
   return <MasterApprovalsScreen {...props} />;
+};
+
+export const AcademySetupScreen: React.FC<RoleScreenProps> = props => {
+  return <AdminAcademySetupScreen {...props} />;
 };
 
 

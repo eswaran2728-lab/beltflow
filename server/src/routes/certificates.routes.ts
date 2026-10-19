@@ -87,7 +87,7 @@ router.post('/public-verify', async (req: Request, res: Response) => {
       [`cva_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, clientIpHash, trimmed.slice(0, 50), cert.status]
     );
 
-    // Minimal public projection - strict zero PII (NO NRIC/MyKid, NO DOB, NO phone, NO guardian, NO medical, NO finances)
+    // Minimal public projection - strict zero PII (NO unmasked student name, NO NRIC/MyKid, NO DOB, NO phone, NO guardian, NO medical, NO finances)
     // Includes maskedStudentName to protect minor identity on public channels
     if (cert.status === 'REVOKED') {
       return res.status(200).json({
@@ -95,7 +95,6 @@ router.post('/public-verify', async (req: Request, res: Response) => {
         status: 'REVOKED',
         certificate: {
           code: cert.code,
-          studentName: cert.student_name,
           maskedStudentName: maskStudentName(cert.student_name),
           rankOrTitle: cert.rank_or_title,
           organizationName: cert.organization_name,
@@ -114,7 +113,6 @@ router.post('/public-verify', async (req: Request, res: Response) => {
       status: 'VALID',
       certificate: {
         code: cert.code,
-        studentName: cert.student_name,
         maskedStudentName: maskStudentName(cert.student_name),
         rankOrTitle: cert.rank_or_title,
         organizationName: cert.organization_name,

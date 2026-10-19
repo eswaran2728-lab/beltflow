@@ -9,6 +9,7 @@ import {
   MastersScreen,
   ReportsScreen,
   AdminPersatuanProfileScreen,
+  AdminAcademySetupScreen,
 } from '../../screens/roles/adminPersatuan';
 import { RoleNavigatorProps, AdminPersatuanTabParamList } from '../types';
 
@@ -122,6 +123,22 @@ export const AdminPersatuanNavigator: React.FC<RoleNavigatorProps> = ({
       >
         {() => (
           <AdminPersatuanProfileScreen
+            user={user}
+            onLogout={onLogout}
+            isOffline={isOffline}
+          />
+        )}
+      </Tab.Screen>
+
+      <Tab.Screen
+        name="AcademySetup"
+        options={{
+          tabBarItemStyle: { display: 'none' },
+          tabBarButton: () => null,
+        }}
+      >
+        {() => (
+          <AdminAcademySetupScreen
             user={user}
             onLogout={onLogout}
             isOffline={isOffline}

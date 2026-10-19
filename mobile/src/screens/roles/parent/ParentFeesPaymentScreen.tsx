@@ -35,6 +35,7 @@ import {
   MALAYSIAN_FPX_BANKS,
 } from '../../../services/paymentGatewayService';
 import { apiClient } from '../../../services/apiClient';
+import { onboardingService, FamilySummary } from '../../../services/onboardingService';
 
 export interface ParentFeesPaymentScreenProps {
   user: AuthUser;
@@ -75,6 +76,7 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
 
   const [merchantConfig, setMerchantConfig] = useState<MaskedMerchantConfig | null>(null);
   const [merchantConfigured, setMerchantConfigured] = useState<boolean>(false);
+  const [familySummary, setFamilySummary] = useState<FamilySummary | null>(null);
 
   const [dues, setDues] = useState<StudentDueItem[]>([]);
   const [selectedDueIds, setSelectedDueIds] = useState<string[]>([]);
@@ -120,8 +122,14 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
 
     try {
       setLoading(true);
-      // Fetch parent dashboard data to find linked children
-      const dashRes = await apiClient.get<any>('/dashboard/parent');
+      // Fetch parent dashboard data and family summary
+      const [dashRes, familyRes] = await Promise.all([
+        apiClient.get<any>('/dashboard/parent').catch(() => ({ children: [] })),
+        onboardingService.getFamilySummary().catch(() => null),
+      ]);
+      if (familyRes) {
+        setFamilySummary(familyRes);
+      }
       const kids = dashRes.children || [];
       setChildren(kids);
 
@@ -150,9 +158,15 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
       return;
     }
 
-    apiClient.get<any>('/dashboard/parent')
-      .then(async dashRes => {
+    Promise.all([
+      apiClient.get<any>('/dashboard/parent').catch(() => ({ children: [] })),
+      onboardingService.getFamilySummary().catch(() => null),
+    ])
+      .then(async ([dashRes, familyRes]) => {
         if (!isMounted) return;
+        if (familyRes) {
+          setFamilySummary(familyRes);
+        }
         const kids = dashRes.children || [];
         setChildren(kids);
 
@@ -337,6 +351,34 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
             })}
           </ScrollView>
         </View>
+      )}
+
+      {/* Multi-Persatuan Cross-Merchant Separation Banner */}
+      {familySummary?.hasCrossMerchantChildren && (
+        <Card
+          variant="elevated"
+          style={[
+            styles.merchantBanner,
+            {
+              backgroundColor: '#FFFBEB',
+              borderColor: '#F59E0B',
+              marginBottom: spacing.md,
+            },
+          ]}
+          testID="cross-merchant-warning-banner"
+        >
+          <View style={styles.bannerRow}>
+            <Building2 size={24} color="#D97706" />
+            <View style={{ flex: 1, marginLeft: spacing.sm }}>
+              <Text style={[typography.titleMedium, { color: '#92400E', fontWeight: '700' }]}>
+                Multiple Academy Merchants Detected
+              </Text>
+              <Text style={[typography.caption, { color: '#B45309', marginTop: 2 }]}>
+                Your children train across independent martial arts Persatuans. Each academy receives tuition directly into its own verified merchant settlement account. Checkouts are strictly separated per Persatuan.
+              </Text>
+            </View>
+          </View>
+        </Card>
       )}
 
       {/* Persatuan Direct Merchant Routing Notice */}
@@ -538,6 +580,37 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
             </Card>
           ) : (
             <View>
+              {/* Separated Merchant Bundles Overview */}
+              {familySummary?.checkoutBundles && familySummary.checkoutBundles.length > 1 && (
+                <View style={{ marginBottom: spacing.md }}>
+                  <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.xs, fontWeight: '600' }]}>
+                    SEPARATED ACADEMY CHECKOUTS ({familySummary.checkoutBundles.length} PERSATUANS)
+                  </Text>
+                  <View style={{ gap: spacing.xs }}>
+                    {familySummary.checkoutBundles.map((bundle: any) => (
+                      <Card
+                        key={bundle.organizationId}
+                        variant="standard"
+                        style={[styles.dueRow, { backgroundColor: colors.surfaceElevated, borderColor: colors.border }]}
+                        testID={`checkout-bundle-${bundle.organizationId}`}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={[typography.titleMedium, { color: colors.textPrimary, fontWeight: '700' }]}>
+                            {bundle.organizationName}
+                          </Text>
+                          <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
+                            {bundle.itemCount} billing item(s) pending
+                          </Text>
+                        </View>
+                        <Text style={[typography.titleMedium, { color: colors.buttonPrimaryBg, fontWeight: '800' }]}>
+                          RM {bundle.totalAmountRM.toFixed(2)}
+                        </Text>
+                      </Card>
+                    ))}
+                  </View>
+                </View>
+              )}
+
               <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.xs, fontWeight: '600' }]}>
                 SELECT MONTHS TO SETTLE
               </Text>

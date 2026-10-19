@@ -45,6 +45,7 @@ export type AdminPersatuanTabParamList = {
   Masters: undefined;
   Reports: undefined;
   Profile: undefined;
+  AcademySetup?: undefined;
 };
 
 export type MasterClassesStackParamList = {
