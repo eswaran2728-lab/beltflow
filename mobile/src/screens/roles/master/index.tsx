@@ -442,6 +442,7 @@ export { MasterApplicationStatusScreen } from './MasterApplicationStatusScreen';
 export { ClassHandoverScreen } from './ClassHandoverScreen';
 export { IncomingHandoversScreen } from './IncomingHandoversScreen';
 export { MasterTrialsFollowUpScreen } from './MasterTrialsFollowUpScreen';
+export { MasterMakeUpManagementScreen } from './MasterMakeUpManagementScreen';
 
 export { MasterGradingScreen as GradingScreen } from './MasterGradingScreen';
 

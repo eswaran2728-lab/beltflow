@@ -17,6 +17,7 @@ import {
   MasterProfileScreen,
   MasterApplicationStatusScreen,
   MasterTrialsFollowUpScreen,
+  MasterMakeUpManagementScreen,
 } from '../../screens/roles/master';
 import {
   RoleNavigatorProps,
@@ -50,6 +51,9 @@ function MasterClassesStackNavigator(props: RoleNavigatorProps) {
       </ClassesStack.Screen>
       <ClassesStack.Screen name="TrialsFollowUp">
         {navProps => <MasterTrialsFollowUpScreen {...props} {...navProps} />}
+      </ClassesStack.Screen>
+      <ClassesStack.Screen name="MakeUpWaitlist">
+        {navProps => <MasterMakeUpManagementScreen {...props} {...navProps} />}
       </ClassesStack.Screen>
     </ClassesStack.Navigator>
   );

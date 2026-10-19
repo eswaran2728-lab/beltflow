@@ -1084,3 +1084,32 @@ CREATE INDEX IF NOT EXISTS idx_follow_up_items_org ON follow_up_items(organizati
 CREATE INDEX IF NOT EXISTS idx_follow_up_items_class ON follow_up_items(class_id);
 CREATE INDEX IF NOT EXISTS idx_follow_up_items_status ON follow_up_items(status);
 
+-- 48. Make-Up Classes & Waitlist Bookings (Task H17)
+CREATE TABLE IF NOT EXISTS make_up_bookings (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    home_class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    target_class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    session_id TEXT NOT NULL REFERENCES training_sessions(id) ON DELETE CASCADE,
+    requested_by_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    -- 'REQUESTED' | 'CONFIRMED' | 'WAITLISTED' | 'OFFERED' | 'CANCELLED' | 'ATTENDED' | 'EXPIRED' | 'REJECTED'
+    status VARCHAR(50) NOT NULL DEFAULT 'REQUESTED',
+    reason TEXT,
+    eligibility_notes TEXT,
+    approved_by_master_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    approved_at TIMESTAMPTZ,
+    offer_expires_at TIMESTAMPTZ,
+    waitlist_position INT,
+    version INT NOT NULL DEFAULT 1,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_makeup_session ON make_up_bookings(session_id, status);
+CREATE INDEX IF NOT EXISTS idx_makeup_student ON make_up_bookings(student_id, status);
+CREATE INDEX IF NOT EXISTS idx_makeup_org ON make_up_bookings(organization_id, status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_makeup_student_session_active
+    ON make_up_bookings(student_id, session_id)
+    WHERE status IN ('REQUESTED', 'CONFIRMED', 'WAITLISTED', 'OFFERED');
+
