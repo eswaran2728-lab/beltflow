@@ -445,6 +445,7 @@ export const FeesScreen: React.FC<RoleScreenProps> = props => {
   return <ParentFeesPaymentScreen {...props} />;
 };
 export { ParentFeesPaymentScreen };
+export { ParentBookTrialScreen } from './ParentBookTrialScreen';
 
 export const NoticesScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();

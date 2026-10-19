@@ -24,6 +24,7 @@ import handoverRoutes from './routes/handover.routes';
 import curriculumRoutes from './routes/curriculum.routes';
 import { paymentGatewayRouter } from './routes/paymentGateway.routes';
 import onboardingImportsRoutes from './routes/onboardingImports.routes';
+import trialsRoutes from './routes/trials.routes';
 
 const app = express();
 
@@ -138,6 +139,7 @@ app.use('/api/v1/payments', paymentGatewayRouter);
 app.use('/api/v1', handoverRoutes);
 app.use('/api/v1/onboarding-imports', onboardingImportsRoutes);
 app.use('/api/v1', onboardingImportsRoutes);
+app.use('/api/v1/trials', trialsRoutes);
 
 // Global Error Handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

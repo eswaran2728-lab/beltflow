@@ -1030,3 +1030,57 @@ CREATE TABLE IF NOT EXISTS import_preview_records (
 
 CREATE INDEX IF NOT EXISTS idx_import_preview_records_prev ON import_preview_records(preview_id);
 
+-- ----------------------------------------------------------------------------
+-- Task H16: Trials and Actionable Follow-Up (trials/retention)
+-- ----------------------------------------------------------------------------
+
+-- 46. Trial Bookings (Lead acquisition, trial attendance, consent & canonical conversion)
+CREATE TABLE IF NOT EXISTS trial_bookings (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    session_id TEXT REFERENCES training_sessions(id) ON DELETE SET NULL,
+    scheduled_date DATE NOT NULL,
+    candidate_name VARCHAR(255) NOT NULL,
+    candidate_age INT,
+    guardian_name VARCHAR(255),
+    guardian_email VARCHAR(255),
+    guardian_phone VARCHAR(50) NOT NULL,
+    emergency_phone VARCHAR(50),
+    medical_notes TEXT,
+    consent_accepted BOOLEAN NOT NULL DEFAULT FALSE,
+    status VARCHAR(50) NOT NULL DEFAULT 'BOOKED', -- 'BOOKED' | 'ATTENDED' | 'MISSED' | 'CONVERTED' | 'CANCELLED'
+    converted_student_id TEXT REFERENCES students(id) ON DELETE SET NULL,
+    converted_at TIMESTAMPTZ,
+    converted_by TEXT REFERENCES users(id),
+    version INT NOT NULL DEFAULT 1,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_trial_bookings_org ON trial_bookings(organization_id);
+CREATE INDEX IF NOT EXISTS idx_trial_bookings_class ON trial_bookings(class_id);
+CREATE INDEX IF NOT EXISTS idx_trial_bookings_status ON trial_bookings(status);
+
+-- 47. Follow-Up Items (Actionable retention queue: absence, missed trials, overdue dues)
+CREATE TABLE IF NOT EXISTS follow_up_items (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    student_id TEXT REFERENCES students(id) ON DELETE CASCADE,
+    trial_id TEXT REFERENCES trial_bookings(id) ON DELETE CASCADE,
+    type VARCHAR(50) NOT NULL, -- 'CONSECUTIVE_ABSENCE' | 'MISSED_TRIAL' | 'OVERDUE_TUITION' | 'INACTIVE_RISK'
+    reason TEXT NOT NULL,
+    severity VARCHAR(20) NOT NULL DEFAULT 'MEDIUM', -- 'LOW' | 'MEDIUM' | 'HIGH'
+    status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- 'PENDING' | 'CONTACTED' | 'RESOLVED' | 'DISMISSED'
+    outcome VARCHAR(50), -- 'CONTACTED_PHONE' | 'CONTACTED_MESSAGE' | 'RESOLVED_RETURNING' | 'DISMISSED_NOT_INTERESTED' | 'DROPPED_OUT'
+    notes TEXT,
+    actioned_by TEXT REFERENCES users(id),
+    actioned_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_follow_up_items_org ON follow_up_items(organization_id);
+CREATE INDEX IF NOT EXISTS idx_follow_up_items_class ON follow_up_items(class_id);
+CREATE INDEX IF NOT EXISTS idx_follow_up_items_status ON follow_up_items(status);
+
