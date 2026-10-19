@@ -150,13 +150,51 @@ router.post('/:trialId/convert', authenticateJWT, async (req: Request, res: Resp
     }
     const trial = trialRes.rows[0];
 
-    // Acceptance Test: conversion_requires_master
-    // Only assigned Master or Admin Persatuan can convert trials into canonical enrollment
-    const isAssignedMaster = req.user!.role === UserRole.MASTER && (await assignedMasterAccess(req.user!, trial.class_id));
-    const isAdminPersatuan = req.user!.role === UserRole.ADMIN_PERSATUAN && req.user!.organizationId === trial.organization_id;
+    // Acceptance Test: conversion_requires_master & TRIAL-AUTH-001
+    // Student enrollment approval remains the exclusive responsibility of the authorized class Master.
+    // Persatuan Admin cannot routinely bypass student approval.
+    if (req.user!.role === UserRole.ADMIN_PERSATUAN) {
+      return res.status(403).json({
+        error: 'Persatuan Admin cannot routinely bypass student approval. Student enrollment approval requires the authorized class Master.',
+      });
+    }
+    if (req.user!.role !== UserRole.MASTER) {
+      return res.status(403).json({ error: 'Only authorized Masters can convert trial bookings into canonical enrollments.' });
+    }
 
-    if (!isAssignedMaster && !isAdminPersatuan) {
-      return res.status(403).json({ error: 'Only the assigned Master or Persatuan Admin may convert trial bookings into canonical enrollments.' });
+    // Verify active Master affiliation
+    const affilRes = await dbClient.query(
+      `SELECT id, status, effective_from, effective_to FROM master_affiliations
+       WHERE master_id = $1 AND organization_id = $2
+       ORDER BY created_at DESC LIMIT 1`,
+      [req.user!.id, trial.organization_id]
+    );
+    if (affilRes.rowCount > 0 && affilRes.rows[0].status !== 'ACTIVE') {
+      return res.status(403).json({ error: 'Master affiliation is not active. Suspended or former Masters cannot convert trials.' });
+    }
+    if (affilRes.rowCount === 0) {
+      const legacyCheck = await dbClient.query(
+        'SELECT 1 FROM coach_class_assignments WHERE coach_id = $1 AND class_id = $2',
+        [req.user!.id, trial.class_id]
+      );
+      if (legacyCheck.rowCount === 0) {
+        return res.status(403).json({ error: 'Master does not have an active verified affiliation with this organization.' });
+      }
+    } else {
+      const affil = affilRes.rows[0];
+      const now = new Date();
+      if (affil.effective_from && new Date(affil.effective_from) > now) {
+        return res.status(403).json({ error: 'Master affiliation effective date is in the future.' });
+      }
+      if (affil.effective_to && new Date(affil.effective_to) < now) {
+        return res.status(403).json({ error: 'Master affiliation has expired.' });
+      }
+    }
+
+    // Verify Master leadership over this class
+    const isAssignedMaster = await assignedMasterAccess(req.user!, trial.class_id);
+    if (!isAssignedMaster) {
+      return res.status(403).json({ error: 'Only the assigned Master for this class can convert trial bookings.' });
     }
 
     // Acceptance Test: trial_conversion_no_duplicate
@@ -164,18 +202,32 @@ router.post('/:trialId/convert', authenticateJWT, async (req: Request, res: Resp
       return res.status(409).json({ error: 'Trial has already been converted into a student enrollment.' });
     }
 
-    const classRes = await dbClient.query('SELECT * FROM classes WHERE id = $1', [trial.class_id]);
-    if (classRes.rowCount === 0) {
-      return res.status(404).json({ error: 'Class not found.' });
-    }
-    const cls = classRes.rows[0];
-
     const studentId = `stu_conv_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const beltRank = req.body.beltRank?.trim() || 'White Belt';
-    const monthlyFee = parseFloat(cls.monthly_fee) || 120.0;
 
     const result = await dbClient.transaction(async (tx) => {
-      // Create canonical student record
+      // 1. Transactional class lock and capacity enforcement
+      const classRes = await tx.query('SELECT * FROM classes WHERE id = $1 FOR UPDATE', [trial.class_id]);
+      if (classRes.rowCount === 0) {
+        throw new Error('Class not found.');
+      }
+      const cls = classRes.rows[0];
+
+      const capRes = await tx.query(
+        "SELECT count(*)::int AS active_count FROM class_enrollments WHERE class_id = $1 AND status = 'ACTIVE'",
+        [cls.id]
+      );
+      const activeCount = Number(capRes.rows[0]?.active_count || 0);
+      const capacityLimit = Number(cls.capacity || 30);
+      if (activeCount >= capacityLimit) {
+        const capErr: any = new Error(`Class capacity reached (${activeCount}/${capacityLimit}). Cannot enroll student from trial.`);
+        capErr.statusCode = 409;
+        throw capErr;
+      }
+
+      const monthlyFee = parseFloat(cls.monthly_fee) || 120.0;
+
+      // 2. Create canonical student record
       const newStudentRes = await tx.query(
         `INSERT INTO students (
            id, organization_id, class_id, full_name, ic_number, phone, email,
@@ -195,7 +247,39 @@ router.post('/:trialId/convert', authenticateJWT, async (req: Request, res: Resp
         ]
       );
 
-      // Create student safety profile if medical notes or emergency contact were recorded
+      // 3. Create canonical class_enrollments record with Master approval provenance
+      const enrollmentId = `enr_conv_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      await tx.query(
+        `INSERT INTO class_enrollments (
+           id, student_id, class_id, organization_id, status, is_primary, provenance,
+           approved_by_master_id, approved_at
+         ) VALUES ($1, $2, $3, $4, 'ACTIVE', TRUE, 'TRIAL_CONVERSION', $5, CURRENT_TIMESTAMP)`,
+        [enrollmentId, studentId, trial.class_id, trial.organization_id, req.user!.id]
+      );
+
+      // 4. Create approved enrollment_application record for historical & audit integrity
+      const appId = `app_conv_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      await tx.query(
+        `INSERT INTO enrollment_applications (
+           id, student_id, class_id, organization_id, status, student_name,
+           phone, emergency_contact_name, emergency_contact_phone, medical_notes,
+           consent_accepted, reviewed_by_master_id, reviewed_at, review_notes, submitted_at
+         ) VALUES ($1, $2, $3, $4, 'APPROVED', $5, $6, $7, $8, $9, TRUE, $10, CURRENT_TIMESTAMP, 'Approved via trial conversion', CURRENT_TIMESTAMP)`,
+        [
+          appId,
+          studentId,
+          trial.class_id,
+          trial.organization_id,
+          trial.candidate_name,
+          trial.guardian_phone,
+          trial.guardian_name || 'Guardian',
+          trial.emergency_phone || trial.guardian_phone,
+          trial.medical_notes || 'None reported',
+          req.user!.id,
+        ]
+      );
+
+      // 5. Create student safety profile if medical notes or emergency contact were recorded
       if (trial.emergency_phone || trial.medical_notes) {
         const safetyId = `safe_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
         await tx.query(
@@ -218,7 +302,7 @@ router.post('/:trialId/convert', authenticateJWT, async (req: Request, res: Resp
         );
       }
 
-      // Update trial record to CONVERTED
+      // 6. Update trial record to CONVERTED
       const updatedTrialRes = await tx.query(
         `UPDATE trial_bookings
          SET status = 'CONVERTED',
@@ -231,7 +315,7 @@ router.post('/:trialId/convert', authenticateJWT, async (req: Request, res: Resp
         [studentId, req.user!.id, trial.id]
       );
 
-      // Audit log
+      // 7. Audit log
       await tx.query(
         `INSERT INTO audit_logs (id, action, details, user_role, user_email)
          VALUES ($1, $2, $3, $4, $5)`,
@@ -257,6 +341,9 @@ router.post('/:trialId/convert', authenticateJWT, async (req: Request, res: Resp
     });
   } catch (err: any) {
     console.error('[Convert trial error]', err);
+    if (err?.statusCode) {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'Failed to convert trial.') });
   }
 });
