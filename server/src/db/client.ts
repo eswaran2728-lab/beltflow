@@ -15,6 +15,7 @@ export interface SqlTransactionClient {
 class PostgresDatabaseClient {
   private pgPool: Pool | null = null;
   private pglite: PGlite | null = null;
+  private pgliteTxMutex: Promise<void> = Promise.resolve();
   private isInitialized = false;
 
   async init(customDataDir?: string): Promise<void> {
@@ -125,24 +126,37 @@ class PostgresDatabaseClient {
     }
 
     if (this.pglite) {
-      await this.pglite.query('BEGIN');
+      // PGlite is a single-connection embedded engine. Concurrent transactions
+      // must execute serially in strict FIFO order so BEGIN/COMMIT do not interleave.
+      let releaseMutex: () => void = () => {};
+      const previousTx = this.pgliteTxMutex;
+      this.pgliteTxMutex = new Promise<void>((resolve) => {
+        releaseMutex = resolve;
+      });
+
+      await previousTx;
       try {
-        const txClient: SqlTransactionClient = {
-          query: async <R = any>(sql: string, params: any[] = []): Promise<SqlQueryResult<R>> => {
-            const res = await this.pglite!.query<R>(sql, params);
-            return { rows: res.rows, rowCount: res.rows.length };
-          }
-        };
-        const result = await callback(txClient);
-        await this.pglite.query('COMMIT');
-        return result;
-      } catch (err) {
+        await this.pglite.query('BEGIN');
         try {
-          await this.pglite.query('ROLLBACK');
-        } catch (rbErr) {
-          console.error('[PGlite transaction rollback error]', rbErr);
+          const txClient: SqlTransactionClient = {
+            query: async <R = any>(sql: string, params: any[] = []): Promise<SqlQueryResult<R>> => {
+              const res = await this.pglite!.query<R>(sql, params);
+              return { rows: res.rows, rowCount: res.rows.length };
+            }
+          };
+          const result = await callback(txClient);
+          await this.pglite.query('COMMIT');
+          return result;
+        } catch (err) {
+          try {
+            await this.pglite.query('ROLLBACK');
+          } catch (rbErr) {
+            console.error('[PGlite transaction rollback error]', rbErr);
+          }
+          throw err;
         }
-        throw err;
+      } finally {
+        releaseMutex();
       }
     }
 

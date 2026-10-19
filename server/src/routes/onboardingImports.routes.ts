@@ -498,13 +498,25 @@ router.post('/commit-import', authenticateJWT, requirePermission(Permission.PERS
         const phone = row.phone?.trim() || null;
         const email = row.email?.trim() || null;
 
-        // Insert student
+        // Insert student with REVIEW_REQUIRED status to preserve identity without silently granting active class participation (Fix IMPORT-AUTH-001)
         await tx.query(
           `INSERT INTO students (id, organization_id, class_id, full_name, ic_number, phone, email, belt_rank, monthly_fee, status, billing_status)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 120.00, 'ACTIVE', 'Unpaid')`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 120.00, 'REVIEW_REQUIRED', 'Unpaid')`,
           [studentId, organizationId, classId, fullName, icNumber, phone, email, beltRank]
         );
         importedStudentsCount++;
+
+        // If class was mapped from import, create official enrollment application requiring Master review
+        if (classId) {
+          const appId = `app_imp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+          await tx.query(
+            `INSERT INTO enrollment_applications (
+               id, student_id, class_id, organization_id, applicant_type, student_name, ic_number, phone,
+               status, notes, version, consent_accepted, submitted_at
+             ) VALUES ($1, $2, $3, $4, 'STUDENT', $5, $6, $7, 'SUBMITTED', 'Legacy import onboarding application requiring Master review.', 1, true, CURRENT_TIMESTAMP)`,
+            [appId, studentId, classId, organizationId, fullName, icNumber, phone]
+          );
+        }
 
         // Record historical belt rank provenance
         await tx.query(
@@ -533,16 +545,16 @@ router.post('/commit-import', authenticateJWT, requirePermission(Permission.PERS
             parentUserId = `usr_p_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
             await tx.query(
               `INSERT INTO users (id, organization_id, email, password_hash, full_name, phone, role, status)
-               VALUES ($1, $2, $3, 'IMPORT_PLACEHOLDER_HASH', $4, $5, 'PARENT', 'ACTIVE')`,
+               VALUES ($1, $2, $3, 'IMPORT_PLACEHOLDER_HASH', $4, $5, 'PARENT', 'PENDING_VERIFICATION')`,
               [parentUserId, organizationId, parentEmail.toLowerCase(), parentName, parentPhone]
             );
           }
 
-          // Link parent to student with explicit approval provenance
+          // Link parent to student requiring admin verification before full access (Fix IMPORT-AUTH-001)
           const linkId = `plink_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
           await tx.query(
             `INSERT INTO parent_student_links (id, parent_id, student_id, status, student_approved, master_approved, admin_approved)
-             VALUES ($1, $2, $3, 'ACTIVE', TRUE, TRUE, TRUE)
+             VALUES ($1, $2, $3, 'PENDING_ADMIN', FALSE, FALSE, FALSE)
              ON CONFLICT (parent_id, student_id) DO NOTHING`,
             [linkId, parentUserId, studentId]
           );
@@ -597,7 +609,7 @@ router.post('/commit-import', authenticateJWT, requirePermission(Permission.PERS
       importedGuardiansCount,
       importedRanksCount,
       skippedDuplicatesCount: previewRes.rowCount - importedStudentsCount,
-      message: `Successfully committed legacy import: ${importedStudentsCount} student(s) imported into active roster.`
+      message: `Successfully committed legacy import: ${importedStudentsCount} student(s) imported (pending Master review before active enrollment).`
     });
   } catch (err: any) {
     console.error('[Commit import error]', err);

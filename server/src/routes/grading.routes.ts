@@ -436,7 +436,7 @@ router.post('/:eventId/score', authenticateJWT, requirePermission(Permission.CLA
 
 // Atomic Final Grading Transaction (Task H12)
 // Enforces optimistic concurrency (expectedVersion), atomic row updates, rank history snapshot, and certificate issuance.
-router.post('/:eventId/finalize', authenticateJWT, async (req: Request, res: Response) => {
+router.post('/:eventId/finalize', authenticateJWT, requirePermission(Permission.CLASS_SCORE_GRADING), async (req: Request, res: Response) => {
   try {
     const { expectedVersion, results } = req.body;
     if (!Array.isArray(results) || results.length === 0) {
