@@ -33,6 +33,7 @@ export enum Permission {
   PERSATUAN_MANAGE_GRADING_EVENTS = 'PERSATUAN_MANAGE_GRADING_EVENTS',
   PERSATUAN_VIEW_ROSTER = 'PERSATUAN_VIEW_ROSTER',
   PERSATUAN_VIEW_FINANCES = 'PERSATUAN_VIEW_FINANCES',
+  PERSATUAN_MANAGE_MERCHANT = 'PERSATUAN_MANAGE_MERCHANT',
 
   // Mat & Class Operations (ADMIN_PERSATUAN & assigned MASTER)
   CLASS_VIEW = 'CLASS_VIEW',
@@ -126,6 +127,7 @@ export function checkUserPermission(params: PermissionCheckParams): boolean {
       case Permission.PERSATUAN_MANAGE_GRADING_EVENTS:
       case Permission.PERSATUAN_VIEW_ROSTER:
       case Permission.PERSATUAN_VIEW_FINANCES:
+      case Permission.PERSATUAN_MANAGE_MERCHANT:
       case Permission.CLASS_VIEW:
       case Permission.CLASS_ASSIGN_COACH:
       // Deliberately NOT CLASS_MARK_ATTENDANCE, CLASS_APPROVE_PAYMENT, or

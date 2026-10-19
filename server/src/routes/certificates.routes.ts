@@ -9,6 +9,22 @@ const router = Router();
 
 import crypto from 'crypto';
 
+/**
+ * Data Minimization for Public Certificate Verification (Section 16 Pre-flight)
+ * Masks student name to preserve privacy while permitting authenticity verification.
+ * e.g. "Dinesh Kumar" -> "D***h K***r"
+ */
+export function maskStudentName(fullName: string): string {
+  if (!fullName) return '';
+  const parts = fullName.trim().split(/\s+/);
+  return parts
+    .map((part) => {
+      if (part.length <= 2) return part[0] + '*';
+      return part[0] + '*'.repeat(Math.max(1, part.length - 2)) + part[part.length - 1];
+    })
+    .join(' ');
+}
+
 // Public-Safe Certificate Verification (Fix CERT-001 - UNAUTHENTICATED)
 // Allows verification from welcome screen or QR link without leaking student PII.
 // Includes rate limiting and enumeration defense via certificate_verification_attempts table.
@@ -72,6 +88,7 @@ router.post('/public-verify', async (req: Request, res: Response) => {
     );
 
     // Minimal public projection - strict zero PII (NO NRIC/MyKid, NO DOB, NO phone, NO guardian, NO medical, NO finances)
+    // Includes maskedStudentName to protect minor identity on public channels
     if (cert.status === 'REVOKED') {
       return res.status(200).json({
         verified: true,
@@ -79,6 +96,7 @@ router.post('/public-verify', async (req: Request, res: Response) => {
         certificate: {
           code: cert.code,
           studentName: cert.student_name,
+          maskedStudentName: maskStudentName(cert.student_name),
           rankOrTitle: cert.rank_or_title,
           organizationName: cert.organization_name,
           masterName: cert.master_name,
@@ -97,6 +115,7 @@ router.post('/public-verify', async (req: Request, res: Response) => {
       certificate: {
         code: cert.code,
         studentName: cert.student_name,
+        maskedStudentName: maskStudentName(cert.student_name),
         rankOrTitle: cert.rank_or_title,
         organizationName: cert.organization_name,
         masterName: cert.master_name,

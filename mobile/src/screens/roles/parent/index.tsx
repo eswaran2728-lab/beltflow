@@ -22,6 +22,7 @@ import { OfflineBanner, LoadingState, ErrorState, EmptyState } from '../../../co
 import { useDashboardData } from '../../../hooks/useDashboardData';
 import { dashboardService, ParentDashboardData, ParentChildSummary } from '../../../services/dashboardService';
 import { ParentChildPassViewer, LinkedChildPassData } from '../../../components/ParentChildPassViewer';
+import { ParentFeesPaymentScreen } from './ParentFeesPaymentScreen';
 
 export interface RoleScreenProps {
   user: AuthUser;
@@ -441,21 +442,9 @@ export const ChildrenScreen: React.FC<RoleScreenProps> = props => {
 };
 
 export const FeesScreen: React.FC<RoleScreenProps> = props => {
-  const { colors, iconSize } = useTheme();
-  return (
-    <RolePlaceholderBase
-      title="Fees"
-      subtitle="Monthly Tuition & Grading Invoices"
-      role={UserRole.PARENT}
-      user={props.user}
-      onLogout={props.onLogout}
-      isOffline={props.isOffline}
-      testID="parent-fees-screen"
-      icon={<DollarSign size={iconSize.lg} color={colors.buttonPrimaryBg} />}
-      scopeDescription="Billing Scope: View official academy tuition invoices, examination fees, and digital payment receipts."
-    />
-  );
+  return <ParentFeesPaymentScreen {...props} />;
 };
+export { ParentFeesPaymentScreen };
 
 export const NoticesScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();

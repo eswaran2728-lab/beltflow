@@ -894,8 +894,101 @@ CREATE TABLE IF NOT EXISTS certificate_verification_attempts (
 );
 ALTER TABLE certificate_verification_attempts ADD COLUMN IF NOT EXISTS is_rate_limited BOOLEAN NOT NULL DEFAULT FALSE;
 
-CREATE INDEX IF NOT EXISTS idx_cert_verif_ip_time ON certificate_verification_attempts(client_ip_hash, attempted_at DESC);
+-- ============================================================================
+-- 15. Task H13: Persatuan Payments, FPX/DuitNow Gateway & Financial Integrity
+-- ============================================================================
 
+-- Persatuan-Owned Merchant Payment Configurations
+-- Every Persatuan receives its own payments directly into its own merchant account.
+CREATE TABLE IF NOT EXISTS persatuan_merchants (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    provider VARCHAR(50) NOT NULL DEFAULT 'SANDBOX', -- 'SANDBOX' | 'TOYYIBPAY' | 'CURLEC' | 'BILLPLZ' | 'STRIPE_CONNECT'
+    merchant_account_id VARCHAR(255) NOT NULL,
+    merchant_name VARCHAR(255) NOT NULL,
+    settlement_bank_name VARCHAR(100),
+    settlement_account_masked VARCHAR(50), -- Strictly masked (e.g. '****1234'), never plaintext
+    fpx_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    duitnow_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    card_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE', -- 'PENDING_VERIFICATION' | 'ACTIVE' | 'SUSPENDED' | 'DISABLED'
+    webhook_secret_hash VARCHAR(255),
+    api_key_encrypted TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_persatuan_merchants_org UNIQUE (organization_id)
+);
 
+CREATE INDEX IF NOT EXISTS idx_persatuan_merchants_org ON persatuan_merchants(organization_id);
 
+-- Server-Authoritative Payment Intents (Integer minor currency units in sen)
+CREATE TABLE IF NOT EXISTS payment_intents (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    merchant_id TEXT NOT NULL REFERENCES persatuan_merchants(id),
+    student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    payer_user_id TEXT NOT NULL REFERENCES users(id),
+    amount_cents INTEGER NOT NULL, -- Non-negative integer in sen (RM 120.00 = 12000 sen)
+    currency VARCHAR(3) NOT NULL DEFAULT 'MYR',
+    billing_month_ids TEXT[], -- Array of monthly_dues IDs
+    payment_method VARCHAR(50) NOT NULL, -- 'FPX' | 'DUITNOW_QR' | 'CARD'
+    fpx_bank_code VARCHAR(50),
+    status VARCHAR(50) NOT NULL DEFAULT 'REQUIRES_PAYMENT_METHOD', -- 'REQUIRES_PAYMENT_METHOD' | 'PENDING_PROCESSING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED' | 'EXPIRED'
+    idempotency_key VARCHAR(255) UNIQUE,
+    provider_tx_id VARCHAR(255),
+    provider_session_url TEXT,
+    settled_payment_id TEXT REFERENCES payments(id),
+    expires_at TIMESTAMPTZ NOT NULL,
+    metadata JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 
+CREATE INDEX IF NOT EXISTS idx_payment_intents_org ON payment_intents(organization_id);
+CREATE INDEX IF NOT EXISTS idx_payment_intents_student ON payment_intents(student_id);
+CREATE INDEX IF NOT EXISTS idx_payment_intents_status ON payment_intents(status);
+
+-- Gateway Webhook Events (Strict Idempotency & Deduplication)
+CREATE TABLE IF NOT EXISTS gateway_webhook_events (
+    id TEXT PRIMARY KEY,
+    provider VARCHAR(50) NOT NULL,
+    merchant_id TEXT REFERENCES persatuan_merchants(id),
+    event_id VARCHAR(255) NOT NULL,
+    event_type VARCHAR(100) NOT NULL,
+    payment_intent_id TEXT REFERENCES payment_intents(id),
+    payload JSONB NOT NULL,
+    signature_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    processed BOOLEAN NOT NULL DEFAULT FALSE,
+    processed_at TIMESTAMPTZ,
+    error_message TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_gateway_events_prov_id UNIQUE (provider, event_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_gateway_webhook_events_intent ON gateway_webhook_events(payment_intent_id);
+
+-- Payment Reconciliation Records
+CREATE TABLE IF NOT EXISTS payment_reconciliation_records (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id),
+    payment_intent_id TEXT NOT NULL REFERENCES payment_intents(id),
+    payment_id TEXT REFERENCES payments(id),
+    provider_tx_id VARCHAR(255),
+    expected_amount_cents INTEGER NOT NULL,
+    settled_amount_cents INTEGER NOT NULL,
+    currency VARCHAR(3) NOT NULL DEFAULT 'MYR',
+    match_status VARCHAR(50) NOT NULL, -- 'MATCHED' | 'DISCREPANCY_AMOUNT' | 'DISCREPANCY_STATUS' | 'ORPHAN_INTENT' | 'ORPHAN_GATEWAY'
+    notes TEXT,
+    reconciled_by TEXT REFERENCES users(id),
+    reconciled_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_payment_reconciliation_org ON payment_reconciliation_records(organization_id);
+
+-- Additive enhancements to existing payments table for online gateway settlement
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS payment_intent_id TEXT REFERENCES payment_intents(id);
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS gateway_provider VARCHAR(50);
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS gateway_transaction_id VARCHAR(255);
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS amount_cents INTEGER;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS currency VARCHAR(3) DEFAULT 'MYR';
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS is_online_gateway BOOLEAN DEFAULT FALSE;

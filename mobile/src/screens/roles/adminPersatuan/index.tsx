@@ -346,6 +346,15 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
             testID="shortcut-ap-curriculum"
           />
           <Button
+            label="Finance & Gateway Reconciliation"
+            onPress={() => navigation?.navigate('Finance')}
+            variant="secondary"
+            size="md"
+            fullWidth
+            rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
+            testID="shortcut-ap-finance"
+          />
+          <Button
             label="Academy Reports"
             onPress={() => navigation?.navigate('Reports')}
             variant="secondary"
@@ -476,3 +485,4 @@ export * from './MasterApprovalsScreen';
 export * from './ClassApprovalsScreen';
 export * from './HandoverApprovalsScreen';
 export * from './CurriculumManagementScreen';
+export * from './AdminFinanceScreen';
