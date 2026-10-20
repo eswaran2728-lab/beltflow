@@ -1192,4 +1192,91 @@ CREATE TABLE IF NOT EXISTS session_private_messages (
 
 CREATE INDEX IF NOT EXISTS idx_sess_msgs_session ON session_private_messages(session_id);
 
+-- ----------------------------------------------------------------------------
+-- Task H20: Learning Library, Performance and Rewards (learning/performance/rewards)
+-- ----------------------------------------------------------------------------
+
+-- 52. Learning Lessons (Approved Syllabus Content, Theory, and Interactive Quizzes)
+CREATE TABLE IF NOT EXISTS learning_lessons (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    curriculum_id TEXT REFERENCES persatuan_curriculums(id) ON DELETE SET NULL,
+    target_rank_id TEXT REFERENCES curriculum_belt_ranks(id) ON DELETE SET NULL,
+    author_master_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    category VARCHAR(100) NOT NULL DEFAULT 'THEORY', -- 'POOMSAE', 'SPARRING', 'SELF_DEFENSE', 'FITNESS', 'THEORY', 'SILAMBAM'
+    content_body TEXT,
+    media_urls JSONB DEFAULT '[]'::jsonb,
+    quiz_questions JSONB DEFAULT '[]'::jsonb,
+    status VARCHAR(50) NOT NULL DEFAULT 'DRAFT', -- 'DRAFT', 'PUBLISHED', 'ARCHIVED'
+    published_at TIMESTAMPTZ,
+    version INT NOT NULL DEFAULT 1,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_learning_lessons_org_status ON learning_lessons(organization_id, status);
+CREATE INDEX IF NOT EXISTS idx_learning_lessons_curriculum ON learning_lessons(curriculum_id);
+
+-- 53. Student Lesson Progress & Quiz Tracking (learning_completion_not_formal_grading)
+CREATE TABLE IF NOT EXISTS student_lesson_progress (
+    id TEXT PRIMARY KEY,
+    student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    lesson_id TEXT NOT NULL REFERENCES learning_lessons(id) ON DELETE CASCADE,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    status VARCHAR(50) NOT NULL DEFAULT 'IN_PROGRESS', -- 'IN_PROGRESS', 'COMPLETED'
+    quiz_score NUMERIC(5, 2),
+    quiz_answers JSONB,
+    completed_at TIMESTAMPTZ,
+    last_accessed_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (student_id, lesson_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_lesson_progress_student ON student_lesson_progress(student_id);
+CREATE INDEX IF NOT EXISTS idx_lesson_progress_lesson ON student_lesson_progress(lesson_id);
+
+-- 54. Performance Assessments (cross_rubric_scores_not_falsely_compared)
+CREATE TABLE IF NOT EXISTS performance_assessments (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    assessor_master_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    curriculum_id TEXT NOT NULL REFERENCES persatuan_curriculums(id) ON DELETE CASCADE,
+    rubric_version INT NOT NULL DEFAULT 1,
+    rubric_schema_id VARCHAR(100) NOT NULL, -- e.g. 'WT_POOMSAE_V1', 'SILAT_JURUS_V2'
+    skill_category VARCHAR(100) NOT NULL, -- 'BALANCE', 'POWER', 'STANCE', 'SPEED', 'PRECISION'
+    score NUMERIC(5, 2) NOT NULL,
+    max_score NUMERIC(5, 2) NOT NULL DEFAULT 100.00,
+    criteria_breakdown JSONB NOT NULL DEFAULT '{}'::jsonb,
+    notes TEXT,
+    assessed_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_perf_assess_student ON performance_assessments(student_id, assessed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_perf_assess_rubric ON performance_assessments(curriculum_id, rubric_schema_id, rubric_version);
+
+-- 55. Student Achievements & Rewards (replay_event_one_award, revoked_award_audited)
+CREATE TABLE IF NOT EXISTS student_achievements (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    event_id VARCHAR(255) NOT NULL UNIQUE,
+    badge_code VARCHAR(100) NOT NULL,
+    badge_title VARCHAR(255) NOT NULL,
+    badge_description TEXT,
+    category VARCHAR(50) NOT NULL DEFAULT 'SKILL', -- 'SKILL', 'ATTENDANCE', 'LEARNING', 'SPORTSMANSHIP'
+    awarded_by_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    awarded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE', -- 'ACTIVE', 'REVOKED'
+    revoked_at TIMESTAMPTZ,
+    revocation_reason TEXT,
+    revoked_by_user_id TEXT REFERENCES users(id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_student_achievements_event ON student_achievements(event_id);
+CREATE INDEX IF NOT EXISTS idx_student_achievements_student ON student_achievements(student_id, status);
+
+
 

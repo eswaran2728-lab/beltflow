@@ -24,6 +24,7 @@ import { useDashboardData } from '../../../hooks/useDashboardData';
 import { dashboardService, StudentDashboardData } from '../../../services/dashboardService';
 import { StudentDigitalPass } from '../../../components/StudentDigitalPass';
 import { getNextBeltLevel } from '../../../theme/belts';
+import { LearningLibraryRewardsScreen } from './LearningLibraryRewardsScreen';
 
 export interface RoleScreenProps {
   user: AuthUser;
@@ -362,6 +363,16 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
         </Text>
         <View style={{ gap: spacing.sm }}>
           <Button
+            label="Learning Library & Badges"
+            onPress={() => navigation?.navigate('Progress')}
+            variant="primary"
+            size="md"
+            fullWidth
+            leftIcon={<Sparkles size={iconSize.md} color={colors.buttonPrimaryText} />}
+            rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonPrimaryText} />}
+            testID="shortcut-student-learning"
+          />
+          <Button
             label="Syllabus Progress & Drills"
             onPress={() => navigation?.navigate('Progress')}
             variant="secondary"
@@ -404,18 +415,11 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
 };
 
 export const ProgressScreen: React.FC<RoleScreenProps> = props => {
-  const { colors, iconSize } = useTheme();
   return (
-    <RolePlaceholderBase
-      title="Progress"
-      subtitle="Silambam Syllabus & Belt Requirements"
-      role={UserRole.STUDENT}
-      user={props.user}
-      onLogout={props.onLogout}
+    <LearningLibraryRewardsScreen
+      studentId={props.user.id}
+      studentName={props.user.fullName}
       isOffline={props.isOffline}
-      testID="student-progress-screen"
-      icon={<Award size={iconSize.lg} color={colors.buttonPrimaryBg} />}
-      scopeDescription="Syllabus Scope: Martial arts lesson progress, footwork drills, staff strikes, and grading exam readiness."
     />
   );
 };
@@ -548,3 +552,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
 });
+
+export { LearningLibraryRewardsScreen } from './LearningLibraryRewardsScreen';
