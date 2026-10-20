@@ -128,7 +128,15 @@ router.post('/session/:sessionId/mark', authenticateJWT, async (req: Request, re
         "SELECT id FROM students WHERE id = $1 AND class_id = $2 AND group_id = $3 AND status = 'ACTIVE'",
         [r.studentId, sess.class_id, sess.group_id]
       );
-      if (!member.rowCount) return res.status(400).json({ error: 'Attendance contains a student outside this session\'s class/group.' });
+      if (!member.rowCount) {
+        const makeupCheck = await dbClient.query(
+          "SELECT 1 FROM make_up_bookings WHERE session_id = $1 AND student_id = $2 AND status = 'CONFIRMED'",
+          [sess.id, r.studentId]
+        );
+        if (!makeupCheck.rowCount) {
+          return res.status(400).json({ error: 'Attendance contains a student outside this session\'s class/group.' });
+        }
+      }
     }
 
     for (const r of records) {

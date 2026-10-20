@@ -84,6 +84,11 @@ export const bookingsService = {
     return await apiClient.post(`/bookings/waitlist/promote/${sessionId}`, {});
   },
 
+  async acceptOffer(bookingId: string): Promise<MakeUpBooking> {
+    const res = await apiClient.post<{ message: string; booking: MakeUpBooking }>(`/bookings/make-up/${bookingId}/accept`, {});
+    return res.booking;
+  },
+
   async getSessionBookings(sessionId: string): Promise<SessionBookingsResponse> {
     return await apiClient.get<SessionBookingsResponse>(`/bookings/sessions/${sessionId}`);
   },

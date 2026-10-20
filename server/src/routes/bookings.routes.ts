@@ -32,7 +32,17 @@ export async function promoteWaitlistInternal(
   sessionId: string,
   organizationId: string
 ): Promise<any | null> {
-  // 1. Lock session and class
+  // 1. Expire any stale offers for this session first
+  await tx.query(
+    `UPDATE make_up_bookings
+     SET status = 'EXPIRED',
+         version = version + 1,
+         updated_at = CURRENT_TIMESTAMP
+     WHERE session_id = $1 AND status = 'OFFERED' AND offer_expires_at <= CURRENT_TIMESTAMP`,
+    [sessionId]
+  );
+
+  // 2. Lock session and class
   const sessRes = await tx.query(
     `SELECT s.*, c.capacity, c.organization_id AS class_org_id, c.name AS class_name
      FROM training_sessions s
@@ -43,13 +53,15 @@ export async function promoteWaitlistInternal(
   if (sessRes.rowCount === 0) return null;
   const sess = sessRes.rows[0];
 
-  // 2. Count occupied places
+  // 3. Count occupied places (excluding expired offers)
   const homeCountRes = await tx.query(
     "SELECT count(*)::int AS count FROM students WHERE class_id = $1 AND status = 'ACTIVE'",
     [sess.class_id]
   );
   const makeupCountRes = await tx.query(
-    "SELECT count(*)::int AS count FROM make_up_bookings WHERE session_id = $1 AND status IN ('CONFIRMED', 'OFFERED')",
+    `SELECT count(*)::int AS count FROM make_up_bookings
+     WHERE session_id = $1
+       AND (status = 'CONFIRMED' OR (status = 'OFFERED' AND (offer_expires_at IS NULL OR offer_expires_at > CURRENT_TIMESTAMP)))`,
     [sessionId]
   );
   const occupied = Number(homeCountRes.rows[0]?.count || 0) + Number(makeupCountRes.rows[0]?.count || 0);
@@ -59,7 +71,7 @@ export async function promoteWaitlistInternal(
     return null; // No seats to promote into
   }
 
-  // 3. Find next waitlisted booking (FIFO)
+  // 4. Find next waitlisted booking (FIFO)
   const nextWlRes = await tx.query(
     `SELECT * FROM make_up_bookings
      WHERE session_id = $1 AND status = 'WAITLISTED'
@@ -70,7 +82,7 @@ export async function promoteWaitlistInternal(
   if (nextWlRes.rowCount === 0) return null;
   const nextBooking = nextWlRes.rows[0];
 
-  // 4. Promote to OFFERED with 24-hour expiry
+  // 5. Promote to OFFERED with 24-hour expiry
   const offerExpiresAt = new Date(Date.now() + 24 * 3600 * 1000);
   const promotedRes = await tx.query(
     `UPDATE make_up_bookings
@@ -82,7 +94,7 @@ export async function promoteWaitlistInternal(
     [offerExpiresAt, nextBooking.id]
   );
 
-  // 5. Re-index remaining waitlisted items for this session
+  // 6. Re-index remaining waitlisted items for this session
   await tx.query(
     `WITH ranked AS (
        SELECT id, ROW_NUMBER() OVER (ORDER BY waitlist_position ASC, created_at ASC) as new_pos
@@ -233,7 +245,9 @@ router.post('/make-up/request', authenticateJWT, async (req: Request, res: Respo
         [targetSession.class_id]
       );
       const makeupCountRes = await tx.query(
-        "SELECT count(*)::int AS count FROM make_up_bookings WHERE session_id = $1 AND status IN ('CONFIRMED', 'OFFERED')",
+        `SELECT count(*)::int AS count FROM make_up_bookings
+         WHERE session_id = $1
+           AND (status = 'CONFIRMED' OR (status = 'OFFERED' AND (offer_expires_at IS NULL OR offer_expires_at > CURRENT_TIMESTAMP)))`,
         [targetSession.id]
       );
       const occupied = Number(homeCountRes.rows[0]?.count || 0) + Number(makeupCountRes.rows[0]?.count || 0);
@@ -351,7 +365,9 @@ router.post('/make-up/:bookingId/approve', authenticateJWT, async (req: Request,
         [cls.id]
       );
       const makeupCountRes = await tx.query(
-        "SELECT count(*)::int AS count FROM make_up_bookings WHERE session_id = $1 AND status IN ('CONFIRMED', 'OFFERED')",
+        `SELECT count(*)::int AS count FROM make_up_bookings
+         WHERE session_id = $1
+           AND (status = 'CONFIRMED' OR (status = 'OFFERED' AND (offer_expires_at IS NULL OR offer_expires_at > CURRENT_TIMESTAMP)))`,
         [booking.session_id]
       );
       const occupied = Number(homeCountRes.rows[0]?.count || 0) + Number(makeupCountRes.rows[0]?.count || 0);
@@ -379,7 +395,7 @@ router.post('/make-up/:bookingId/approve', authenticateJWT, async (req: Request,
       // 4. Pre-register session attendance entitlement (without duplicating primary enrollment)
       await tx.query(
         `INSERT INTO session_attendance (id, session_id, student_id, status, marked_by)
-         VALUES ($1, $2, $3, 'Present', $4)
+         VALUES ($1, $2, $3, 'Booked', $4)
          ON CONFLICT (session_id, student_id) DO NOTHING`,
         [newId('att'), booking.session_id, booking.student_id, user.id]
       );
@@ -510,6 +526,100 @@ router.post('/waitlist/promote/:sessionId', authenticateJWT, async (req: Request
   }
 });
 
+// 4b. Accept Waitlist Offer (Student or Parent)
+router.post('/make-up/:bookingId/accept', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const user = req.user!;
+    const bookingRes = await dbClient.query('SELECT * FROM make_up_bookings WHERE id = $1', [req.params.bookingId]);
+    if (bookingRes.rowCount === 0) {
+      return res.status(404).json({ error: 'Make-up booking not found.' });
+    }
+    const booking = bookingRes.rows[0];
+
+    // Authorization
+    if (user.role === UserRole.STUDENT) {
+      const stu = await dbClient.query('SELECT user_id FROM students WHERE id = $1', [booking.student_id]);
+      if (stu.rowCount === 0 || stu.rows[0].user_id !== user.id) {
+        return res.status(403).json({ error: 'Unauthorized.' });
+      }
+    } else if (user.role === UserRole.PARENT) {
+      const link = await dbClient.query(
+        "SELECT 1 FROM parent_student_links WHERE parent_id = $1 AND student_id = $2 AND status = 'ACTIVE'",
+        [user.id, booking.student_id]
+      );
+      if (link.rowCount === 0) {
+        return res.status(403).json({ error: 'Parent not authorized for this child student.' });
+      }
+    } else if (user.role !== UserRole.ADMIN_PERSATUAN && user.role !== UserRole.MASTER) {
+      return res.status(403).json({ error: 'Unauthorized role.' });
+    }
+
+    if (booking.status === 'CONFIRMED') {
+      return res.json({ message: 'Booking is already confirmed.', booking });
+    }
+
+    if (booking.status !== 'OFFERED') {
+      return res.status(400).json({ error: `Cannot accept booking with status ${booking.status}. Offer must be in OFFERED status.` });
+    }
+
+    // Check expiry
+    const now = new Date();
+    if (booking.offer_expires_at && new Date(booking.offer_expires_at) <= now) {
+      // Lazily expire under transaction and promote next candidate
+      await dbClient.transaction(async (tx) => {
+        await tx.query(
+          `UPDATE make_up_bookings
+           SET status = 'EXPIRED',
+               version = version + 1,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = $1`,
+          [booking.id]
+        );
+        await promoteWaitlistInternal(tx, booking.session_id, booking.organization_id);
+      });
+      return res.status(410).json({ error: 'Waitlist offer has expired and can no longer be accepted. Place released to next waitlist candidate.' });
+    }
+
+    // Accept offer within transaction
+    const confirmed = await dbClient.transaction(async (tx) => {
+      const updRes = await tx.query(
+        `UPDATE make_up_bookings
+         SET status = 'CONFIRMED',
+             version = version + 1,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1 RETURNING *`,
+        [booking.id]
+      );
+
+      // Pre-register session attendance entitlement as 'Booked'
+      await tx.query(
+        `INSERT INTO session_attendance (id, session_id, student_id, status, marked_by)
+         VALUES ($1, $2, $3, 'Booked', $4)
+         ON CONFLICT (session_id, student_id) DO NOTHING`,
+        [newId('att'), booking.session_id, booking.student_id, user.id]
+      );
+
+      await tx.query(
+        `INSERT INTO audit_logs (id, action, details, user_role, user_email)
+         VALUES ($1, 'Waitlist Offer Accepted', $2, $3, $4)`,
+        [
+          newId('audit'),
+          `Student ${booking.student_id} accepted waitlist offer for session ${booking.session_id}`,
+          user.role,
+          user.email,
+        ]
+      );
+
+      return updRes.rows[0];
+    });
+
+    return res.json({ message: 'Waitlist offer accepted and make-up booking confirmed.', booking: confirmed });
+  } catch (err: any) {
+    console.error('[Accept offer error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'Failed to accept offer.') });
+  }
+});
+
 // 5. Get Session Bookings & Waitlist Queue
 router.get('/sessions/:sessionId', authenticateJWT, async (req: Request, res: Response) => {
   try {
@@ -542,7 +652,10 @@ router.get('/sessions/:sessionId', authenticateJWT, async (req: Request, res: Re
       [sess.class_id]
     );
 
-    const confirmedMakeups = bookingsRes.rows.filter((b) => b.status === 'CONFIRMED' || b.status === 'OFFERED');
+    const now = new Date();
+    const confirmedMakeups = bookingsRes.rows.filter(
+      (b) => b.status === 'CONFIRMED' || (b.status === 'OFFERED' && (!b.offer_expires_at || new Date(b.offer_expires_at) > now))
+    );
     const waitlisted = bookingsRes.rows.filter((b) => b.status === 'WAITLISTED');
 
     return res.json({

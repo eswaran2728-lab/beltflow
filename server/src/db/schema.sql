@@ -331,7 +331,7 @@ CREATE TABLE IF NOT EXISTS session_attendance (
     id TEXT PRIMARY KEY,
     session_id TEXT NOT NULL REFERENCES training_sessions(id) ON DELETE CASCADE,
     student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    -- 'Present' | 'Late' | 'Absent' | 'Excused'
+    -- 'Booked' (pre-registered session entitlement) | 'Present' | 'Late' | 'Absent' | 'Excused'
     status VARCHAR(20) NOT NULL DEFAULT 'Present',
     marked_by TEXT REFERENCES users(id) ON DELETE SET NULL,
     marked_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
