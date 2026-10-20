@@ -444,6 +444,7 @@ export { IncomingHandoversScreen } from './IncomingHandoversScreen';
 export { MasterTrialsFollowUpScreen } from './MasterTrialsFollowUpScreen';
 export { MasterMakeUpManagementScreen } from './MasterMakeUpManagementScreen';
 export { MasterTransferManagementScreen } from './MasterTransferManagementScreen';
+export { LessonPlanModal } from './LessonPlanModal';
 
 export { MasterGradingScreen as GradingScreen } from './MasterGradingScreen';
 

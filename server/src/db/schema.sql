@@ -1153,4 +1153,43 @@ ALTER TABLE class_transfer_requests ADD COLUMN IF NOT EXISTS approved_at TIMESTA
 ALTER TABLE class_transfer_requests ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 1;
 ALTER TABLE class_transfer_requests ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
 
+-- ----------------------------------------------------------------------------
+-- Task H19: Lesson Plans & Family Hub Depth (teaching/family)
+-- ----------------------------------------------------------------------------
+
+-- 50. Structured Lesson Plans
+CREATE TABLE IF NOT EXISTS lesson_plans (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL UNIQUE REFERENCES training_sessions(id) ON DELETE CASCADE,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    author_master_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    objectives TEXT,
+    drills JSONB NOT NULL DEFAULT '[]'::jsonb,
+    equipment TEXT[] DEFAULT '{}',
+    covered_material TEXT,
+    private_master_notes TEXT,
+    version INT NOT NULL DEFAULT 1,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_lesson_plans_session ON lesson_plans(session_id);
+CREATE INDEX IF NOT EXISTS idx_lesson_plans_class ON lesson_plans(class_id);
+CREATE INDEX IF NOT EXISTS idx_lesson_plans_org ON lesson_plans(organization_id);
+
+-- 51. Session Messages (Private Master Notes & Sensitive Communication)
+CREATE TABLE IF NOT EXISTS session_private_messages (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL REFERENCES training_sessions(id) ON DELETE CASCADE,
+    sender_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    recipient_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+    is_private_master_only BOOLEAN NOT NULL DEFAULT TRUE,
+    message TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_sess_msgs_session ON session_private_messages(session_id);
+
 

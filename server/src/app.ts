@@ -27,6 +27,8 @@ import onboardingImportsRoutes from './routes/onboardingImports.routes';
 import trialsRoutes from './routes/trials.routes';
 import bookingsRoutes from './routes/bookings.routes';
 import transfersRoutes from './routes/transfers.routes';
+import teachingRoutes from './routes/teaching.routes';
+import familyRoutes from './routes/family.routes';
 
 const app = express();
 
@@ -145,6 +147,8 @@ app.use('/api/v1/trials', trialsRoutes);
 app.use('/api/v1/bookings', bookingsRoutes);
 app.use('/api/v1/transfers', transfersRoutes);
 app.use('/api/v1/memberships', transfersRoutes);
+app.use('/api/v1/teaching', teachingRoutes);
+app.use('/api/v1/family', familyRoutes);
 
 // Global Error Handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
