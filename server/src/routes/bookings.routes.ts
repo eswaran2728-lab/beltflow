@@ -506,6 +506,7 @@ router.post('/waitlist/promote/:sessionId', authenticateJWT, async (req: Request
     }
 
     const promoted = await dbClient.transaction(async (tx) => {
+      await sweepExpiredWaitlistOffers(tx);
       return await promoteWaitlistInternal(tx, sessionId, sess.organization_id);
     });
 
@@ -620,9 +621,62 @@ router.post('/make-up/:bookingId/accept', authenticateJWT, async (req: Request, 
   }
 });
 
+// ----------------------------------------------------------------------------
+// 4c. Sweep Expired Waitlist Offers (Worker / Periodic sweep)
+// Enforces: BOOKING-EXPIRY-001
+// ----------------------------------------------------------------------------
+export async function sweepExpiredWaitlistOffers(client?: any): Promise<number> {
+  const runner = client || dbClient;
+  return await runner.transaction(async (tx: any) => {
+    // 1. Find all expired OFFERED bookings FOR UPDATE
+    const expiredRes = await tx.query(
+      `SELECT * FROM make_up_bookings
+       WHERE status = 'OFFERED'
+         AND offer_expires_at IS NOT NULL
+         AND offer_expires_at <= CURRENT_TIMESTAMP
+       FOR UPDATE`
+    );
+    if (expiredRes.rowCount === 0) return 0;
+
+    let expiredCount = 0;
+    const sessionOrgPairs = new Map<string, string>();
+
+    for (const b of expiredRes.rows) {
+      await tx.query(
+        `UPDATE make_up_bookings
+         SET status = 'EXPIRED',
+             version = version + 1,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1`,
+        [b.id]
+      );
+      sessionOrgPairs.set(b.session_id, b.organization_id);
+      expiredCount++;
+    }
+
+    // 2. For each affected session, promote the next waitlisted candidate
+    for (const [sessionId, orgId] of sessionOrgPairs.entries()) {
+      await promoteWaitlistInternal(tx, sessionId, orgId);
+    }
+
+    return expiredCount;
+  });
+}
+
+router.post('/waitlist/sweep-expired', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const expiredCount = await sweepExpiredWaitlistOffers();
+    return res.json({ message: 'Expired waitlist offers processed.', expiredCount });
+  } catch (err: any) {
+    console.error('[Sweep expired waitlist error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'Failed to sweep expired waitlist offers.') });
+  }
+});
+
 // 5. Get Session Bookings & Waitlist Queue
 router.get('/sessions/:sessionId', authenticateJWT, async (req: Request, res: Response) => {
   try {
+    await sweepExpiredWaitlistOffers();
     const sessRes = await dbClient.query(
       `SELECT s.*, c.name AS class_name, c.capacity, c.organization_id
        FROM training_sessions s

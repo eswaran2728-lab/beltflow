@@ -319,7 +319,7 @@ async function runH18Tests() {
       studentId: student1Id,
       targetClassId: classA2Id,
       reason: 'Moving to intermediate level',
-      effectiveDate: '2026-11-15',
+      effectiveDate: new Date().toISOString().slice(0, 10),
     }, tokenParentA);
     assert.equal(transferA2Req.status, 201);
     const transferA2Id = transferA2Req.data.transfer.id;
@@ -381,7 +381,7 @@ async function runH18Tests() {
       targetClassId: classB1Id, // In Org B
       reason: 'Relocating to KL',
       consentAccepted: true,
-      effectiveDate: '2026-12-01',
+      effectiveDate: new Date().toISOString().slice(0, 10),
     }, tokenParentA);
     assert.equal(crossRes.status, 201);
     const crossTransferId = crossRes.data.transfer.id;

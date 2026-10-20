@@ -563,7 +563,7 @@ router.post('/:transferId/approve', authenticateJWT, async (req: Request, res: R
       const targetClass = targetClassRes.rows[0];
 
       const capRes = await tx.query(
-        "SELECT count(*)::int AS count FROM class_enrollments WHERE class_id = $1 AND status = 'ACTIVE'",
+        "SELECT count(*)::int AS count FROM class_enrollments WHERE class_id = $1 AND status IN ('ACTIVE', 'SCHEDULED')",
         [targetClass.id]
       );
       const activeCount = Number(capRes.rows[0]?.count || 0);
@@ -579,45 +579,82 @@ router.post('/:transferId/approve', authenticateJWT, async (req: Request, res: R
       const studentRes = await tx.query('SELECT * FROM students WHERE id = $1 FOR UPDATE', [currentTransfer.student_id]);
       const student = studentRes.rows[0];
 
-      // 4. Close former primary class enrollment
-      await tx.query(
-        `UPDATE class_enrollments
-         SET status = 'TRANSFERRED',
-             is_primary = FALSE,
-             effective_to = CURRENT_TIMESTAMP,
-             updated_at = CURRENT_TIMESTAMP
-         WHERE student_id = $1 AND class_id = $2 AND is_primary = TRUE`,
-        [currentTransfer.student_id, currentTransfer.old_class_id]
-      );
-
-      // 5. Insert new active primary class enrollment
       const targetOrgId = currentTransfer.target_organization_id || targetClass.organization_id;
-      await tx.query(
-        `INSERT INTO class_enrollments (
-           id, student_id, class_id, organization_id, status, is_primary, provenance,
-           approved_by_master_id, effective_from, approved_at
-         ) VALUES ($1, $2, $3, $4, 'ACTIVE', TRUE, 'CLASS_TRANSFER', $5, $6, CURRENT_TIMESTAMP)`,
-        [
-          newId('enr'),
-          currentTransfer.student_id,
-          currentTransfer.new_class_id,
-          targetOrgId,
-          user.id,
-          currentTransfer.effective_date,
-        ]
-      );
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const effDateStr = currentTransfer.effective_date instanceof Date
+        ? currentTransfer.effective_date.toISOString().slice(0, 10)
+        : (currentTransfer.effective_date ? String(currentTransfer.effective_date).slice(0, 10) : '');
+      const isFutureDated = Boolean(effDateStr && effDateStr > todayStr);
 
-      // 6. Update student record (Acceptance Test: transfer_preserves_student_id)
-      // Canonical student ID is preserved! Only class, organization, and prospective fee are updated.
-      const newMonthlyFee = parseFloat(targetClass.monthly_fee) || 120.00;
-      await tx.query(
-        `UPDATE students
-         SET class_id = $1,
-             organization_id = $2,
-             monthly_fee = $3
-         WHERE id = $4`,
-        [currentTransfer.new_class_id, targetOrgId, newMonthlyFee, currentTransfer.student_id]
-      );
+      if (isFutureDated) {
+        // FUTURE-DATED TRANSFER (TRANSFER-DATE-001):
+        // Student remains active and eligible in former class until effective boundary.
+        // Update former enrollment with scheduled effective_to date, keeping status = ACTIVE and is_primary = TRUE.
+        await tx.query(
+          `UPDATE class_enrollments
+           SET effective_to = $1,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE student_id = $2 AND class_id = $3 AND is_primary = TRUE`,
+          [currentTransfer.effective_date, currentTransfer.student_id, currentTransfer.old_class_id]
+        );
+
+        // Pre-create target enrollment in SCHEDULED status (non-primary until effective date arrives)
+        await tx.query(
+          `INSERT INTO class_enrollments (
+             id, student_id, class_id, organization_id, status, is_primary, provenance,
+             approved_by_master_id, effective_from, approved_at
+           ) VALUES ($1, $2, $3, $4, 'SCHEDULED', FALSE, 'CLASS_TRANSFER', $5, $6, CURRENT_TIMESTAMP)`,
+          [
+            newId('enr'),
+            currentTransfer.student_id,
+            currentTransfer.new_class_id,
+            targetOrgId,
+            user.id,
+            currentTransfer.effective_date,
+          ]
+        );
+        // Canonical student class_id remains unchanged until effective date boundary!
+      } else {
+        // IMMEDIATE TRANSFER (effective_date <= CURRENT_DATE):
+        // 4. Close former primary class enrollment
+        await tx.query(
+          `UPDATE class_enrollments
+           SET status = 'TRANSFERRED',
+               is_primary = FALSE,
+               effective_to = CURRENT_TIMESTAMP,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE student_id = $1 AND class_id = $2 AND is_primary = TRUE`,
+          [currentTransfer.student_id, currentTransfer.old_class_id]
+        );
+
+        // 5. Insert new active primary class enrollment
+        await tx.query(
+          `INSERT INTO class_enrollments (
+             id, student_id, class_id, organization_id, status, is_primary, provenance,
+             approved_by_master_id, effective_from, approved_at
+           ) VALUES ($1, $2, $3, $4, 'ACTIVE', TRUE, 'CLASS_TRANSFER', $5, $6, CURRENT_TIMESTAMP)`,
+          [
+            newId('enr'),
+            currentTransfer.student_id,
+            currentTransfer.new_class_id,
+            targetOrgId,
+            user.id,
+            currentTransfer.effective_date,
+          ]
+        );
+
+        // 6. Update student record (Acceptance Test: transfer_preserves_student_id)
+        // Canonical student ID is preserved! Only class, organization, and prospective fee are updated.
+        const newMonthlyFee = parseFloat(targetClass.monthly_fee) || 120.00;
+        await tx.query(
+          `UPDATE students
+           SET class_id = $1,
+               organization_id = $2,
+               monthly_fee = $3
+           WHERE id = $4`,
+          [currentTransfer.new_class_id, targetOrgId, newMonthlyFee, currentTransfer.student_id]
+        );
+      }
 
       // 7. Update transfer request record
       const updTransRes = await tx.query(
@@ -683,10 +720,73 @@ router.post('/:transferId/approve', authenticateJWT, async (req: Request, res: R
 });
 
 // ----------------------------------------------------------------------------
+// 5b. Activate Effective Scheduled Transfers (Idempotent Server Worker / Route)
+// Enforces: TRANSFER-DATE-001
+// ----------------------------------------------------------------------------
+export async function activateEffectiveTransfers(tx?: any): Promise<number> {
+  const runner = tx || dbClient;
+  return await runner.transaction(async (clientTx: any) => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const scheduledRes = await clientTx.query(
+      `SELECT ctr.*, c.monthly_fee AS new_monthly_fee, c.organization_id AS target_class_org
+       FROM class_transfer_requests ctr
+       JOIN classes c ON c.id = ctr.new_class_id
+       JOIN class_enrollments ce ON ce.class_id = ctr.new_class_id AND ce.student_id = ctr.student_id AND ce.status = 'SCHEDULED'
+       WHERE ctr.status = 'APPROVED' AND ctr.effective_date <= $1
+       FOR UPDATE`,
+      [todayStr]
+    );
+
+    let count = 0;
+    for (const row of scheduledRes.rows) {
+      // 1. Close former enrollment
+      await clientTx.query(
+        `UPDATE class_enrollments
+         SET status = 'TRANSFERRED', is_primary = FALSE, effective_to = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+         WHERE student_id = $1 AND class_id = $2 AND is_primary = TRUE`,
+        [row.student_id, row.old_class_id]
+      );
+
+      // 2. Activate target enrollment
+      await clientTx.query(
+        `UPDATE class_enrollments
+         SET status = 'ACTIVE', is_primary = TRUE, updated_at = CURRENT_TIMESTAMP
+         WHERE student_id = $1 AND class_id = $2 AND status = 'SCHEDULED'`,
+        [row.student_id, row.new_class_id]
+      );
+
+      // 3. Update canonical student class pointer
+      const newMonthlyFee = parseFloat(row.new_monthly_fee) || 120.00;
+      const targetOrg = row.target_organization_id || row.target_class_org;
+      await clientTx.query(
+        `UPDATE students
+         SET class_id = $1, organization_id = $2, monthly_fee = $3
+         WHERE id = $4`,
+        [row.new_class_id, targetOrg, newMonthlyFee, row.student_id]
+      );
+
+      count++;
+    }
+    return count;
+  });
+}
+
+router.post('/activate-scheduled', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const activated = await activateEffectiveTransfers();
+    return res.json({ message: 'Scheduled transfers processed.', activatedCount: activated });
+  } catch (err: any) {
+    console.error('[Activate scheduled error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'Failed to activate transfers.') });
+  }
+});
+
+// ----------------------------------------------------------------------------
 // 6. Get Pending Transfers for Master
 // ----------------------------------------------------------------------------
 router.get('/pending', authenticateJWT, async (req: Request, res: Response) => {
   try {
+    await activateEffectiveTransfers();
     const user = req.user!;
     if (user.role !== UserRole.MASTER && user.role !== UserRole.ADMIN_PERSATUAN) {
       return res.status(403).json({ error: 'Access denied.' });
@@ -747,6 +847,7 @@ router.get('/pauses/pending', authenticateJWT, async (req: Request, res: Respons
 // ----------------------------------------------------------------------------
 router.get('/students/:studentId/history', authenticateJWT, async (req: Request, res: Response) => {
   try {
+    await activateEffectiveTransfers();
     const user = req.user!;
     const studentRes = await dbClient.query('SELECT * FROM students WHERE id = $1', [req.params.studentId]);
     if (studentRes.rowCount === 0) {
