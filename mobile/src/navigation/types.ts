@@ -57,6 +57,7 @@ export type MasterClassesStackParamList = {
   ClassWorkspace: { classId: string; className?: string };
   TrialsFollowUp: { classId?: string } | undefined;
   MakeUpWaitlist: { sessionId?: string; classId?: string } | undefined;
+  TransfersManagement: { classId?: string } | undefined;
 };
 
 export type MasterTabParamList = {

@@ -26,6 +26,7 @@ import { paymentGatewayRouter } from './routes/paymentGateway.routes';
 import onboardingImportsRoutes from './routes/onboardingImports.routes';
 import trialsRoutes from './routes/trials.routes';
 import bookingsRoutes from './routes/bookings.routes';
+import transfersRoutes from './routes/transfers.routes';
 
 const app = express();
 
@@ -142,6 +143,8 @@ app.use('/api/v1/onboarding-imports', onboardingImportsRoutes);
 app.use('/api/v1', onboardingImportsRoutes);
 app.use('/api/v1/trials', trialsRoutes);
 app.use('/api/v1/bookings', bookingsRoutes);
+app.use('/api/v1/transfers', transfersRoutes);
+app.use('/api/v1/memberships', transfersRoutes);
 
 // Global Error Handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

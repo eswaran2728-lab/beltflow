@@ -1113,3 +1113,44 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_makeup_student_session_active
     ON make_up_bookings(student_id, session_id)
     WHERE status IN ('REQUESTED', 'CONFIRMED', 'WAITLISTED', 'OFFERED');
 
+-- ----------------------------------------------------------------------------
+-- Task H18: Pauses, Returns and Controlled Transfers (membership/transfers)
+-- ----------------------------------------------------------------------------
+
+-- 49. Membership Pauses (Governed leave, reminders, and return)
+CREATE TABLE IF NOT EXISTS membership_pauses (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    requested_by_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    reason TEXT NOT NULL,
+    start_date DATE NOT NULL,
+    expected_end_date DATE,
+    actual_return_date DATE,
+    -- 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'RESUMED' | 'CANCELLED'
+    status VARCHAR(50) NOT NULL DEFAULT 'REQUESTED',
+    approved_by_master_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    approved_at TIMESTAMPTZ,
+    notes TEXT,
+    version INT NOT NULL DEFAULT 1,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_membership_pauses_student ON membership_pauses(student_id, status);
+CREATE INDEX IF NOT EXISTS idx_membership_pauses_org ON membership_pauses(organization_id, status);
+CREATE INDEX IF NOT EXISTS idx_membership_pauses_class ON membership_pauses(class_id, status);
+
+-- Additive migration for class_transfer_requests to support H18 requirements
+ALTER TABLE class_transfer_requests ADD COLUMN IF NOT EXISTS target_organization_id TEXT REFERENCES organizations(id);
+ALTER TABLE class_transfer_requests ADD COLUMN IF NOT EXISTS effective_date DATE NOT NULL DEFAULT CURRENT_DATE;
+ALTER TABLE class_transfer_requests ADD COLUMN IF NOT EXISTS reason TEXT;
+ALTER TABLE class_transfer_requests ADD COLUMN IF NOT EXISTS consent_accepted BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE class_transfer_requests ADD COLUMN IF NOT EXISTS requested_by_user_id TEXT REFERENCES users(id);
+ALTER TABLE class_transfer_requests ADD COLUMN IF NOT EXISTS receiving_master_id TEXT REFERENCES users(id);
+ALTER TABLE class_transfer_requests ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ;
+ALTER TABLE class_transfer_requests ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 1;
+ALTER TABLE class_transfer_requests ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+
+

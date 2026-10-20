@@ -443,6 +443,7 @@ export { ClassHandoverScreen } from './ClassHandoverScreen';
 export { IncomingHandoversScreen } from './IncomingHandoversScreen';
 export { MasterTrialsFollowUpScreen } from './MasterTrialsFollowUpScreen';
 export { MasterMakeUpManagementScreen } from './MasterMakeUpManagementScreen';
+export { MasterTransferManagementScreen } from './MasterTransferManagementScreen';
 
 export { MasterGradingScreen as GradingScreen } from './MasterGradingScreen';
 

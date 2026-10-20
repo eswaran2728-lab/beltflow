@@ -14,7 +14,8 @@ export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps {
-  label: string;
+  label?: string;
+  title?: string;
   onPress?: () => void;
   variant?: ButtonVariant;
   size?: ButtonSize;
@@ -30,6 +31,7 @@ export interface ButtonProps {
 
 export const Button: React.FC<ButtonProps> = ({
   label,
+  title,
   onPress,
   variant = 'primary',
   size = 'md',
@@ -43,6 +45,7 @@ export const Button: React.FC<ButtonProps> = ({
   accessibilityLabel,
 }) => {
   const { colors, typography, borderRadius, layout, spacing } = useTheme();
+  const displayLabel = label || title || '';
 
   const isInteractive = !disabled && !loading;
 
@@ -135,7 +138,7 @@ export const Button: React.FC<ButtonProps> = ({
       ]}
       testID={testID}
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel || label}
+      accessibilityLabel={accessibilityLabel || displayLabel}
       accessibilityState={{ disabled: !isInteractive, busy: loading }}
     >
       {loading ? (
@@ -148,7 +151,7 @@ export const Button: React.FC<ButtonProps> = ({
         <View style={styles.contentRow}>
           {leftIcon && <View style={styles.leftIconWrapper}>{leftIcon}</View>}
           <Text style={[typography.button, { color: getLabelColor() }]}>
-            {label}
+            {displayLabel}
           </Text>
           {rightIcon && <View style={styles.rightIconWrapper}>{rightIcon}</View>}
         </View>
