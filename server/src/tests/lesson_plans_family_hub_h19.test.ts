@@ -131,8 +131,9 @@ async function runH19Tests() {
       `INSERT INTO class_leaderships (id, class_id, master_id, organization_id, leadership_type, is_active, effective_from, provenance)
        VALUES 
        ($1, $2, $3, $4, 'PRIMARY', TRUE, CURRENT_TIMESTAMP - INTERVAL '1 day', 'ADMIN_ASSIGNED'),
-       ($5, $6, $3, $7, 'PRIMARY', TRUE, CURRENT_TIMESTAMP - INTERVAL '1 day', 'ADMIN_ASSIGNED')`,
-      [`lead_a_${ts}`, classAId, masterA1Id, orgAId, `lead_b_${ts}`, classBId, orgBId]
+       ($5, $6, $3, $7, 'PRIMARY', TRUE, CURRENT_TIMESTAMP - INTERVAL '1 day', 'ADMIN_ASSIGNED'),
+       ($8, $2, $9, $4, 'SUBSTITUTE', TRUE, CURRENT_TIMESTAMP - INTERVAL '1 day', 'DELEGATION')`,
+      [`lead_a_${ts}`, classAId, masterA1Id, orgAId, `lead_b_${ts}`, classBId, orgBId, `lead_sub_${ts}`, masterA2SubstituteId]
     );
 
     // Training Group & Sessions in Class A

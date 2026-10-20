@@ -243,25 +243,45 @@ router.get('/sessions/:sessionId/substitute-brief', authenticateJWT, async (req:
     }
     const session = sessionRes.rows[0];
 
-    // Authorization: Any Master in the organization (or assigned substitute) or Admin Persatuan
-    if (
-      user.role !== UserRole.MASTER &&
-      user.role !== UserRole.ADMIN_PERSATUAN &&
-      user.role !== UserRole.SUPER_ADMIN
-    ) {
-      return res.status(403).json({ error: 'Access denied. Only instructors can access substitute briefs.' });
-    }
-
-    if (user.role === UserRole.MASTER && user.organizationId !== session.organization_id) {
-      // Check if explicitly assigned as substitute across tenants
-      const subCheck = await dbClient.query(
-        `SELECT 1 FROM class_leaderships
-         WHERE class_id = $1 AND master_id = $2 AND is_active = TRUE`,
-        [session.class_id, user.id]
-      );
-      if (subCheck.rowCount === 0) {
-        return res.status(403).json({ error: 'Access denied. You are not affiliated with this organization or assigned as substitute.' });
+    // SUB-AUTH-001: Strict Authorization Enforcement
+    // Accessible ONLY to a Master holding valid, active, session-scoped delegation or approved class leadership in the same Persatuan,
+    // or Admin Persatuan within the same organization. Super Admin and cross-tenant users are denied operational access.
+    if (user.role === UserRole.MASTER) {
+      if (user.organizationId !== session.organization_id) {
+        return res.status(403).json({
+          error: 'Access denied. Cross-Persatuan instructors cannot access substitute briefs for another academy.',
+        });
       }
+
+      // Check for approved active leadership or valid unexpired session delegation
+      const leadershipCheck = await dbClient.query(
+        `SELECT id, leadership_type, session_id
+         FROM class_leaderships
+         WHERE class_id = $1
+           AND master_id = $2
+           AND organization_id = $3
+           AND is_active = TRUE
+           AND (effective_from IS NULL OR effective_from <= CURRENT_TIMESTAMP)
+           AND (effective_to IS NULL OR effective_to >= CURRENT_TIMESTAMP)
+           AND (session_id IS NULL OR session_id = $4)`,
+        [session.class_id, user.id, session.organization_id, sessionId]
+      );
+
+      if (leadershipCheck.rowCount === 0) {
+        return res.status(403).json({
+          error: 'Access denied. You do not hold approved class leadership or an active, unexpired delegation for this session.',
+        });
+      }
+    } else if (user.role === UserRole.ADMIN_PERSATUAN) {
+      if (user.organizationId !== session.organization_id) {
+        return res.status(403).json({
+          error: 'Access denied. You can only access substitute briefs within your own Persatuan.',
+        });
+      }
+    } else {
+      return res.status(403).json({
+        error: 'Access denied. Only authorized instructors or academy administrators can access substitute briefs.',
+      });
     }
 
     // Fetch lesson plan
