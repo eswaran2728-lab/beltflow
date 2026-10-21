@@ -7,3 +7,4 @@ export * from './Feedback';
 export * from './Layout';
 export * from './StudentDigitalPass';
 export * from './ParentChildPassViewer';
+export * from './stitch';
