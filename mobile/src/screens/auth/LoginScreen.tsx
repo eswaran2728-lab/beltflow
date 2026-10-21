@@ -13,6 +13,7 @@ import { ScreenContainer } from '../../components/Layout';
 import { Input, PasswordInput } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { ErrorState } from '../../components/Feedback';
+import { DevEnvironmentPanel } from '../../components/DevEnvironmentPanel';
 import { authService } from '../../services/authService';
 import { AuthUser } from '../../types/auth';
 
@@ -118,6 +119,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               />
             </View>
           ) : null}
+
+          {/* Development Network & Test Accounts Helper */}
+          <DevEnvironmentPanel
+            onSelectTestAccount={(testEmail, testPass) => {
+              setEmail(testEmail);
+              setPassword(testPass);
+              setEmailError(undefined);
+              setPasswordError(undefined);
+              setGeneralError(undefined);
+            }}
+          />
 
           {/* Form Fields */}
           <View style={styles.form}>

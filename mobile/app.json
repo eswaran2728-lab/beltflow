@@ -2,11 +2,16 @@
   "expo": {
     "name": "BeltFlow",
     "slug": "beltflow",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "backgroundColor": "#0D2B47",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0D2B47"
+    },
     "platforms": [
       "ios",
       "android"
@@ -17,6 +22,7 @@
     },
     "android": {
       "package": "com.beltflow.app",
+      "versionCode": 2,
       "allowBackup": false,
       "adaptiveIcon": {
         "backgroundColor": "#0D2B47",
@@ -24,6 +30,11 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ],
       "predictiveBackGestureEnabled": false
     },
     "web": {
@@ -31,7 +42,14 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-asset"
+      "expo-asset",
+      "expo-sqlite",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow BeltFlow to scan student QR attendance passes."
+        }
+      ]
     ]
   }
 }

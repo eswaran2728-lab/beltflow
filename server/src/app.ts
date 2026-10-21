@@ -32,6 +32,7 @@ import familyRoutes from './routes/family.routes';
 import learningRoutes from './routes/learning.routes';
 import mediaFeedbackRoutes from './routes/media_feedback.routes';
 import messagingRoutes from './routes/messaging.routes';
+import analyticsRoutes from './routes/analytics.routes';
 
 const app = express();
 
@@ -155,6 +156,7 @@ app.use('/api/v1/family', familyRoutes);
 app.use('/api/v1/learning', learningRoutes);
 app.use('/api/v1/media', mediaFeedbackRoutes);
 app.use('/api/v1/messaging', messagingRoutes);
+app.use('/api/v1/analytics', analyticsRoutes);
 
 // Global Error Handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

@@ -12,7 +12,33 @@ import { AuthUser } from '../types/auth';
 const STORAGE_KEYS = {
   AUTH_TOKEN: 'beltflow_auth_token',
   USER_SESSION: 'beltflow_user_session',
+  CUSTOM_API_URL: 'beltflow_custom_api_url',
 } as const;
+
+export async function getStoredApiBaseUrl(): Promise<string | null> {
+  try {
+    return await SecureStore.getItemAsync(STORAGE_KEYS.CUSTOM_API_URL);
+  } catch {
+    return null;
+  }
+}
+
+export async function setStoredApiBaseUrl(url: string): Promise<void> {
+  if (!url || typeof url !== 'string') {
+    await clearStoredApiBaseUrl();
+    return;
+  }
+  await SecureStore.setItemAsync(STORAGE_KEYS.CUSTOM_API_URL, url.trim().replace(/\/+$/, ''));
+}
+
+export async function clearStoredApiBaseUrl(): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(STORAGE_KEYS.CUSTOM_API_URL);
+  } catch {
+    // Ignore deletion errors
+  }
+}
+
 
 export async function getAuthToken(): Promise<string | null> {
   try {

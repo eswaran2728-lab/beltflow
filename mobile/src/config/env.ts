@@ -44,4 +44,19 @@ export function resetApiBaseUrl(): void {
   currentApiBaseUrl = null;
 }
 
+export async function initializeApiBaseUrl(): Promise<string> {
+  try {
+    const { getStoredApiBaseUrl } = await import('../services/storage');
+    const stored = await getStoredApiBaseUrl();
+    if (stored) {
+      setApiBaseUrl(stored);
+      return stored;
+    }
+  } catch {
+    // Ignore storage read error during initialization
+  }
+  return getApiBaseUrl();
+}
+
 export const API_TIMEOUT_MS = 15000; // 15 seconds
+

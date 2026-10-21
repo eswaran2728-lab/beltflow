@@ -8,3 +8,4 @@ export * from './bookingsService';
 export * from './membershipService';
 export * from './learningService';
 export * from './mediaFeedbackService';
+export * from './analyticsService';

@@ -18,6 +18,7 @@ import {
 import { SplashScreen } from '../screens/auth/SplashScreen';
 import { UnauthorizedRoleScreen } from '../screens/roles/UnauthorizedRoleScreen';
 import { authService, SessionValidationResult } from '../services/authService';
+import { initializeApiBaseUrl } from '../config/env';
 import { AuthUser, UserRole } from '../types/auth';
 import { RoleNavigatorProps } from './types';
 
@@ -125,6 +126,7 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
     let cancelled = false;
     (async () => {
       try {
+        await initializeApiBaseUrl();
         const result = await authService.validateStoredSession();
         if (!cancelled) applyValidation(result);
       } catch {
