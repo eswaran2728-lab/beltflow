@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { dbClient } from '../db/client';
 import { authenticateJWT } from '../middleware/auth';
 import { UserRole } from '../security/rbac';
+import { mediaStorageAdapter } from '../services/mediaStorageAdapter';
 import crypto from 'crypto';
 
 const router = Router();
@@ -12,50 +13,77 @@ const ALLOWED_MIME_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 const SIGNED_URL_EXPIRY_SECONDS = 900; // 15 minutes expiry
 
 // ============================================================================
-// Helper: Verify Master's authority over a student's class
+// Helper: Verify Master's authority over a student's class (including substitute delegation)
 // ============================================================================
 async function isMasterAuthorizedForStudent(masterId: string, studentId: string, orgId: string): Promise<boolean> {
-  const query = `
-    SELECT 1
+  // First, verify master affiliation is ACTIVE if affiliation records exist
+  const affRes = await dbClient.query(
+    `SELECT status FROM master_affiliations WHERE master_id = $1 AND organization_id = $2 ORDER BY updated_at DESC LIMIT 1;`,
+    [masterId, orgId]
+  );
+  if (affRes.rowCount > 0 && affRes.rows[0].status !== 'ACTIVE') {
+    return false;
+  }
+
+  // Get student's enrolled classes
+  const classRes = await dbClient.query(`
+    SELECT c.id, c.organization_id, c.master_id, c.main_master_id
     FROM students s
     JOIN classes c ON s.class_id = c.id
-    WHERE s.id = $1
-      AND c.organization_id = $2
-      AND (
-        c.master_id = $3
-        OR c.main_master_id = $3
-        OR EXISTS (
-          SELECT 1 FROM coach_class_assignments cca
-          WHERE cca.class_id = c.id AND cca.coach_id = $3
-        )
-        OR EXISTS (
-          SELECT 1 FROM class_leaderships cl
-          WHERE cl.class_id = c.id AND cl.master_id = $3 AND cl.is_active = TRUE
-        )
-      )
+    WHERE s.id = $1 AND c.organization_id = $2
     UNION
-    SELECT 1
+    SELECT c.id, c.organization_id, c.master_id, c.main_master_id
     FROM class_enrollments ce
     JOIN classes c ON ce.class_id = c.id
-    WHERE ce.student_id = $1
-      AND c.organization_id = $2
-      AND ce.status IN ('ACTIVE', 'ENROLLED')
-      AND (
-        c.master_id = $3
-        OR c.main_master_id = $3
-        OR EXISTS (
-          SELECT 1 FROM coach_class_assignments cca
-          WHERE cca.class_id = c.id AND cca.coach_id = $3
-        )
-        OR EXISTS (
-          SELECT 1 FROM class_leaderships cl
-          WHERE cl.class_id = c.id AND cl.master_id = $3 AND cl.is_active = TRUE
-        )
-      )
-    LIMIT 1;
-  `;
-  const result = await dbClient.query(query, [studentId, orgId, masterId]);
-  return result.rows.length > 0;
+    WHERE ce.student_id = $1 AND c.organization_id = $2 AND ce.status IN ('ACTIVE', 'ENROLLED')
+  `, [studentId, orgId]);
+
+  if (classRes.rows.length === 0) {
+    return false;
+  }
+
+  for (const cls of classRes.rows) {
+    // Check class_leaderships for this master (handles primary and active substitute delegation)
+    const leadRes = await dbClient.query(`
+      SELECT is_active, leadership_type, effective_from, effective_to
+      FROM class_leaderships
+      WHERE class_id = $1 AND master_id = $2
+      ORDER BY (is_active = TRUE AND (effective_to IS NULL OR effective_to >= CURRENT_TIMESTAMP) AND (effective_from IS NULL OR effective_from <= CURRENT_TIMESTAMP)) DESC,
+               created_at DESC
+      LIMIT 1;
+    `, [cls.id, masterId]);
+
+    if (leadRes.rows.length > 0) {
+      const lead = leadRes.rows[0];
+      if (lead.is_active) {
+        const now = new Date();
+        const from = lead.effective_from ? new Date(lead.effective_from) : null;
+        const to = lead.effective_to ? new Date(lead.effective_to) : null;
+        if ((!from || now >= from) && (!to || now <= to)) {
+          return true;
+        }
+      }
+      // Explicit inactive/expired leadership -> denied for this class
+      continue;
+    }
+
+    // Check coach_class_assignments
+    const coachRes = await dbClient.query(
+      `SELECT 1 FROM coach_class_assignments WHERE class_id = $1 AND coach_id = $2 LIMIT 1;`,
+      [cls.id, masterId]
+    );
+    if (coachRes.rows.length > 0) {
+      return true;
+    }
+
+    // Fallback to legacy class master columns ONLY if no class_leaderships records exist for this class
+    const anyLead = await dbClient.query(`SELECT 1 FROM class_leaderships WHERE class_id = $1 LIMIT 1;`, [cls.id]);
+    if (anyLead.rows.length === 0 && (cls.master_id === masterId || cls.main_master_id === masterId)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 // ============================================================================
@@ -186,11 +214,16 @@ router.post(
         });
       }
 
-      // Generate signed token and expiry
+      // Generate signed token and genuine storage URL using mediaStorageAdapter
       const videoId = `vid_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-      const presignedToken = `tok_${crypto.randomBytes(24).toString('hex')}`;
-      const tokenExpiresAt = new Date(Date.now() + SIGNED_URL_EXPIRY_SECONDS * 1000);
-      const storageKey = `persatuan/${student.organization_id}/students/${studentId}/videos/${videoId}.${mimeType.split('/')[1] || 'mp4'}`;
+      const ext = mimeType.split('/')[1] === 'quicktime' ? 'mov' : (mimeType.split('/')[1] || 'mp4');
+      const storageKey = `persatuan/${student.organization_id}/students/${studentId}/videos/${videoId}.${ext}`;
+
+      const presigned = await mediaStorageAdapter.generatePresignedUploadUrl(storageKey, {
+        maxSizeBytes: MAX_VIDEO_FILE_SIZE_BYTES,
+        mimeType,
+        expiresInSeconds: SIGNED_URL_EXPIRY_SECONDS,
+      });
 
       await dbClient.query(
         `INSERT INTO video_submissions (
@@ -212,8 +245,8 @@ router.post(
           numericSize,
           mimeType,
           storageKey,
-          presignedToken,
-          tokenExpiresAt,
+          presigned.presignedToken,
+          presigned.expiresAt,
         ]
       );
 
@@ -221,9 +254,10 @@ router.post(
         id: videoId,
         videoId,
         storageKey,
-        presignedToken,
-        tokenExpiresAt: tokenExpiresAt.toISOString(),
-        uploadUrl: `https://storage.beltflow.internal/${storageKey}?token=${presignedToken}&expires=${Math.floor(tokenExpiresAt.getTime() / 1000)}`,
+        presignedToken: presigned.presignedToken,
+        tokenExpiresAt: presigned.expiresAt.toISOString(),
+        uploadUrl: presigned.uploadUrl,
+        headers: presigned.headers,
         maxSizeBytes: MAX_VIDEO_FILE_SIZE_BYTES,
       });
     } catch (err: any) {
@@ -282,6 +316,14 @@ router.post(
         });
       }
 
+      // Verify object on storage provider if present
+      const verifyResult = await mediaStorageAdapter.verifyObject(video.storage_key, video.file_size_bytes, video.mime_type);
+      if (verifyResult.exists && !verifyResult.magicValid) {
+        return res.status(400).json({
+          error: `oversized_invalid_upload_rejected: Invalid media format: ${verifyResult.error || 'Binary magic bytes failed verification.'}`,
+        });
+      }
+
       await dbClient.query(
         `UPDATE video_submissions
          SET upload_status = 'UPLOADED', uploaded_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
@@ -293,6 +335,7 @@ router.post(
         success: true,
         id,
         status: 'UPLOADED',
+        checksumSha256: verifyResult.checksumSha256,
         message: 'Video upload finalized successfully and queued for Master review.',
       });
     } catch (err: any) {
@@ -472,6 +515,9 @@ router.post(
         ]
       );
 
+      // Revoke outstanding playback tokens on storage provider immediately
+      mediaStorageAdapter.revokeTokensForStudent(studentId);
+
       return res.status(200).json({
         success: true,
         studentId,
@@ -580,9 +626,10 @@ router.get(
         [id]
       );
 
-      // Refresh short-lived playback token
-      const freshToken = `pb_${crypto.randomBytes(20).toString('hex')}`;
-      const freshExpiry = new Date(Date.now() + SIGNED_URL_EXPIRY_SECONDS * 1000);
+      // Generate genuine signed playback URL with storage adapter
+      const presignedPb = await mediaStorageAdapter.generatePresignedPlaybackUrl(video.storage_key, {
+        expiresInSeconds: SIGNED_URL_EXPIRY_SECONDS,
+      });
 
       return res.status(200).json({
         id: video.id,
@@ -594,8 +641,9 @@ router.get(
         fileSizeBytes: video.file_size_bytes,
         mimeType: video.mime_type,
         uploadedAt: video.uploaded_at,
-        playbackUrl: `https://storage.beltflow.internal/${video.storage_key}?token=${freshToken}&expires=${Math.floor(freshExpiry.getTime() / 1000)}`,
-        expiresAt: freshExpiry.toISOString(),
+        playbackUrl: presignedPb.playbackUrl,
+        presignedToken: presignedPb.presignedToken,
+        expiresAt: presignedPb.expiresAt.toISOString(),
         annotations: annRes.rows,
       });
     } catch (err: any) {
@@ -748,5 +796,82 @@ router.delete(
     }
   }
 );
+
+// ============================================================================
+// Direct storage upload endpoint (Provider-neutral integration)
+// ============================================================================
+router.put('/storage/upload/:key(*)', async (req: Request, res: Response) => {
+  try {
+    const key = req.params.key;
+    const token = req.query.token as string;
+    const expires = Number(req.query.expires);
+
+    if (!token || !expires || isNaN(expires)) {
+      return res.status(403).json({ error: 'Missing or invalid upload authorization token.' });
+    }
+    if (Math.floor(Date.now() / 1000) > expires) {
+      return res.status(403).json({ error: 'expired_URL_denied: Upload URL has expired.' });
+    }
+    if (!mediaStorageAdapter.verifyToken(key, token, expires)) {
+      return res.status(403).json({ error: 'Invalid or forged storage upload token.' });
+    }
+
+    // Read body buffer
+    const chunks: Buffer[] = [];
+    req.on('data', (chunk) => chunks.push(chunk));
+    await new Promise((resolve) => req.on('end', resolve));
+    const buffer = Buffer.concat(chunks);
+
+    if (buffer.length > MAX_VIDEO_FILE_SIZE_BYTES) {
+      return res.status(400).json({ error: 'oversized_invalid_upload_rejected: Upload exceeds 50MB limit.' });
+    }
+
+    const mimeType = (req.headers['content-type'] as string) || 'video/mp4';
+    const saved = await mediaStorageAdapter.saveObject(key, buffer, mimeType);
+
+    return res.status(200).json({
+      success: true,
+      storageKey: key,
+      sizeBytes: saved.sizeBytes,
+      checksumSha256: saved.checksumSha256,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================================================
+// Direct storage playback stream endpoint (Provider-neutral integration)
+// ============================================================================
+router.get('/storage/playback/:key(*)', async (req: Request, res: Response) => {
+  try {
+    const key = req.params.key;
+    const token = req.query.token as string;
+    const expires = Number(req.query.expires);
+
+    if (!token || !expires || isNaN(expires)) {
+      return res.status(403).json({ error: 'Missing or invalid playback authorization token.' });
+    }
+    if (Math.floor(Date.now() / 1000) > expires) {
+      return res.status(403).json({ error: 'expired_URL_denied: Playback URL has expired.' });
+    }
+    if (!mediaStorageAdapter.verifyToken(key, token, expires)) {
+      return res.status(403).json({
+        error: 'consent_revocation_blocks_new_access: Invalid, expired, or revoked playback token.',
+      });
+    }
+
+    const obj = await mediaStorageAdapter.getObject(key, token);
+    if (!obj) {
+      return res.status(404).json({ error: 'deleted_media_not_returned_by_API: Video not found on storage.' });
+    }
+
+    res.setHeader('Content-Type', obj.contentType);
+    res.setHeader('Content-Length', obj.buffer.length);
+    return res.send(obj.buffer);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
 
 export default router;

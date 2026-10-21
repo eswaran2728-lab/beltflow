@@ -17,7 +17,7 @@ export const DigitalCertificateCard: React.FC<DigitalCertificateCardProps> = ({
   title,
   issuedDate,
   certificateNumber,
-  isVerified = true,
+  isVerified = false,
   onDownloadPress,
   onViewQrPress,
   style,

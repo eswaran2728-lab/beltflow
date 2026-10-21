@@ -27,6 +27,8 @@ server/dist/
 server/node_modules/
 *.beltflow_pgdata/
 .beltflow_pgdata/
+.storage/
+server/.storage/
 
 # Android local toolchain / IDE state
 .kotlin/
