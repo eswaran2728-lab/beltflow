@@ -149,6 +149,14 @@ export interface ParentDashboardData {
   }[];
 }
 
+export interface StudentCertificateSummary {
+  id: string;
+  beltRank: string;
+  issuedDate: string;
+  certificateNumber: string;
+  status?: string;
+}
+
 export interface StudentDashboardData {
   student: {
     id: string;
@@ -172,12 +180,13 @@ export interface StudentDashboardData {
   }[];
   skillsTotal: number;
   skillsCompleted: number;
-  certificates: {
+  skills?: {
     id: string;
-    beltRank: string;
-    issuedDate: string;
-    certificateNumber: string;
+    name: string;
+    level?: string;
+    status?: string;
   }[];
+  certificates: StudentCertificateSummary[];
   notices: {
     id: string;
     title: string;
@@ -609,12 +618,19 @@ export const dashboardService = {
         groupName: sn.group_name,
       })),
       skillsTotal: skills.length,
-      skillsCompleted: skills.filter(sk => sk.status === 'COMPLETED' || sk.level === 'PASSED').length,
+      skillsCompleted: skills.filter(sk => sk.status === 'COMPLETED' || sk.level === 'PASSED' || sk.level === 'Mastered').length,
+      skills: skills.map((sk: any) => ({
+        id: sk.id,
+        name: sk.name || sk.skill_name || sk.skillName,
+        level: sk.level,
+        status: sk.status,
+      })),
       certificates: certs.slice(0, 5).map(c => ({
         id: c.id,
         beltRank: c.belt_rank,
         issuedDate: c.issued_date,
         certificateNumber: c.certificate_number,
+        status: c.status || 'ACTIVE',
       })),
       notices: notices.slice(0, 5).map(n => ({
         id: n.id,

@@ -446,7 +446,7 @@ describe('BeltFlow Role-Based Mobile Dashboards — Task 1.7 (TDD)', () => {
         return Promise.reject(new Error(`Unexpected path: ${path}`));
       });
 
-      const { findByText, getByText } = await renderWithTheme(
+      const { findByText, getByText, getAllByText } = await renderWithTheme(
         <StudentHomeScreen user={studentUser} />,
         true,
         mockCustomBelts
@@ -454,7 +454,7 @@ describe('BeltFlow Role-Based Mobile Dashboards — Task 1.7 (TDD)', () => {
 
       expect(await findByText('Welcome, Aryan Suresh')).toBeTruthy();
       expect(await findByText('Academy of Silambam Arts')).toBeTruthy();
-      expect(getByText('Intermediate Green Belt')).toBeTruthy();
+      expect(getAllByText('Intermediate Green Belt').length).toBeGreaterThanOrEqual(1);
 
       // Next belt promotion is resolved from custom belts:
       expect(getByText(/Next Target: Advanced Blue Belt/i)).toBeTruthy();
@@ -477,13 +477,13 @@ describe('BeltFlow Role-Based Mobile Dashboards — Task 1.7 (TDD)', () => {
         return Promise.reject(new Error(`Unexpected path: ${path}`));
       });
 
-      const { findByText, queryByText } = await renderWithTheme(
+      const { findAllByText, queryByText } = await renderWithTheme(
         <StudentHomeScreen user={studentUser} />,
         true,
         mockCustomBelts
       );
 
-      expect(await findByText('Advanced Blue Belt')).toBeTruthy();
+      expect((await findAllByText('Advanced Blue Belt')).length).toBeGreaterThanOrEqual(1);
       // Must not invent an 8-belt rank like Red Belt or Black Belt!
       expect(queryByText(/Next Target: Red Belt/i)).toBeNull();
       expect(queryByText(/Next Target: Black Belt/i)).toBeNull();
