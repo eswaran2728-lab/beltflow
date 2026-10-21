@@ -101,6 +101,11 @@ CREATE TABLE IF NOT EXISTS students (
     registered_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Additive student fields for competition eligibility (Task H24)
+ALTER TABLE students ADD COLUMN IF NOT EXISTS date_of_birth VARCHAR(20);
+ALTER TABLE students ADD COLUMN IF NOT EXISTS gender VARCHAR(20) DEFAULT 'OPEN';
+ALTER TABLE students ADD COLUMN IF NOT EXISTS rank_order INT DEFAULT 1;
+
 -- 7. Parent-Student Links (3-step approval workflow)
 CREATE TABLE IF NOT EXISTS parent_student_links (
     id TEXT NOT NULL DEFAULT ('plink_' || extract(epoch from now())::bigint || '_' || substr(md5(random()::text), 1, 6)),
@@ -1402,6 +1407,115 @@ CREATE TABLE IF NOT EXISTS message_reports (
 );
 
 CREATE INDEX IF NOT EXISTS idx_message_reports_org ON message_reports(organization_id, status);
+
+-- ============================================================================
+-- 62. Task H24: Tournament Operations and Judging (Dependencies: H12/H13)
+-- ============================================================================
+
+ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS name VARCHAR(255);
+ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS ruleset VARCHAR(50) NOT NULL DEFAULT 'SILAMBAM_STANDARD';
+ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS start_date DATE;
+ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS end_date DATE;
+ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+CREATE INDEX IF NOT EXISTS idx_tournaments_org ON tournaments(organization_id, status);
+
+CREATE TABLE IF NOT EXISTS tournament_categories (
+    id VARCHAR(64) PRIMARY KEY,
+    tournament_id VARCHAR(64) NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    min_age INT,
+    max_age INT,
+    min_belt_rank INT,
+    max_belt_rank INT,
+    gender VARCHAR(20) NOT NULL DEFAULT 'OPEN', -- 'MALE', 'FEMALE', 'OPEN'
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_tournament_categories_tournament ON tournament_categories(tournament_id);
+
+CREATE TABLE IF NOT EXISTS tournament_competitors (
+    id VARCHAR(64) PRIMARY KEY,
+    tournament_id VARCHAR(64) NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+    category_id VARCHAR(64) NOT NULL REFERENCES tournament_categories(id) ON DELETE CASCADE,
+    student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    status VARCHAR(50) NOT NULL DEFAULT 'REGISTERED', -- 'REGISTERED', 'CHECKED_IN', 'DISQUALIFIED', 'WITHDRAWN'
+    registered_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_competitor_tournament_student UNIQUE (tournament_id, category_id, student_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_tournament_competitors_cat ON tournament_competitors(category_id, status);
+CREATE INDEX IF NOT EXISTS idx_tournament_competitors_student ON tournament_competitors(student_id);
+
+CREATE TABLE IF NOT EXISTS tournament_matches (
+    id VARCHAR(64) PRIMARY KEY,
+    tournament_id VARCHAR(64) NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+    category_id VARCHAR(64) NOT NULL REFERENCES tournament_categories(id) ON DELETE CASCADE,
+    match_number INT NOT NULL,
+    round_name VARCHAR(50) NOT NULL DEFAULT 'QUARTERFINAL',
+    competitor_a_id VARCHAR(64) NOT NULL REFERENCES tournament_competitors(id) ON DELETE CASCADE,
+    competitor_b_id VARCHAR(64) NOT NULL REFERENCES tournament_competitors(id) ON DELETE CASCADE,
+    status VARCHAR(50) NOT NULL DEFAULT 'SCHEDULED', -- 'SCHEDULED', 'IN_PROGRESS', 'SCORED', 'LOCKED', 'APPEALED'
+    score_a NUMERIC(6, 2) DEFAULT 0.00,
+    score_b NUMERIC(6, 2) DEFAULT 0.00,
+    winner_competitor_id VARCHAR(64) REFERENCES tournament_competitors(id) ON DELETE SET NULL,
+    tie_break_applied BOOLEAN NOT NULL DEFAULT FALSE,
+    tie_break_reason VARCHAR(255),
+    lock_version INT NOT NULL DEFAULT 1,
+    locked_at TIMESTAMPTZ,
+    locked_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_tournament_matches_tournament ON tournament_matches(tournament_id, status);
+CREATE INDEX IF NOT EXISTS idx_tournament_matches_category ON tournament_matches(category_id, match_number);
+
+CREATE TABLE IF NOT EXISTS tournament_judge_assignments (
+    id VARCHAR(64) PRIMARY KEY,
+    match_id VARCHAR(64) NOT NULL REFERENCES tournament_matches(id) ON DELETE CASCADE,
+    judge_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role VARCHAR(50) NOT NULL DEFAULT 'CORNER_JUDGE', -- 'CORNER_JUDGE', 'HEAD_JUDGE', 'REFEREE', 'ARBITRATOR'
+    status VARCHAR(50) NOT NULL DEFAULT 'ASSIGNED', -- 'ASSIGNED', 'ACTIVE', 'REVOKED'
+    assigned_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_judge_match UNIQUE (match_id, judge_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_judge_assignments_match ON tournament_judge_assignments(match_id, status);
+CREATE INDEX IF NOT EXISTS idx_judge_assignments_judge ON tournament_judge_assignments(judge_id, status);
+
+CREATE TABLE IF NOT EXISTS tournament_scorecards (
+    id VARCHAR(64) PRIMARY KEY,
+    match_id VARCHAR(64) NOT NULL REFERENCES tournament_matches(id) ON DELETE CASCADE,
+    judge_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    competitor_id VARCHAR(64) NOT NULL REFERENCES tournament_competitors(id) ON DELETE CASCADE,
+    client_version INT NOT NULL DEFAULT 1,
+    technical_score NUMERIC(5, 2) NOT NULL DEFAULT 0.00,
+    penalties NUMERIC(5, 2) NOT NULL DEFAULT 0.00,
+    total_score NUMERIC(5, 2) NOT NULL DEFAULT 0.00,
+    criteria_scores JSONB NOT NULL DEFAULT '{}',
+    submitted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_match_judge_competitor_version UNIQUE (match_id, judge_id, competitor_id, client_version)
+);
+
+CREATE INDEX IF NOT EXISTS idx_tournament_scorecards_match ON tournament_scorecards(match_id, competitor_id);
+CREATE INDEX IF NOT EXISTS idx_tournament_scorecards_judge ON tournament_scorecards(judge_id);
+
+CREATE TABLE IF NOT EXISTS tournament_appeals (
+    id VARCHAR(64) PRIMARY KEY,
+    match_id VARCHAR(64) NOT NULL REFERENCES tournament_matches(id) ON DELETE CASCADE,
+    competitor_id VARCHAR(64) NOT NULL REFERENCES tournament_competitors(id) ON DELETE CASCADE,
+    submitted_by TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    reason TEXT NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- 'PENDING', 'APPROVED', 'REJECTED'
+    decision_notes TEXT,
+    decided_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    decided_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_tournament_appeals_match ON tournament_appeals(match_id, status);
+
 
 
 
