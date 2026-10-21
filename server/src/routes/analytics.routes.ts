@@ -48,6 +48,22 @@ export interface AcademyMetricsResult {
 }
 
 /**
+ * CSV Formula Injection Prevention (OWASP):
+ * If a value starts with =, +, -, @, \t, or \r, prefix with a single quote to neutralize formula execution in spreadsheets.
+ */
+export function sanitizeCsvValue(val: any): string {
+  if (val === null || val === undefined) return '';
+  const str = String(val);
+  if (/^[=+\-@\t\r]/.test(str)) {
+    return `"'${str.replace(/"/g, '""')}"`;
+  }
+  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+/**
  * Helper to resolve and strictly enforce tenant/class authority server-side.
  * Throws 403 error message if actor attempts to expand scope.
  */
@@ -159,12 +175,12 @@ async function resolveAuthorizedScope(req: Request): Promise<{
     };
   }
 
-  // 4. Super Admin Scope Enforcement
+  // 4. Super Admin Scope Enforcement (Platform-level aggregate metrics only)
   if (user.role === UserRole.SUPER_ADMIN) {
     if (requestedClassId) {
-      const clsRes = await dbClient.query('SELECT organization_id FROM classes WHERE id = $1', [requestedClassId]);
-      const orgId = clsRes.rows[0]?.organization_id;
-      return { targetOrgId: orgId, targetClassId: requestedClassId, targetScope: 'class' };
+      const err: any = new Error('Access denied. Super Admin is restricted to platform-level analytics and cannot access individual class operational records.');
+      err.statusCode = 403;
+      throw err;
     }
     if (requestedOrgId) {
       return { targetOrgId: requestedOrgId, targetScope: 'organization' };
@@ -541,30 +557,30 @@ const handleExport = async (req: Request, res: Response) => {
 
     if (format === 'csv') {
       let csvContent = 'Metric,Value,Category\n';
-      csvContent += `Metric Version,${metrics.metadata.metricVersion},Metadata\n`;
-      csvContent += `Calculated At,${metrics.metadata.calculatedAt},Metadata\n`;
-      csvContent += `Scope,${metrics.metadata.scope},Metadata\n`;
+      csvContent += `${sanitizeCsvValue('Metric Version')},${sanitizeCsvValue(metrics.metadata.metricVersion)},${sanitizeCsvValue('Metadata')}\n`;
+      csvContent += `${sanitizeCsvValue('Calculated At')},${sanitizeCsvValue(metrics.metadata.calculatedAt)},${sanitizeCsvValue('Metadata')}\n`;
+      csvContent += `${sanitizeCsvValue('Scope')},${sanitizeCsvValue(metrics.metadata.scope)},${sanitizeCsvValue('Metadata')}\n`;
       if (metrics.metadata.organizationId) {
-        csvContent += `Organization ID,${metrics.metadata.organizationId},Metadata\n`;
+        csvContent += `${sanitizeCsvValue('Organization ID')},${sanitizeCsvValue(metrics.metadata.organizationId)},${sanitizeCsvValue('Metadata')}\n`;
       }
       if (metrics.metadata.classId) {
-        csvContent += `Class ID,${metrics.metadata.classId},Metadata\n`;
+        csvContent += `${sanitizeCsvValue('Class ID')},${sanitizeCsvValue(metrics.metadata.classId)},${sanitizeCsvValue('Metadata')}\n`;
       }
-      csvContent += `Active Enrolled Students,${metrics.enrollment.activeEnrolledStudents},Enrollment\n`;
-      csvContent += `Pending Applicants,${metrics.enrollment.pendingApplicants},Enrollment\n`;
-      csvContent += `Total Class Capacity,${metrics.enrollment.totalClassCapacity},Enrollment\n`;
-      csvContent += `Capacity Utilization Percent,${metrics.enrollment.capacityUtilizationPercent}%,Enrollment\n`;
-      csvContent += `Total Trials Booked,${metrics.trialConversion.totalTrialsBooked},Trial Conversion\n`;
-      csvContent += `Trials Attended,${metrics.trialConversion.trialsAttended},Trial Conversion\n`;
-      csvContent += `Trials Converted,${metrics.trialConversion.trialsConverted},Trial Conversion\n`;
-      csvContent += `Conversion Rate Percent,${metrics.trialConversion.conversionRatePercent}%,Trial Conversion\n`;
-      csvContent += `Active Students,${metrics.retention.activeStudents},Retention\n`;
-      csvContent += `Paused Memberships,${metrics.retention.pausedMemberships},Retention\n`;
-      csvContent += `Transfers Count,${metrics.retention.transfersCount},Retention\n`;
-      csvContent += `Retention Rate Percent,${metrics.retention.retentionRatePercent}%,Retention\n`;
-      csvContent += `Total Collected (MYR),${metrics.ledgerTotals.totalCollected},Ledger Totals\n`;
-      csvContent += `Total Outstanding (MYR),${metrics.ledgerTotals.totalOutstanding},Ledger Totals\n`;
-      csvContent += `Sibling Discount Savings (MYR),${metrics.ledgerTotals.siblingDiscountSavings},Ledger Totals\n`;
+      csvContent += `${sanitizeCsvValue('Active Enrolled Students')},${sanitizeCsvValue(metrics.enrollment.activeEnrolledStudents)},${sanitizeCsvValue('Enrollment')}\n`;
+      csvContent += `${sanitizeCsvValue('Pending Applicants')},${sanitizeCsvValue(metrics.enrollment.pendingApplicants)},${sanitizeCsvValue('Enrollment')}\n`;
+      csvContent += `${sanitizeCsvValue('Total Class Capacity')},${sanitizeCsvValue(metrics.enrollment.totalClassCapacity)},${sanitizeCsvValue('Enrollment')}\n`;
+      csvContent += `${sanitizeCsvValue('Capacity Utilization Percent')},${sanitizeCsvValue(metrics.enrollment.capacityUtilizationPercent + '%')},${sanitizeCsvValue('Enrollment')}\n`;
+      csvContent += `${sanitizeCsvValue('Total Trials Booked')},${sanitizeCsvValue(metrics.trialConversion.totalTrialsBooked)},${sanitizeCsvValue('Trial Conversion')}\n`;
+      csvContent += `${sanitizeCsvValue('Trials Attended')},${sanitizeCsvValue(metrics.trialConversion.trialsAttended)},${sanitizeCsvValue('Trial Conversion')}\n`;
+      csvContent += `${sanitizeCsvValue('Trials Converted')},${sanitizeCsvValue(metrics.trialConversion.trialsConverted)},${sanitizeCsvValue('Trial Conversion')}\n`;
+      csvContent += `${sanitizeCsvValue('Conversion Rate Percent')},${sanitizeCsvValue(metrics.trialConversion.conversionRatePercent + '%')},${sanitizeCsvValue('Trial Conversion')}\n`;
+      csvContent += `${sanitizeCsvValue('Active Students')},${sanitizeCsvValue(metrics.retention.activeStudents)},${sanitizeCsvValue('Retention')}\n`;
+      csvContent += `${sanitizeCsvValue('Paused Memberships')},${sanitizeCsvValue(metrics.retention.pausedMemberships)},${sanitizeCsvValue('Retention')}\n`;
+      csvContent += `${sanitizeCsvValue('Transfers Count')},${sanitizeCsvValue(metrics.retention.transfersCount)},${sanitizeCsvValue('Retention')}\n`;
+      csvContent += `${sanitizeCsvValue('Retention Rate Percent')},${sanitizeCsvValue(metrics.retention.retentionRatePercent + '%')},${sanitizeCsvValue('Retention')}\n`;
+      csvContent += `${sanitizeCsvValue('Total Collected (MYR)')},${sanitizeCsvValue(metrics.ledgerTotals.totalCollected)},${sanitizeCsvValue('Ledger Totals')}\n`;
+      csvContent += `${sanitizeCsvValue('Total Outstanding (MYR)')},${sanitizeCsvValue(metrics.ledgerTotals.totalOutstanding)},${sanitizeCsvValue('Ledger Totals')}\n`;
+      csvContent += `${sanitizeCsvValue('Sibling Discount Savings (MYR)')},${sanitizeCsvValue(metrics.ledgerTotals.siblingDiscountSavings)},${sanitizeCsvValue('Ledger Totals')}\n`;
 
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="beltflow-analytics-${Date.now()}.csv"`);

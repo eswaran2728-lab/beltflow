@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import app from '../app';
+import { sanitizeCsvValue } from '../routes/analytics.routes';
 import { dbClient } from '../db/client';
 import { generateAuthToken } from '../security/crypto';
 import { UserRole } from '../security/rbac';
@@ -297,7 +298,24 @@ async function runTests() {
     assert.strictEqual(jsonMasterExport.status, 200);
     assert.strictEqual(jsonMasterExport.data.classId, 'cls_h23_a1');
     assert.strictEqual(jsonMasterExport.data.metrics.enrollment.activeEnrolledStudents, 2);
-    console.log('✅ Criterion 5 (export_cannot_expand_query_scope) PASSED.');
+    // Super Admin restricted from class operational records
+    const saClassRes = await makeRequest(server, 'GET', '/analytics/metrics?classId=cls_h23_a1', undefined, tokenSuper);
+    assert.strictEqual(saClassRes.status, 403, 'Super Admin must not access individual class operational records');
+    assert.ok(saClassRes.data.error.includes('Super Admin is restricted to platform-level analytics'));
+
+    const saExportRes = await makeRequest(server, 'POST', '/analytics/export', { reportType: 'ACADEMY_GROWTH_METRICS', classId: 'cls_h23_a1', format: 'json' }, tokenSuper);
+    assert.strictEqual(saExportRes.status, 403, 'Super Admin class operational export must be forbidden');
+
+    // CSV Formula Injection Prevention verification (prepends single quote to neutralize formula evaluation)
+    assert.strictEqual(sanitizeCsvValue('=cmd|/c calc'), '"\'=cmd|/c calc"');
+    assert.strictEqual(sanitizeCsvValue('+12345'), '"\'+12345"');
+    assert.strictEqual(sanitizeCsvValue('-SUM(A1:A10)'), '"\'-SUM(A1:A10)"');
+    assert.strictEqual(sanitizeCsvValue('@alert(1)'), '"\'@alert(1)"');
+    assert.strictEqual(sanitizeCsvValue('\ttabbed'), '"\'\ttabbed"');
+    assert.strictEqual(sanitizeCsvValue('Standard Value'), 'Standard Value');
+    assert.strictEqual(sanitizeCsvValue('Value, With Comma'), '"Value, With Comma"');
+
+    console.log('✅ Criterion 5 (export_cannot_expand_query_scope & CSV sanitization) PASSED.');
 
     console.log('\n🎉 ALL 5 OFFICIAL H23 ACCEPTANCE CRITERIA PASSED WITHOUT REGRESSION!');
   } finally {
