@@ -12,7 +12,7 @@ export interface StitchAppHeaderProps {
 }
 
 export const StitchAppHeader: React.FC<StitchAppHeaderProps> = ({
-  dojangName = 'CENTRAL DOJANG',
+  dojangName = 'PERSATUAN DOJANG (SAMPLE)',
   roleBadgeText,
   hasUnreadNotifications = true,
   onNotificationPress,

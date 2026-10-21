@@ -42,15 +42,26 @@ export const DigitalCertificateCard: React.FC<DigitalCertificateCardProps> = ({
 
       {/* Action Buttons */}
       <View style={styles.buttonRow}>
-        <TouchableOpacity
-          style={styles.downloadBtn}
-          onPress={onDownloadPress}
-          activeOpacity={0.85}
-          testID="btn-download-cert"
-        >
-          <Download size={14} color="#FFFFFF" />
-          <Text style={styles.downloadBtnText}>Download PDF Certificate</Text>
-        </TouchableOpacity>
+        {onDownloadPress ? (
+          <TouchableOpacity
+            style={styles.downloadBtn}
+            onPress={onDownloadPress}
+            activeOpacity={0.85}
+            testID="btn-download-cert"
+          >
+            <Download size={14} color="#FFFFFF" />
+            <Text style={styles.downloadBtnText}>Download PDF Certificate</Text>
+          </TouchableOpacity>
+        ) : (
+          <View
+            style={[styles.downloadBtn, { backgroundColor: '#94A3B8' }]}
+            testID="btn-download-cert-disabled"
+            accessibilityState={{ disabled: true }}
+          >
+            <Download size={14} color="#E2E8F0" />
+            <Text style={styles.downloadBtnText}>Certificate Pending</Text>
+          </View>
+        )}
 
         {onViewQrPress && (
           <TouchableOpacity

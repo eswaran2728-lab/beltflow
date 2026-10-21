@@ -10,6 +10,7 @@ export interface StitchStatCardProps {
   isPositiveTrend?: boolean;
   hasAccentBorder?: boolean;
   style?: ViewStyle;
+  testID?: string;
 }
 
 export const StitchStatCard: React.FC<StitchStatCardProps> = ({
@@ -20,6 +21,7 @@ export const StitchStatCard: React.FC<StitchStatCardProps> = ({
   isPositiveTrend = true,
   hasAccentBorder = false,
   style,
+  testID,
 }) => {
   return (
     <View
@@ -28,7 +30,7 @@ export const StitchStatCard: React.FC<StitchStatCardProps> = ({
         hasAccentBorder && styles.accentBorder,
         style,
       ]}
-      testID="stitch-stat-card"
+      testID={testID || "stitch-stat-card"}
     >
       <Text style={styles.label}>{label}</Text>
       <Text style={styles.valueText}>{value}</Text>

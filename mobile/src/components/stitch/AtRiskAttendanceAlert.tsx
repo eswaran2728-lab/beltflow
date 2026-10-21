@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Linking, ViewStyle } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Linking, ViewStyle, Alert } from 'react-native';
 import { AlertCircle, MessageCircle } from 'lucide-react-native';
 import { StitchTokens } from '../../theme/tokens';
 
@@ -28,13 +28,28 @@ export const AtRiskAttendanceAlert: React.FC<AtRiskAttendanceAlertProps> = ({
       onPingParent(student);
       return;
     }
-    if (student.parentPhone) {
-      const cleanPhone = student.parentPhone.replace(/[^0-9]/g, '');
-      const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(
-        `Salam, this is your Master from the Dojang regarding ${student.name}'s attendance.`
-      )}`;
-      Linking.openURL(url).catch(() => {});
+    if (!student.parentPhone) {
+      Alert.alert('Contact Unavailable', `No guardian phone number is registered for ${student.name}.`);
+      return;
     }
+
+    Alert.alert(
+      'Authorized Guardian Contact',
+      `Open WhatsApp to send an authorized attendance follow-up message to ${student.name}'s guardian?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Open WhatsApp',
+          onPress: () => {
+            const cleanPhone = (student.parentPhone || '').replace(/[^0-9]/g, '');
+            const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(
+              `Salam, this is your Master from the Dojang regarding ${student.name}'s attendance.`
+            )}`;
+            Linking.openURL(url).catch(() => {});
+          },
+        },
+      ]
+    );
   };
 
   return (

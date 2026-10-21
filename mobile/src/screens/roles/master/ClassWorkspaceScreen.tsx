@@ -10,21 +10,20 @@ import {
   Alert,
 } from 'react-native';
 import {
-  Users,
   ClipboardCheck,
   FileText,
   Clock,
   MapPin,
   Search,
-  UserCheck,
   Send,
   ShieldCheck,
 } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeProvider';
+import { resolveBeltDisplay } from '../../../theme/belts';
+import { LiveSessionCard, StitchStatCard } from '../../../components/stitch';
 import { ScreenContainer, ScreenHeader } from '../../../components/Layout';
 import { Card } from '../../../components/Card';
 import { Button } from '../../../components/Button';
-import { StatCard } from '../../../components/StatCard';
 import { StatusBadge } from '../../../components/Badges';
 import { LoadingState, ErrorState } from '../../../components/Feedback';
 import { StudentProfileModal } from '../../../components/StudentProfileModal';
@@ -306,34 +305,48 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
         {/* SECTION A: OVERVIEW */}
         {activeTab === 'OVERVIEW' && (
           <View style={{ gap: spacing.md, paddingVertical: spacing.sm }}>
-            {/* Stat Cards */}
-            <View style={[styles.statsRow, { gap: spacing.sm }]}>
-              <StatCard
-                title="Active Enrolled"
-                value={`${activeStudentsCount} / ${capacity}`}
-                icon={<Users size={iconSize.md} color={colors.buttonPrimaryBg} />}
-                testID="stat-active-students"
+            {/* Live Session Card for scheduled mat session */}
+            {todaySessions.length > 0 ? (
+              <LiveSessionCard
+                categoryLabel="ACTIVE MAT SESSION"
+                className={todaySessions[0].group_name ? `${todaySessions[0].group_name} Session` : 'Mat Session'}
+                scheduleTime={`${todaySessions[0].start_time} - ${todaySessions[0].end_time}`}
+                enrolledCount={activeStudentsCount}
+                capacity={capacity}
+                onRosterCheckPress={() => setActiveTab('ATTENDANCE')}
+                onManagePress={() => setActiveTab('SCHEDULE')}
               />
-              <StatCard
-                title="Available Spots"
+            ) : null}
+
+            {/* Stat Cards - Google Stitch Visual Hierarchy */}
+            <View style={[styles.statsRow, { gap: spacing.sm }]}>
+              <StitchStatCard
+                label="Active Enrolled"
+                value={`${activeStudentsCount} / ${capacity}`}
+                hasAccentBorder={true}
+                testID="stat-active-students"
+                style={{ flex: 1 }}
+              />
+              <StitchStatCard
+                label="Available Spots"
                 value={availableSpots}
-                icon={<UserCheck size={iconSize.md} color={colors.badgeSuccessText} />}
                 testID="stat-available-spots"
+                style={{ flex: 1 }}
               />
             </View>
 
             <View style={[styles.statsRow, { gap: spacing.sm }]}>
-              <StatCard
-                title="Pending Apps"
+              <StitchStatCard
+                label="Pending Apps"
                 value={pendingAppsCount}
-                icon={<FileText size={iconSize.md} color={colors.badgeWarningText} />}
                 testID="stat-pending-applications"
+                style={{ flex: 1 }}
               />
-              <StatCard
-                title="Waitlisted"
+              <StitchStatCard
+                label="Waitlisted"
                 value={waitlistedAppsCount}
-                icon={<Clock size={iconSize.md} color={colors.textSecondary} />}
                 testID="stat-waitlisted-applications"
+                style={{ flex: 1 }}
               />
             </View>
 
@@ -358,6 +371,14 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
                   size="sm"
                   leftIcon={<FileText size={iconSize.sm} color={colors.textPrimary} />}
                   testID="btn-quick-applications"
+                />
+                <Button
+                  label="Parent Messages"
+                  onPress={() => navigation?.navigate?.('ParentMasterMessaging', { classId })}
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<Send size={iconSize.sm} color={colors.buttonPrimaryBg} />}
+                  testID="btn-quick-messages"
                 />
               </View>
             </Card>
@@ -498,16 +519,55 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
                 >
                   <Card variant="standard" style={styles.card}>
                     <View style={styles.rowBetween}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={[typography.titleMedium, { color: colors.textPrimary, fontWeight: '700' }]}>
-                          {stu.full_name}
-                        </Text>
-                        <Text style={[typography.caption, { color: colors.buttonPrimaryBg, marginTop: 2 }]}>
-                          {stu.belt_rank || 'White Belt'}
-                        </Text>
-                        <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                          Group: {stu.group_name || 'Unassigned'} • IC: {stu.ic_number}
-                        </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                        <View
+                          style={{
+                            width: 38,
+                            height: 38,
+                            borderRadius: 19,
+                            backgroundColor: '#EAF1F7',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <Text style={{ fontWeight: '700', fontSize: 13, color: '#0D2B47' }}>
+                            {stu.full_name
+                              ?.split(' ')
+                              .map((n: string) => n[0])
+                              .join('')
+                              .slice(0, 2)
+                              .toUpperCase() || 'ST'}
+                          </Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[typography.titleMedium, { color: colors.textPrimary, fontWeight: '700' }]}>
+                            {stu.full_name}
+                          </Text>
+                          {(() => {
+                            const belt = resolveBeltDisplay(stu.belt_rank);
+                            return (
+                              <View
+                                style={{
+                                  alignSelf: 'flex-start',
+                                  backgroundColor: belt.colorHex,
+                                  borderColor: belt.borderColor || '#CBD5E1',
+                                  borderWidth: 1,
+                                  borderRadius: 4,
+                                  paddingHorizontal: 6,
+                                  paddingVertical: 1,
+                                  marginTop: 3,
+                                }}
+                              >
+                                <Text style={{ fontSize: 10, fontWeight: '700', color: belt.textColor || '#0F172A' }}>
+                                  {stu.belt_rank || 'White Belt'}
+                                </Text>
+                              </View>
+                            );
+                          })()}
+                          <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 3 }]}>
+                            Group: {stu.group_name || 'Unassigned'} • IC: {stu.ic_number}
+                          </Text>
+                        </View>
                       </View>
                       <View style={{ alignItems: 'flex-end', gap: 6 }}>
                         <StatusBadge status="ACTIVE" label="Enrolled" variant="success" />

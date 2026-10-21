@@ -12,9 +12,13 @@ import {
 import { useTheme } from '../../../theme/ThemeProvider';
 import { RolePlaceholderBase } from '../RolePlaceholderBase';
 import { AuthUser, UserRole } from '../../../types/auth';
+import {
+  StitchAppHeader,
+  LiveSessionCard,
+  StitchStatCard,
+} from '../../../components/stitch';
 import { ScreenContainer, ScreenHeader } from '../../../components/Layout';
 import { Card } from '../../../components/Card';
-import { StatCard } from '../../../components/StatCard';
 import { Button } from '../../../components/Button';
 import { StatusBadge } from '../../../components/Badges';
 import { OfflineBanner, LoadingState, ErrorState } from '../../../components/Feedback';
@@ -85,26 +89,81 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
 
   if (loading && !data) {
     return (
-      <ScreenContainer scrollable testID="master-home-screen">
-        <ScreenHeader title={`Welcome, ${user.fullName}`} subtitle="Master Home" rightAction={headerRightAction} />
-        {isOffline ? (
-          <View style={{ marginBottom: spacing.md }}>
-            <OfflineBanner
-              message="Offline Mode: Locally Cached Identity — Sensitive server operations are locked until online."
-              testID="offline-security-banner"
-            />
-          </View>
-        ) : null}
-        {renderIdentityCard()}
-        <LoadingState message="Loading instructor dashboard..." />
-      </ScreenContainer>
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <StitchAppHeader
+          dojangName={user.organizationId ? `PERSATUAN: ${user.organizationId.toUpperCase()}` : 'PERSATUAN DOJANG'}
+          roleBadgeText="MASTER"
+          hasUnreadNotifications={false}
+        />
+        <ScreenContainer scrollable testID="master-home-screen">
+          <ScreenHeader title={`Welcome, ${user.fullName}`} subtitle="Master Home" rightAction={headerRightAction} />
+          {isOffline ? (
+            <View style={{ marginBottom: spacing.md }}>
+              <OfflineBanner
+                message="Offline Mode: Locally Cached Identity — Sensitive server operations are locked until online."
+                testID="offline-security-banner"
+              />
+            </View>
+          ) : null}
+          {renderIdentityCard()}
+          <LoadingState message="Loading instructor dashboard..." />
+        </ScreenContainer>
+      </View>
     );
   }
 
   if (error && !data) {
     return (
-      <ScreenContainer scrollable testID="master-home-screen">
-        <ScreenHeader title={`Welcome, ${user.fullName}`} subtitle="Master Home" rightAction={headerRightAction} />
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <StitchAppHeader
+          dojangName={user.organizationId ? `PERSATUAN: ${user.organizationId.toUpperCase()}` : 'PERSATUAN DOJANG'}
+          roleBadgeText="MASTER"
+          hasUnreadNotifications={false}
+        />
+        <ScreenContainer scrollable testID="master-home-screen">
+          <ScreenHeader title={`Welcome, ${user.fullName}`} subtitle="Master Home" rightAction={headerRightAction} />
+          {isOffline ? (
+            <View style={{ marginBottom: spacing.md }}>
+              <OfflineBanner
+                message="Offline Mode: Locally Cached Identity — Sensitive server operations are locked until online."
+                testID="offline-security-banner"
+              />
+            </View>
+          ) : null}
+          {renderIdentityCard()}
+          <ErrorState message={error.message} onRetry={reload} />
+        </ScreenContainer>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <StitchAppHeader
+        dojangName={user.organizationId ? `PERSATUAN: ${user.organizationId.toUpperCase()}` : 'PERSATUAN DOJANG'}
+        roleBadgeText="MASTER"
+        hasUnreadNotifications={Boolean(data?.recentNotices?.length || data?.pendingApplicationsCount)}
+        onNotificationPress={() => navigation?.navigate?.('Classes')}
+      />
+
+      <ScreenContainer
+        scrollable
+        testID="master-home-screen"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={refresh}
+            tintColor={colors.buttonPrimaryBg}
+            colors={[colors.buttonPrimaryBg]}
+          />
+        }
+      >
+        <ScreenHeader
+          title={`Welcome, ${user.fullName}`}
+          subtitle="Master Home"
+          rightAction={headerRightAction}
+        />
+
         {isOffline ? (
           <View style={{ marginBottom: spacing.md }}>
             <OfflineBanner
@@ -113,125 +172,107 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
             />
           </View>
         ) : null}
+
         {renderIdentityCard()}
-        <ErrorState message={error.message} onRetry={reload} />
-      </ScreenContainer>
-    );
-  }
 
-  return (
-    <ScreenContainer
-      scrollable
-      testID="master-home-screen"
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={refresh}
-          tintColor={colors.buttonPrimaryBg}
-          colors={[colors.buttonPrimaryBg]}
-        />
-      }
-    >
-      <ScreenHeader
-        title={`Welcome, ${user.fullName}`}
-        subtitle="Master Home"
-        rightAction={headerRightAction}
-      />
+        {/* Offline Pending Sync and Conflict Alerts */}
+        {(data?.offlineSyncPendingCount && data.offlineSyncPendingCount > 0) || (data?.offlineConflictCount && data.offlineConflictCount > 0) ? (
+          <Card variant="standard" style={{ padding: 12, marginBottom: spacing.md, backgroundColor: colors.surfaceElevated, borderColor: colors.border }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flex: 1 }}>
+                {data.offlineSyncPendingCount ? (
+                  <Text style={[typography.caption, { color: colors.buttonPrimaryBg, fontWeight: '700' }]} testID="badge-offline-pending-sync">
+                    Pending Sync: {data.offlineSyncPendingCount} attendance mutation(s) queued
+                  </Text>
+                ) : null}
+                {data.offlineConflictCount ? (
+                  <Text style={[typography.caption, { color: colors.badgeWarningText, fontWeight: '700', marginTop: 2 }]} testID="badge-attendance-conflicts">
+                    Sync Conflicts: {data.offlineConflictCount} conflict(s) require review
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+          </Card>
+        ) : null}
 
-      {isOffline ? (
-        <View style={{ marginBottom: spacing.md }}>
-          <OfflineBanner
-            message="Offline Mode: Locally Cached Identity — Sensitive server operations are locked until online."
-            testID="offline-security-banner"
+        {/* Onboarding State: For Master with no approved classes */}
+        {data?.hasApprovedClasses === false ? (
+          <Card variant="standard" style={{ padding: 20, alignItems: 'center', marginBottom: spacing.md }} testID="master-onboarding-card">
+            <Calendar size={iconSize.lg} color={colors.buttonPrimaryBg} />
+            <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginTop: spacing.sm, textAlign: 'center' }]}>
+              Welcome to BeltFlow Class Management
+            </Text>
+            <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginTop: spacing.xs, textAlign: 'center' }]}>
+              {data?.onboarding?.message || 'You currently have no active approved classes. Propose a new class to your Persatuan to start enrolling students.'}
+            </Text>
+            <Button
+              label="Propose a New Class"
+              onPress={() => navigation?.navigate?.('Classes', { screen: 'CreateClass' })}
+              variant="primary"
+              size="md"
+              style={{ marginTop: spacing.md }}
+              testID="btn-onboarding-propose-class"
+            />
+          </Card>
+        ) : null}
+
+        {/* Live Active Mat Session - Google Stitch Card */}
+        {data?.todaySessions && data.todaySessions.length > 0 ? (
+          <View style={{ marginBottom: spacing.md }}>
+            <LiveSessionCard
+              categoryLabel="ACTIVE MAT SESSION"
+              className={(data.todaySessions[0] as any).group_name || data.todaySessions[0].location || 'Silambam Session'}
+              scheduleTime={`${data.todaySessions[0].startTime} - ${data.todaySessions[0].endTime}`}
+              enrolledCount={data.assignedStudentsCount ?? 0}
+              onRosterCheckPress={() => navigation?.navigate?.('Attendance', { classId: data.todaySessions[0].classId || data.classes?.[0]?.id })}
+              onManagePress={() => navigation?.navigate?.('Classes', { screen: 'ClassWorkspace', params: { classId: data.todaySessions[0].classId || data.classes?.[0]?.id } })}
+            />
+          </View>
+        ) : null}
+
+        {/* Master Coaching Stat Metrics - Google Stitch Hierarchy */}
+        <View style={[styles.statsGrid, { gap: spacing.sm, marginBottom: spacing.md }]}>
+          <StitchStatCard
+            label="My Classes"
+            value={data?.assignedClassesCount ?? 0}
+            hasAccentBorder={true}
+            testID="stat-master-classes"
+            style={{ flex: 1 }}
+          />
+          <StitchStatCard
+            label="Students"
+            value={data?.assignedStudentsCount ?? 0}
+            testID="stat-master-students"
+            style={{ flex: 1 }}
+          />
+          <StitchStatCard
+            label="Today's Sessions"
+            value={data?.todaySessionsCount ?? 0}
+            testID="stat-master-sessions"
+            style={{ flex: 1 }}
           />
         </View>
-      ) : null}
 
-      {renderIdentityCard()}
-
-      {/* Offline Pending Sync and Conflict Alerts */}
-      {(data?.offlineSyncPendingCount && data.offlineSyncPendingCount > 0) || (data?.offlineConflictCount && data.offlineConflictCount > 0) ? (
-        <Card variant="standard" style={{ padding: 12, marginBottom: spacing.md, backgroundColor: colors.surfaceElevated, borderColor: colors.border }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flex: 1 }}>
-              {data.offlineSyncPendingCount ? (
-                <Text style={[typography.caption, { color: colors.buttonPrimaryBg, fontWeight: '700' }]} testID="badge-offline-pending-sync">
-                  Pending Sync: {data.offlineSyncPendingCount} attendance mutation(s) queued
-                </Text>
-              ) : null}
-              {data.offlineConflictCount ? (
-                <Text style={[typography.caption, { color: colors.badgeWarningText, fontWeight: '700', marginTop: 2 }]} testID="badge-attendance-conflicts">
-                  Sync Conflicts: {data.offlineConflictCount} conflict(s) require review
-                </Text>
-              ) : null}
-            </View>
-          </View>
-        </Card>
-      ) : null}
-
-      {/* Onboarding State: For Master with no approved classes */}
-      {data?.hasApprovedClasses === false ? (
-        <Card variant="standard" style={{ padding: 20, alignItems: 'center', marginBottom: spacing.md }} testID="master-onboarding-card">
-          <Calendar size={iconSize.lg} color={colors.buttonPrimaryBg} />
-          <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginTop: spacing.sm, textAlign: 'center' }]}>
-            Welcome to BeltFlow Class Management
-          </Text>
-          <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginTop: spacing.xs, textAlign: 'center' }]}>
-            {data?.onboarding?.message || 'You currently have no active approved classes. Propose a new class to your Persatuan to start enrolling students.'}
-          </Text>
-          <Button
-            label="Propose a New Class"
-            onPress={() => navigation?.navigate?.('Classes', { screen: 'CreateClass' })}
-            variant="primary"
-            size="md"
-            style={{ marginTop: spacing.md }}
-            testID="btn-onboarding-propose-class"
+        <View style={[styles.statsGrid, { gap: spacing.sm, marginBottom: spacing.md }]}>
+          <StitchStatCard
+            label="Pending Apps"
+            value={data?.pendingApplicationsCount ?? 0}
+            testID="stat-master-applications"
+            style={{ flex: 1 }}
           />
-        </Card>
-      ) : null}
-
-      {/* Master Coaching Stat Metrics */}
-      <View style={[styles.statsGrid, { gap: spacing.sm, marginBottom: spacing.md }]}>
-        <StatCard
-          title="My Classes"
-          value={data?.assignedClassesCount ?? 0}
-          icon={<Calendar size={iconSize.md} color={colors.buttonPrimaryBg} />}
-          testID="stat-master-classes"
-        />
-        <StatCard
-          title="Students"
-          value={data?.assignedStudentsCount ?? 0}
-          icon={<Users size={iconSize.md} color={colors.badgeInfoText} />}
-          testID="stat-master-students"
-        />
-        <StatCard
-          title="Today's Sessions"
-          value={data?.todaySessionsCount ?? 0}
-          icon={<Clock size={iconSize.md} color={colors.badgeWarningText} />}
-          testID="stat-master-sessions"
-        />
-      </View>
-
-      <View style={[styles.statsGrid, { gap: spacing.sm, marginBottom: spacing.md }]}>
-        <StatCard
-          title="Pending Apps"
-          value={data?.pendingApplicationsCount ?? 0}
-          icon={<Users size={iconSize.md} color={colors.badgeWarningText} />}
-          testID="stat-master-applications"
-        />
-        <StatCard
-          title="Class Proposals"
-          value={data?.pendingProposalsCount ?? 0}
-          icon={<Calendar size={iconSize.md} color={colors.buttonPrimaryBg} />}
-          testID="stat-master-proposals"
-        />
-        <StatCard
-          title="Pending Gradings"
-          value={data?.pendingGradingCount ?? 0}
-          icon={<Award size={iconSize.md} color={colors.badgeSuccessText} />}
-          testID="stat-master-gradings"
-        />
-      </View>
+          <StitchStatCard
+            label="Class Proposals"
+            value={data?.pendingProposalsCount ?? 0}
+            testID="stat-master-proposals"
+            style={{ flex: 1 }}
+          />
+          <StitchStatCard
+            label="Pending Gradings"
+            value={data?.pendingGradingCount ?? 0}
+            testID="stat-master-gradings"
+            style={{ flex: 1 }}
+          />
+        </View>
 
       {/* Today's Training Sessions */}
       <Card variant="elevated" style={[styles.sectionCard, { marginBottom: spacing.md }]}>
@@ -400,6 +441,15 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
             testID="shortcut-master-grading"
           />
           <Button
+            label="Parent-Master Messages"
+            onPress={() => navigation?.navigate('Classes', { screen: 'ParentMasterMessaging' })}
+            variant="secondary"
+            size="md"
+            fullWidth
+            rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
+            testID="shortcut-master-messaging"
+          />
+          <Button
             label="Master Profile"
             onPress={() => navigation?.navigate('Profile')}
             variant="outline"
@@ -411,6 +461,7 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
         </View>
       </Card>
     </ScreenContainer>
+    </View>
   );
 };
 
