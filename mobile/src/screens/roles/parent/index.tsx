@@ -449,6 +449,7 @@ export { ParentBookTrialScreen } from './ParentBookTrialScreen';
 export { ParentMakeUpBookingScreen } from './ParentMakeUpBookingScreen';
 export { ParentStudentLifecycleScreen } from './ParentStudentLifecycleScreen';
 export { FamilyTimelineHubScreen } from './FamilyTimelineHubScreen';
+export { ParentMasterMessagingScreen } from './ParentMasterMessagingScreen';
 
 export const NoticesScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();

@@ -1340,6 +1340,70 @@ CREATE TABLE IF NOT EXISTS video_feedback_annotations (
 
 CREATE INDEX IF NOT EXISTS idx_video_annotations_video ON video_feedback_annotations(video_id, timestamp_seconds ASC);
 
+-- ============================================================================
+-- MODULE 22: PARENT-MASTER MESSAGING (TASK H22)
+-- Tables 59 - 61: message_threads, thread_messages, message_reports
+-- ============================================================================
+
+-- 59. Message Threads (createThread, cross_class_thread_denied, no_private_thread_auto_handover)
+CREATE TABLE IF NOT EXISTS message_threads (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+    student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    parent_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    assigned_master_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    subject VARCHAR(255) NOT NULL DEFAULT 'General Inquiry',
+    status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE', -- 'ACTIVE', 'RESOLVED', 'CLOSED', 'ARCHIVED'
+    last_message_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_thread_parent_student_class_master UNIQUE (parent_id, student_id, class_id, assigned_master_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_message_threads_parent ON message_threads(parent_id, status);
+CREATE INDEX IF NOT EXISTS idx_message_threads_master ON message_threads(assigned_master_id, status);
+CREATE INDEX IF NOT EXISTS idx_message_threads_class ON message_threads(class_id, student_id);
+
+-- 60. Thread Messages (sendMessage, message_retry_once, blocked_attachment_rejected, lock_screen_content_minimized)
+CREATE TABLE IF NOT EXISTS thread_messages (
+    id TEXT PRIMARY KEY,
+    thread_id TEXT NOT NULL REFERENCES message_threads(id) ON DELETE CASCADE,
+    sender_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    sender_role VARCHAR(50) NOT NULL,
+    client_message_id VARCHAR(128) UNIQUE, -- Idempotency key for message_retry_once
+    content TEXT NOT NULL,
+    attachment_url VARCHAR(500),
+    attachment_name VARCHAR(255),
+    attachment_mime VARCHAR(100),
+    attachment_size_bytes BIGINT,
+    delivery_status VARCHAR(50) NOT NULL DEFAULT 'SENT', -- 'SENT', 'DELIVERED', 'READ'
+    read_at TIMESTAMPTZ,
+    is_reported BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_thread_messages_thread ON thread_messages(thread_id, created_at ASC);
+CREATE INDEX IF NOT EXISTS idx_thread_messages_client_id ON thread_messages(client_message_id);
+
+-- 61. Message Reports & Moderation (reportMessage)
+CREATE TABLE IF NOT EXISTS message_reports (
+    id TEXT PRIMARY KEY,
+    message_id TEXT NOT NULL REFERENCES thread_messages(id) ON DELETE CASCADE,
+    thread_id TEXT NOT NULL REFERENCES message_threads(id) ON DELETE CASCADE,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    reported_by TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    reason TEXT NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'PENDING_REVIEW', -- 'PENDING_REVIEW', 'RESOLVED', 'DISMISSED'
+    reviewed_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    review_notes TEXT,
+    reviewed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_message_reports_org ON message_reports(organization_id, status);
+
+
 
 
 
