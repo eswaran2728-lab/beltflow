@@ -3,37 +3,52 @@ import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import { StitchTokens } from '../../theme/tokens';
 
 export interface StitchStatCardProps {
-  label: string;
-  value: string | number;
+  label?: string;
+  kpiLabel?: string;
+  value?: string | number;
+  kpiValue?: string | number;
   subtext?: string;
+  kpiSubtext?: string;
   trendText?: string;
   isPositiveTrend?: boolean;
   hasAccentBorder?: boolean;
+  accentColor?: string;
   style?: ViewStyle;
   testID?: string;
 }
 
 export const StitchStatCard: React.FC<StitchStatCardProps> = ({
   label,
+  kpiLabel,
   value,
+  kpiValue,
   subtext,
+  kpiSubtext,
   trendText,
   isPositiveTrend = true,
   hasAccentBorder = false,
+  accentColor,
   style,
   testID,
 }) => {
+  const displayLabel = label || kpiLabel || '';
+  const displayValue = value ?? kpiValue ?? '';
+  const displaySubtext = subtext || kpiSubtext;
+
   return (
     <View
       style={[
         styles.card,
         hasAccentBorder && styles.accentBorder,
+        accentColor ? { borderLeftWidth: 4, borderLeftColor: accentColor } : null,
         style,
       ]}
       testID={testID || "stitch-stat-card"}
     >
-      <Text style={styles.label}>{label}</Text>
-      <Text style={styles.valueText}>{value}</Text>
+      <Text style={styles.label}>{displayLabel}</Text>
+      <Text style={[styles.valueText, accentColor && displayValue !== '0' && displayValue !== 'RM 0' && displayValue !== 'RM 0.00' ? { color: accentColor } : null]}>
+        {displayValue}
+      </Text>
       {trendText ? (
         <Text
           style={[
@@ -43,8 +58,8 @@ export const StitchStatCard: React.FC<StitchStatCardProps> = ({
         >
           {trendText}
         </Text>
-      ) : subtext ? (
-        <Text style={styles.subtext}>{subtext}</Text>
+      ) : displaySubtext ? (
+        <Text style={styles.subtext}>{displaySubtext}</Text>
       ) : null}
     </View>
   );

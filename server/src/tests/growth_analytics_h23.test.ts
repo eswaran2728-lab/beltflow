@@ -301,11 +301,17 @@ async function runTests() {
 
     console.log('\n🎉 ALL 5 OFFICIAL H23 ACCEPTANCE CRITERIA PASSED WITHOUT REGRESSION!');
   } finally {
-    server.close();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 }
 
-runTests().catch((err) => {
-  console.error('❌ H23 Acceptance Tests Failed:', err);
-  process.exit(1);
-});
+if (require.main === module) {
+  runTests()
+    .then(() => process.exit(0))
+    .catch((err) => {
+      console.error('❌ H23 Acceptance Tests Failed:', err);
+      process.exit(1);
+    });
+}
+
+export { runTests as runH23Tests };

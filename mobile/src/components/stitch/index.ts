@@ -8,3 +8,4 @@ export * from './SiblingDiscountBanner';
 export * from './StitchStatCard';
 export * from './StitchBottomNav';
 export * from './RoleViewSelector';
+export * from './FamilyBillingCard';

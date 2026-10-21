@@ -116,6 +116,9 @@ export interface ParentChildSummary {
   classId?: string;
   className?: string;
   monthlyFee: number;
+  hasSiblingDiscount?: boolean;
+  organizationId?: string;
+  organizationName?: string;
   attendanceTotal: number;
   attendancePresent: number;
   monthsPendingCount: number;
@@ -509,6 +512,9 @@ export const dashboardService = {
             classId: s.class_id,
             className: s.class_id ? `Class ${s.class_id}` : undefined,
             monthlyFee: parseFloat(s.monthly_fee) || 0,
+            hasSiblingDiscount: Boolean(s.has_sibling_discount),
+            organizationId: s.organization_id,
+            organizationName: s.organization_name || s.organizationId,
             attendanceTotal: att.length,
             attendancePresent: att.filter((a: any) => a.status === 'Present').length,
             monthsPendingCount: duesRes?.monthsPendingCount ?? 0,
