@@ -30,6 +30,7 @@ import transfersRoutes from './routes/transfers.routes';
 import teachingRoutes from './routes/teaching.routes';
 import familyRoutes from './routes/family.routes';
 import learningRoutes from './routes/learning.routes';
+import mediaFeedbackRoutes from './routes/media_feedback.routes';
 
 const app = express();
 
@@ -151,6 +152,7 @@ app.use('/api/v1/memberships', transfersRoutes);
 app.use('/api/v1/teaching', teachingRoutes);
 app.use('/api/v1/family', familyRoutes);
 app.use('/api/v1/learning', learningRoutes);
+app.use('/api/v1/media', mediaFeedbackRoutes);
 
 // Global Error Handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

@@ -6,3 +6,5 @@ export * from './masterAttendanceService';
 export * from './offlineSyncService';
 export * from './bookingsService';
 export * from './membershipService';
+export * from './learningService';
+export * from './mediaFeedbackService';

@@ -41,6 +41,12 @@ export const BrandColors = {
   info: '#3B82F6',
   infoBg: '#EFF6FF',
   infoBorder: '#BFDBFE',
+
+  // Explicit Aliases for BeltFlow Standards
+  PrimaryNavy: '#0D2B47',
+  DeepNavy: '#061828',
+  SecondaryNavy: '#153C61',
+  Amber: '#F2941C',
 } as const;
 
 export interface ThemeColors {
@@ -56,6 +62,7 @@ export interface ThemeColors {
   textSecondary: string;
   textMuted: string;
   textInverse: string;
+  text: string;
 
   // Borders & Dividers
   border: string;
@@ -106,6 +113,7 @@ export const lightThemeColors: ThemeColors = {
   textSecondary: BrandColors.slate600,
   textMuted: BrandColors.slate400,
   textInverse: '#FFFFFF',
+  text: BrandColors.slate900,
 
   border: BrandColors.slate200,
   borderLight: BrandColors.slate100,
@@ -151,6 +159,7 @@ export const darkThemeColors: ThemeColors = {
   textSecondary: BrandColors.slate300,
   textMuted: BrandColors.slate400,
   textInverse: BrandColors.slate900,
+  text: BrandColors.slate50,
 
   border: '#1E3A5F',
   borderLight: '#153350',

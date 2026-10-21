@@ -1278,5 +1278,68 @@ CREATE TABLE IF NOT EXISTS student_achievements (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_student_achievements_event ON student_achievements(event_id);
 CREATE INDEX IF NOT EXISTS idx_student_achievements_student ON student_achievements(student_id, status);
 
+-- ----------------------------------------------------------------------------
+-- Task H21: Private Video Feedback (media/feedback)
+-- ----------------------------------------------------------------------------
+
+-- 56. Student Media Consents (consent_revocation_blocks_new_access)
+CREATE TABLE IF NOT EXISTS student_media_consents (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    guardian_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    consent_type VARCHAR(50) NOT NULL DEFAULT 'VIDEO_FEEDBACK', -- 'VIDEO_FEEDBACK', 'PHOTO_SHARING'
+    status VARCHAR(50) NOT NULL DEFAULT 'GRANTED', -- 'GRANTED', 'REVOKED'
+    granted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    revoked_at TIMESTAMPTZ,
+    revocation_reason TEXT,
+    revoked_by_user_id TEXT REFERENCES users(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (student_id, consent_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_media_consents_student ON student_media_consents(student_id, status);
+
+-- 57. Video Submissions (oversized_invalid_upload_rejected, expired_URL_denied, deleted_media_not_returned_by_API)
+CREATE TABLE IF NOT EXISTS video_submissions (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    uploader_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    technique_category VARCHAR(100) NOT NULL DEFAULT 'POOMSAE', -- 'POOMSAE', 'SPARRING', 'SELF_DEFENSE', 'FITNESS', 'THEORY', 'SILAMBAM'
+    curriculum_id TEXT REFERENCES persatuan_curriculums(id) ON DELETE SET NULL,
+    lesson_id TEXT REFERENCES learning_lessons(id) ON DELETE SET NULL,
+    duration_seconds INT,
+    file_size_bytes BIGINT NOT NULL,
+    mime_type VARCHAR(100) NOT NULL,
+    storage_key VARCHAR(500) NOT NULL,
+    upload_status VARCHAR(50) NOT NULL DEFAULT 'PENDING_UPLOAD', -- 'PENDING_UPLOAD', 'UPLOADED', 'FEEDBACK_PROVIDED', 'ARCHIVED', 'DELETED'
+    presigned_token VARCHAR(255),
+    token_expires_at TIMESTAMPTZ,
+    uploaded_at TIMESTAMPTZ,
+    deleted_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_video_sub_student ON video_submissions(student_id, upload_status);
+CREATE INDEX IF NOT EXISTS idx_video_sub_org ON video_submissions(organization_id, deleted_at);
+
+-- 58. Video Feedback Annotations (addVideoFeedback, wrong_Master_or_guardian_denied)
+CREATE TABLE IF NOT EXISTS video_feedback_annotations (
+    id TEXT PRIMARY KEY,
+    video_id TEXT NOT NULL REFERENCES video_submissions(id) ON DELETE CASCADE,
+    master_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    timestamp_seconds NUMERIC(6, 2) NOT NULL DEFAULT 0.00,
+    annotation_text TEXT NOT NULL,
+    technique_rating NUMERIC(4, 2), -- 1.00 to 10.00 or 100.00
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_video_annotations_video ON video_feedback_annotations(video_id, timestamp_seconds ASC);
+
+
 
 
