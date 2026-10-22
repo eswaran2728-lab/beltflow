@@ -391,6 +391,8 @@ async function runTests() {
     // ========================================================================
     console.log('\n--- 12. Key rotation continuity (historical k0 pass verification) ---');
     // Sign pass using previous key ID (HISTORICAL_QR_KEY_ID = 'bf_ed25519_k0')
+    const rotatedIat = Math.floor(Date.now() / 1000);
+    const rotatedExp = rotatedIat + 86400;
     const rotatedPass = signQrPassPayload({
       v: 2,
       kid: HISTORICAL_QR_KEY_ID,
@@ -398,8 +400,8 @@ async function runTests() {
       aud: QR_AUDIENCE,
       oid: orgId,
       sid: studentId,
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 86400,
+      iat: rotatedIat,
+      exp: rotatedExp,
     });
     const rotatedPayload = {
       type: 'BF_PASS',
@@ -409,8 +411,8 @@ async function runTests() {
       aud: QR_AUDIENCE,
       oid: orgId,
       sid: studentId,
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 86400,
+      iat: rotatedIat,
+      exp: rotatedExp,
       nonce: rotatedPass.nonce,
       sig: rotatedPass.sig,
     };
@@ -429,6 +431,8 @@ async function runTests() {
     // REQUIREMENT 13: Revoked / inactive enrollment rejected by server at scan / sync
     // ========================================================================
     console.log('\n--- 13. Revoked / suspended enrollment rejected by server ---');
+    const inactiveIat = Math.floor(Date.now() / 1000);
+    const inactiveExp = inactiveIat + 86400;
     const inactiveSigned = signQrPassPayload({
       v: 2,
       kid: ACTIVE_QR_KEY_ID,
@@ -436,8 +440,8 @@ async function runTests() {
       aud: QR_AUDIENCE,
       oid: orgId,
       sid: inactiveStudentId,
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 86400,
+      iat: inactiveIat,
+      exp: inactiveExp,
     });
     const inactivePayload = {
       type: 'BF_PASS',
@@ -447,8 +451,8 @@ async function runTests() {
       aud: QR_AUDIENCE,
       oid: orgId,
       sid: inactiveStudentId,
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 86400,
+      iat: inactiveIat,
+      exp: inactiveExp,
       nonce: inactiveSigned.nonce,
       sig: inactiveSigned.sig,
     };
