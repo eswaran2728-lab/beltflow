@@ -10,3 +10,4 @@ export * from './learningService';
 export * from './mediaFeedbackService';
 export * from './analyticsService';
 export * from './tournamentService';
+export * from './commerceService';

@@ -207,6 +207,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS payments_receipt_no_unique
 -- payment not tied to a specific month, simply have this unset — never
 -- backfilled, since that would be inventing a fact that was never recorded.
 ALTER TABLE payments ADD COLUMN IF NOT EXISTS billing_month_ids TEXT[];
+ALTER TABLE payments ALTER COLUMN student_id DROP NOT NULL;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS order_id VARCHAR(64);
 
 -- 9b. Monthly Billing Ledger — one immutable-once-generated row per student
 -- per calendar month. This is the actual source of truth for "how many
@@ -1517,7 +1519,72 @@ CREATE TABLE IF NOT EXISTS tournament_appeals (
 CREATE INDEX IF NOT EXISTS idx_tournament_appeals_match ON tournament_appeals(match_id, status);
 
 
+-- ============================================================================
+-- 25. Task H25: Equipment and Merchandise (commerce/inventory)
+-- ============================================================================
 
+CREATE TABLE IF NOT EXISTS products (
+    id VARCHAR(64) PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    sku VARCHAR(100),
+    category VARCHAR(100) NOT NULL DEFAULT 'EQUIPMENT', -- 'EQUIPMENT', 'MERCHANDISE', 'UNIFORM', 'WEAPON'
+    description TEXT,
+    price NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+    stock_quantity INT NOT NULL DEFAULT 0,
+    reserved_quantity INT NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 
+CREATE INDEX IF NOT EXISTS idx_products_org_active ON products(organization_id, is_active);
+CREATE INDEX IF NOT EXISTS idx_products_category ON products(organization_id, category);
 
+CREATE TABLE IF NOT EXISTS inventory_orders (
+    id VARCHAR(64) PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    buyer_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    student_id TEXT REFERENCES students(id) ON DELETE SET NULL,
+    total_amount NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+    status VARCHAR(50) NOT NULL DEFAULT 'PENDING_RESERVATION', -- 'PENDING_RESERVATION', 'RESERVED', 'PAID', 'PAYMENT_LATE_UNFULFILLED', 'CANCELLED', 'REFUNDED'
+    payment_id TEXT REFERENCES payments(id) ON DELETE SET NULL,
+    reservation_expires_at TIMESTAMPTZ,
+    restock_policy VARCHAR(50), -- 'RESTOCK_INVENTORY', 'DAMAGED_DISCARD', 'NO_RESTOCK'
+    refund_reason TEXT,
+    refunded_at TIMESTAMPTZ,
+    refunded_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 
+CREATE INDEX IF NOT EXISTS idx_inventory_orders_org ON inventory_orders(organization_id, status);
+CREATE INDEX IF NOT EXISTS idx_inventory_orders_buyer ON inventory_orders(buyer_user_id);
+
+CREATE TABLE IF NOT EXISTS order_items (
+    id VARCHAR(64) PRIMARY KEY,
+    order_id VARCHAR(64) NOT NULL REFERENCES inventory_orders(id) ON DELETE CASCADE,
+    product_id VARCHAR(64) NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    quantity INT NOT NULL DEFAULT 1,
+    unit_price NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+    total_price NUMERIC(10, 2) NOT NULL DEFAULT 0.00
+);
+
+CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
+CREATE INDEX IF NOT EXISTS idx_order_items_product ON order_items(product_id);
+
+CREATE TABLE IF NOT EXISTS stock_movements (
+    id VARCHAR(64) PRIMARY KEY,
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    product_id VARCHAR(64) NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    order_id VARCHAR(64) REFERENCES inventory_orders(id) ON DELETE SET NULL,
+    movement_type VARCHAR(50) NOT NULL, -- 'RESTOCK', 'RESERVED', 'COMMITTED', 'RELEASED_EXPIRED', 'REFUND_RESTOCK', 'DAMAGED_DISCARD'
+    quantity INT NOT NULL,
+    restock_policy VARCHAR(50),
+    reason TEXT,
+    created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_stock_movements_org ON stock_movements(organization_id, product_id);
+CREATE INDEX IF NOT EXISTS idx_stock_movements_order ON stock_movements(order_id);
