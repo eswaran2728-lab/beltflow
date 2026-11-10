@@ -185,12 +185,15 @@ export class LocalMediaStorageProvider implements IMediaStorageProvider {
     }
 
     const stat = fs.statSync(filePath);
-    if (expectedSize && stat.size !== expectedSize) {
+    // node-postgres returns BIGINT columns as strings ("16"); PGlite returns
+    // numbers. Compare numerically so real PostgreSQL behaves the same.
+    const expectedBytes = expectedSize === undefined || expectedSize === null ? undefined : Number(expectedSize);
+    if (expectedBytes && stat.size !== expectedBytes) {
       return {
         exists: true,
         sizeBytes: stat.size,
         magicValid: false,
-        error: `Size mismatch: expected ${expectedSize} bytes, found ${stat.size} bytes`,
+        error: `Size mismatch: expected ${expectedBytes} bytes, found ${stat.size} bytes`,
       };
     }
 
