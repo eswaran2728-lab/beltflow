@@ -446,12 +446,15 @@ async function runSecurityPreflightTests() {
 }
 
 if (require.main === module) {
+  // Close the embedded database instead of forcing process.exit(0): a forced
+  // exit would hide any unfinished async work. With the DB closed, the
+  // process exits on its own once the test has truly finished.
   runSecurityPreflightTests()
-    .then(() => process.exit(0))
     .catch((err) => {
       console.error('❌ H24 Tournament Security Preflight Test Failure:', err);
-      process.exit(1);
-    });
+      process.exitCode = 1;
+    })
+    .finally(() => dbClient.close());
 }
 
 export { runSecurityPreflightTests };
