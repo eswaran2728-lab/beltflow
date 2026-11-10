@@ -9,7 +9,9 @@ import { Platform } from 'react-native';
  * - Physical devices: set EXPO_PUBLIC_API_URL or call setApiBaseUrl(customUrl)
  */
 
-const DEFAULT_PORT = 3000;
+// Matches the backend default (server/src/index.ts: PORT || 4000). Port 3000
+// only serves static web files, not the API.
+const DEFAULT_PORT = 4000;
 const ANDROID_EMULATOR_HOST = `http://10.0.2.2:${DEFAULT_PORT}`;
 const IOS_SIMULATOR_HOST = `http://localhost:${DEFAULT_PORT}`;
 

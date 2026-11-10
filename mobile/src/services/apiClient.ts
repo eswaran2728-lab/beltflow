@@ -59,6 +59,16 @@ async function notifyUnauthorized(): Promise<void> {
 }
 
 /**
+ * The backend serves every route under /api/v1 (health checks under /api).
+ * Services may pass "/learning/lessons" or "/api/v1/learning/lessons";
+ * both resolve to the same versioned route.
+ */
+export function apiPath(endpoint: string): string {
+  const withSlash = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  return withSlash.startsWith('/api/') ? withSlash : `/api/v1${withSlash}`;
+}
+
+/**
  * Core HTTP Request Dispatcher
  */
 async function request<T = unknown>(
@@ -75,9 +85,7 @@ async function request<T = unknown>(
   } = options;
 
   const baseUrl = getApiBaseUrl();
-  const url = endpoint.startsWith('http')
-    ? endpoint
-    : `${baseUrl}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
+  const url = endpoint.startsWith('http') ? endpoint : `${baseUrl}${apiPath(endpoint)}`;
 
   const headers: Record<string, string> = {
     Accept: 'application/json',

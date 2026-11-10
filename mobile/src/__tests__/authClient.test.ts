@@ -44,14 +44,14 @@ describe('BeltFlow Mobile API Client & Secure Auth Storage — Task 1.4', () => 
   });
 
   describe('1. API URL Configuration', () => {
-    test('resolves Android emulator loopback to 10.0.2.2:3000', () => {
+    test('resolves Android emulator loopback to 10.0.2.2:4000 (backend default port)', () => {
       const url = resolvePlatformBaseUrl('android');
-      expect(url).toBe('http://10.0.2.2:3000');
+      expect(url).toBe('http://10.0.2.2:4000');
     });
 
-    test('resolves iOS simulator loopback to localhost:3000', () => {
+    test('resolves iOS simulator loopback to localhost:4000 (backend default port)', () => {
       const url = resolvePlatformBaseUrl('ios');
-      expect(url).toBe('http://localhost:3000');
+      expect(url).toBe('http://localhost:4000');
     });
 
     test('allows dynamic override of base URL for physical devices or staging', () => {
