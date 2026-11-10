@@ -11,6 +11,7 @@ import { AssistantScreen } from '../screens/shared/AssistantScreen';
 import { assistantService, AssistantAnswer } from '../services/assistantService';
 import { ApiError } from '../services/apiClient';
 import { ASSISTANT_STRINGS } from '../i18n/assistantStrings';
+import { releaseService } from '../services/releaseService';
 import { SuperAdminNavigator } from '../navigation/roleNavigators/SuperAdminNavigator';
 import { AdminPersatuanNavigator } from '../navigation/roleNavigators/AdminPersatuanNavigator';
 import { MasterNavigator } from '../navigation/roleNavigators/MasterNavigator';
@@ -19,6 +20,10 @@ import { StudentNavigator } from '../navigation/roleNavigators/StudentNavigator'
 
 jest.mock('../services/assistantService', () => ({
   assistantService: { ask: jest.fn() },
+}));
+
+jest.mock('../services/releaseService', () => ({
+  releaseService: { getReleaseModules: jest.fn().mockResolvedValue(null) },
 }));
 
 jest.mock('../services/authService', () => ({
@@ -222,3 +227,36 @@ describe('H26 navigation: assistant tab for all five roles', () => {
     expect((await findByTestId('assistant-welcome')).props.children).toBe(en.welcome[role]);
   });
 });
+
+describe('H27 release-aware assistant tab', () => {
+  const getModules = releaseService.getReleaseModules as jest.Mock;
+  afterEach(() => getModules.mockResolvedValue(null));
+
+  const navs: [RoleType, React.FC<any>, string][] = [
+    ['SUPER_ADMIN', SuperAdminNavigator, 'tab-sa-assistant'],
+    ['ADMIN_PERSATUAN', AdminPersatuanNavigator, 'tab-ap-assistant'],
+    ['MASTER', MasterNavigator, 'tab-master-assistant'],
+    ['PARENT', ParentNavigator, 'tab-parent-assistant'],
+    ['STUDENT', StudentNavigator, 'tab-student-assistant'],
+  ];
+
+  test.each(navs)('%s: hidden when the server release excludes the assistant (R3)', async (role, Navigator, tabId) => {
+    getModules.mockResolvedValue({ release: 'R3', enabledModules: ['trials', 'learning', 'messaging', 'commerce'] });
+    const { queryByTestId, getByTestId } = await render(wrap(<Navigator user={makeUser(role)} onLogout={jest.fn()} />));
+    await waitFor(() => expect(queryByTestId(tabId)).toBeNull());
+    expect(getByTestId(tabId.replace('-assistant', '-home'))).toBeTruthy();
+  });
+
+  test.each(navs)('%s: shown when the server release includes the assistant (R4)', async (role, Navigator, tabId) => {
+    getModules.mockResolvedValue({ release: 'R4', enabledModules: ['assistant'] });
+    const { findByTestId } = await render(wrap(<Navigator user={makeUser(role)} onLogout={jest.fn()} />));
+    expect(await findByTestId(tabId)).toBeTruthy();
+  });
+
+  test('shown when the server cannot be reached (server still enforces the release)', async () => {
+    getModules.mockResolvedValue(null);
+    const { findByTestId } = await render(wrap(<StudentNavigator user={makeUser('STUDENT')} onLogout={jest.fn()} />));
+    expect(await findByTestId('tab-student-assistant')).toBeTruthy();
+  });
+});
+

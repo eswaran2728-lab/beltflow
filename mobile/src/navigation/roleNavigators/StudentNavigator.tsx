@@ -4,6 +4,7 @@ import { Home, Award, CheckSquare, FileText, User, Sparkles } from 'lucide-react
 import { useTheme } from '../../theme/ThemeProvider';
 import { RoleNavigationContainer } from '../RoleNavigationContainer';
 import { AssistantScreen } from '../../screens/shared/AssistantScreen';
+import { useReleaseModules } from '../../hooks/useReleaseModules';
 import {
   StudentHomeScreen,
   ProgressScreen,
@@ -21,6 +22,7 @@ export const StudentNavigator: React.FC<RoleNavigatorProps> = ({
   isOffline,
 }) => {
   const { colors, iconSize } = useTheme();
+  const release = useReleaseModules();
 
   return (
     <RoleNavigationContainer user={user}>
@@ -112,17 +114,19 @@ export const StudentNavigator: React.FC<RoleNavigatorProps> = ({
         )}
       </Tab.Screen>
 
-      <Tab.Screen
-        name="Assistant"
-        options={{
-          tabBarLabel: 'Ask',
-          tabBarAccessibilityLabel: 'BeltFlow Assistant Tab',
-          tabBarButtonTestID: 'tab-student-assistant',
-          tabBarIcon: ({ color }) => <Sparkles size={iconSize.md} color={color} />,
-        }}
-      >
-        {() => <AssistantScreen user={user} isOffline={isOffline} />}
-      </Tab.Screen>
+      {release.isEnabled('assistant') && (
+        <Tab.Screen
+          name="Assistant"
+          options={{
+            tabBarLabel: 'Ask',
+            tabBarAccessibilityLabel: 'BeltFlow Assistant Tab',
+            tabBarButtonTestID: 'tab-student-assistant',
+            tabBarIcon: ({ color }) => <Sparkles size={iconSize.md} color={color} />,
+          }}
+        >
+          {() => <AssistantScreen user={user} isOffline={isOffline} />}
+        </Tab.Screen>
+      )}
 
       <Tab.Screen
         name="Profile"

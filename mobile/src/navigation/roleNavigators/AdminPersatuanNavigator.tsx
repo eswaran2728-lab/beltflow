@@ -4,6 +4,7 @@ import { Home, MapPin, Users, BarChart3, User, Sparkles } from 'lucide-react-nat
 import { useTheme } from '../../theme/ThemeProvider';
 import { RoleNavigationContainer } from '../RoleNavigationContainer';
 import { AssistantScreen } from '../../screens/shared/AssistantScreen';
+import { useReleaseModules } from '../../hooks/useReleaseModules';
 import {
   AdminPersatuanHomeScreen,
   LocationsScreen,
@@ -22,6 +23,7 @@ export const AdminPersatuanNavigator: React.FC<RoleNavigatorProps> = ({
   isOffline,
 }) => {
   const { colors, iconSize } = useTheme();
+  const release = useReleaseModules();
 
   return (
     <RoleNavigationContainer user={user}>
@@ -113,17 +115,19 @@ export const AdminPersatuanNavigator: React.FC<RoleNavigatorProps> = ({
         )}
       </Tab.Screen>
 
-      <Tab.Screen
-        name="Assistant"
-        options={{
-          tabBarLabel: 'Ask',
-          tabBarAccessibilityLabel: 'BeltFlow Assistant Tab',
-          tabBarButtonTestID: 'tab-ap-assistant',
-          tabBarIcon: ({ color }) => <Sparkles size={iconSize.md} color={color} />,
-        }}
-      >
-        {() => <AssistantScreen user={user} isOffline={isOffline} />}
-      </Tab.Screen>
+      {release.isEnabled('assistant') && (
+        <Tab.Screen
+          name="Assistant"
+          options={{
+            tabBarLabel: 'Ask',
+            tabBarAccessibilityLabel: 'BeltFlow Assistant Tab',
+            tabBarButtonTestID: 'tab-ap-assistant',
+            tabBarIcon: ({ color }) => <Sparkles size={iconSize.md} color={color} />,
+          }}
+        >
+          {() => <AssistantScreen user={user} isOffline={isOffline} />}
+        </Tab.Screen>
+      )}
 
       <Tab.Screen
         name="Profile"

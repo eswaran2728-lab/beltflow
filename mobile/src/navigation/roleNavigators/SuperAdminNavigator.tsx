@@ -4,6 +4,7 @@ import { Home, Building2, ShieldCheck, User, Sparkles } from 'lucide-react-nativ
 import { useTheme } from '../../theme/ThemeProvider';
 import { RoleNavigationContainer } from '../RoleNavigationContainer';
 import { AssistantScreen } from '../../screens/shared/AssistantScreen';
+import { useReleaseModules } from '../../hooks/useReleaseModules';
 import {
   SuperAdminHomeScreen,
   PersatuanManagementScreen,
@@ -20,6 +21,7 @@ export const SuperAdminNavigator: React.FC<RoleNavigatorProps> = ({
   isOffline,
 }) => {
   const { colors, iconSize } = useTheme();
+  const release = useReleaseModules();
 
   return (
     <RoleNavigationContainer user={user}>
@@ -93,17 +95,19 @@ export const SuperAdminNavigator: React.FC<RoleNavigatorProps> = ({
         )}
       </Tab.Screen>
 
-      <Tab.Screen
-        name="Assistant"
-        options={{
-          tabBarLabel: 'Ask',
-          tabBarAccessibilityLabel: 'BeltFlow Assistant Tab',
-          tabBarButtonTestID: 'tab-sa-assistant',
-          tabBarIcon: ({ color }) => <Sparkles size={iconSize.md} color={color} />,
-        }}
-      >
-        {() => <AssistantScreen user={user} isOffline={isOffline} />}
-      </Tab.Screen>
+      {release.isEnabled('assistant') && (
+        <Tab.Screen
+          name="Assistant"
+          options={{
+            tabBarLabel: 'Ask',
+            tabBarAccessibilityLabel: 'BeltFlow Assistant Tab',
+            tabBarButtonTestID: 'tab-sa-assistant',
+            tabBarIcon: ({ color }) => <Sparkles size={iconSize.md} color={color} />,
+          }}
+        >
+          {() => <AssistantScreen user={user} isOffline={isOffline} />}
+        </Tab.Screen>
+      )}
 
       <Tab.Screen
         name="Profile"
