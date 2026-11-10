@@ -53,7 +53,7 @@ npm test                   # Runs Jest component and unit test suites
 
 ## 4. Task H26 status (see `09_H26_ROLE_AWARE_AI.md`)
 
-H26 was implemented on 2026-11-10. Official tests pass; live Gemini verified with synthetic data (AI-LIVE-001 closed); live red-team AI-SEC-001 still open. The next milestone is H27 and requires owner approval.
+H26 was implemented on 2026-11-10. Official tests pass; live Gemini verified with synthetic data (AI-LIVE-001 closed); live red-team AI-SEC-001 passed 13/13 (sample). The next milestone is H27 and requires owner approval.
 
 ### Original H26 brief (kept for reference)
 

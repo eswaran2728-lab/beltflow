@@ -53,4 +53,4 @@ To preserve release safety, no gate may be marked closed based on simulated test
 | `DB-PG-001` | Production PostgreSQL certification| **OPEN** | Requires deployment against managed Cloud SQL / AWS RDS PostgreSQL |
 | `RESTORE-001`| Backup & disaster recovery drill | **OPEN** | Requires executing scripts/db/restore.sh against staging dump |
 | `AI-LIVE-001` | Live AI provider integration | **VERIFIED (2026-11-10)** | Live Gemini (`gemini-3.5-flash-lite`) smoke test passed 4/4 with synthetic data; see `09` §6. Use a paid-tier key before real student data |
-| `AI-SEC-001` | AI prompt injection and privacy audit | **OPEN** | Server-side controls verified with mocks (see `09`); a live-model red-team pass is still required |
+| `AI-SEC-001` | AI prompt injection and privacy audit | **VERIFIED (sample, 2026-11-10)** | Live red-team 13/13 after fixing a Tamil injection finding; see `09` §7. Re-run on any model/prompt change |

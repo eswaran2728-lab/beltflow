@@ -123,6 +123,17 @@ const INJECTION_PATTERNS: RegExp[] = [
   /\b(?:approve|reject|refund|promote|transfer|confirm|pay)\b.{0,30}\b(?:all|every|pending)\b/i,
   /\bforget\b.{0,20}\b(?:everything|all|previous|prior|above|instructions?|rules?)\b/i,
   /<\/?\s*(?:system|instructions?|assistant)\s*>/i,
+  // Addressed to the model rather than to readers (AI-SEC-001 finding).
+  /\b(?:note|message|instructions?)\s+(?:to|for)\s+(?:the\s+)?(?:assistant|ai|model|chatbot|bot)\b/i,
+  /\b(?:tell|inform)\s+the\s+(?:user|parent|student|reader)\b/i,
+  // Bahasa Melayu
+  /\barahan\s+(?:untuk|kepada)\s+(?:pembantu|ai|model|chatbot)\b/i,
+  /\b(?:abaikan|lupakan)\b.{0,30}\barahan\b/i,
+  /\b(?:beritahu|maklumkan)\s+(?:kepada\s+)?pengguna\b/i,
+  // Tamil: "instruction", "ignore ... instructions/directions", "tell the user ... (say)"
+  /அறிவுறுத்தல்/,
+  /(?:வழிமுறைகளை|அறிவுரைகளை|கட்டளைகளை)[^\n]{0,20}புறக்கணி/,
+  /பயனர(?:ிடம்|ின்|ுக்கு)[^\n]{0,80}(?:சொல்லுங்கள்|சொல்|கூறுங்கள்|தெரிவியுங்கள்)/,
 ];
 export const NEUTRALISED_LINE = '[removed: instruction-like text in a source document]';
 
@@ -145,11 +156,30 @@ export function sanitizeEvidenceText(text: string, maxChars: number): string {
   return clean.length > maxChars ? `${clean.slice(0, maxChars)}…` : clean;
 }
 
+// English, Bahasa Melayu and Tamil claims that an operation was carried out.
 const ACTION_CLAIMS: RegExp[] = [
   /\b(?:i|we)(?:'ve|\u2019ve|\s+have|\s+just|\s+already)*\s+(?:approved|rejected|promoted|graded|refunded|paid|confirmed|transferred|marked|updated|changed|issued|enrolled|cancelled|sent|recorded|processed|waived|awarded)\b/i,
   /\b(?:has|have)\s+(?:now\s+)?been\s+(?:approved|rejected|promoted|refunded|paid|confirmed|transferred|marked|updated|changed|issued|enrolled|cancelled|recorded|processed|waived|awarded)\b/i,
   /\b(?:payment|refund|promotion|grading|transfer|enrol(?:l)?ment|attendance)\s+(?:is\s+|was\s+)?(?:now\s+)?(?:confirmed|approved|processed|completed|recorded)\b/i,
+  /\b(?:fees?|dues|payments?)\s+(?:is|are|was|were|have\s+been|has\s+been)\s+(?:now\s+)?(?:waived|refunded|cancelled)\b/i,
+  // Bahasa Melayu: "telah/sudah diluluskan / dikembalikan / disahkan ..." (belum = not yet, not matched)
+  /\b(?:telah|sudah)\s+(?:di)?(?:luluskan|kembalikan|kecualikan|sahkan|naikkan|bayar|pindahkan|batalkan|rekodkan|tandakan)\b/i,
+  // Tamil past-passive claims: refunded, approved, waived, confirmed, promoted, paid
+  // (negated forms end in ...வில்லை and are not matched)
+  /திருப்பித்\s*தரப்பட்ட(?:து|ன|ு)|அங்கீகரிக்கப்பட்ட(?:து|ன)|ஒப்புதல்\s*(?:அளிக்கப்பட்டது|வழங்கப்பட்டது)|தள்ளுபடி\s*செய்யப்பட்ட(?:து|ன)|உறுதிப்படுத்தப்பட்ட(?:து|ன)|பதவி\s*உயர்வு\s*(?:அளிக்கப்பட்டது|வழங்கப்பட்டது)|செலுத்தப்பட்ட(?:து|ன)/,
 ];
+
+// A sentence that denies, doubts or asks is not a claim ("I could not find
+// whether fees are waived", "belum diluluskan", "...கிடைக்கவில்லை").
+const NEGATED_OR_UNCERTAIN =
+  /\b(?:not|no|never|cannot|can't|could\s+not|couldn't|unable|whether|if)\b|\b(?:tidak|tiada|belum|bukan|sama\s+ada|jika)\b|இல்லை|வில்லை|முடியாது|முடியவில்லை|\?/i;
+
+/** True when any sentence the model wrote affirms that an operation was carried out. */
+export function containsActionClaim(text: string): boolean {
+  return text
+    .split(/(?<=[.!?。])\s+|\n+/)
+    .some(sentence => ACTION_CLAIMS.some(p => p.test(sentence)) && !NEGATED_OR_UNCERTAIN.test(sentence));
+}
 
 export type OutputCheck =
   | { ok: true; text: string; citedIds: string[] }
@@ -176,7 +206,7 @@ function generatedPart(text: string, evidence: EvidenceItem[]): string {
 export function checkProviderOutput(output: ProviderResponse, evidence: EvidenceItem[], maxChars: number): OutputCheck {
   const text = stripInvisible(String(output?.text ?? ''));
   const ownWords = generatedPart(text, evidence);
-  if (ACTION_CLAIMS.some(p => p.test(ownWords))) return { ok: false, reason: 'ACTION_CLAIM' };
+  if (containsActionClaim(ownWords)) return { ok: false, reason: 'ACTION_CLAIM' };
   const allowed = new Set(evidence.map(e => e.id));
   const cited = Array.from(new Set((Array.isArray(output?.citedSourceIds) ? output.citedSourceIds : []).map(String))).filter(id => allowed.has(id));
   if (cited.length === 0 || !text.trim()) return { ok: false, reason: 'NO_VALID_CITATION' };
