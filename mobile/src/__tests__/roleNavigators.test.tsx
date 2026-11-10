@@ -519,7 +519,8 @@ describe('BeltFlow Role-Based Navigation Architecture — Task 1.6 (TDD)', () =>
       await renderWithTheme(<AppNavigator initialUser={studentUser} />);
 
       expect(roleNavigationRef.isReady()).toBe(true);
-      expect(getRouteNames()).toEqual(['Home', 'Progress', 'Attendance', 'Certificates', 'Profile']);
+      // H26 adds the shared read-only Assistant tab for every role.
+      expect(getRouteNames()).toEqual(['Home', 'Progress', 'Attendance', 'Certificates', 'Assistant', 'Profile']);
       for (const forbidden of ['Persatuans', 'Audit', 'Locations', 'Masters', 'Grading', 'Children', 'Fees']) {
         expect(getRouteNames()).not.toContain(forbidden);
       }

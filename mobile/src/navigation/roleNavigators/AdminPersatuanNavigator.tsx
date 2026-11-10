@@ -1,8 +1,9 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Home, MapPin, Users, BarChart3, User } from 'lucide-react-native';
+import { Home, MapPin, Users, BarChart3, User, Sparkles } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import { RoleNavigationContainer } from '../RoleNavigationContainer';
+import { AssistantScreen } from '../../screens/shared/AssistantScreen';
 import {
   AdminPersatuanHomeScreen,
   LocationsScreen,
@@ -110,6 +111,18 @@ export const AdminPersatuanNavigator: React.FC<RoleNavigatorProps> = ({
             isOffline={isOffline}
           />
         )}
+      </Tab.Screen>
+
+      <Tab.Screen
+        name="Assistant"
+        options={{
+          tabBarLabel: 'Ask',
+          tabBarAccessibilityLabel: 'BeltFlow Assistant Tab',
+          tabBarButtonTestID: 'tab-ap-assistant',
+          tabBarIcon: ({ color }) => <Sparkles size={iconSize.md} color={color} />,
+        }}
+      >
+        {() => <AssistantScreen user={user} isOffline={isOffline} />}
       </Tab.Screen>
 
       <Tab.Screen

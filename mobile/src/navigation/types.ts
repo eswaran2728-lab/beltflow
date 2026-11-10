@@ -36,6 +36,7 @@ export type SuperAdminTabParamList = {
   Home: undefined;
   Persatuans: undefined;
   Audit: undefined;
+  Assistant: undefined;
   Profile: undefined;
 };
 
@@ -44,6 +45,7 @@ export type AdminPersatuanTabParamList = {
   Locations: undefined;
   Masters: undefined;
   Reports: undefined;
+  Assistant: undefined;
   Profile: undefined;
   AcademySetup?: undefined;
 };
@@ -66,6 +68,7 @@ export type MasterTabParamList = {
   Classes: undefined;
   Attendance: undefined;
   Grading: undefined;
+  Assistant: undefined;
   Profile: undefined;
 };
 
@@ -74,6 +77,7 @@ export type ParentTabParamList = {
   Children: undefined;
   Fees: undefined;
   Notices: undefined;
+  Assistant: undefined;
   Profile: undefined;
 };
 
@@ -82,5 +86,6 @@ export type StudentTabParamList = {
   Progress: undefined;
   Attendance: undefined;
   Certificates: undefined;
+  Assistant: undefined;
   Profile: undefined;
 };

@@ -1,8 +1,9 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Home, Award, CheckSquare, FileText, User } from 'lucide-react-native';
+import { Home, Award, CheckSquare, FileText, User, Sparkles } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import { RoleNavigationContainer } from '../RoleNavigationContainer';
+import { AssistantScreen } from '../../screens/shared/AssistantScreen';
 import {
   StudentHomeScreen,
   ProgressScreen,
@@ -109,6 +110,18 @@ export const StudentNavigator: React.FC<RoleNavigatorProps> = ({
             isOffline={isOffline}
           />
         )}
+      </Tab.Screen>
+
+      <Tab.Screen
+        name="Assistant"
+        options={{
+          tabBarLabel: 'Ask',
+          tabBarAccessibilityLabel: 'BeltFlow Assistant Tab',
+          tabBarButtonTestID: 'tab-student-assistant',
+          tabBarIcon: ({ color }) => <Sparkles size={iconSize.md} color={color} />,
+        }}
+      >
+        {() => <AssistantScreen user={user} isOffline={isOffline} />}
       </Tab.Screen>
 
       <Tab.Screen
