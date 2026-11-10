@@ -1,7 +1,7 @@
 # 02 — Roadmap H00–H28 Verification & Status
 
 > Official Roadmap: 29 milestone tasks (H00 through H28).  
-> Current status as of 2026-11-10: H00–H25 COMPLETED (100% test passing), H26 NOT STARTED, H27 NOT STARTED, H28 ~65% PARTIALLY COMPLETE.
+> Current status as of 2026-11-10: H00–H25 reported COMPLETED; **H26 CONDITIONAL PASS** (all official tests pass with mocked/offline providers; live AI unverified — see `09_H26_ROLE_AWARE_AI.md`); H27 NOT STARTED; H28 PARTIALLY STARTED.
 
 ---
 
@@ -35,13 +35,13 @@
 | **H23** | Growth Analytics & Exports | **DONE** | `growth_analytics_h23.test.ts` | Server-side financial aggregation, CSV formula sanitization |
 | **H24** | Tournament Operations | **DONE** | `tournament_operations_h24.test.ts` | Category eligibility, match locking, appeals, preflight checks |
 | **H25** | Equipment Commerce | **DONE** | `equipment_merchandise_h25.test.ts` | Stock reservations, inventory locking, cross-tenant denial |
-| **H26** | **Role-Aware Grounded AI** | **NOT STARTED** | *(To be implemented)* | **Immediate next milestone** (Read-only, tenant-isolated) |
+| **H26** | **Role-Aware Grounded AI** | **CONDITIONAL PASS** | `assistant_grounded_ai_h26.test.ts` | All 5 official criteria pass (mocked providers); read-only; live provider pending (`AI-LIVE-001`) |
 | **H27** | Advanced Release Certification | **NOT STARTED** | — | Production smoke test, recovery rehearsal certification |
 | **H28** | Usability & Localization | **~65% DONE** | — | Staging & production runbooks written; 31 UI screens pending |
 
 ---
 
-## 2. Immediate Next Objective: Task H26
+## 2. Task H26 (implemented 2026-11-10 — evidence in `09_H26_ROLE_AWARE_AI.md`)
 
 **Task H26 Specification**:
 * **Official Title**: Role-Aware Grounded AI Assistant

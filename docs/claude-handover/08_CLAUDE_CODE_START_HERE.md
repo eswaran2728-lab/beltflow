@@ -17,7 +17,7 @@ cd server
 npm ci
 npx tsc --noEmit           # Must pass with 0 errors
 npm run build              # Compiles to dist/ and copies schema.sql
-npm test                   # Runs all 36 test suites covering H00 to H25
+npm test                   # Runs all 36 test suites covering H00 to H26
 
 # 2. Mobile Verification
 cd ../mobile
@@ -51,7 +51,11 @@ npm test                   # Runs Jest component and unit test suites
 
 ---
 
-## 4. Next Development Milestone: Task H26
+## 4. Task H26 status (see `09_H26_ROLE_AWARE_AI.md`)
+
+H26 was implemented on 2026-11-10 (CONDITIONAL PASS: official tests pass with mocked/offline providers; no live AI provider yet). The next milestone is H27 and requires owner approval.
+
+### Original H26 brief (kept for reference)
 
 Your next development milestone is **Official Task H26: Role-Aware Grounded AI Assistant**.
 Follow the **Superpowers methodology**:

@@ -1,10 +1,12 @@
 # 07 — Pending Work & Development Priorities
 
-> Current Milestone: Handover complete; ready for Task H26.
+> Current Milestone: H26 implemented (CONDITIONAL PASS, 2026-11-10). Awaiting owner approval before H27.
+>
+> H26 follow-ups: choose and integrate a live AI provider (`AI-LIVE-001`), live red-team (`AI-SEC-001`), native-speaker review of BM/Tamil assistant strings, physical-device check of the Ask tab, and removal of `process.exit(0)` from the 27 older backend test files.
 
 ---
 
-## 1. Immediate Next Development Task: Task H26
+## 1. Task H26 (implemented — see `09_H26_ROLE_AWARE_AI.md`)
 
 **Task H26: Role-Aware Grounded AI Assistant**
 * **Dependencies**: H20 (Learning Library) / H23 (Growth Analytics)
