@@ -17,7 +17,7 @@ cd server
 npm ci
 npx tsc --noEmit           # Must pass with 0 errors
 npm run build              # Compiles to dist/ and copies schema.sql
-npm test                   # Runs all 37 test suites covering H00 to H26
+npm test                   # Runs all 42 test suites covering H00 to H27
 
 # 2. Mobile Verification
 cd ../mobile
@@ -36,7 +36,8 @@ npm test                   # Runs Jest component and unit test suites
 4. `docs/claude-handover/04_MOBILE_UI_STITCH.md` (Google Stitch tokens, 42-screen inventory)
 5. `docs/claude-handover/05_TESTING_BUILD_RELEASE.md` (Automated tests, APK binary, release gates)
 6. `docs/claude-handover/07_PENDING_WORK_AND_PRIORITIES.md` (H26 spec and H28 backlog)
-7. Authoritative PDF: `BeltFlow_Complete_Structure_Implementation_and_Handoff_v2.pdf` at the repository root.
+7. `docs/claude-handover/09_H26_ROLE_AWARE_AI.md` and `10_H27_RELEASE_CERTIFICATION.md` (latest evidence)
+8. Authoritative PDF: `BeltFlow_Complete_Structure_Implementation_and_Handoff_v2.pdf` at the repository root.
 
 ---
 
@@ -53,7 +54,7 @@ npm test                   # Runs Jest component and unit test suites
 
 ## 4. Task H26 status (see `09_H26_ROLE_AWARE_AI.md`)
 
-H26 was implemented on 2026-11-10. Official tests pass; live Gemini verified with synthetic data (AI-LIVE-001 closed); live red-team AI-SEC-001 passed 13/13 (sample). The next milestone is H27 and requires owner approval.
+H26 PASS (see `09`). H27 CONDITIONAL PASS on 2026-11-10 (see `10`): 3 of 4 official tests pass on PGlite and real PostgreSQL 16; native E2E needs a real device. Release flags: `BELTFLOW_RELEASE`, `BELTFLOW_DISABLED_MODULES`. The next milestone is H28 and requires owner approval.
 
 ### Original H26 brief (kept for reference)
 

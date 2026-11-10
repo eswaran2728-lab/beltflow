@@ -1,7 +1,7 @@
 # 02 — Roadmap H00–H28 Verification & Status
 
 > Official Roadmap: 29 milestone tasks (H00 through H28).  
-> Current status as of 2026-11-10: H00–H25 reported COMPLETED; **H26 CONDITIONAL PASS** (all official tests pass with mocked/offline providers; live AI unverified — see `09_H26_ROLE_AWARE_AI.md`); H27 NOT STARTED; H28 PARTIALLY STARTED.
+> Current status as of 2026-11-10: H00–H25 reported COMPLETED; **H26 PASS** (official tests, live Gemini verified, live red-team passed — `09`); **H27 CONDITIONAL PASS** (3 of 4 official tests pass; native E2E blocked on a device — `10`); H28 PARTIALLY STARTED.
 
 ---
 
@@ -35,8 +35,8 @@
 | **H23** | Growth Analytics & Exports | **DONE** | `growth_analytics_h23.test.ts` | Server-side financial aggregation, CSV formula sanitization |
 | **H24** | Tournament Operations | **DONE** | `tournament_operations_h24.test.ts` | Category eligibility, match locking, appeals, preflight checks |
 | **H25** | Equipment Commerce | **DONE** | `equipment_merchandise_h25.test.ts` | Stock reservations, inventory locking, cross-tenant denial |
-| **H26** | **Role-Aware Grounded AI** | **CONDITIONAL PASS** | `assistant_grounded_ai_h26.test.ts` | All 5 official criteria pass (mocked providers); read-only; live provider pending (`AI-LIVE-001`) |
-| **H27** | Advanced Release Certification | **NOT STARTED** | — | Production smoke test, recovery rehearsal certification |
+| **H26** | **Role-Aware Grounded AI** | **PASS** | `assistant_grounded_ai_h26.test.ts`, `assistant_gemini_provider_h26.test.ts` | 5 official criteria; live Gemini 4/4; live red-team 13/13 (`09`) |
+| **H27** | Advanced Release Certification | **CONDITIONAL PASS** | `release_certification_h27`, `worker_replay_h27`, `scripts/db/h27_migration_restore_rehearsal.js` | disabled_module_inaccessible, migration_restore_pass, worker_replay_safe PASS; release_specific_native_E2E BLOCKED (no device); 7 defects fixed (`10`) |
 | **H28** | Usability & Localization | **~65% DONE** | — | Staging & production runbooks written; 31 UI screens pending |
 
 ---

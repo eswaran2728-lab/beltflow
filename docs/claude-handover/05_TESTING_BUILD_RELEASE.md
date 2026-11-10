@@ -9,15 +9,15 @@
 
 ### Backend Integration Suites (`server/`):
 * **Command**: `npm test` inside `server/`
-* **Test Suites**: 37 test suites covering H00 to H26 (pre-H26 chain was 35; H26 added the assistant suite and the Gemini adapter suite)
+* **Test Suites**: 42 test suites covering H00 to H27 (35 before H26; H26 added 2, H27 added 5)
 * **Execution Engine**: Express routes with embedded PostgreSQL (`@electric-sql/pglite`) in isolated temporary directories
-* **Pass Rate**: **37 / 37 passed (100%)** — ~73 s. H26 and H24-preflight suites close the DB and exit naturally; 27 older suites still end with `process.exit(0)` (follow-up).
+* **Pass Rate**: **42 / 42 passed (100%)** on PGlite, and **42 / 42 on real PostgreSQL 16.15** (each suite on a fresh database) — 2026-11-10 — ~73 s. H26 and H24-preflight suites close the DB and exit naturally; 27 older suites still end with `process.exit(0)` (follow-up).
 * **Duration**: ~40 seconds
 
 ### Mobile Unit & Component Suites (`mobile/`):
 * **Command**: `npm test` inside `mobile/`
-* **Test Suites**: 41 test suites, 425 total unit tests (40 / 400 before H26)
-* **Pass Rate**: **41 / 41 passed (100%)**
+* **Test Suites**: 42 test suites, 444 total tests (40 / 400 before H26)
+* **Pass Rate**: **42 / 42 passed (100%)**
 * **Note on QR Attendance Suite**: `src/__tests__/qrAttendance.test.tsx` passes 21/21 tests in isolation; under heavy single-threaded Jest runs, grant a timeout buffer if needed.
 
 ---
@@ -46,11 +46,11 @@ To preserve release safety, no gate may be marked closed based on simulated test
 
 | Gate ID | Description | Current Status | Blocker / Requirement |
 | :--- | :--- | :---: | :--- |
-| `NATIVE-001` | Physical Android device runtime | **OPEN** | Requires installing APK on physical Android device over LAN |
+| `NATIVE-001` | Physical Android device runtime | **OPEN** | Blocks H27 native E2E. Rebuild first: the existing APK predates the mobile `/api/v1` fix (`10` §6) |
 | `NATIVE-002` | Physical iOS device runtime | **OPEN** | Requires testflight / physical iPhone execution |
 | `CAM-001` | Physical camera QR scanning | **OPEN** | Requires hardware camera verification with physical printed/screen QR |
 | `PAY-LIVE-001`| Live FPX / DuitNow settlement | **OPEN** | Requires live Malaysian bank sandbox / merchant verification |
-| `DB-PG-001` | Production PostgreSQL certification| **OPEN** | Requires deployment against managed Cloud SQL / AWS RDS PostgreSQL |
-| `RESTORE-001`| Backup & disaster recovery drill | **OPEN** | Requires executing scripts/db/restore.sh against staging dump |
+| `DB-PG-001` | Production PostgreSQL certification | **PARTIAL** | All 42 suites, upgrade/restore rehearsal, replay concurrency and load smoke pass on local PostgreSQL 16.15 (`10`); repeat on managed production PostgreSQL with SSL |
+| `RESTORE-001`| Backup & disaster recovery drill | **VERIFIED (local rehearsal)** | backup.sh → restore.sh → verify_restore.js, 76 tables match (`10`); production backup schedule + off-site copy still needed |
 | `AI-LIVE-001` | Live AI provider integration | **VERIFIED (2026-11-10)** | Live Gemini (`gemini-3.5-flash-lite`) smoke test passed 4/4 with synthetic data; see `09` §6. Use a paid-tier key before real student data |
 | `AI-SEC-001` | AI prompt injection and privacy audit | **VERIFIED (sample, 2026-11-10)** | Live red-team 13/13 after fixing a Tamil injection finding; see `09` §7. Re-run on any model/prompt change |

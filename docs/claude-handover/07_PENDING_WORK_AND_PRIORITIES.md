@@ -1,6 +1,8 @@
 # 07 — Pending Work & Development Priorities
 
-> Current Milestone: H26 implemented (CONDITIONAL PASS, 2026-11-10). Awaiting owner approval before H27.
+> Current Milestone: H26 PASS and H27 CONDITIONAL PASS (2026-11-10). Awaiting owner approval before H28.
+>
+> H27 follow-ups (see `10` §5–6): rebuild the APK and run native E2E on a real Android phone (`NATIVE-001`); notification outbox has no sender; restrict worker trigger routes; per-tenant feature flags; hide other disabled R2/R3 entry points in the app; repeat PostgreSQL checks on the managed production database.
 >
 > H26 follow-ups: Gemini integrated and live-verified (`AI-LIVE-001` closed); live red-team passed (`AI-SEC-001`); still open: paid-tier Gemini key for real data, native-speaker review of BM/Tamil assistant strings, physical-device check of the Ask tab, and removal of `process.exit(0)` from the 27 older backend test files.
 
