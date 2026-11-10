@@ -31,6 +31,9 @@ function requireRole(allowedRoles: UserRole[]) {
 /**
  * Helper: Check tenant isolation
  */
+/** Result produced inside a transaction; the HTTP response is sent after COMMIT. */
+const reply = (status: number, body: unknown) => ({ status, body });
+
 function verifyTenantMatch(userOrgId: string | undefined, targetOrgId: string): boolean {
   if (!userOrgId) return false;
   return userOrgId === targetOrgId;
@@ -120,7 +123,7 @@ router.post(
       const productId = `prod_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
       const prodCategory = category || 'EQUIPMENT';
 
-      return await dbClient.transaction(async (client) => {
+      const result = await dbClient.transaction(async (client) => {
         const insertRes = await client.query(
           `INSERT INTO products (id, organization_id, name, sku, category, description, price, stock_quantity, reserved_quantity, is_active)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0, TRUE)
@@ -137,13 +140,15 @@ router.post(
           );
         }
 
-        return res.status(201).json({
+        return reply(201, {
           product: {
             ...insertRes.rows[0],
             available_quantity: initialStock
           }
         });
       });
+      // Respond only after COMMIT (see no_response_inside_transaction_h27).
+      return res.status(result.status).json(result.body);
     } catch (error: any) {
       return res.status(500).json({ error: error.message || 'Failed to create product' });
     }
@@ -167,19 +172,19 @@ router.post(
         return res.status(400).json({ error: 'Restock quantity must be a positive integer.' });
       }
 
-      return await dbClient.transaction(async (client) => {
+      const result = await dbClient.transaction(async (client) => {
         const prodCheck = await client.query(
           `SELECT * FROM products WHERE id = $1 FOR UPDATE`,
           [productId]
         );
 
         if (prodCheck.rowCount === 0) {
-          return res.status(404).json({ error: 'Product not found.' });
+          return reply(404, { error: 'Product not found.' });
         }
 
         const product = prodCheck.rows[0];
         if (req.user?.role !== UserRole.SUPER_ADMIN && !verifyTenantMatch(req.user?.organizationId, product.organization_id)) {
-          return res.status(403).json({
+          return reply(403, {
             success: false,
             criterion: 'cross_tenant_order_denied',
             error: 'Cross-tenant restock operation denied.'
@@ -199,7 +204,7 @@ router.post(
           [moveId, product.organization_id, productId, restockQty, reason || 'Manual restock batch', req.user?.id || null]
         );
 
-        return res.json({
+        return reply(200, {
           success: true,
           product: {
             ...product,
@@ -208,6 +213,8 @@ router.post(
           }
         });
       });
+      // Respond only after COMMIT (see no_response_inside_transaction_h27).
+      return res.status(result.status).json(result.body);
     } catch (error: any) {
       return res.status(500).json({ error: error.message || 'Failed to restock product' });
     }
@@ -238,14 +245,14 @@ router.post('/orders', authenticateJWT, async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Order must contain at least one item.' });
     }
 
-    return await dbClient.transaction(async (client) => {
+    const result = await dbClient.transaction(async (client) => {
       let totalAmount = 0;
       const orderItemsToInsert: Array<{ productId: string; quantity: number; unitPrice: number; totalPrice: number }> = [];
 
       for (const item of items) {
         const qty = parseInt(item.quantity, 10);
         if (isNaN(qty) || qty <= 0) {
-          return res.status(400).json({ error: 'Item quantity must be a positive integer.' });
+          return reply(400, { error: 'Item quantity must be a positive integer.' });
         }
 
         const prodRes = await client.query(
@@ -254,12 +261,12 @@ router.post('/orders', authenticateJWT, async (req: Request, res: Response) => {
         );
 
         if (prodRes.rowCount === 0) {
-          return res.status(404).json({ error: `Product not found: ${item.productId}` });
+          return reply(404, { error: `Product not found: ${item.productId}` });
         }
 
         const prod = prodRes.rows[0];
         if (prod.organization_id !== targetOrgId) {
-          return res.status(403).json({
+          return reply(403, {
             success: false,
             criterion: 'cross_tenant_order_denied',
             error: 'Cross-tenant product ordered.'
@@ -267,7 +274,7 @@ router.post('/orders', authenticateJWT, async (req: Request, res: Response) => {
         }
 
         if (!prod.is_active) {
-          return res.status(400).json({ error: `Product ${prod.id} is inactive.` });
+          return reply(400, { error: `Product ${prod.id} is inactive.` });
         }
 
         const unitPrice = parseFloat(prod.price);
@@ -301,11 +308,13 @@ router.post('/orders', authenticateJWT, async (req: Request, res: Response) => {
       }
 
       const orderRes = await client.query(`SELECT * FROM inventory_orders WHERE id = $1`, [orderId]);
-      return res.status(201).json({
+      return reply(201, {
         order: orderRes.rows[0],
         items: orderItemsToInsert
       });
     });
+      // Respond only after COMMIT (see no_response_inside_transaction_h27).
+      return res.status(result.status).json(result.body);
   } catch (error: any) {
     return res.status(500).json({ error: error.message || 'Failed to create order' });
   }
