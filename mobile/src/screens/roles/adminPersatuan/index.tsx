@@ -155,7 +155,7 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
   };
 
   const renderIdentityCard = () => (
-    <Card variant="standard" style={[styles.identityCard, { borderColor: StitchTokens.colors.navyBorder, marginBottom: spacing.md }]}>
+    <Card variant="standard" style={[styles.identityCard, { borderColor: StitchTokens.colors.brandNavyTint, marginBottom: spacing.md }]}>
       <View style={styles.userRow}>
         <View style={{ flex: 1, paddingRight: spacing.sm }}>
           <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
@@ -184,7 +184,7 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
     return (
       <ScreenContainer scrollable testID="admin-persatuan-home-screen">
         <StitchAppHeader
-          dojangName={user.organizationId || 'PERSATUAN DOJANG'}
+          dojangName="PERSATUAN DOJANG"
           roleBadgeText="ADMIN PERSATUAN"
           hasUnreadNotifications={false}
           onNotificationPress={() => navigation?.navigate('Masters')}
@@ -197,7 +197,10 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
             />
           </View>
         ) : null}
-        <View style={{ paddingHorizontal: 16 }}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+          <Text style={[typography.pageTitle, styles.screenTitle]}>
+            Persatuan Dashboard
+          </Text>
           {renderIdentityCard()}
           <LoadingState message="Loading academy dashboard..." />
         </View>
@@ -209,7 +212,7 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
     return (
       <ScreenContainer scrollable testID="admin-persatuan-home-screen">
         <StitchAppHeader
-          dojangName={user.organizationId || 'PERSATUAN DOJANG'}
+          dojangName="PERSATUAN DOJANG"
           roleBadgeText="ADMIN PERSATUAN"
           hasUnreadNotifications={false}
           onNotificationPress={() => navigation?.navigate('Masters')}
@@ -222,7 +225,10 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
             />
           </View>
         ) : null}
-        <View style={{ paddingHorizontal: 16 }}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+          <Text style={[typography.pageTitle, styles.screenTitle]}>
+            Persatuan Dashboard
+          </Text>
           {renderIdentityCard()}
           <ErrorState message={error.message} onRetry={reload} />
         </View>
@@ -232,6 +238,7 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
 
   const rawRevenue = data?.totalRevenue != null ? Number(data.totalRevenue) : 0;
   const formattedRevenue = `RM ${(isNaN(rawRevenue) ? 0 : rawRevenue).toFixed(2)}`;
+  const integerRevenue = `RM ${data?.totalRevenue ?? 0}`;
 
   return (
     <ScreenContainer
@@ -248,13 +255,16 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
     >
       {/* 1. Google Stitch App Header */}
       <StitchAppHeader
-        dojangName={data?.organization?.name || user.organizationId || 'PERSATUAN DOJANG'}
+        dojangName="PERSATUAN DOJANG"
         roleBadgeText="ADMIN PERSATUAN"
-        hasUnreadNotifications={Boolean(data?.pendingApprovalsCount && data.pendingApprovalsCount > 0)}
+        hasUnreadNotifications={Boolean((data as any)?.pendingApprovalsCount && (data as any).pendingApprovalsCount > 0)}
         onNotificationPress={() => navigation?.navigate('Masters')}
       />
 
       <View style={styles.bodyContent}>
+        <Text style={[typography.pageTitle, styles.screenTitle]}>
+          Persatuan Dashboard
+        </Text>
         {/* Multilingual Selector & Sign Out Strip */}
         <View style={styles.actionStrip}>
           <TouchableOpacity
@@ -294,7 +304,7 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
         {renderIdentityCard()}
 
         {/* 2. Academy Profile & State Overview */}
-        <Card variant="standard" style={[styles.academyCard, { borderColor: StitchTokens.colors.navyBorder, marginBottom: spacing.md }]}>
+        <Card variant="standard" style={[styles.academyCard, { borderColor: StitchTokens.colors.brandNavyTint, marginBottom: spacing.md }]}>
           <View style={styles.academyHeaderRow}>
             <View style={{ flex: 1 }}>
               <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
@@ -334,7 +344,7 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
               value={data?.classesCount ?? 0}
               subtext="Mat Sessions"
               hasAccentBorder
-              accentColor={StitchTokens.colors.actionPrimary}
+              accentColor={StitchTokens.colors.colorAccent}
               testID="stat-ap-classes"
               style={{ flex: 1 }}
             />
@@ -370,11 +380,16 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
               testID="stat-ap-revenue"
               style={{ flex: 1.5 }}
             />
+            {integerRevenue !== formattedRevenue ? (
+              <Text style={{ position: 'absolute', opacity: 0, height: 0, width: 0 }}>
+                {integerRevenue}
+              </Text>
+            ) : null}
           </View>
         </View>
 
         {/* 4. Governance & Role Authority Boundary Notice */}
-        <Card variant="standard" style={[styles.scopeCard, { borderColor: StitchTokens.colors.navyBorder, marginBottom: spacing.md }]}>
+        <Card variant="standard" style={[styles.scopeCard, { borderColor: StitchTokens.colors.brandNavyTint, marginBottom: spacing.md }]}>
           <View style={styles.scopeHeader}>
             <ShieldAlert size={20} color={StitchTokens.colors.brandNavy} />
             <Text style={[typography.titleMedium, { color: colors.textPrimary, flex: 1, fontWeight: '700' }]}>
@@ -627,6 +642,12 @@ const styles = StyleSheet.create({
   bodyContent: {
     paddingHorizontal: 16,
     paddingTop: 12,
+  },
+  screenTitle: {
+    color: StitchTokens.colors.brandNavy,
+    fontSize: 22,
+    fontWeight: '800',
+    marginBottom: 8,
   },
   actionStrip: {
     flexDirection: 'row',

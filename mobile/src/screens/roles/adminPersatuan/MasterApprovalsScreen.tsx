@@ -18,6 +18,8 @@ import {
 } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { ScreenContainer, ScreenHeader } from '../../../components/Layout';
+import { StitchAppHeader, StitchStatCard } from '../../../components/stitch';
+import { StitchTokens } from '../../../theme/tokens';
 import { Card } from '../../../components/Card';
 import { Button } from '../../../components/Button';
 import { Input } from '../../../components/Input';
@@ -215,10 +217,47 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
 
   return (
     <ScreenContainer scrollable={false} testID="admin-persatuan-master-approvals-screen">
-      <ScreenHeader
-        title="Master Verifications"
-        subtitle="Review & approve instructor credentials"
+      <StitchAppHeader
+        dojangName="PERSATUAN DOJANG"
+        roleBadgeText="ADMIN PERSATUAN"
+        hasUnreadNotifications={applications.some(a => a.status === 'SUBMITTED')}
       />
+
+      <View style={styles.headerSection}>
+        <Text style={[typography.pageTitle, styles.screenTitle]}>
+          Master Verifications
+        </Text>
+        <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
+          Review & approve instructor credentials
+        </Text>
+
+        <View style={{ flexDirection: 'row', gap: spacing.sm, marginVertical: spacing.sm }}>
+          <StitchStatCard
+            label="Pending Review"
+            value={applications.filter(a => a.status === 'SUBMITTED').length}
+            subtext="Needs Approval"
+            hasAccentBorder
+            accentColor={StitchTokens.colors.colorAccent}
+            style={{ flex: 1 }}
+          />
+          <StitchStatCard
+            label="Active Masters"
+            value={applications.filter(a => a.status === 'APPROVED').length}
+            subtext="Verified Coaches"
+            hasAccentBorder
+            accentColor={StitchTokens.colors.bfGreen}
+            style={{ flex: 1 }}
+          />
+          <StitchStatCard
+            label="Needs Info"
+            value={applications.filter(a => a.status === 'NEEDS_INFORMATION').length}
+            subtext="Follow-up Required"
+            hasAccentBorder
+            accentColor={StitchTokens.colors.brandNavy}
+            style={{ flex: 1 }}
+          />
+        </View>
+      </View>
 
       {isOffline ? (
         <View style={{ marginBottom: spacing.sm, paddingHorizontal: spacing.md }}>
@@ -589,6 +628,16 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
+  headerSection: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  screenTitle: {
+    color: StitchTokens.colors.brandNavy,
+    fontSize: 22,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
   filterBar: {
     flexDirection: 'row',
     borderBottomWidth: 1,

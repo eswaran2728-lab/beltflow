@@ -7,15 +7,23 @@ import {
   RefreshControl,
   Alert,
   Modal,
+  TouchableOpacity,
 } from 'react-native';
 import {
   CheckCircle,
   XCircle,
   HelpCircle,
   ChevronRight,
+  BookOpen,
+  Clock,
+  CheckCheck,
+  MapPin,
+  Calendar,
+  Users,
+  DollarSign,
 } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeProvider';
-import { ScreenContainer, ScreenHeader } from '../../../components/Layout';
+import { ScreenContainer } from '../../../components/Layout';
 import { Card } from '../../../components/Card';
 import { Button } from '../../../components/Button';
 import { Input } from '../../../components/Input';
@@ -23,6 +31,8 @@ import { StatusBadge } from '../../../components/Badges';
 import { EmptyState } from '../../../components/Feedback';
 import { AuthUser } from '../../../types/auth';
 import { apiClient } from '../../../services/apiClient';
+import { StitchAppHeader, StitchStatCard } from '../../../components/stitch';
+import { StitchTokens } from '../../../theme/tokens';
 
 export interface ClassApprovalsScreenProps {
   user: AuthUser;
@@ -56,7 +66,9 @@ export interface ClassProposalItem {
 }
 
 export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
+  user,
   navigation,
+  onLogout,
   isOffline,
 }) => {
   const { colors, typography, spacing, iconSize } = useTheme();
@@ -202,17 +214,64 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
   };
 
   const pendingCount = applications.filter((a) => a.status === 'SUBMITTED').length;
+  const approvedCount = applications.filter((a) => a.status === 'APPROVED').length;
+  const needsInfoCount = applications.filter((a) => a.status === 'NEEDS_INFORMATION').length;
 
   return (
-    <ScreenContainer scrollable testID="admin-class-approvals-screen">
-      <ScreenHeader
-        title="Class Proposals"
-        subtitle={`${pendingCount} pending Persatuan review`}
-        onBack={navigation?.goBack ? () => navigation.goBack() : undefined}
+    <ScreenContainer scrollable testID="admin-class-approvals-screen" style={{ backgroundColor: colors.background }}>
+      {/* Stitch App Header */}
+      <StitchAppHeader
+        roleBadgeText="ADMIN PERSATUAN"
+        dojangName="PERSATUAN DOJANG"
+        hasUnreadNotifications={pendingCount > 0}
       />
+
+      {/* Screen Title & Subtitle banner */}
+      <View style={[styles.titleBanner, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.screenHeading, { color: colors.textPrimary }]}>Class Proposals</Text>
+          <Text style={[styles.screenSubheading, { color: colors.textSecondary }]}>{pendingCount} pending Persatuan review</Text>
+        </View>
+        <View style={styles.badgeContainer}>
+          <StatusBadge
+            status={pendingCount > 0 ? 'PENDING' : 'ACTIVE'}
+            label={pendingCount > 0 ? `${pendingCount} PENDING` : 'ALL CLEAR'}
+            variant={pendingCount > 0 ? 'warning' : 'success'}
+          />
+        </View>
+      </View>
+
+      {/* KPI Stats Grid */}
+      <View style={styles.kpiGrid}>
+        <View style={styles.kpiCol}>
+          <StitchStatCard
+            label="PENDING"
+            value={pendingCount}
+            hasAccentBorder
+            accentColor={StitchTokens.colors.colorAccent}
+          />
+        </View>
+        <View style={styles.kpiCol}>
+          <StitchStatCard
+            label="APPROVED"
+            value={approvedCount}
+            hasAccentBorder
+            accentColor={StitchTokens.colors.bfGreen}
+          />
+        </View>
+        <View style={styles.kpiCol}>
+          <StitchStatCard
+            label="REVISIONS"
+            value={needsInfoCount}
+            hasAccentBorder
+            accentColor={StitchTokens.colors.brandNavy}
+          />
+        </View>
+      </View>
 
       <ScrollView
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchInbox(); }} />}
+        contentContainerStyle={{ paddingBottom: 32 }}
       >
         {applications.length === 0 ? (
           <EmptyState
@@ -222,31 +281,55 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
           />
         ) : (
           applications.map((item) => (
-            <Card key={item.id} variant="standard" style={[styles.card, { marginBottom: spacing.md }]}>
+            <Card
+              key={item.id}
+              variant="elevated"
+              style={[
+                styles.stitchCard,
+                { marginBottom: spacing.md },
+              ]}
+            >
               <View style={styles.cardHeader}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
-                    {item.name}
-                  </Text>
-                  <Text style={[typography.bodyMedium, { color: colors.buttonPrimaryBg, fontWeight: '600', marginTop: 2 }]}>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <Text style={styles.proposalTitle}>
+                      {item.name}
+                    </Text>
+                    <View style={styles.versionPill}>
+                      <Text style={styles.versionPillText}>v{item.version}</Text>
+                    </View>
+                  </View>
+
+                  <Text style={styles.masterAuthor}>
                     Proposed by: {item.proposing_master_name || 'Master'}
                   </Text>
+
                   {item.schedule ? (
-                    <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                      Schedule: {item.schedule}
-                    </Text>
+                    <View style={styles.metaRow}>
+                      <Calendar size={13} color={colors.textSecondary} />
+                      <Text style={[styles.metaText, { color: colors.textSecondary }]}>Schedule: {item.schedule}</Text>
+                    </View>
                   ) : null}
+
                   {item.location ? (
-                    <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 1 }]}>
-                      Venue: {item.location} {item.venue_details ? `(${item.venue_details})` : ''}
-                    </Text>
+                    <View style={styles.metaRow}>
+                      <MapPin size={13} color={colors.textSecondary} />
+                      <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                        Venue: {item.location} {item.venue_details ? `(${item.venue_details})` : ''}
+                      </Text>
+                    </View>
                   ) : null}
+
                   {item.monthly_fee ? (
-                    <Text style={[typography.caption, { color: colors.textPrimary, fontWeight: '700', marginTop: 2 }]}>
-                      Fee: RM {Number(item.monthly_fee).toFixed(2)} / month | Capacity: {item.capacity || 30}
-                    </Text>
+                    <View style={styles.metaRow}>
+                      <DollarSign size={13} color={StitchTokens.colors.colorAccent} />
+                      <Text style={[styles.metaText, { color: colors.textPrimary, fontWeight: '700' }]}>
+                        Fee: RM {Number(item.monthly_fee).toFixed(2)} / month | Capacity: {item.capacity || 30}
+                      </Text>
+                    </View>
                   ) : null}
                 </View>
+
                 <StatusBadge
                   status={item.status === 'APPROVED' ? 'ACTIVE' : item.status === 'REJECTED' ? 'EXPIRED' : 'PENDING'}
                   label={item.status}
@@ -254,7 +337,7 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
                 />
               </View>
 
-              <View style={styles.cardActions}>
+              <View style={[styles.cardActions, { borderTopColor: colors.border }]}>
                 <Button
                   label="Review Proposal"
                   onPress={() => {
@@ -265,8 +348,9 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
                   }}
                   variant="primary"
                   size="sm"
-                  rightIcon={<ChevronRight size={iconSize.sm} color={colors.buttonPrimaryText} />}
+                  rightIcon={<ChevronRight size={iconSize.sm} color="#FFFFFF" />}
                   testID={`btn-review-${item.id}`}
+                  style={styles.reviewBtn}
                 />
               </View>
             </Card>
@@ -284,43 +368,50 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
         >
           <View style={styles.modalOverlay}>
             <View style={[styles.modalContent, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[typography.pageTitle, { color: colors.textPrimary, marginBottom: spacing.xs }]}>
-                Review Class Proposal
-              </Text>
-              <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginBottom: spacing.md }]}>
-                {selectedApp.name} (v{selectedApp.version})
-              </Text>
+              <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+                <View>
+                  <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Review Class Proposal</Text>
+                  <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
+                    {selectedApp.name} (v{selectedApp.version})
+                  </Text>
+                </View>
+                <StatusBadge
+                  status={selectedApp.status === 'APPROVED' ? 'ACTIVE' : selectedApp.status === 'REJECTED' ? 'EXPIRED' : 'PENDING'}
+                  label={selectedApp.status}
+                  variant={selectedApp.status === 'APPROVED' ? 'success' : selectedApp.status === 'REJECTED' ? 'danger' : 'warning'}
+                />
+              </View>
 
               <ScrollView style={{ maxHeight: 300, marginBottom: spacing.md }}>
-                <Text style={[typography.caption, { color: colors.textMuted }]}>Proposing Master</Text>
-                <Text style={[typography.bodyMedium, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
+                <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Proposing Master</Text>
+                <Text style={[styles.fieldValue, { color: colors.textPrimary }]}>
                   {selectedApp.proposing_master_name} ({selectedApp.proposing_master_email})
                 </Text>
 
-                <Text style={[typography.caption, { color: colors.textMuted }]}>Location & Venue</Text>
-                <Text style={[typography.bodyMedium, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
+                <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Location & Venue</Text>
+                <Text style={[styles.fieldValue, { color: colors.textPrimary }]}>
                   {selectedApp.location} {selectedApp.venue_details ? `— ${selectedApp.venue_details}` : ''}
                 </Text>
 
-                <Text style={[typography.caption, { color: colors.textMuted }]}>Schedule</Text>
-                <Text style={[typography.bodyMedium, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
+                <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Schedule</Text>
+                <Text style={[styles.fieldValue, { color: colors.textPrimary }]}>
                   {selectedApp.schedule}
                 </Text>
 
-                <Text style={[typography.caption, { color: colors.textMuted }]}>Eligibility & Program</Text>
-                <Text style={[typography.bodyMedium, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
+                <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Eligibility & Program</Text>
+                <Text style={[styles.fieldValue, { color: colors.textPrimary }]}>
                   {selectedApp.age_eligibility || 'All ages'} | {selectedApp.training_level || 'All levels'} | {selectedApp.program_type || 'General'}
                 </Text>
 
-                <Text style={[typography.caption, { color: colors.textMuted }]}>Tuition Fee & Capacity</Text>
-                <Text style={[typography.bodyMedium, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
+                <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Tuition Fee & Capacity</Text>
+                <Text style={[styles.fieldValue, { color: colors.textPrimary }]}>
                   RM {Number(selectedApp.monthly_fee || 120).toFixed(2)} / month | Capacity: {selectedApp.capacity || 30}
                 </Text>
 
                 {selectedApp.description ? (
                   <>
-                    <Text style={[typography.caption, { color: colors.textMuted }]}>Description</Text>
-                    <Text style={[typography.bodyMedium, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
+                    <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Description</Text>
+                    <Text style={[styles.fieldValue, { color: colors.textPrimary }]}>
                       {selectedApp.description}
                     </Text>
                   </>
@@ -438,7 +529,38 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
-  card: {
+  titleBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    marginBottom: 12,
+  },
+  screenHeading: {
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  screenSubheading: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  badgeContainer: {
+    alignItems: 'flex-end',
+  },
+  kpiGrid: {
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    gap: 8,
+    marginBottom: 16,
+  },
+  kpiCol: {
+    flex: 1,
+  },
+  stitchCard: {
+    borderRadius: 12,
     padding: 16,
   },
   cardHeader: {
@@ -446,16 +568,52 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
+  proposalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  versionPill: {
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderWidth: 1,
+  },
+  versionPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: StitchTokens.colors.colorAccent,
+  },
+  masterAuthor: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: StitchTokens.colors.colorAccent,
+    marginTop: 2,
+    marginBottom: 6,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 3,
+  },
+  metaText: {
+    fontSize: 12,
+  },
   cardActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 12,
+    marginTop: 14,
+    paddingTop: 10,
+    borderTopWidth: 1,
+  },
+  reviewBtn: {
+    minWidth: 140,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.75)',
     justifyContent: 'center',
-    padding: 20,
+    padding: 16,
   },
   modalContent: {
     borderRadius: 16,
@@ -463,7 +621,36 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     maxHeight: '90%',
   },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  fieldLabel: {
+    fontSize: 11,
+    textTransform: 'uppercase',
+    fontWeight: '700',
+    marginTop: 8,
+  },
+  fieldValue: {
+    fontSize: 14,
+    marginTop: 2,
+    marginBottom: 4,
+  },
   decisionActions: {
     marginTop: 8,
   },
 });
+
+

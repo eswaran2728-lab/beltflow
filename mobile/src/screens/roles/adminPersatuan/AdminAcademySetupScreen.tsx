@@ -20,6 +20,8 @@ import {
 } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { ScreenContainer, ScreenHeader } from '../../../components/Layout';
+import { StitchAppHeader, StitchStatCard } from '../../../components/stitch';
+import { StitchTokens } from '../../../theme/tokens';
 import { Card } from '../../../components/Card';
 import { Button } from '../../../components/Button';
 import { StatusBadge } from '../../../components/Badges';
@@ -199,40 +201,70 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
 
   return (
     <ScreenContainer scrollable testID="admin-academy-setup-screen">
-      <ScreenHeader
-        title="Academy Setup & Readiness"
-        subtitle="Operational Checklist & Validated Legacy Migration"
+      <StitchAppHeader
+        dojangName="PERSATUAN DOJANG"
+        roleBadgeText="ADMIN PERSATUAN"
+        hasUnreadNotifications={false}
       />
 
-      {isOffline && (
-        <View style={{ marginBottom: spacing.md }}>
-          <OfflineBanner
-            message="Offline Mode: Academy Setup & Legacy Imports are locked until online."
-            testID="offline-onboarding-banner"
-          />
-        </View>
-      )}
+      <View style={styles.bodyContent}>
+        <Text style={[typography.pageTitle, styles.screenTitle]}>
+          Academy Setup & Readiness
+        </Text>
+        <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.sm }]}>
+          Operational Checklist & Validated Legacy Migration
+        </Text>
 
-      {loading && !readiness && !isOffline ? (
-        <View style={styles.centerBox}>
-          <ActivityIndicator size="large" color={colors.buttonPrimaryBg} />
-          <Text style={[typography.caption, { color: colors.textSecondary, marginTop: spacing.sm }]}>
-            Evaluating academy readiness...
-          </Text>
-        </View>
-      ) : error ? (
-        <Card variant="standard" style={{ borderColor: colors.badgeDangerText, marginBottom: spacing.md }}>
-          <Text style={[typography.bodyMedium, { color: colors.badgeDangerText }]}>{error}</Text>
-          <Button label="Retry" onPress={fetchReadiness} size="sm" style={{ marginTop: spacing.sm }} />
-        </Card>
-      ) : (
-        <>
-          {/* Readiness Score Card */}
-          {readiness && (
-          <Card
-            variant="elevated"
-            style={[styles.scoreCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          >
+        {isOffline && (
+          <View style={{ marginBottom: spacing.md }}>
+            <OfflineBanner
+              message="Offline Mode: Academy Setup & Legacy Imports are locked until online."
+              testID="offline-onboarding-banner"
+            />
+          </View>
+        )}
+
+        {loading && !readiness && !isOffline ? (
+          <View style={styles.centerBox}>
+            <ActivityIndicator size="large" color={StitchTokens.colors.brandNavy} />
+            <Text style={[typography.caption, { color: colors.textSecondary, marginTop: spacing.sm }]}>
+              Evaluating academy readiness...
+            </Text>
+          </View>
+        ) : error ? (
+          <Card variant="standard" style={{ borderColor: colors.badgeDangerText, marginBottom: spacing.md }}>
+            <Text style={[typography.bodyMedium, { color: colors.badgeDangerText }]}>{error}</Text>
+            <Button label="Retry" onPress={fetchReadiness} size="sm" style={{ marginTop: spacing.sm }} />
+          </Card>
+        ) : (
+          <>
+            {readiness && (
+              <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
+                <StitchStatCard
+                  label="Readiness"
+                  value={`${readiness.readinessScorePercent}%`}
+                  subtext={readiness.isReadyForOperations ? 'Ready for Ops' : 'Setup Pending'}
+                  hasAccentBorder
+                  accentColor={readiness.isReadyForOperations ? StitchTokens.colors.bfGreen : StitchTokens.colors.colorAccent}
+                  style={{ flex: 1 }}
+                />
+                <StitchStatCard
+                  label="Checklist"
+                  value={`${readiness.checklist.filter(i => i.status === 'COMPLETE').length}/${readiness.checklist.length}`}
+                  subtext="Completed Items"
+                  hasAccentBorder
+                  accentColor={StitchTokens.colors.brandNavy}
+                  style={{ flex: 1 }}
+                />
+              </View>
+            )}
+
+            {/* Readiness Score Card */}
+            {readiness && (
+            <Card
+              variant="elevated"
+              style={[styles.scoreCard, { backgroundColor: colors.surface, borderColor: StitchTokens.colors.brandNavyTint }]}
+            >
             <View style={styles.scoreRow}>
               <View style={{ flex: 1 }}>
                 <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
@@ -566,11 +598,22 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
           )}
         </>
       )}
+      </View>
     </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
+  bodyContent: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  screenTitle: {
+    color: StitchTokens.colors.brandNavy,
+    fontSize: 22,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
   centerBox: {
     padding: 32,
     alignItems: 'center',

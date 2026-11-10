@@ -25,6 +25,10 @@ import {
   CurriculumVersion,
 } from '../../../services/curriculumService';
 
+import { StitchAppHeader, StitchStatCard } from '../../../components/stitch';
+import { StitchTokens } from '../../../theme/tokens';
+import { Award, Layers, ShieldCheck } from 'lucide-react-native';
+
 export interface CurriculumManagementScreenProps {
   user: AuthUser;
   onBack?: () => void;
@@ -205,13 +209,56 @@ export const CurriculumManagementScreen: React.FC<CurriculumManagementScreenProp
     );
   };
 
+  const danRanksCount = activeRanks.filter((r) => r.isDanRank || (r as any).danLevel).length;
+
   return (
-    <ScreenContainer scrollable testID="curriculum-management-screen">
-      <ScreenHeader
-        title="Belt Curriculum"
-        subtitle="Tenant-Owned Syllabus & Progression System"
-        onBack={onBack}
+    <ScreenContainer scrollable testID="curriculum-management-screen" style={{ backgroundColor: colors.background }}>
+      {/* Stitch App Header */}
+      <StitchAppHeader
+        roleBadgeText="ADMIN PERSATUAN"
+        dojangName="PERSATUAN DOJANG"
       />
+
+      {/* Screen Title & Subtitle banner */}
+      <View style={[styles.titleBanner, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.screenHeading, { color: colors.textPrimary }]}>Belt Curriculum</Text>
+          <Text style={[styles.screenSubheading, { color: colors.textSecondary }]}>Tenant-Owned Syllabus & Progression System</Text>
+        </View>
+        <StatusBadge
+          status="PUBLISHED"
+          label={activeCurriculum ? `v${activeCurriculum.version} ACTIVE` : 'CONFIGURING'}
+          variant="success"
+        />
+      </View>
+
+      {/* Stitch KPI Stats Grid */}
+      <View style={styles.kpiGrid}>
+        <View style={styles.kpiCol}>
+          <StitchStatCard
+            label="RANKS"
+            value={activeRanks.length}
+            hasAccentBorder
+            accentColor={StitchTokens.colors.colorAccent}
+          />
+        </View>
+        <View style={styles.kpiCol}>
+          <StitchStatCard
+            label="VERSIONS"
+            value={versions.length}
+            hasAccentBorder
+            accentColor={StitchTokens.colors.bfGreen}
+          />
+        </View>
+        <View style={styles.kpiCol}>
+          <StitchStatCard
+            label="DAN RANKS"
+            value={danRanksCount}
+            hasAccentBorder
+            accentColor={StitchTokens.colors.brandNavy}
+          />
+        </View>
+      </View>
 
       {loading && !refreshing ? (
         <View style={styles.centerContainer}>
@@ -452,6 +499,33 @@ export const CurriculumManagementScreen: React.FC<CurriculumManagementScreenProp
 };
 
 const styles = StyleSheet.create({
+  titleBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    marginBottom: 12,
+  },
+  screenHeading: {
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  screenSubheading: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  kpiGrid: {
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    gap: 8,
+    marginBottom: 16,
+  },
+  kpiCol: {
+    flex: 1,
+  },
   centerContainer: {
     padding: 32,
     alignItems: 'center',

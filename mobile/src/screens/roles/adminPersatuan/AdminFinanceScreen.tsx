@@ -28,6 +28,8 @@ import {
   AdminMerchantConfig,
   ReconciliationRecord,
 } from '../../../services/paymentGatewayService';
+import { StitchAppHeader, StitchStatCard } from '../../../components/stitch';
+import { StitchTokens } from '../../../theme/tokens';
 
 export interface AdminFinanceScreenProps {
   user: AuthUser;
@@ -37,7 +39,10 @@ export interface AdminFinanceScreenProps {
 }
 
 export const AdminFinanceScreen: React.FC<AdminFinanceScreenProps> = ({
+  user,
+  onLogout,
   isOffline,
+  navigation,
 }) => {
   const { colors, typography, spacing } = useTheme();
 
@@ -179,7 +184,13 @@ export const AdminFinanceScreen: React.FC<AdminFinanceScreenProps> = ({
   }
 
   return (
-    <ScreenContainer scrollable testID="admin-finance-screen">
+    <ScreenContainer scrollable testID="admin-finance-screen" style={{ backgroundColor: colors.background }}>
+      {/* Stitch App Header */}
+      <StitchAppHeader
+        roleBadgeText="ADMIN PERSATUAN"
+        dojangName="PERSATUAN DOJANG"
+      />
+
       <ScreenHeader
         title="Persatuan Finance & Settlements"
         subtitle="Independent Academy Merchant & Reconciliation"
@@ -202,17 +213,21 @@ export const AdminFinanceScreen: React.FC<AdminFinanceScreenProps> = ({
 
       {/* KPI Overview Grid */}
       <View style={[styles.statsRow, { marginBottom: spacing.md }]}>
-        <StatCard
-          title="Settlements"
+        <StitchStatCard
+          label="SETTLEMENTS"
           value={matchedCount}
-          subtitle="Reconciled Online"
+          subtext="Reconciled Online"
+          hasAccentBorder
+          accentColor={StitchTokens.colors.bfGreen}
           testID="stat-matched-settlements"
           style={{ flex: 1, marginRight: spacing.xs }}
         />
-        <StatCard
-          title="Discrepancies"
+        <StitchStatCard
+          label="DISCREPANCIES"
           value={discrepancyCount}
-          subtitle={discrepancyCount > 0 ? 'Requires Review' : 'Zero Discrepancies'}
+          subtext={discrepancyCount > 0 ? 'Requires Review' : 'Zero Discrepancies'}
+          hasAccentBorder
+          accentColor={discrepancyCount > 0 ? StitchTokens.colors.bfRed : StitchTokens.colors.colorAccent}
           testID="stat-discrepancies"
           style={{ flex: 1, marginLeft: spacing.xs }}
         />

@@ -32,6 +32,9 @@ import {
   gradingService,
   GradingEvent,
 } from '../../../services/gradingService';
+import { StitchAppHeader, StitchStatCard } from '../../../components/stitch';
+import { StitchTokens } from '../../../theme/tokens';
+import { CheckCheck, Users } from 'lucide-react-native';
 
 export interface AdminGradingScreenProps {
   user: AuthUser;
@@ -247,13 +250,48 @@ export const AdminGradingScreen: React.FC<AdminGradingScreenProps> = ({
     <ScreenContainer
       scrollable
       testID="admin-grading-screen"
+      style={{ backgroundColor: colors.background }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
+      {/* Stitch App Header */}
+      <StitchAppHeader
+        roleBadgeText="ADMIN PERSATUAN"
+        dojangName="PERSATUAN DOJANG"
+      />
+
       <ScreenHeader
         title="Grading Administration"
         subtitle="Manage official examinations, approvals & certificates"
         testID="admin-grading-header"
       />
+
+      {/* Stitch KPI Stats Grid */}
+      <View style={styles.kpiGrid}>
+        <View style={styles.kpiCol}>
+          <StitchStatCard
+            label="EVENTS"
+            value={events.length}
+            hasAccentBorder
+            accentColor={StitchTokens.colors.colorAccent}
+          />
+        </View>
+        <View style={styles.kpiCol}>
+          <StitchStatCard
+            label="CANDIDATES"
+            value={candidates.length}
+            hasAccentBorder
+            accentColor={StitchTokens.colors.bfGreen}
+          />
+        </View>
+        <View style={styles.kpiCol}>
+          <StitchStatCard
+            label="STATUS"
+            value={isFinalized ? 'FINAL' : 'ACTIVE'}
+            hasAccentBorder
+            accentColor={StitchTokens.colors.brandNavy}
+          />
+        </View>
+      </View>
 
       {/* Events Selector & Create Action */}
       <Card variant="standard" style={[styles.selectorCard, { borderColor: colors.border, marginBottom: spacing.md }]}>
@@ -485,6 +523,15 @@ export const AdminGradingScreen: React.FC<AdminGradingScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
+  kpiGrid: {
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    gap: 8,
+    marginBottom: 16,
+  },
+  kpiCol: {
+    flex: 1,
+  },
   selectorCard: {
     padding: 14,
   },
