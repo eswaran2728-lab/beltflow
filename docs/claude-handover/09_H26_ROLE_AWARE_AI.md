@@ -84,8 +84,31 @@ The guardian-link layers back each other up, so removing either one alone is cau
 - **Turn off without a deploy:** set `AI_ASSISTANT_ENABLED=false`. All `/api/v1/assistant/*` routes then return 404 `ASSISTANT_DISABLED`, and the mobile screen shows "not enabled".
 - **Full rollback:** revert commits `3f0f4b8` (backend) and `0dfbeb3` (mobile). The two tables can then be dropped (`DROP TABLE ai_audit_events; DROP TABLE ai_knowledge_sources;`); no other module references them.
 
-## 5. Adding a live provider later (AI-LIVE-001)
+## 5. Gemini provider (AI-LIVE-001) — added 2026-11-10
 
-1. Implement `AssistantProvider.generate()` for the chosen vendor. Send `policy` as the system instruction and the evidence as clearly delimited data. Honour `signal` for cancellation and `maxOutputTokens`, and return `citedSourceIds` plus real `usage`.
-2. Register it at server start with `setAssistantProvider()`, controlled by an environment variable. Keep the key on the server only.
-3. Re-run the H26 suite, then run a live red-team set covering injection, cross-tenant questions, Super Admin child questions and action requests. Record the results before closing `AI-LIVE-001` and `AI-SEC-001`.
+- **Code:** `server/src/assistant/gemini.ts` (`GeminiProvider`), selected by `createProviderFromEnv()` in `providers.ts`.
+- **Settings (server only):**
+  - `AI_PROVIDER=gemini` with `GEMINI_API_KEY=<key>` turns Gemini on.
+  - `GEMINI_MODEL` is optional; the default is `gemini-3.5-flash-lite` (stable; Google's recommended low-cost model as of November 2026).
+  - Without these settings, or with the key missing, the assistant stays on the offline extractive provider.
+- **Request:**
+  - Sent to `POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`.
+  - The key goes only in the `x-goog-api-key` header.
+  - The fixed policy is sent as the system instruction.
+  - Evidence is wrapped in escaped `<evidence>` blocks, so a document cannot open a fake block.
+  - The reply must be JSON `{answer, citations}` and is requested in the user's language (EN, BM or Tamil).
+- **Reply handling:**
+  - Thought parts are dropped.
+  - Malformed JSON, blocked prompts, safety stops and truncated replies all become "could not find".
+  - HTTP errors become the generic 503, and errors never include the key or Google's reply text.
+  - Token usage (including thinking tokens) feeds the daily budgets.
+  - The server's citation and action-claim checks still apply to every Gemini answer.
+- **Tests:**
+  - `assistant_gemini_provider_h26.test.ts` covers request shape, parsing, failure handling and settings, using a fake network. It is part of `npm test`.
+  - `assistant_gemini_live_smoke.ts` makes real calls with synthetic data only. It is manual and costs money. Run it with:
+    ```
+    GEMINI_API_KEY=... node dist/tests/assistant_gemini_live_smoke.js
+    ```
+- **Model choice:** avoid `gemini-2.5-flash` and `gemini-2.5-pro`. Google's deprecation page says requests to them are automatically rerouted from 1 December 2026.
+- **Privacy:** on the free tier, Google may use prompts to improve its products; on the paid tier it does not. Use a paid-tier key before real student data reaches Gemini.
+- **Limitation:** the action-claim check is English-pattern based. A Malay or Tamil answer that falsely claims an action may not be caught. Citation validation and the no-write design still apply.

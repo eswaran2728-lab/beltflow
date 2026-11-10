@@ -4,6 +4,7 @@
  */
 export { answerAuthorizedQuestion } from './service';
 export { ASSISTANT_POLICY, isActionRequest, isMedicalAdviceRequest } from './policy';
-export { ExtractiveProvider, getAssistantProvider, setAssistantProvider, resetAssistantProvider } from './providers';
+export { ExtractiveProvider, createProviderFromEnv, getAssistantProvider, setAssistantProvider, resetAssistantProvider } from './providers';
+export { GeminiProvider, DEFAULT_GEMINI_MODEL } from './gemini';
 export { configureAssistantLimits, resetAssistantState, isAssistantEnabled } from './limits';
 export * from './types';
