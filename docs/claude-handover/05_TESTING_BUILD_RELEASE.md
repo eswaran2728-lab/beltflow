@@ -9,9 +9,9 @@
 
 ### Backend Integration Suites (`server/`):
 * **Command**: `npm test` inside `server/`
-* **Test Suites**: 36 test suites covering H00 to H26 (re-verified 2026-11-10: the pre-H26 chain was 35, not 36; H26 added the 36th)
+* **Test Suites**: 37 test suites covering H00 to H26 (pre-H26 chain was 35; H26 added the assistant suite and the Gemini adapter suite)
 * **Execution Engine**: Express routes with embedded PostgreSQL (`@electric-sql/pglite`) in isolated temporary directories
-* **Pass Rate**: **36 / 36 passed (100%)** — ~73 s. H26 and H24-preflight suites close the DB and exit naturally; 27 older suites still end with `process.exit(0)` (follow-up).
+* **Pass Rate**: **37 / 37 passed (100%)** — ~73 s. H26 and H24-preflight suites close the DB and exit naturally; 27 older suites still end with `process.exit(0)` (follow-up).
 * **Duration**: ~40 seconds
 
 ### Mobile Unit & Component Suites (`mobile/`):
@@ -52,5 +52,5 @@ To preserve release safety, no gate may be marked closed based on simulated test
 | `PAY-LIVE-001`| Live FPX / DuitNow settlement | **OPEN** | Requires live Malaysian bank sandbox / merchant verification |
 | `DB-PG-001` | Production PostgreSQL certification| **OPEN** | Requires deployment against managed Cloud SQL / AWS RDS PostgreSQL |
 | `RESTORE-001`| Backup & disaster recovery drill | **OPEN** | Requires executing scripts/db/restore.sh against staging dump |
-| `AI-LIVE-001` | Live AI provider integration | **OPEN** | H26 ships a provider-neutral interface with an offline extractive provider; no live vendor chosen or tested. Needs owner's vendor choice + API key |
+| `AI-LIVE-001` | Live AI provider integration | **VERIFIED (2026-11-10)** | Live Gemini (`gemini-3.5-flash-lite`) smoke test passed 4/4 with synthetic data; see `09` §6. Use a paid-tier key before real student data |
 | `AI-SEC-001` | AI prompt injection and privacy audit | **OPEN** | Server-side controls verified with mocks (see `09`); a live-model red-team pass is still required |

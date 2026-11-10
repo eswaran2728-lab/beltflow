@@ -3,6 +3,9 @@
  *
  * NOT part of `npm test` (it costs money and needs a key). Run manually:
  *   GEMINI_API_KEY=... [GEMINI_MODEL=...] node dist/tests/assistant_gemini_live_smoke.js
+ * In a Claude Code cloud session the key is injected by the network proxy,
+ * which Node's built-in fetch ignores unless NODE_USE_ENV_PROXY=1 is set:
+ *   NODE_USE_ENV_PROXY=1 GEMINI_API_KEY=placeholder node dist/tests/assistant_gemini_live_smoke.js
  *
  * Uses synthetic records only: no real student data is sent to Google.
  * Every Gemini reply goes through the same server checks the assistant

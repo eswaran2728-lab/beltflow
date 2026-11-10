@@ -2,7 +2,7 @@
 
 > Current Milestone: H26 implemented (CONDITIONAL PASS, 2026-11-10). Awaiting owner approval before H27.
 >
-> H26 follow-ups: choose and integrate a live AI provider (`AI-LIVE-001`), live red-team (`AI-SEC-001`), native-speaker review of BM/Tamil assistant strings, physical-device check of the Ask tab, and removal of `process.exit(0)` from the 27 older backend test files.
+> H26 follow-ups: Gemini integrated and live-verified (`AI-LIVE-001` closed); still open: live red-team (`AI-SEC-001`), paid-tier Gemini key for real data, native-speaker review of BM/Tamil assistant strings, physical-device check of the Ask tab, and removal of `process.exit(0)` from the 27 older backend test files.
 
 ---
 
