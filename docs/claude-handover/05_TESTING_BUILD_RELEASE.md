@@ -1,0 +1,56 @@
+# 05 — Testing, Build Artifacts & Release Gates
+
+> Handover date: 2026-11-10  
+> Release Candidate Status: Internal Testing Build Verified
+
+---
+
+## 1. Automated Test Baseline
+
+### Backend Integration Suites (`server/`):
+* **Command**: `npm test` inside `server/`
+* **Test Suites**: 36 test suites covering H00 to H25
+* **Execution Engine**: Express routes with embedded PostgreSQL (`@electric-sql/pglite`) in isolated temporary directories
+* **Pass Rate**: **36 / 36 passed (100%)**
+* **Duration**: ~40 seconds
+
+### Mobile Unit & Component Suites (`mobile/`):
+* **Command**: `npm test` inside `mobile/`
+* **Test Suites**: 40 test suites, 400 total unit tests
+* **Pass Rate**: **40 / 40 passed (100%)**
+* **Note on QR Attendance Suite**: `src/__tests__/qrAttendance.test.tsx` passes 21/21 tests in isolation; under heavy single-threaded Jest runs, grant a timeout buffer if needed.
+
+---
+
+## 2. Verified Android Testing Build (Issue B Resolution)
+
+A previous audit questioned whether a native React Native APK had been built. File and cryptographic inspection confirmed the binary is present:
+
+* **File Location**: `release-testing/beltflow-v2.0-testing.apk`
+* **File Size**: `211,974,000` bytes
+* **SHA-256 Checksum**:
+  `51BAB6EEB4879EEA99F60FE2346F89681F3C6678C1C89A1CE09ABF547BE6FA22`
+* **Variant**: Debug/Internal Testing build with multi-architecture native ABIs (`arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`)
+* **Package Identity**: `com.beltflow.app` / `com.eswaran.beltflow`
+* **Distinction**:
+  - The older root `BeltFlow.apk` (`2,781,757` bytes, 2026-09-12) was an earlier PWA web wrapper.
+  - The `release-testing/beltflow-v2.0-testing.apk` is the full native Expo/React Native binary.
+
+*Important*: Do not overwrite or delete this APK. It is preserved locally for device testing.
+
+---
+
+## 3. Release Gates Status
+
+To preserve release safety, no gate may be marked closed based on simulated tests alone:
+
+| Gate ID | Description | Current Status | Blocker / Requirement |
+| :--- | :--- | :---: | :--- |
+| `NATIVE-001` | Physical Android device runtime | **OPEN** | Requires installing APK on physical Android device over LAN |
+| `NATIVE-002` | Physical iOS device runtime | **OPEN** | Requires testflight / physical iPhone execution |
+| `CAM-001` | Physical camera QR scanning | **OPEN** | Requires hardware camera verification with physical printed/screen QR |
+| `PAY-LIVE-001`| Live FPX / DuitNow settlement | **OPEN** | Requires live Malaysian bank sandbox / merchant verification |
+| `DB-PG-001` | Production PostgreSQL certification| **OPEN** | Requires deployment against managed Cloud SQL / AWS RDS PostgreSQL |
+| `RESTORE-001`| Backup & disaster recovery drill | **OPEN** | Requires executing scripts/db/restore.sh against staging dump |
+| `AI-LIVE-001` | Live Gemini AI Provider Integration | **OPEN** | To be verified during H26 |
+| `AI-SEC-001` | AI Prompt Injection & Privacy Audit | **OPEN** | To be verified during H26 |
