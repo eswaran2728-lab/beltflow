@@ -34,6 +34,7 @@ import mediaFeedbackRoutes from './routes/media_feedback.routes';
 import messagingRoutes from './routes/messaging.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import commerceRoutes from './routes/commerce.routes';
+import assistantRoutes from './routes/assistant.routes';
 
 const app = express();
 
@@ -159,6 +160,7 @@ app.use('/api/v1/media', mediaFeedbackRoutes);
 app.use('/api/v1/messaging', messagingRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/v1/commerce', commerceRoutes);
+app.use('/api/v1/assistant', assistantRoutes);
 
 // Global Error Handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

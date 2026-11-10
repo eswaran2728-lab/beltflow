@@ -1593,3 +1593,46 @@ CREATE TABLE IF NOT EXISTS stock_movements (
 
 CREATE INDEX IF NOT EXISTS idx_stock_movements_org ON stock_movements(organization_id, product_id);
 CREATE INDEX IF NOT EXISTS idx_stock_movements_order ON stock_movements(order_id);
+
+-- ============================================================================
+-- H26: Role-Aware Grounded AI (read-only assistant)
+-- ai_knowledge_sources: human-approved documents the assistant may cite.
+--   organization_id NULL = platform-level document (Super Admin managed).
+--   Only status = 'PUBLISHED' documents are ever retrieved.
+-- ai_audit_events: minimal, privacy-preserving usage log. Stores a keyed
+--   hash and length of the question, never the question or answer text.
+-- Additive only: no existing table is altered.
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS ai_knowledge_sources (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    body TEXT NOT NULL,
+    audience_roles TEXT[] NOT NULL DEFAULT '{}',
+    status VARCHAR(20) NOT NULL DEFAULT 'DRAFT', -- 'DRAFT', 'PUBLISHED', 'REVOKED'
+    version INT NOT NULL DEFAULT 1,
+    created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    published_at TIMESTAMPTZ,
+    revoked_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_ai_knowledge_sources_org_status ON ai_knowledge_sources(organization_id, status);
+
+CREATE TABLE IF NOT EXISTS ai_audit_events (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE,
+    actor_id TEXT NOT NULL,
+    actor_role VARCHAR(50) NOT NULL,
+    query_hash CHAR(64) NOT NULL,
+    query_chars INT NOT NULL,
+    outcome VARCHAR(40) NOT NULL,
+    source_ids TEXT[] NOT NULL DEFAULT '{}',
+    provider VARCHAR(50),
+    estimated_input_tokens INT NOT NULL DEFAULT 0,
+    estimated_output_tokens INT NOT NULL DEFAULT 0,
+    latency_ms INT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_ai_audit_events_org_time ON ai_audit_events(organization_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_ai_audit_events_actor_time ON ai_audit_events(actor_id, created_at);
