@@ -494,7 +494,19 @@ router.post('/sync', authenticateJWT, async (req: Request, res: Response) => {
         });
 
         if (txResult.outcome === 'conflict') {
-          conflicts.push(txResult.conflict);
+          // A concurrent duplicate of this SAME mutation (e.g. a client resend
+          // while the first request was still running) waits for the first to
+          // commit and then sees its row. It is already applied, so acknowledge
+          // it rather than showing the Master a false conflict.
+          const alreadyApplied = await dbClient.query(
+            'SELECT 1 FROM processed_sync_mutations WHERE mutation_id = $1',
+            [mutationId]
+          );
+          if (alreadyApplied.rowCount > 0) {
+            synced.push(mutationId);
+          } else {
+            conflicts.push(txResult.conflict);
+          }
         } else {
           synced.push(mutationId);
         }
