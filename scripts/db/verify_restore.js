@@ -10,7 +10,10 @@ const path = require('path');
 module.paths.push(path.join(__dirname, '../../server/node_modules'));
 const { Client } = require('pg');
 
-const TABLES = [
+// Tables that must exist in any BeltFlow database (the original core set).
+// Every other base table in the public schema is discovered automatically,
+// so new modules (H01-H27) are always covered without editing this list.
+const REQUIRED_TABLES = [
   'organizations', 'users', 'classes', 'coach_class_assignments', 'students',
   'parent_student_links', 'class_transfer_requests', 'attendance_sessions',
   'attendance_records', 'invoices', 'payments', 'grading_events',
@@ -21,10 +24,21 @@ const TABLES = [
 async function inventory(url) {
   const client = new Client({ connectionString: url });
   await client.connect();
+  const tableRows = await client.query(
+    `SELECT table_name FROM information_schema.tables
+     WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name`
+  );
+  const tables = tableRows.rows.map(r => r.table_name);
   const counts = {};
-  for (const t of TABLES) {
-    const r = await client.query(`SELECT COUNT(*)::int AS c FROM ${t}`);
+  const checksums = {};
+  for (const t of tables) {
+    const ident = '"' + t.replace(/"/g, '""') + '"';
+    const r = await client.query(`SELECT COUNT(*)::int AS c FROM ${ident}`);
     counts[t] = r.rows[0].c;
+    // Content fingerprint: md5 over every row's text form, in a stable order.
+    // Only the hash is printed, never row contents.
+    const h = await client.query(`SELECT md5(COALESCE(string_agg(x.r, '|' ORDER BY x.r), '')) AS h FROM (SELECT t::text AS r FROM ${ident} t) x`);
+    checksums[t] = h.rows[0].h;
   }
   const financial = await client.query(
     `SELECT COUNT(*)::int AS payment_count, COALESCE(SUM(amount), 0)::numeric AS total_amount,
@@ -35,7 +49,7 @@ async function inventory(url) {
     `SELECT receipt_no, COUNT(*) c FROM payments WHERE receipt_no IS NOT NULL GROUP BY receipt_no HAVING COUNT(*) > 1`
   );
   await client.end();
-  return { counts, financial: financial.rows[0], duplicateReceipts: receiptDup.rows };
+  return { tables, counts, checksums, financial: financial.rows[0], duplicateReceipts: receiptDup.rows };
 }
 
 async function main() {
@@ -50,12 +64,21 @@ async function main() {
   const restored = await inventory(restoredUrl);
 
   let allMatch = true;
-  console.log('TABLE ROW COUNT COMPARISON');
-  console.log('table'.padEnd(30), 'source'.padEnd(10), 'restored'.padEnd(10), 'result');
-  for (const t of TABLES) {
-    const ok = source.counts[t] === restored.counts[t];
+  const missingRequired = REQUIRED_TABLES.filter(t => !source.tables.includes(t) || !restored.tables.includes(t));
+  if (missingRequired.length) {
+    allMatch = false;
+    console.log('MISSING REQUIRED TABLES:', missingRequired.join(', '));
+  }
+  const allTables = Array.from(new Set([...source.tables, ...restored.tables])).sort();
+  console.log(`TABLE COMPARISON (${allTables.length} tables: row count + content checksum)`);
+  console.log('table'.padEnd(36), 'source'.padEnd(10), 'restored'.padEnd(10), 'result');
+  for (const t of allTables) {
+    const inBoth = source.tables.includes(t) && restored.tables.includes(t);
+    const ok = inBoth && source.counts[t] === restored.counts[t] && source.checksums[t] === restored.checksums[t];
     if (!ok) allMatch = false;
-    console.log(t.padEnd(30), String(source.counts[t]).padEnd(10), String(restored.counts[t]).padEnd(10), ok ? 'MATCH' : 'MISMATCH');
+    const result = !inBoth ? 'MISSING' : source.counts[t] !== restored.counts[t] ? 'COUNT MISMATCH'
+      : source.checksums[t] !== restored.checksums[t] ? 'CONTENT MISMATCH' : 'MATCH';
+    console.log(t.padEnd(36), String(source.counts[t] ?? '-').padEnd(10), String(restored.counts[t] ?? '-').padEnd(10), result);
   }
 
   console.log('\nFINANCIAL INTEGRITY');
