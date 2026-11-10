@@ -3,6 +3,13 @@ import { dbClient } from './db/client';
 
 const PORT = process.env.PORT || 4000;
 
+// Connect and apply the schema at startup instead of on the first request.
+// Liveness (/api/health) does not wait for this; readiness
+// (/api/health/ready) and every query do, through the same shared promise.
+dbClient.init().catch(err => {
+  console.error('[Startup] Database initialisation failed; it will be retried on the next query.', err instanceof Error ? err.message : err);
+});
+
 const server = app.listen(PORT, () => {
   console.log(`🚀 BeltFlow TypeScript + PostgreSQL Backend API running on port ${PORT}`);
 });

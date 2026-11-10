@@ -18,7 +18,26 @@ class PostgresDatabaseClient {
   private pgliteTxMutex: Promise<void> = Promise.resolve();
   private isInitialized = false;
 
+  private initPromise: Promise<void> | null = null;
+
+  /**
+   * Initialises the connection and applies the schema exactly once.
+   * Concurrent callers (e.g. many first requests on a freshly started
+   * server) share one in-flight initialisation; a failed attempt is
+   * forgotten so the next call can retry.
+   */
   async init(customDataDir?: string): Promise<void> {
+    if (this.isInitialized) return;
+    if (!this.initPromise) {
+      this.initPromise = this.initOnce(customDataDir).catch(err => {
+        this.initPromise = null;
+        throw err;
+      });
+    }
+    return this.initPromise;
+  }
+
+  private async initOnce(customDataDir?: string): Promise<void> {
     if (this.isInitialized) return;
 
     const dbUrl = process.env.DATABASE_URL;
@@ -195,6 +214,7 @@ class PostgresDatabaseClient {
       this.pglite = null;
     }
     this.isInitialized = false;
+    this.initPromise = null;
   }
 }
 
