@@ -511,7 +511,18 @@ router.post('/sync', authenticateJWT, async (req: Request, res: Response) => {
           synced.push(mutationId);
         }
       } catch (mutationErr: any) {
-        errors.push({ mutationId, error: safeErrorMessage(mutationErr, 'Failed to process mutation.') });
+        // A concurrent duplicate of this SAME mutation can lose the race on
+        // processed_sync_mutations after the first copy committed; its own
+        // transaction was rolled back, and the first copy already applied it.
+        const alreadyApplied = await dbClient.query(
+          'SELECT 1 FROM processed_sync_mutations WHERE mutation_id = $1',
+          [mutationId]
+        ).catch(() => ({ rowCount: 0 }));
+        if (alreadyApplied.rowCount > 0) {
+          synced.push(mutationId);
+        } else {
+          errors.push({ mutationId, error: safeErrorMessage(mutationErr, 'Failed to process mutation.') });
+        }
       }
     }
 
