@@ -35,6 +35,7 @@ import messagingRoutes from './routes/messaging.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import commerceRoutes from './routes/commerce.routes';
 import assistantRoutes from './routes/assistant.routes';
+import { moduleGate, releaseInfo } from './release/modules';
 
 const app = express();
 
@@ -125,7 +126,14 @@ app.get('/api/health/ready', async (req: Request, res: Response) => {
   }
 });
 
+// H27: public, tenant-free list of enabled release modules (for the mobile app).
+app.get('/api/v1/release/modules', (_req: Request, res: Response) => {
+  res.json(releaseInfo());
+});
+
 // Route Mounting
+// Optional R2-R4 modules sit behind moduleGate() (see release/modules.ts);
+// everything else is core R1 and always on.
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/organizations', organizationRoutes);
 app.use('/api/v1/classes', classRoutes);
@@ -136,7 +144,7 @@ app.use('/api/v1/grading', gradingRoutes);
 app.use('/api/v1/certificates', certificateRoutes);
 app.use('/api/v1/audit', auditRoutes);
 app.use('/api/v1/coaches', coachesRoutes);
-app.use('/api/v1/tournaments', tournamentsRoutes);
+app.use('/api/v1/tournaments', moduleGate('tournaments'), tournamentsRoutes);
 app.use('/api/v1/skills', skillsRoutes);
 app.use('/api/v1/notices', noticesRoutes);
 app.use('/api/v1/master-applications', masterApplicationsRoutes);
@@ -149,18 +157,18 @@ app.use('/api/v1/payments', paymentGatewayRouter);
 app.use('/api/v1', handoverRoutes);
 app.use('/api/v1/onboarding-imports', onboardingImportsRoutes);
 app.use('/api/v1', onboardingImportsRoutes);
-app.use('/api/v1/trials', trialsRoutes);
-app.use('/api/v1/bookings', bookingsRoutes);
-app.use('/api/v1/transfers', transfersRoutes);
-app.use('/api/v1/memberships', transfersRoutes);
-app.use('/api/v1/teaching', teachingRoutes);
-app.use('/api/v1/family', familyRoutes);
-app.use('/api/v1/learning', learningRoutes);
-app.use('/api/v1/media', mediaFeedbackRoutes);
-app.use('/api/v1/messaging', messagingRoutes);
-app.use('/api/v1/analytics', analyticsRoutes);
-app.use('/api/v1/commerce', commerceRoutes);
-app.use('/api/v1/assistant', assistantRoutes);
+app.use('/api/v1/trials', moduleGate('trials'), trialsRoutes);
+app.use('/api/v1/bookings', moduleGate('bookings'), bookingsRoutes);
+app.use('/api/v1/transfers', moduleGate('transfers'), transfersRoutes);
+app.use('/api/v1/memberships', moduleGate('transfers'), transfersRoutes);
+app.use('/api/v1/teaching', moduleGate('teaching'), teachingRoutes);
+app.use('/api/v1/family', moduleGate('family'), familyRoutes);
+app.use('/api/v1/learning', moduleGate('learning'), learningRoutes);
+app.use('/api/v1/media', moduleGate('media'), mediaFeedbackRoutes);
+app.use('/api/v1/messaging', moduleGate('messaging'), messagingRoutes);
+app.use('/api/v1/analytics', moduleGate('analytics'), analyticsRoutes);
+app.use('/api/v1/commerce', moduleGate('commerce'), commerceRoutes);
+app.use('/api/v1/assistant', moduleGate('assistant'), assistantRoutes);
 
 // Global Error Handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

@@ -81,7 +81,7 @@ The guardian-link layers back each other up, so removing either one alone is cau
 ## 4. Migration and rollback
 
 - **Migration:** additive only. `schema.sql` appends `ai_knowledge_sources` and `ai_audit_events` with `CREATE TABLE IF NOT EXISTS` and indexes. No existing table is altered. No production migration was run.
-- **Turn off without a deploy:** set `AI_ASSISTANT_ENABLED=false`. All `/api/v1/assistant/*` routes then return 404 `ASSISTANT_DISABLED`, and the mobile screen shows "not enabled".
+- **Turn off without a deploy:** set `AI_ASSISTANT_ENABLED=false`. All `/api/v1/assistant/*` routes then return 404 `MODULE_DISABLED`, and the mobile screen shows "not enabled".
 - **Full rollback:** revert commits `3f0f4b8` (backend) and `0dfbeb3` (mobile). The two tables can then be dropped (`DROP TABLE ai_audit_events; DROP TABLE ai_knowledge_sources;`); no other module references them.
 
 ## 5. Gemini provider (AI-LIVE-001) — added 2026-11-10

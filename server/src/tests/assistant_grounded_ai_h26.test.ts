@@ -591,7 +591,8 @@ async function runTests() {
     process.env.AI_ASSISTANT_ENABLED = 'false';
     const disabled = await ask(T.admA, 'grading policy');
     assert.equal(disabled.status, 404);
-    assert.equal(disabled.data.code, 'ASSISTANT_DISABLED');
+    // Since H27 the release module gate answers first with the shared code.
+    assert.equal(disabled.data.code, 'MODULE_DISABLED');
     delete process.env.AI_ASSISTANT_ENABLED;
     console.log('✅ Feature flag disables the module.');
 

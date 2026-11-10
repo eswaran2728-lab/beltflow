@@ -22,9 +22,10 @@ const router = Router();
 const ALL_ROLES = Object.values(UserRole) as string[];
 const ORG_AUDIENCE = [UserRole.ADMIN_PERSATUAN, UserRole.MASTER, UserRole.PARENT, UserRole.STUDENT] as string[];
 
+// Second line of defence: app.ts already wraps this router in moduleGate('assistant').
 function featureGate(_req: Request, res: Response, next: NextFunction) {
   if (!isAssistantEnabled()) {
-    return res.status(404).json({ error: 'The assistant is not enabled.', code: 'ASSISTANT_DISABLED' });
+    return res.status(404).json({ error: 'This feature is not enabled.', code: 'MODULE_DISABLED', module: 'assistant' });
   }
   next();
 }
