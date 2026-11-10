@@ -1518,7 +1518,12 @@ CREATE TABLE IF NOT EXISTS tournament_appeals (
 
 CREATE INDEX IF NOT EXISTS idx_tournament_appeals_match ON tournament_appeals(match_id, status);
 
-
+-- Safe additive columns for tournament discipline, ruleset validation and appeal score preservation
+ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS martial_art_discipline VARCHAR(100) DEFAULT 'Silambam';
+ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS ruleset_status VARCHAR(50) DEFAULT 'OFFICIAL';
+ALTER TABLE tournament_appeals ADD COLUMN IF NOT EXISTS original_score_a NUMERIC(6, 2);
+ALTER TABLE tournament_appeals ADD COLUMN IF NOT EXISTS original_score_b NUMERIC(6, 2);
+ALTER TABLE tournament_appeals ADD COLUMN IF NOT EXISTS original_winner_id VARCHAR(64);
 -- ============================================================================
 -- 25. Task H25: Equipment and Merchandise (commerce/inventory)
 -- ============================================================================

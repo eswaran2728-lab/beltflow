@@ -63,7 +63,7 @@ export function resolveStudentRank(beltRankStr?: string | null, rankOrderNum?: n
 // ---------------------------------------------------------------------------
 router.post('/', authenticateJWT, requirePermission(Permission.PERSATUAN_MANAGE_TOURNAMENTS), async (req: Request, res: Response) => {
   try {
-    const { organizationId, title, name, eventDate, tournamentDate, location, categories, description, ruleset } = req.body;
+    const { organizationId, title, name, eventDate, tournamentDate, location, categories, description, ruleset, martialArtDiscipline, certifiedByFederation } = req.body;
     const tourneyTitle = title || name;
     if (!tourneyTitle || !organizationId) {
       return res.status(400).json({ error: 'organizationId and title/name are required.' });
@@ -74,19 +74,46 @@ router.post('/', authenticateJWT, requirePermission(Permission.PERSATUAN_MANAGE_
     const dateVal = eventDate || tournamentDate || new Date().toISOString().split('T')[0];
     const locVal = location || 'Main Tournament Arena';
     const catVal = Array.isArray(categories) ? categories.join(', ') : (categories || 'Sparring, Forms, Weapons');
-    const rSet = ruleset || 'SILAMBAM_STANDARD';
+    
+    // Discipline determination and ruleset validation:
+    const discipline = (martialArtDiscipline || 'Silambam').trim();
+    const isSilambam = /silambam/i.test(discipline);
+
+    let rSet = ruleset;
+    if (!rSet) {
+      if (/taekwondo/i.test(discipline)) rSet = 'TAEKWONDO_WT';
+      else if (/karate/i.test(discipline)) rSet = 'KARATE_WKF';
+      else if (/judo/i.test(discipline)) rSet = 'JUDO_IJF';
+      else if (/wushu/i.test(discipline)) rSet = 'FORMS_KATA';
+      else rSet = 'SILAMBAM_STANDARD';
+    }
+
+    // Safety guard: The application must not automatically impose Silambam Combat System rules on tournaments using other approved disciplines.
+    if (!isSilambam && (rSet === 'SCS_COMBAT' || rSet === 'SILAMBAM_STANDARD')) {
+      return res.status(400).json({
+        error: 'IncompatibleRuleset',
+        message: `Discipline "${discipline}" cannot have Silambam rulesets automatically imposed upon it. Select a ruleset conforming to ${discipline}.`
+      });
+    }
+
+    // Validation for SCS:
+    // Per rulebook SCS_v1_8_Illustrated_Book_Edition.pdf: "DRAFT FOR MASTERS' REVIEW • V1.8 • NOT APPROVED"
+    let rulesetStatus = 'OFFICIAL';
+    if (rSet === 'SCS_COMBAT' || rSet === 'SCS_V1_8') {
+      rulesetStatus = certifiedByFederation ? 'OFFICIAL' : 'PROVISIONAL_UNAPPROVED';
+    }
 
     const insertRes = await dbClient.query(
-      `INSERT INTO tournaments (id, organization_id, title, name, event_date, location, categories, ruleset, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO tournaments (id, organization_id, title, name, event_date, location, categories, ruleset, martial_art_discipline, ruleset_status, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *`,
-      [tourneyId, orgId, tourneyTitle.trim(), tourneyTitle.trim(), dateVal, locVal, catVal, rSet, 'Upcoming']
+      [tourneyId, orgId, tourneyTitle.trim(), tourneyTitle.trim(), dateVal, locVal, catVal, rSet, discipline, rulesetStatus, 'Upcoming']
     );
 
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email)
        VALUES ($1, $2, $3, $4, $5)`,
-      [`audit_${Date.now()}`, 'Tournament Scheduled', `Scheduled tournament: ${tourneyTitle.trim()}`, req.user!.role, req.user!.email]
+      [`audit_${Date.now()}`, 'Tournament Scheduled', `Scheduled tournament: ${tourneyTitle.trim()} (Discipline: ${discipline}, Ruleset: ${rSet}, Status: ${rulesetStatus})`, req.user!.role, req.user!.email]
     );
 
     return res.status(201).json({ message: 'Tournament scheduled in PostgreSQL.', tournament: insertRes.rows[0] });
@@ -299,14 +326,33 @@ router.post('/assign-judge', authenticateJWT, async (req: Request, res: Response
       return res.status(400).json({ error: 'matchId and judgeId are required.' });
     }
 
-    const matchRes = await dbClient.query('SELECT tournament_id FROM tournament_matches WHERE id = $1', [matchId]);
+    // Role check: Only SUPER_ADMIN, ADMIN_PERSATUAN, or MASTER can assign judges
+    if (req.user!.role !== UserRole.SUPER_ADMIN && req.user!.role !== UserRole.ADMIN_PERSATUAN && req.user!.role !== UserRole.MASTER) {
+      return res.status(403).json({ error: 'Unauthorized to assign tournament judges.' });
+    }
+
+    const matchRes = await dbClient.query(
+      `SELECT m.id, m.tournament_id, t.organization_id 
+       FROM tournament_matches m 
+       JOIN tournaments t ON t.id = m.tournament_id 
+       WHERE m.id = $1`,
+      [matchId]
+    );
     if (!matchRes.rowCount) {
       return res.status(404).json({ error: 'Match not found.' });
+    }
+
+    // Tenant check
+    if (req.user!.role !== UserRole.SUPER_ADMIN && matchRes.rows[0].organization_id !== req.user!.organizationId) {
+      return res.status(403).json({ error: 'Cross-organization judge assignment forbidden.' });
     }
 
     const judgeRes = await dbClient.query('SELECT id, role, full_name, email FROM users WHERE id = $1', [judgeId]);
     if (!judgeRes.rowCount) {
       return res.status(404).json({ error: 'Judge user not found.' });
+    }
+    if (judgeRes.rows[0].role !== UserRole.MASTER && judgeRes.rows[0].role !== UserRole.ADMIN_PERSATUAN && judgeRes.rows[0].role !== UserRole.SUPER_ADMIN) {
+      return res.status(400).json({ error: 'Judges must be certified Masters or qualified administrative officials.' });
     }
 
     const assignId = `jass_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
@@ -320,9 +366,71 @@ router.post('/assign-judge', authenticateJWT, async (req: Request, res: Response
       [assignId, matchId, judgeId, roleVal]
     );
 
+    await dbClient.query(
+      `INSERT INTO audit_logs (id, action, details, user_role, user_email)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [`audit_${Date.now()}`, 'JUDGE_ASSIGNED', `Judge ${judgeId} (${roleVal}) assigned to match ${matchId}`, req.user!.role, req.user!.email]
+    );
+
     return res.status(201).json({
       message: 'Judge assigned to match successfully.',
       assignment: insertRes.rows[0]
+    });
+  } catch (err: any) {
+    console.error('[Database error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 6B. Revoke Judge (Server-authoritative revocation)
+// ---------------------------------------------------------------------------
+router.post('/revoke-judge', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const { matchId, judgeId, reason } = req.body;
+    if (!matchId || !judgeId) {
+      return res.status(400).json({ error: 'matchId and judgeId are required.' });
+    }
+
+    if (req.user!.role !== UserRole.SUPER_ADMIN && req.user!.role !== UserRole.ADMIN_PERSATUAN && req.user!.role !== UserRole.MASTER) {
+      return res.status(403).json({ error: 'Unauthorized to revoke tournament judges.' });
+    }
+
+    const matchRes = await dbClient.query(
+      `SELECT m.id, t.organization_id 
+       FROM tournament_matches m 
+       JOIN tournaments t ON t.id = m.tournament_id 
+       WHERE m.id = $1`,
+      [matchId]
+    );
+    if (!matchRes.rowCount) {
+      return res.status(404).json({ error: 'Match not found.' });
+    }
+    if (req.user!.role !== UserRole.SUPER_ADMIN && matchRes.rows[0].organization_id !== req.user!.organizationId) {
+      return res.status(403).json({ error: 'Cross-organization judge revocation forbidden.' });
+    }
+
+    const updateRes = await dbClient.query(
+      `UPDATE tournament_judge_assignments
+       SET status = 'REVOKED'
+       WHERE match_id = $1 AND judge_id = $2
+       RETURNING *`,
+      [matchId, judgeId]
+    );
+
+    if (!updateRes.rowCount) {
+      return res.status(404).json({ error: 'Judge assignment not found for this match.' });
+    }
+
+    await dbClient.query(
+      `INSERT INTO audit_logs (id, action, details, user_role, user_email)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [`audit_${Date.now()}`, 'JUDGE_REVOKED', `Judge ${judgeId} revoked from match ${matchId}. Reason: ${reason || 'Official administrative action'}`, req.user!.role, req.user!.email]
+    );
+
+    return res.status(200).json({
+      message: 'Judge revoked from match successfully.',
+      assignment: updateRes.rows[0]
     });
   } catch (err: any) {
     console.error('[Database error]', err);
@@ -369,6 +477,7 @@ router.post('/matches/:matchId/score', authenticateJWT, async (req: Request, res
     }
 
     // Acceptance Criterion 1: judge_only_assigned_match
+    // Unassigned or revoked judges are strictly rejected
     const judgeAssignment = await dbClient.query(
       `SELECT * FROM tournament_judge_assignments 
        WHERE match_id = $1 AND judge_id = $2 AND status = 'ASSIGNED'`,
@@ -400,25 +509,44 @@ router.post('/matches/:matchId/score', authenticateJWT, async (req: Request, res
       });
     }
 
-    // Insert new scorecard
+    // Insert new scorecard with unique constraint error handling for concurrent submissions
     const cardId = `sc_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-    const insertRes = await dbClient.query(
-      `INSERT INTO tournament_scorecards (id, match_id, judge_id, competitor_id, client_version, technical_score, penalties, total_score, criteria_scores)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       RETURNING *`,
-      [cardId, matchId, req.user!.id, competitorId, clientVersion, techVal, penVal, totVal, critJson]
-    );
+    try {
+      const insertRes = await dbClient.query(
+        `INSERT INTO tournament_scorecards (id, match_id, judge_id, competitor_id, client_version, technical_score, penalties, total_score, criteria_scores)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         RETURNING *`,
+        [cardId, matchId, req.user!.id, competitorId, clientVersion, techVal, penVal, totVal, critJson]
+      );
 
-    // Update match status to IN_PROGRESS if SCHEDULED
-    if (match.status === 'SCHEDULED') {
-      await dbClient.query(`UPDATE tournament_matches SET status = 'IN_PROGRESS' WHERE id = $1`, [matchId]);
+      // Update match status to IN_PROGRESS if SCHEDULED
+      if (match.status === 'SCHEDULED') {
+        await dbClient.query(`UPDATE tournament_matches SET status = 'IN_PROGRESS' WHERE id = $1`, [matchId]);
+      }
+
+      return res.status(201).json({
+        message: 'Score submitted successfully.',
+        scorecard: insertRes.rows[0],
+        duplicate: false
+      });
+    } catch (insertErr: any) {
+      if (insertErr.code === '23505') {
+        const raceCard = await dbClient.query(
+          `SELECT * FROM tournament_scorecards 
+           WHERE match_id = $1 AND judge_id = $2 AND competitor_id = $3 AND client_version = $4`,
+          [matchId, req.user!.id, competitorId, clientVersion]
+        );
+        if (raceCard.rowCount) {
+          return res.status(200).json({
+            message: 'Duplicate scorecard submission detected. Handled idempotently.',
+            criterion: 'duplicate_score_once',
+            scorecard: raceCard.rows[0],
+            duplicate: true
+          });
+        }
+      }
+      throw insertErr;
     }
-
-    return res.status(201).json({
-      message: 'Score submitted successfully.',
-      scorecard: insertRes.rows[0],
-      duplicate: false
-    });
   } catch (err: any) {
     console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
@@ -429,20 +557,42 @@ router.post('/matches/:matchId/score', authenticateJWT, async (req: Request, res
 // 8. Lock Result (H24: lockResult)
 // Acceptance Criteria:
 // - tie_rule_deterministic
+// - locked_score_requires_appeal
 // ---------------------------------------------------------------------------
 router.post('/matches/:matchId/lock', authenticateJWT, async (req: Request, res: Response) => {
   try {
     const { matchId } = req.params;
 
-    const matchRes = await dbClient.query('SELECT * FROM tournament_matches WHERE id = $1', [matchId]);
+    const matchRes = await dbClient.query(
+      `SELECT m.*, t.ruleset, t.martial_art_discipline, t.organization_id
+       FROM tournament_matches m
+       JOIN tournaments t ON t.id = m.tournament_id
+       WHERE m.id = $1`,
+      [matchId]
+    );
     if (!matchRes.rowCount) {
       return res.status(404).json({ error: 'Match not found.' });
     }
     const match = matchRes.rows[0];
 
-    // Check authority: Admin Persatuan or Master
+    // Check authority: Super Admin, Admin Persatuan or Master
     if (req.user!.role !== UserRole.SUPER_ADMIN && req.user!.role !== UserRole.ADMIN_PERSATUAN && req.user!.role !== UserRole.MASTER) {
       return res.status(403).json({ error: 'Unauthorized to lock match results.' });
+    }
+
+    // Tenant check
+    if (req.user!.role !== UserRole.SUPER_ADMIN && match.organization_id !== req.user!.organizationId) {
+      return res.status(403).json({ error: 'Cross-organization match locking forbidden.' });
+    }
+
+    // Security check: Locked match cannot be locked or modified without formally approved appeal
+    if (match.status === 'LOCKED') {
+      return res.status(409).json({
+        error: 'Conflict',
+        code: 'locked_score_requires_appeal',
+        criterion: 'locked_score_requires_appeal',
+        message: 'Match result is already locked. Modification requires an approved appeal.'
+      });
     }
 
     // Aggregate scorecards for competitor A and competitor B
@@ -488,31 +638,102 @@ router.post('/matches/:matchId/lock', authenticateJWT, async (req: Request, res:
     let winnerId: string;
     let tieBreakApplied = false;
     let tieBreakReason: string | null = null;
+    const ruleset = match.ruleset || 'SILAMBAM_STANDARD';
 
-    // Acceptance Criterion 3: tie_rule_deterministic
+    // Acceptance Criterion 3: tie_rule_deterministic with discipline-aware ruleset
     if (scoreA > scoreB) {
       winnerId = match.competitor_a_id;
     } else if (scoreB > scoreA) {
       winnerId = match.competitor_b_id;
     } else {
-      // Scores are strictly equal: Apply deterministic tie-breaking sequence
+      // Scores are strictly equal: Apply deterministic tie-breaking sequence based on ruleset
       tieBreakApplied = true;
-      if (techA > techB) {
-        winnerId = match.competitor_a_id;
-        tieBreakReason = 'DETERMINISTIC_TIE_BREAK: HIGHER_TECHNICAL_SCORE';
-      } else if (techB > techA) {
-        winnerId = match.competitor_b_id;
-        tieBreakReason = 'DETERMINISTIC_TIE_BREAK: HIGHER_TECHNICAL_SCORE';
-      } else if (penA < penB) {
-        winnerId = match.competitor_a_id;
-        tieBreakReason = 'DETERMINISTIC_TIE_BREAK: FEWER_PENALTIES';
-      } else if (penB < penA) {
-        winnerId = match.competitor_b_id;
-        tieBreakReason = 'DETERMINISTIC_TIE_BREAK: FEWER_PENALTIES';
+      if (ruleset === 'KARATE_WKF') {
+        if (techA > techB) {
+          winnerId = match.competitor_a_id;
+          tieBreakReason = 'DETERMINISTIC_TIE_BREAK: KARATE_WKF_SENSHU_TECHNICAL';
+        } else if (techB > techA) {
+          winnerId = match.competitor_b_id;
+          tieBreakReason = 'DETERMINISTIC_TIE_BREAK: KARATE_WKF_SENSHU_TECHNICAL';
+        } else if (penA < penB) {
+          winnerId = match.competitor_a_id;
+          tieBreakReason = 'DETERMINISTIC_TIE_BREAK: KARATE_WKF_FEWER_PENALTIES';
+        } else if (penB < penA) {
+          winnerId = match.competitor_b_id;
+          tieBreakReason = 'DETERMINISTIC_TIE_BREAK: KARATE_WKF_FEWER_PENALTIES';
+        } else {
+          winnerId = match.competitor_a_id < match.competitor_b_id ? match.competitor_a_id : match.competitor_b_id;
+          tieBreakReason = 'DETERMINISTIC_TIE_BREAK: KARATE_WKF_SEED_PRIORITY';
+        }
+      } else if (ruleset === 'TAEKWONDO_WT') {
+        if (techA > techB) {
+          winnerId = match.competitor_a_id;
+          tieBreakReason = 'DETERMINISTIC_TIE_BREAK: TAEKWONDO_WT_TECHNICAL_SUPERIORITY';
+        } else if (techB > techA) {
+          winnerId = match.competitor_b_id;
+          tieBreakReason = 'DETERMINISTIC_TIE_BREAK: TAEKWONDO_WT_TECHNICAL_SUPERIORITY';
+        } else if (penA < penB) {
+          winnerId = match.competitor_a_id;
+          tieBreakReason = 'DETERMINISTIC_TIE_BREAK: TAEKWONDO_WT_FEWER_GAM_JEOM';
+        } else if (penB < penA) {
+          winnerId = match.competitor_b_id;
+          tieBreakReason = 'DETERMINISTIC_TIE_BREAK: TAEKWONDO_WT_FEWER_GAM_JEOM';
+        } else {
+          winnerId = match.competitor_a_id < match.competitor_b_id ? match.competitor_a_id : match.competitor_b_id;
+          tieBreakReason = 'DETERMINISTIC_TIE_BREAK: TAEKWONDO_WT_SEED_PRIORITY';
+        }
+      } else if (ruleset === 'FORMS_KATA') {
+        if (techA > techB) {
+          winnerId = match.competitor_a_id;
+          tieBreakReason = 'DETERMINISTIC_TIE_BREAK: FORMS_TECHNICAL_DIFFICULTY';
+        } else if (techB > techA) {
+          winnerId = match.competitor_b_id;
+          tieBreakReason = 'DETERMINISTIC_TIE_BREAK: FORMS_TECHNICAL_DIFFICULTY';
+        } else if (penA < penB) {
+          winnerId = match.competitor_a_id;
+          tieBreakReason = 'DETERMINISTIC_TIE_BREAK: FORMS_FEWER_DEDUCTIONS';
+        } else if (penB < penA) {
+          winnerId = match.competitor_b_id;
+          tieBreakReason = 'DETERMINISTIC_TIE_BREAK: FORMS_FEWER_DEDUCTIONS';
+        } else {
+          winnerId = match.competitor_a_id < match.competitor_b_id ? match.competitor_a_id : match.competitor_b_id;
+          tieBreakReason = 'DETERMINISTIC_TIE_BREAK: FORMS_SEED_PRIORITY';
+        }
+      } else if (ruleset === 'SCS_COMBAT') {
+        if (techA > techB) {
+          winnerId = match.competitor_a_id;
+          tieBreakReason = 'DETERMINISTIC_TIE_BREAK: SCS_LEGAL_TORSO_POINTS';
+        } else if (techB > techA) {
+          winnerId = match.competitor_b_id;
+          tieBreakReason = 'DETERMINISTIC_TIE_BREAK: SCS_LEGAL_TORSO_POINTS';
+        } else if (penA < penB) {
+          winnerId = match.competitor_a_id;
+          tieBreakReason = 'DETERMINISTIC_TIE_BREAK: SCS_FEWER_FOULS';
+        } else if (penB < penA) {
+          winnerId = match.competitor_b_id;
+          tieBreakReason = 'DETERMINISTIC_TIE_BREAK: SCS_FEWER_FOULS';
+        } else {
+          winnerId = match.competitor_a_id < match.competitor_b_id ? match.competitor_a_id : match.competitor_b_id;
+          tieBreakReason = 'DETERMINISTIC_TIE_BREAK: SCS_SEED_PRIORITY';
+        }
       } else {
-        // Deterministic seed / competitor ID ordering
-        winnerId = match.competitor_a_id < match.competitor_b_id ? match.competitor_a_id : match.competitor_b_id;
-        tieBreakReason = 'DETERMINISTIC_TIE_BREAK: DESIGNATED_SEED_PRIORITY';
+        // Standard Silambam default
+        if (techA > techB) {
+          winnerId = match.competitor_a_id;
+          tieBreakReason = 'DETERMINISTIC_TIE_BREAK: HIGHER_TECHNICAL_SCORE';
+        } else if (techB > techA) {
+          winnerId = match.competitor_b_id;
+          tieBreakReason = 'DETERMINISTIC_TIE_BREAK: HIGHER_TECHNICAL_SCORE';
+        } else if (penA < penB) {
+          winnerId = match.competitor_a_id;
+          tieBreakReason = 'DETERMINISTIC_TIE_BREAK: FEWER_PENALTIES';
+        } else if (penB < penA) {
+          winnerId = match.competitor_b_id;
+          tieBreakReason = 'DETERMINISTIC_TIE_BREAK: FEWER_PENALTIES';
+        } else {
+          winnerId = match.competitor_a_id < match.competitor_b_id ? match.competitor_a_id : match.competitor_b_id;
+          tieBreakReason = 'DETERMINISTIC_TIE_BREAK: DESIGNATED_SEED_PRIORITY';
+        }
       }
     }
 
@@ -536,7 +757,7 @@ router.post('/matches/:matchId/lock', authenticateJWT, async (req: Request, res:
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email)
        VALUES ($1, $2, $3, $4, $5)`,
-      [`audit_${Date.now()}`, 'MATCH_RESULT_LOCKED', `Match ${matchId} locked. Winner: ${winnerId}. Tie break applied: ${tieBreakApplied}`, req.user!.role, req.user!.email]
+      [`audit_${Date.now()}`, 'MATCH_RESULT_LOCKED', `Match ${matchId} locked. Winner: ${winnerId}. Tie break applied: ${tieBreakApplied} (${tieBreakReason})`, req.user!.role, req.user!.email]
     );
 
     return res.status(200).json({
@@ -552,6 +773,7 @@ router.post('/matches/:matchId/lock', authenticateJWT, async (req: Request, res:
 
 // ---------------------------------------------------------------------------
 // 9. Match Appeal (H24: locked_score_requires_appeal)
+// Preserves original scores, winner, and submission reasons
 // ---------------------------------------------------------------------------
 router.post('/matches/:matchId/appeal', authenticateJWT, async (req: Request, res: Response) => {
   try {
@@ -566,19 +788,20 @@ router.post('/matches/:matchId/appeal', authenticateJWT, async (req: Request, re
     if (!matchRes.rowCount) {
       return res.status(404).json({ error: 'Match not found.' });
     }
+    const match = matchRes.rows[0];
 
     const appealId = `appl_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     const insertRes = await dbClient.query(
-      `INSERT INTO tournament_appeals (id, match_id, competitor_id, submitted_by, reason, status)
-       VALUES ($1, $2, $3, $4, $5, 'PENDING')
+      `INSERT INTO tournament_appeals (id, match_id, competitor_id, submitted_by, reason, original_score_a, original_score_b, original_winner_id, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'PENDING')
        RETURNING *`,
-      [appealId, matchId, competitorId, req.user!.id, reason.trim()]
+      [appealId, matchId, competitorId, req.user!.id, reason.trim(), match.score_a, match.score_b, match.winner_competitor_id]
     );
 
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email)
        VALUES ($1, $2, $3, $4, $5)`,
-      [`audit_${Date.now()}`, 'MATCH_APPEAL_SUBMITTED', `Appeal submitted for match ${matchId} on competitor ${competitorId}`, req.user!.role, req.user!.email]
+      [`audit_${Date.now()}`, 'MATCH_APPEAL_SUBMITTED', `Appeal submitted for match ${matchId} on competitor ${competitorId}. Preserved original score A: ${match.score_a}, score B: ${match.score_b}`, req.user!.role, req.user!.email]
     );
 
     return res.status(201).json({
