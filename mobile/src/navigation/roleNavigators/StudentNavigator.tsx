@@ -5,6 +5,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { RoleNavigationContainer } from '../RoleNavigationContainer';
 import { AssistantScreen } from '../../screens/shared/AssistantScreen';
 import { useReleaseModules } from '../../hooks/useReleaseModules';
+import { useI18n } from '../../i18n';
 import {
   StudentHomeScreen,
   ProgressScreen,
@@ -23,6 +24,7 @@ export const StudentNavigator: React.FC<RoleNavigatorProps> = ({
 }) => {
   const { colors, iconSize } = useTheme();
   const release = useReleaseModules();
+  const { t } = useI18n();
 
   return (
     <RoleNavigationContainer user={user}>
@@ -45,8 +47,8 @@ export const StudentNavigator: React.FC<RoleNavigatorProps> = ({
       <Tab.Screen
         name="Home"
         options={{
-          tabBarLabel: 'Home',
-          tabBarAccessibilityLabel: 'Home Tab',
+          tabBarLabel: t('tabs.home'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.home') }),
           tabBarButtonTestID: 'tab-student-home',
           tabBarIcon: ({ color }) => <Home size={iconSize.md} color={color} />,
         }}
@@ -63,8 +65,8 @@ export const StudentNavigator: React.FC<RoleNavigatorProps> = ({
       <Tab.Screen
         name="Progress"
         options={{
-          tabBarLabel: 'Progress',
-          tabBarAccessibilityLabel: 'Progress Tab',
+          tabBarLabel: t('tabs.progress'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.progress') }),
           tabBarButtonTestID: 'tab-student-progress',
           tabBarIcon: ({ color }) => <Award size={iconSize.md} color={color} />,
         }}
@@ -81,8 +83,8 @@ export const StudentNavigator: React.FC<RoleNavigatorProps> = ({
       <Tab.Screen
         name="Attendance"
         options={{
-          tabBarLabel: 'Attendance',
-          tabBarAccessibilityLabel: 'Attendance Tab',
+          tabBarLabel: t('tabs.attendance'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.attendance') }),
           tabBarButtonTestID: 'tab-student-attendance',
           tabBarIcon: ({ color }) => <CheckSquare size={iconSize.md} color={color} />,
         }}
@@ -99,8 +101,8 @@ export const StudentNavigator: React.FC<RoleNavigatorProps> = ({
       <Tab.Screen
         name="Certificates"
         options={{
-          tabBarLabel: 'Certificates',
-          tabBarAccessibilityLabel: 'Certificates Tab',
+          tabBarLabel: t('tabs.certificates'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.certificates') }),
           tabBarButtonTestID: 'tab-student-certificates',
           tabBarIcon: ({ color }) => <FileText size={iconSize.md} color={color} />,
         }}
@@ -118,8 +120,8 @@ export const StudentNavigator: React.FC<RoleNavigatorProps> = ({
         <Tab.Screen
           name="Assistant"
           options={{
-            tabBarLabel: 'Ask',
-            tabBarAccessibilityLabel: 'BeltFlow Assistant Tab',
+            tabBarLabel: t('tabs.ask'),
+            tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.assistant') }),
             tabBarButtonTestID: 'tab-student-assistant',
             tabBarIcon: ({ color }) => <Sparkles size={iconSize.md} color={color} />,
           }}
@@ -131,8 +133,8 @@ export const StudentNavigator: React.FC<RoleNavigatorProps> = ({
       <Tab.Screen
         name="Profile"
         options={{
-          tabBarLabel: 'Profile',
-          tabBarAccessibilityLabel: 'Profile Tab',
+          tabBarLabel: t('tabs.profile'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.profile') }),
           tabBarButtonTestID: 'tab-student-profile',
           tabBarIcon: ({ color }) => <User size={iconSize.md} color={color} />,
         }}

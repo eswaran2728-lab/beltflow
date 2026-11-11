@@ -5,6 +5,8 @@ import { ScreenContainer, ScreenHeader } from '../../../components/Layout';
 import { Card } from '../../../components/Card';
 import { Button } from '../../../components/Button';
 import { StatusBadge } from '../../../components/Badges';
+import { PendingNextStep } from '../../../components/PendingNextStep';
+import { useI18n } from '../../../i18n';
 import { LoadingState, EmptyState } from '../../../components/Feedback';
 import { AuthUser } from '../../../types/auth';
 import { apiClient } from '../../../services/apiClient';
@@ -36,6 +38,7 @@ export interface ClassProposalStatusScreenProps {
 export const ClassProposalStatusScreen: React.FC<ClassProposalStatusScreenProps> = ({
   navigation,
 }) => {
+  const { t } = useI18n();
   const { colors, typography, spacing } = useTheme();
 
   const [loading, setLoading] = useState(true);
@@ -103,17 +106,17 @@ export const ClassProposalStatusScreen: React.FC<ClassProposalStatusScreenProps>
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'SUBMITTED':
-        return <StatusBadge status="PENDING" label="Awaiting Review" variant="warning" testID="badge-status-submitted" />;
+        return <StatusBadge status="PENDING" label={t('status.awaitingReview')} variant="warning" testID="badge-status-submitted" />;
       case 'NEEDS_INFORMATION':
-        return <StatusBadge status="WARNING" label="Action Required" variant="warning" testID="badge-status-needs-info" />;
+        return <StatusBadge status="WARNING" label={t('status.actionRequired')} variant="warning" testID="badge-status-needs-info" />;
       case 'APPROVED':
-        return <StatusBadge status="ACTIVE" label="Approved" variant="success" testID="badge-status-approved" />;
+        return <StatusBadge status="ACTIVE" label={t('status.approved')} variant="success" testID="badge-status-approved" />;
       case 'REJECTED':
-        return <StatusBadge status="EXPIRED" label="Rejected" variant="danger" testID="badge-status-rejected" />;
+        return <StatusBadge status="EXPIRED" label={t('status.rejected')} variant="danger" testID="badge-status-rejected" />;
       case 'WITHDRAWN':
-        return <StatusBadge status="INACTIVE" label="Withdrawn" variant="info" testID="badge-status-withdrawn" />;
+        return <StatusBadge status="INACTIVE" label={t('status.withdrawn')} variant="info" testID="badge-status-withdrawn" />;
       default:
-        return <StatusBadge status="PENDING" label="Draft" variant="info" testID="badge-status-draft" />;
+        return <StatusBadge status="PENDING" label={t('status.draft')} variant="info" testID="badge-status-draft" />;
     }
   };
 
@@ -188,6 +191,8 @@ export const ClassProposalStatusScreen: React.FC<ClassProposalStatusScreenProps>
                   </Text>
                 </View>
               ) : null}
+
+              <PendingNextStep kind="CLASS_PROPOSAL" status={item.status} testID={`pending-next-step-${item.id}`} />
 
               {['DRAFT', 'SUBMITTED'].includes(item.status) ? (
                 <View style={styles.cardActions}>

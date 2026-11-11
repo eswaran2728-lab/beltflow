@@ -12,6 +12,8 @@ import { ScreenContainer, ScreenHeader } from '../../../components/Layout';
 import { Card } from '../../../components/Card';
 import { Button } from '../../../components/Button';
 import { StatusBadge } from '../../../components/Badges';
+import { PendingNextStep } from '../../../components/PendingNextStep';
+import { useI18n } from '../../../i18n';
 import { Input } from '../../../components/Input';
 import { LoadingState, EmptyState, ErrorState } from '../../../components/Feedback';
 import { AuthUser } from '../../../types/auth';
@@ -50,6 +52,7 @@ export const MyApplicationsScreen: React.FC<MyApplicationsScreenProps> = ({
   user,
   navigation,
 }) => {
+  const { t } = useI18n();
   const { colors, typography, spacing } = useTheme();
 
   const [loading, setLoading] = useState(true);
@@ -144,7 +147,7 @@ export const MyApplicationsScreen: React.FC<MyApplicationsScreenProps> = ({
         return (
           <StatusBadge
             status="PENDING"
-            label="Awaiting Master Approval"
+            label={t('status.awaitingMaster')}
             variant="warning"
             testID={`badge-status-${id}`}
           />
@@ -153,7 +156,7 @@ export const MyApplicationsScreen: React.FC<MyApplicationsScreenProps> = ({
         return (
           <StatusBadge
             status="WARNING"
-            label="Needs Information"
+            label={t('status.needsInformation')}
             variant="warning"
             testID={`badge-status-${id}`}
           />
@@ -162,7 +165,7 @@ export const MyApplicationsScreen: React.FC<MyApplicationsScreenProps> = ({
         return (
           <StatusBadge
             status="INFO"
-            label="Waitlisted"
+            label={t('status.waitlisted')}
             variant="info"
             testID={`badge-status-${id}`}
           />
@@ -171,7 +174,7 @@ export const MyApplicationsScreen: React.FC<MyApplicationsScreenProps> = ({
         return (
           <StatusBadge
             status="ACTIVE"
-            label="Approved"
+            label={t('status.approved')}
             variant="success"
             testID={`badge-status-${id}`}
           />
@@ -180,7 +183,7 @@ export const MyApplicationsScreen: React.FC<MyApplicationsScreenProps> = ({
         return (
           <StatusBadge
             status="REJECTED"
-            label="Rejected"
+            label={t('status.rejected')}
             variant="danger"
             testID={`badge-status-${id}`}
           />
@@ -189,7 +192,7 @@ export const MyApplicationsScreen: React.FC<MyApplicationsScreenProps> = ({
         return (
           <StatusBadge
             status="NEUTRAL"
-            label="Withdrawn"
+            label={t('status.withdrawn')}
             variant="neutral"
             testID={`badge-status-${id}`}
           />
@@ -199,7 +202,7 @@ export const MyApplicationsScreen: React.FC<MyApplicationsScreenProps> = ({
         return (
           <StatusBadge
             status="NEUTRAL"
-            label="Draft"
+            label={t('status.draft')}
             variant="neutral"
             testID={`badge-status-${id}`}
           />
@@ -271,6 +274,8 @@ export const MyApplicationsScreen: React.FC<MyApplicationsScreenProps> = ({
               </View>
 
               <View style={[styles.detailSection, { marginTop: spacing.sm }]}>
+                <PendingNextStep kind="ENROLLMENT_APPLICATION" status={app.status} testID={`pending-next-step-${app.id}`} />
+
                 {app.status === 'SUBMITTED' ? (
                   <Text style={[typography.caption, { color: colors.textSecondary }]}>
                     Your application is currently under review by the class Master. You will join the active class roster once approved.

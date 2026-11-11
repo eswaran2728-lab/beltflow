@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { LanguageSelector } from '../../components/LanguageSelector';
 import { LogOut } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import { ScreenContainer, ScreenHeader } from '../../components/Layout';
@@ -21,6 +22,8 @@ export interface RolePlaceholderBaseProps {
   scopeDescription: string;
   actionButtons?: React.ReactNode;
   children?: React.ReactNode;
+  /** H28: show the app-wide language picker (Profile screens). */
+  showLanguageSelector?: boolean;
 }
 
 export const RolePlaceholderBase: React.FC<RolePlaceholderBaseProps> = ({
@@ -35,6 +38,7 @@ export const RolePlaceholderBase: React.FC<RolePlaceholderBaseProps> = ({
   scopeDescription,
   actionButtons,
   children,
+  showLanguageSelector = false,
 }) => {
   const { colors, typography, spacing, iconSize } = useTheme();
 
@@ -101,6 +105,12 @@ export const RolePlaceholderBase: React.FC<RolePlaceholderBaseProps> = ({
             {scopeDescription}
           </Text>
         </Card>
+
+        {showLanguageSelector ? (
+          <Card variant="standard" style={{ marginBottom: spacing.md }}>
+            <LanguageSelector />
+          </Card>
+        ) : null}
 
         {/* Feature Overview Card */}
         <Card variant="elevated" style={styles.featureCard}>

@@ -19,6 +19,7 @@ import { AssistantAnswer, assistantService } from '../../services/assistantServi
 import {
   ASSISTANT_STRINGS, AnswerStatus, AssistantLocale, AssistantStrings, sourceTypeLabel,
 } from '../../i18n/assistantStrings';
+import { useI18n } from '../../i18n';
 
 /**
  * H26 Role-Aware Grounded AI assistant screen (all five roles).
@@ -65,7 +66,18 @@ const STATUS_STYLE: Record<AnswerStatus, { fg: string; bg: string; Icon: typeof 
 };
 
 export const AssistantScreen: React.FC<AssistantScreenProps> = ({ user, isOffline = false, studentId }) => {
-  const [locale, setLocale] = useState<AssistantLocale>('en');
+  // H28: start in the app language; changing it here changes the whole app.
+  const app = useI18n();
+  const [locale, setLocalLocale] = useState<AssistantLocale>(app.locale);
+  const [seenLocale, setSeenLocale] = useState(app.locale);
+  if (seenLocale !== app.locale) {
+    setSeenLocale(app.locale);
+    setLocalLocale(app.locale);
+  }
+  const setLocale = (next: AssistantLocale) => {
+    setLocalLocale(next);
+    app.setLocale(next);
+  };
   const [draft, setDraft] = useState('');
   const [entries, setEntries] = useState<ChatEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -113,7 +125,7 @@ export const AssistantScreen: React.FC<AssistantScreenProps> = ({ user, isOfflin
         keyboardShouldPersistTaps="handled"
         testID="assistant-conversation"
       >
-        <View style={styles.languageRow} accessibilityRole="radiogroup" accessibilityLabel="Language">
+        <View style={styles.languageRow} accessibilityRole="radiogroup" accessibilityLabel={app.t('language.title')}>
           {LOCALES.map(code => {
             const selected = code === locale;
             return (

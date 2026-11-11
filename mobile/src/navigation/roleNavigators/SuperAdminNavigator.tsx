@@ -5,6 +5,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { RoleNavigationContainer } from '../RoleNavigationContainer';
 import { AssistantScreen } from '../../screens/shared/AssistantScreen';
 import { useReleaseModules } from '../../hooks/useReleaseModules';
+import { useI18n } from '../../i18n';
 import {
   SuperAdminHomeScreen,
   PersatuanManagementScreen,
@@ -22,6 +23,7 @@ export const SuperAdminNavigator: React.FC<RoleNavigatorProps> = ({
 }) => {
   const { colors, iconSize } = useTheme();
   const release = useReleaseModules();
+  const { t } = useI18n();
 
   return (
     <RoleNavigationContainer user={user}>
@@ -44,8 +46,8 @@ export const SuperAdminNavigator: React.FC<RoleNavigatorProps> = ({
       <Tab.Screen
         name="Home"
         options={{
-          tabBarLabel: 'Home',
-          tabBarAccessibilityLabel: 'Home Tab',
+          tabBarLabel: t('tabs.home'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.home') }),
           tabBarButtonTestID: 'tab-sa-home',
           tabBarIcon: ({ color }) => <Home size={iconSize.md} color={color} />,
         }}
@@ -62,8 +64,8 @@ export const SuperAdminNavigator: React.FC<RoleNavigatorProps> = ({
       <Tab.Screen
         name="Persatuans"
         options={{
-          tabBarLabel: 'Persatuans',
-          tabBarAccessibilityLabel: 'Persatuan Management Tab',
+          tabBarLabel: t('tabs.persatuans'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.persatuanManagement') }),
           tabBarButtonTestID: 'tab-sa-persatuans',
           tabBarIcon: ({ color }) => <Building2 size={iconSize.md} color={color} />,
         }}
@@ -80,8 +82,8 @@ export const SuperAdminNavigator: React.FC<RoleNavigatorProps> = ({
       <Tab.Screen
         name="Audit"
         options={{
-          tabBarLabel: 'Audit',
-          tabBarAccessibilityLabel: 'Platform Audit Tab',
+          tabBarLabel: t('tabs.audit'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.platformAudit') }),
           tabBarButtonTestID: 'tab-sa-audit',
           tabBarIcon: ({ color }) => <ShieldCheck size={iconSize.md} color={color} />,
         }}
@@ -99,8 +101,8 @@ export const SuperAdminNavigator: React.FC<RoleNavigatorProps> = ({
         <Tab.Screen
           name="Assistant"
           options={{
-            tabBarLabel: 'Ask',
-            tabBarAccessibilityLabel: 'BeltFlow Assistant Tab',
+            tabBarLabel: t('tabs.ask'),
+            tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.assistant') }),
             tabBarButtonTestID: 'tab-sa-assistant',
             tabBarIcon: ({ color }) => <Sparkles size={iconSize.md} color={color} />,
           }}
@@ -112,8 +114,8 @@ export const SuperAdminNavigator: React.FC<RoleNavigatorProps> = ({
       <Tab.Screen
         name="Profile"
         options={{
-          tabBarLabel: 'Profile',
-          tabBarAccessibilityLabel: 'Profile Tab',
+          tabBarLabel: t('tabs.profile'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.profile') }),
           tabBarButtonTestID: 'tab-sa-profile',
           tabBarIcon: ({ color }) => <User size={iconSize.md} color={color} />,
         }}

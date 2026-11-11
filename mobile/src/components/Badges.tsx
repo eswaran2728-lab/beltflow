@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle, StyleProp } from 'react-native';
+import { CircleCheck, CircleX, Clock, Info, Minus } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeProvider';
+import { useI18n } from '../i18n';
 import { BeltLevelConfig } from '../theme/belts';
 
 // ----------------------------------------------------------------------------
@@ -16,6 +18,25 @@ export interface StatusBadgeProps {
   testID?: string;
 }
 
+// H28: localised default labels for known status codes.
+const STATUS_LABEL_KEYS: Record<string, string> = {
+  ACTIVE: 'status.active', PAID: 'status.paid', COMPLETED: 'status.completed', PRESENT: 'status.present', PASS: 'status.pass',
+  PENDING: 'status.pending', 'PARTIALLY PAID': 'status.partiallyPaid', LATE: 'status.late', PENDING_STUDENT: 'status.pending',
+  PENDING_MASTER: 'status.pending', PENDING_ADMIN: 'status.pending', OVERDUE: 'status.overdue', UNPAID: 'status.unpaid',
+  REJECTED: 'status.rejected', ABSENT: 'status.absent', FAIL: 'status.fail', CANCELLED: 'status.cancelled', EXCUSED: 'status.excused',
+  UPCOMING: 'status.upcoming', REGISTERED: 'status.registered', SUBMITTED: 'status.awaitingReview', NEEDS_INFORMATION: 'status.actionRequired',
+  WAITLISTED: 'status.waitlisted', APPROVED: 'status.approved', WITHDRAWN: 'status.withdrawn', DRAFT: 'status.draft', INACTIVE: 'status.inactive',
+};
+
+// H28 status_not_color_only: each meaning has its own icon shape as well as colour and text.
+const VARIANT_ICONS: Record<StatusBadgeVariant, typeof Info> = {
+  success: CircleCheck,
+  warning: Clock,
+  danger: CircleX,
+  info: Info,
+  neutral: Minus,
+};
+
 export const StatusBadge: React.FC<StatusBadgeProps> = ({
   status,
   label,
@@ -24,6 +45,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   testID,
 }) => {
   const { colors, typography, borderRadius } = useTheme();
+  const { t } = useI18n();
 
   // Infer semantic variant if not explicitly provided
   const resolvedVariant: StatusBadgeVariant = variant || (() => {
@@ -60,7 +82,9 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   };
 
   const { bg, text } = getVariantStyles();
-  const displayLabel = label || status;
+  const labelKey = STATUS_LABEL_KEYS[status.toUpperCase()];
+  const displayLabel = label || (labelKey ? t(labelKey) : status);
+  const Icon = VARIANT_ICONS[resolvedVariant];
 
   return (
     <View
@@ -70,9 +94,19 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
         style,
       ]}
       testID={testID}
+      accessible
+      accessibilityRole="text"
+      accessibilityLabel={t('status.a11y', { label: displayLabel })}
     >
-      <View style={[styles.statusDot, { backgroundColor: text }]} />
-      <Text style={[typography.caption, { color: text, fontWeight: '700' }]}>
+      <View
+        testID={testID ? `${testID}-icon` : undefined}
+        accessibilityHint={resolvedVariant}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        <Icon size={12} color={text} />
+      </View>
+      <Text style={[typography.caption, styles.badgeText, { color: text, fontWeight: '700' }]}>
         {displayLabel}
       </Text>
     </View>
@@ -252,8 +286,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
+    maxWidth: '100%',
     paddingHorizontal: 10,
     paddingVertical: 4,
+  },
+  badgeText: {
+    marginLeft: 6,
+    flexShrink: 1,
   },
   statusDot: {
     width: 6,

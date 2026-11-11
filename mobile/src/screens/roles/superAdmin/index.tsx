@@ -339,6 +339,7 @@ export const SuperAdminProfileScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();
   return (
     <RolePlaceholderBase
+      showLanguageSelector
       title="Profile"
       subtitle="Super Administrator Identity"
       role={UserRole.SUPER_ADMIN}

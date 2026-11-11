@@ -6,6 +6,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { RoleNavigationContainer } from '../RoleNavigationContainer';
 import { AssistantScreen } from '../../screens/shared/AssistantScreen';
 import { useReleaseModules } from '../../hooks/useReleaseModules';
+import { useI18n } from '../../i18n';
 import {
   MasterHomeScreen,
   ClassesScreen,
@@ -76,6 +77,7 @@ export const MasterNavigator: React.FC<RoleNavigatorProps> = ({
 }) => {
   const { colors, iconSize } = useTheme();
   const release = useReleaseModules();
+  const { t } = useI18n();
 
   // If master affiliation is not ACTIVE (e.g., PENDING, SUSPENDED, ENDED, UNVERIFIED),
   // gate operational screens and present MasterApplicationStatusScreen
@@ -120,8 +122,8 @@ export const MasterNavigator: React.FC<RoleNavigatorProps> = ({
       <Tab.Screen
         name="Home"
         options={{
-          tabBarLabel: 'Home',
-          tabBarAccessibilityLabel: 'Home Tab',
+          tabBarLabel: t('tabs.home'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.home') }),
           tabBarButtonTestID: 'tab-master-home',
           tabBarIcon: ({ color }) => <Home size={iconSize.md} color={color} />,
         }}
@@ -138,8 +140,8 @@ export const MasterNavigator: React.FC<RoleNavigatorProps> = ({
       <Tab.Screen
         name="Classes"
         options={{
-          tabBarLabel: 'Classes',
-          tabBarAccessibilityLabel: 'Classes Tab',
+          tabBarLabel: t('tabs.classes'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.classes') }),
           tabBarButtonTestID: 'tab-master-classes',
           tabBarIcon: ({ color }) => <Calendar size={iconSize.md} color={color} />,
         }}
@@ -156,8 +158,8 @@ export const MasterNavigator: React.FC<RoleNavigatorProps> = ({
       <Tab.Screen
         name="Attendance"
         options={{
-          tabBarLabel: 'Attendance',
-          tabBarAccessibilityLabel: 'Attendance Tab',
+          tabBarLabel: t('tabs.attendance'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.attendance') }),
           tabBarButtonTestID: 'tab-master-attendance',
           tabBarIcon: ({ color }) => <CheckSquare size={iconSize.md} color={color} />,
         }}
@@ -174,8 +176,8 @@ export const MasterNavigator: React.FC<RoleNavigatorProps> = ({
       <Tab.Screen
         name="Grading"
         options={{
-          tabBarLabel: 'Grading',
-          tabBarAccessibilityLabel: 'Grading Tab',
+          tabBarLabel: t('tabs.grading'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.grading') }),
           tabBarButtonTestID: 'tab-master-grading',
           tabBarIcon: ({ color }) => <Award size={iconSize.md} color={color} />,
         }}
@@ -193,8 +195,8 @@ export const MasterNavigator: React.FC<RoleNavigatorProps> = ({
         <Tab.Screen
           name="Assistant"
           options={{
-            tabBarLabel: 'Ask',
-            tabBarAccessibilityLabel: 'BeltFlow Assistant Tab',
+            tabBarLabel: t('tabs.ask'),
+            tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.assistant') }),
             tabBarButtonTestID: 'tab-master-assistant',
             tabBarIcon: ({ color }) => <Sparkles size={iconSize.md} color={color} />,
           }}
@@ -206,8 +208,8 @@ export const MasterNavigator: React.FC<RoleNavigatorProps> = ({
       <Tab.Screen
         name="Profile"
         options={{
-          tabBarLabel: 'Profile',
-          tabBarAccessibilityLabel: 'Profile Tab',
+          tabBarLabel: t('tabs.profile'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.profile') }),
           tabBarButtonTestID: 'tab-master-profile',
           tabBarIcon: ({ color }) => <User size={iconSize.md} color={color} />,
         }}

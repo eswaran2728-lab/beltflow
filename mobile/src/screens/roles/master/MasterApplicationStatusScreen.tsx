@@ -24,6 +24,7 @@ import { StatusBadge } from '../../../components/Badges';
 import { LoadingState, ErrorState } from '../../../components/Feedback';
 import { AuthUser } from '../../../types/auth';
 import { apiClient } from '../../../services/apiClient';
+import { PendingNextStep } from '../../../components/PendingNextStep';
 import { BrandColors } from '../../../theme/colors';
 
 export interface MasterApplicationStatusScreenProps {
@@ -443,6 +444,9 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
         ) : null}
 
         {renderStatusBanner()}
+        {application ? (
+          <PendingNextStep kind="MASTER_APPLICATION" status={application.status} testID={`pending-next-step-${application.id}`} />
+        ) : null}
 
         {application?.status === 'SUBMITTED' ? (
           <Card variant="standard" style={{ marginTop: spacing.md, borderColor: colors.border }}>

@@ -611,6 +611,7 @@ export const ParentProfileScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();
   return (
     <RolePlaceholderBase
+      showLanguageSelector
       title="Profile"
       subtitle="Parent & Guardian Identity"
       role={UserRole.PARENT}

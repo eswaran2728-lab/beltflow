@@ -5,6 +5,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { RoleNavigationContainer } from '../RoleNavigationContainer';
 import { AssistantScreen } from '../../screens/shared/AssistantScreen';
 import { useReleaseModules } from '../../hooks/useReleaseModules';
+import { useI18n } from '../../i18n';
 import {
   ParentHomeScreen,
   ChildrenScreen,
@@ -23,6 +24,7 @@ export const ParentNavigator: React.FC<RoleNavigatorProps> = ({
 }) => {
   const { colors, iconSize } = useTheme();
   const release = useReleaseModules();
+  const { t } = useI18n();
 
   return (
     <RoleNavigationContainer user={user}>
@@ -45,8 +47,8 @@ export const ParentNavigator: React.FC<RoleNavigatorProps> = ({
       <Tab.Screen
         name="Home"
         options={{
-          tabBarLabel: 'Home',
-          tabBarAccessibilityLabel: 'Home Tab',
+          tabBarLabel: t('tabs.home'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.home') }),
           tabBarButtonTestID: 'tab-parent-home',
           tabBarIcon: ({ color }) => <Home size={iconSize.md} color={color} />,
         }}
@@ -63,8 +65,8 @@ export const ParentNavigator: React.FC<RoleNavigatorProps> = ({
       <Tab.Screen
         name="Children"
         options={{
-          tabBarLabel: 'Children',
-          tabBarAccessibilityLabel: 'Children Tab',
+          tabBarLabel: t('tabs.children'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.children') }),
           tabBarButtonTestID: 'tab-parent-children',
           tabBarIcon: ({ color }) => <Users size={iconSize.md} color={color} />,
         }}
@@ -81,8 +83,8 @@ export const ParentNavigator: React.FC<RoleNavigatorProps> = ({
       <Tab.Screen
         name="Fees"
         options={{
-          tabBarLabel: 'Fees',
-          tabBarAccessibilityLabel: 'Fees Tab',
+          tabBarLabel: t('tabs.fees'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.fees') }),
           tabBarButtonTestID: 'tab-parent-fees',
           tabBarIcon: ({ color }) => <DollarSign size={iconSize.md} color={color} />,
         }}
@@ -99,8 +101,8 @@ export const ParentNavigator: React.FC<RoleNavigatorProps> = ({
       <Tab.Screen
         name="Notices"
         options={{
-          tabBarLabel: 'Notices',
-          tabBarAccessibilityLabel: 'Notices Tab',
+          tabBarLabel: t('tabs.notices'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.notices') }),
           tabBarButtonTestID: 'tab-parent-notices',
           tabBarIcon: ({ color }) => <Bell size={iconSize.md} color={color} />,
         }}
@@ -118,8 +120,8 @@ export const ParentNavigator: React.FC<RoleNavigatorProps> = ({
         <Tab.Screen
           name="Assistant"
           options={{
-            tabBarLabel: 'Ask',
-            tabBarAccessibilityLabel: 'BeltFlow Assistant Tab',
+            tabBarLabel: t('tabs.ask'),
+            tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.assistant') }),
             tabBarButtonTestID: 'tab-parent-assistant',
             tabBarIcon: ({ color }) => <Sparkles size={iconSize.md} color={color} />,
           }}
@@ -131,8 +133,8 @@ export const ParentNavigator: React.FC<RoleNavigatorProps> = ({
       <Tab.Screen
         name="Profile"
         options={{
-          tabBarLabel: 'Profile',
-          tabBarAccessibilityLabel: 'Profile Tab',
+          tabBarLabel: t('tabs.profile'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.profile') }),
           tabBarButtonTestID: 'tab-parent-profile',
           tabBarIcon: ({ color }) => <User size={iconSize.md} color={color} />,
         }}

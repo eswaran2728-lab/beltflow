@@ -670,6 +670,7 @@ export const StudentProfileScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();
   return (
     <RolePlaceholderBase
+      showLanguageSelector
       title="Profile"
       subtitle="Student Martial Artist Profile"
       role={UserRole.STUDENT}

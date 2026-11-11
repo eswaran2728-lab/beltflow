@@ -5,6 +5,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { RoleNavigationContainer } from '../RoleNavigationContainer';
 import { AssistantScreen } from '../../screens/shared/AssistantScreen';
 import { useReleaseModules } from '../../hooks/useReleaseModules';
+import { useI18n } from '../../i18n';
 import {
   AdminPersatuanHomeScreen,
   LocationsScreen,
@@ -24,6 +25,7 @@ export const AdminPersatuanNavigator: React.FC<RoleNavigatorProps> = ({
 }) => {
   const { colors, iconSize } = useTheme();
   const release = useReleaseModules();
+  const { t } = useI18n();
 
   return (
     <RoleNavigationContainer user={user}>
@@ -46,8 +48,8 @@ export const AdminPersatuanNavigator: React.FC<RoleNavigatorProps> = ({
       <Tab.Screen
         name="Home"
         options={{
-          tabBarLabel: 'Home',
-          tabBarAccessibilityLabel: 'Home Tab',
+          tabBarLabel: t('tabs.home'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.home') }),
           tabBarButtonTestID: 'tab-ap-home',
           tabBarIcon: ({ color }) => <Home size={iconSize.md} color={color} />,
         }}
@@ -64,8 +66,8 @@ export const AdminPersatuanNavigator: React.FC<RoleNavigatorProps> = ({
       <Tab.Screen
         name="Locations"
         options={{
-          tabBarLabel: 'Locations',
-          tabBarAccessibilityLabel: 'Locations Tab',
+          tabBarLabel: t('tabs.locations'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.locations') }),
           tabBarButtonTestID: 'tab-ap-locations',
           tabBarIcon: ({ color }) => <MapPin size={iconSize.md} color={color} />,
         }}
@@ -82,8 +84,8 @@ export const AdminPersatuanNavigator: React.FC<RoleNavigatorProps> = ({
       <Tab.Screen
         name="Masters"
         options={{
-          tabBarLabel: 'Masters',
-          tabBarAccessibilityLabel: 'Masters Tab',
+          tabBarLabel: t('tabs.masters'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.masters') }),
           tabBarButtonTestID: 'tab-ap-masters',
           tabBarIcon: ({ color }) => <Users size={iconSize.md} color={color} />,
         }}
@@ -100,8 +102,8 @@ export const AdminPersatuanNavigator: React.FC<RoleNavigatorProps> = ({
       <Tab.Screen
         name="Reports"
         options={{
-          tabBarLabel: 'Reports',
-          tabBarAccessibilityLabel: 'Reports Tab',
+          tabBarLabel: t('tabs.reports'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.reports') }),
           tabBarButtonTestID: 'tab-ap-reports',
           tabBarIcon: ({ color }) => <BarChart3 size={iconSize.md} color={color} />,
         }}
@@ -119,8 +121,8 @@ export const AdminPersatuanNavigator: React.FC<RoleNavigatorProps> = ({
         <Tab.Screen
           name="Assistant"
           options={{
-            tabBarLabel: 'Ask',
-            tabBarAccessibilityLabel: 'BeltFlow Assistant Tab',
+            tabBarLabel: t('tabs.ask'),
+            tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.assistant') }),
             tabBarButtonTestID: 'tab-ap-assistant',
             tabBarIcon: ({ color }) => <Sparkles size={iconSize.md} color={color} />,
           }}
@@ -132,8 +134,8 @@ export const AdminPersatuanNavigator: React.FC<RoleNavigatorProps> = ({
       <Tab.Screen
         name="Profile"
         options={{
-          tabBarLabel: 'Profile',
-          tabBarAccessibilityLabel: 'Profile Tab',
+          tabBarLabel: t('tabs.profile'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.profile') }),
           tabBarButtonTestID: 'tab-ap-profile',
           tabBarIcon: ({ color }) => <User size={iconSize.md} color={color} />,
         }}

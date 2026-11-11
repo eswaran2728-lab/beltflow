@@ -13,7 +13,25 @@ const STORAGE_KEYS = {
   AUTH_TOKEN: 'beltflow_auth_token',
   USER_SESSION: 'beltflow_user_session',
   CUSTOM_API_URL: 'beltflow_custom_api_url',
+  LOCALE: 'beltflow_locale',
 } as const;
+
+/** H28: the app language chosen on this device ('en' | 'ms' | 'ta'). Not sensitive. */
+export async function getStoredLocale(): Promise<string | null> {
+  try {
+    return await SecureStore.getItemAsync(STORAGE_KEYS.LOCALE);
+  } catch {
+    return null;
+  }
+}
+
+export async function setStoredLocale(locale: string): Promise<void> {
+  try {
+    await SecureStore.setItemAsync(STORAGE_KEYS.LOCALE, locale);
+  } catch {
+    // The choice still applies for this session if storage is unavailable.
+  }
+}
 
 export async function getStoredApiBaseUrl(): Promise<string | null> {
   try {

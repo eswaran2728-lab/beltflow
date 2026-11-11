@@ -504,6 +504,7 @@ export const MasterProfileScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();
   return (
     <RolePlaceholderBase
+      showLanguageSelector
       title="Profile"
       subtitle="Master Instructor Profile"
       role={UserRole.MASTER}

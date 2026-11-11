@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react';
+import { useI18n } from '../../../i18n';
 import { View, Text, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
 import {
   MapPin,
@@ -136,7 +137,19 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
   navigation,
 }) => {
   const { colors, typography, spacing, iconSize } = useTheme();
-  const [lang, setLang] = useState<AdminLanguage>('en');
+  // H28: follow the app-wide language; the header switch changes it for the whole app.
+  const app = useI18n();
+  const [lang, setLangLocal] = useState<AdminLanguage>(app.locale);
+  const [seenLocale, setSeenLocale] = useState(app.locale);
+  if (seenLocale !== app.locale) {
+    // Follow a language change made elsewhere in the app (adjust state during render).
+    setSeenLocale(app.locale);
+    setLangLocal(app.locale);
+  }
+  const setLang = (next: AdminLanguage) => {
+    setLangLocal(next);
+    app.setLocale(next);
+  };
   const t = ADMIN_I18N[lang];
 
   const fetcher = useCallback(() => {
@@ -275,7 +288,7 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
           >
             <Globe size={16} color={StitchTokens.colors.brandNavy} />
             <Text style={styles.langButtonText}>
-              {lang === 'en' ? 'EN / MY / தமிழ்' : lang === 'ms' ? 'MY / EN / தமிழ்' : 'தமிழ் / EN / MY'}
+              {lang === 'en' ? 'EN / BM / தமிழ்' : lang === 'ms' ? 'BM / EN / தமிழ்' : 'தமிழ் / EN / BM'}
             </Text>
           </TouchableOpacity>
 
@@ -625,6 +638,7 @@ export const AdminPersatuanProfileScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();
   return (
     <RolePlaceholderBase
+      showLanguageSelector
       title="Profile"
       subtitle="Persatuan Administrator Profile"
       role={UserRole.ADMIN_PERSATUAN}
