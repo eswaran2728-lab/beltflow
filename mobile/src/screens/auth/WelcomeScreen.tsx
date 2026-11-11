@@ -5,6 +5,8 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { ScreenContainer } from '../../components/Layout';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
+import { LanguageSelector } from '../../components/LanguageSelector';
+import { useI18n } from '../../i18n';
 
 export interface WelcomeScreenProps {
   onNavigateLogin: () => void;
@@ -16,6 +18,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onNavigateVerify,
 }) => {
   const { colors, typography, spacing } = useTheme();
+  const { t } = useI18n();
 
   return (
     <ScreenContainer scrollable testID="welcome-screen">
@@ -34,7 +37,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             BeltFlow
           </Text>
           <Text style={[typography.bodyMedium, styles.subtitle, { color: colors.textSecondary }]}>
-            Martial Arts Academy Management
+            {t('auth.common.tagline')}
           </Text>
         </View>
 
@@ -44,10 +47,10 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             <Users size={22} color={colors.buttonPrimaryBg} style={styles.featureIcon} />
             <View style={styles.featureText}>
               <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
-                Multi-Tenant Silambam Portals
+                {t('auth.welcome.feature1.title')}
               </Text>
               <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                Dedicated access for Admins, Masters, Parents, and Students
+                {t('auth.welcome.feature1.body')}
               </Text>
             </View>
           </View>
@@ -56,10 +59,10 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             <Award size={22} color={colors.buttonPrimaryBg} style={styles.featureIcon} />
             <View style={styles.featureText}>
               <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
-                Configurable Belt Syllabi
+                {t('auth.welcome.feature2.title')}
               </Text>
               <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                Tailored ranking, exams, and verified grading criteria
+                {t('auth.welcome.feature2.body')}
               </Text>
             </View>
           </View>
@@ -68,10 +71,10 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             <CheckCircle2 size={22} color={colors.buttonPrimaryBg} style={styles.featureIcon} />
             <View style={styles.featureText}>
               <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
-                Offline Mat Attendance
+                {t('auth.welcome.feature3.title')}
               </Text>
               <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                Track training sessions with seamless cloud synchronization
+                {t('auth.welcome.feature3.body')}
               </Text>
             </View>
           </View>
@@ -80,26 +83,31 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         {/* Action Buttons */}
         <View style={[styles.actions, { marginTop: spacing.xl }]}>
           <Button
-            label="Sign In to Academy"
+            label={t('auth.welcome.signIn')}
             onPress={onNavigateLogin}
             variant="primary"
             size="lg"
             fullWidth
             testID="btn-welcome-signin"
-            accessibilityLabel="Sign In to Academy"
+            accessibilityLabel={t('auth.welcome.signIn')}
           />
 
           <View style={{ height: 12 }} />
 
           <Button
-            label="Verify Official Certificate"
+            label={t('auth.common.verifyOfficialCertificate')}
             onPress={onNavigateVerify}
             variant="outline"
             size="lg"
             fullWidth
             testID="btn-welcome-verify"
-            accessibilityLabel="Verify Official Certificate"
+            accessibilityLabel={t('auth.common.verifyOfficialCertificate')}
           />
+        </View>
+
+        {/* H28: language choice, below the main actions */}
+        <View style={styles.language}>
+          <LanguageSelector testID="welcome-language-selector" />
         </View>
       </View>
     </ScreenContainer>
@@ -149,6 +157,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   actions: {
+    width: '100%',
+  },
+  language: {
+    marginTop: 8,
     width: '100%',
   },
 });

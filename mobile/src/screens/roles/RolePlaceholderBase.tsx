@@ -9,6 +9,7 @@ import { StatusBadge } from '../../components/Badges';
 import { OfflineBanner } from '../../components/Feedback';
 import { Button } from '../../components/Button';
 import { AuthUser, RoleType } from '../../types/auth';
+import { useI18n } from '../../i18n';
 
 export interface RolePlaceholderBaseProps {
   title: string;
@@ -41,6 +42,7 @@ export const RolePlaceholderBase: React.FC<RolePlaceholderBaseProps> = ({
   showLanguageSelector = false,
 }) => {
   const { colors, typography, spacing, iconSize } = useTheme();
+  const { t } = useI18n();
 
   return (
     <ScreenContainer scrollable testID={testID}>
@@ -51,13 +53,13 @@ export const RolePlaceholderBase: React.FC<RolePlaceholderBaseProps> = ({
         rightAction={
           onLogout ? (
             <Button
-              label="Sign Out"
+              label={t('auth.common.signOut')}
               onPress={onLogout}
               variant="outline"
               size="sm"
               leftIcon={<LogOut size={iconSize.sm} color={colors.textSecondary} />}
               testID="btn-role-logout"
-              accessibilityLabel="Sign Out of BeltFlow"
+              accessibilityLabel={t('auth.role.signOutA11y')}
             />
           ) : undefined
         }
@@ -68,7 +70,7 @@ export const RolePlaceholderBase: React.FC<RolePlaceholderBaseProps> = ({
         {isOffline ? (
           <View style={{ marginBottom: spacing.md }}>
             <OfflineBanner
-              message="Offline Mode: Locally Cached Identity — Sensitive server operations are locked until online."
+              message={t('auth.role.offline')}
               testID="offline-security-banner"
             />
           </View>
@@ -86,7 +88,7 @@ export const RolePlaceholderBase: React.FC<RolePlaceholderBaseProps> = ({
               </Text>
               {user.organizationId ? (
                 <Text style={[typography.caption, { color: colors.buttonPrimaryBg, marginTop: 2, fontWeight: '600' }]}>
-                  Persatuan: {user.organizationId}
+                  {t('auth.role.persatuan', { id: user.organizationId })}
                 </Text>
               ) : null}
             </View>
@@ -132,10 +134,10 @@ export const RolePlaceholderBase: React.FC<RolePlaceholderBaseProps> = ({
                 style={[typography.titleMedium, { color: colors.textPrimary }]}
                 accessibilityRole="header"
               >
-                Coming soon
+                {t('auth.role.comingSoon')}
               </Text>
               <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                This section is being prepared for your account.
+                {t('auth.role.comingSoonBody')}
               </Text>
             </View>
           </View>

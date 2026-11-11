@@ -5,6 +5,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { ScreenContainer, ScreenHeader } from '../../components/Layout';
 import { Card } from '../../components/Card';
 import { Button } from '../../components/Button';
+import { useI18n } from '../../i18n';
 
 export interface ForgotPasswordScreenProps {
   onBack: () => void;
@@ -12,12 +13,13 @@ export interface ForgotPasswordScreenProps {
 
 export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBack }) => {
   const { colors, typography, iconSize, spacing } = useTheme();
+  const { t } = useI18n();
 
   return (
     <ScreenContainer scrollable testID="forgot-password-screen">
       <ScreenHeader
-        title="Password Assistance"
-        subtitle="Academy credential policy"
+        title={t('auth.forgot.title')}
+        subtitle={t('auth.forgot.subtitle')}
         onBack={onBack}
         testID="forgot-password-header"
       />
@@ -36,10 +38,10 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBa
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
-                Managed Academy Security
+                {t('auth.forgot.cardTitle')}
               </Text>
               <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                Multi-tenant BeltFlow account guidelines
+                {t('auth.forgot.cardSubtitle')}
               </Text>
             </View>
           </View>
@@ -47,8 +49,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBa
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
           <Text style={[typography.bodyMedium, { color: colors.textPrimary, lineHeight: 22 }]}>
-            In accordance with martial arts academy security standards, student, parent, and master
-            passwords are administrative credentials managed by each active Persatuan.
+            {t('auth.forgot.policy')}
           </Text>
 
           <View style={{ height: 16 }} />
@@ -56,8 +57,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBa
           <View style={[styles.bulletRow, { backgroundColor: colors.surfaceElevated }]}>
             <Info size={iconSize.sm} color={colors.buttonPrimaryBg} style={styles.bulletIcon} />
             <Text style={[typography.caption, { color: colors.textSecondary, flex: 1 }]}>
-              Please contact your Persatuan Admin or Academy Master to request a secure password
-              reset or temporary credential voucher.
+              {t('auth.forgot.contact')}
             </Text>
           </View>
 
@@ -66,8 +66,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBa
           <View style={[styles.bulletRow, { backgroundColor: colors.surfaceElevated }]}>
             <PhoneCall size={iconSize.sm} color={colors.buttonPrimaryBg} style={styles.bulletIcon} />
             <Text style={[typography.caption, { color: colors.textSecondary, flex: 1 }]}>
-              For privacy protection, automated self-service email resets are not permitted to reveal
-              membership or account existence.
+              {t('auth.forgot.privacy')}
             </Text>
           </View>
         </Card>
@@ -75,13 +74,13 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBa
         {/* Action Button */}
         <View style={{ marginTop: spacing.xl }}>
           <Button
-            label="Return to Sign In"
+            label={t('auth.forgot.back')}
             onPress={onBack}
             variant="primary"
             size="lg"
             fullWidth
             testID="btn-forgot-back"
-            accessibilityLabel="Return to Sign In"
+            accessibilityLabel={t('auth.forgot.back')}
           />
         </View>
       </View>

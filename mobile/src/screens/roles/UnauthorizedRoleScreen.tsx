@@ -6,6 +6,7 @@ import { ScreenContainer, ScreenHeader } from '../../components/Layout';
 import { Card } from '../../components/Card';
 import { Button } from '../../components/Button';
 import { AuthUser } from '../../types/auth';
+import { useI18n } from '../../i18n';
 
 export interface UnauthorizedRoleScreenProps {
   user: AuthUser;
@@ -17,12 +18,13 @@ export const UnauthorizedRoleScreen: React.FC<UnauthorizedRoleScreenProps> = ({
   onLogout,
 }) => {
   const { colors, typography, spacing, iconSize } = useTheme();
+  const { t } = useI18n();
 
   return (
     <ScreenContainer scrollable testID="unauthorized-role-screen">
       <ScreenHeader
-        title="Access Restricted"
-        subtitle="Role Authorization"
+        title={t('auth.unauthorized.title')}
+        subtitle={t('auth.unauthorized.subtitle')}
       />
 
       <View style={[styles.content, { paddingVertical: spacing.xl }]}>
@@ -37,37 +39,37 @@ export const UnauthorizedRoleScreen: React.FC<UnauthorizedRoleScreenProps> = ({
           </View>
 
           <Text style={[typography.pageTitle, styles.title, { color: colors.textPrimary }]}>
-            Unauthorized Role
+            {t('auth.unauthorized.heading')}
           </Text>
 
           <Text style={[typography.bodyMedium, styles.message, { color: colors.textSecondary }]}>
-            Your account role is not recognized or has not been authorized for any mobile portal.
+            {t('auth.unauthorized.message')}
           </Text>
 
           <View style={[styles.detailsBox, { backgroundColor: colors.surfaceElevated, borderColor: colors.border }]}>
             <Text style={[typography.caption, { color: colors.textMuted }]}>
-              Account: {user.email}
+              {t('auth.unauthorized.account', { email: user.email })}
             </Text>
             <Text style={[typography.caption, { color: colors.badgeDangerText, marginTop: 4, fontWeight: '700' }]}>
-              Detected Role: {String(user.role)}
+              {t('auth.unauthorized.detectedRole', { role: String(user.role) })}
             </Text>
           </View>
 
           <Text style={[typography.caption, styles.disclaimer, { color: colors.textMuted }]}>
-            Please contact your organization administrator or academy master to verify permissions.
+            {t('auth.unauthorized.disclaimer')}
           </Text>
 
           {onLogout ? (
             <View style={{ marginTop: spacing.xl }}>
               <Button
-                label="Sign Out"
+                label={t('auth.common.signOut')}
                 onPress={onLogout}
                 variant="danger"
                 size="md"
                 fullWidth
                 leftIcon={<LogOut size={iconSize.md} color={colors.buttonDangerText} />}
                 testID="btn-unauthorized-logout"
-                accessibilityLabel="Sign Out of unauthorized session"
+                accessibilityLabel={t('auth.unauthorized.signOutA11y')}
               />
             </View>
           ) : null}

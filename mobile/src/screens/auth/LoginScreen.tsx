@@ -16,6 +16,7 @@ import { ErrorState } from '../../components/Feedback';
 import { DevEnvironmentPanel } from '../../components/DevEnvironmentPanel';
 import { authService } from '../../services/authService';
 import { AuthUser } from '../../types/auth';
+import { useI18n } from '../../i18n';
 
 export interface LoginScreenProps {
   onLoginSuccess: (user: AuthUser) => void;
@@ -29,6 +30,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   onNavigateVerifyCert,
 }) => {
   const { colors, typography, iconSize, spacing } = useTheme();
+  const { t } = useI18n();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -45,15 +47,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
     const trimmedEmail = email.trim();
     if (!trimmedEmail) {
-      setEmailError('Please enter your email address');
+      setEmailError(t('auth.login.emailRequired'));
       isValid = false;
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setEmailError('Please enter a valid email address');
+      setEmailError(t('auth.login.emailInvalid'));
       isValid = false;
     }
 
     if (!password) {
-      setPasswordError('Please enter your password');
+      setPasswordError(t('auth.login.passwordRequired'));
       isValid = false;
     }
 
@@ -78,7 +80,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         onLoginSuccess(response.user);
       }
     } catch (err: any) {
-      setGeneralError(err?.message || 'Login failed. Please check your credentials.');
+      setGeneralError(err?.message || t('auth.login.failed'));
     } finally {
       setIsLoading(false);
     }
@@ -102,10 +104,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               <Shield size={36} color={colors.buttonPrimaryBg} />
             </View>
             <Text style={[typography.pageTitle, styles.title, { color: colors.textPrimary }]}>
-              Sign In to BeltFlow
+              {t('auth.login.title')}
             </Text>
             <Text style={[typography.bodyMedium, styles.subtitle, { color: colors.textSecondary }]}>
-              Access your academy syllabus, attendance, and grading
+              {t('auth.login.subtitle')}
             </Text>
           </View>
 
@@ -113,7 +115,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           {generalError ? (
             <View style={{ marginBottom: spacing.lg }}>
               <ErrorState
-                title="Sign In Error"
+                title={t('auth.login.errorTitle')}
                 message={generalError}
                 testID="login-error-state"
               />
@@ -134,8 +136,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           {/* Form Fields */}
           <View style={styles.form}>
             <Input
-              label="Email Address"
-              placeholder="e.g. master@beltflow.com"
+              label={t('auth.login.emailLabel')}
+              placeholder={t('auth.login.emailPlaceholder')}
               value={email}
               onChangeText={text => {
                 setEmail(text);
@@ -151,8 +153,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             />
 
             <PasswordInput
-              label="Password"
-              placeholder="Enter your password"
+              label={t('auth.login.passwordLabel')}
+              placeholder={t('auth.login.passwordPlaceholder')}
               value={password}
               onChangeText={text => {
                 setPassword(text);
@@ -170,11 +172,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 disabled={isLoading}
                 style={styles.forgotPasswordLink}
                 accessibilityRole="button"
-                accessibilityLabel="Forgot Password"
+                accessibilityLabel={t('auth.login.forgotPasswordA11y')}
                 testID="link-forgot-password"
               >
                 <Text style={[typography.caption, { color: colors.buttonPrimaryBg, fontWeight: '600' }]}>
-                  Forgot Password?
+                  {t('auth.login.forgotPassword')}
                 </Text>
               </TouchableOpacity>
             ) : null}
@@ -182,7 +184,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             {/* Submit Button */}
             <View style={[styles.submitContainer, { marginTop: spacing.md }]}>
               <Button
-                label="Sign In"
+                label={t('auth.login.submit')}
                 onPress={handleSubmit}
                 loading={isLoading}
                 disabled={isLoading}
@@ -190,7 +192,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 size="lg"
                 fullWidth
                 testID="btn-login-submit"
-                accessibilityLabel="Sign In Button"
+                accessibilityLabel={t('auth.login.submitA11y')}
               />
             </View>
           </View>
@@ -203,13 +205,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 disabled={isLoading}
                 style={styles.verifyCertLink}
                 accessibilityRole="button"
-                accessibilityLabel="Verify Official Certificate"
+                accessibilityLabel={t('auth.common.verifyOfficialCertificate')}
                 testID="link-verify-cert"
               >
                 <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                  Have a grading certificate code?{' '}
+                  {t('auth.login.haveCode')}{' '}
                   <Text style={{ color: colors.buttonPrimaryBg, fontWeight: '700' }}>
-                    Verify Here
+                    {t('auth.login.verifyHere')}
                   </Text>
                 </Text>
               </TouchableOpacity>

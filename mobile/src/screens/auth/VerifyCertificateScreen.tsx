@@ -9,6 +9,7 @@ import { Card } from '../../components/Card';
 import { StatusBadge, BeltBadge } from '../../components/Badges';
 import { ErrorState } from '../../components/Feedback';
 import { certificateService, VerifiedCertificate } from '../../services/certificateService';
+import { useI18n } from '../../i18n';
 
 export interface VerifyCertificateScreenProps {
   onBack: () => void;
@@ -20,6 +21,7 @@ export const VerifyCertificateScreen: React.FC<VerifyCertificateScreenProps> = (
   initialCode = '',
 }) => {
   const { colors, typography, iconSize, spacing } = useTheme();
+  const { t } = useI18n();
 
   const [code, setCode] = useState(initialCode);
   const [codeError, setCodeError] = useState<string | undefined>();
@@ -30,7 +32,7 @@ export const VerifyCertificateScreen: React.FC<VerifyCertificateScreenProps> = (
   const handleVerify = async () => {
     const trimmed = code.trim();
     if (!trimmed) {
-      setCodeError('Please enter a certificate verification code');
+      setCodeError(t('auth.verify.codeRequired'));
       return;
     }
 
@@ -44,11 +46,11 @@ export const VerifyCertificateScreen: React.FC<VerifyCertificateScreenProps> = (
       if (result && result.certificate) {
         setVerifiedCert(result.certificate);
       } else {
-        setErrorMessage('No certificate record found for the provided code.');
+        setErrorMessage(t('auth.verify.notFound'));
       }
     } catch (err: any) {
       setErrorMessage(
-        err?.message || 'Verification failed. Please check the code and try again.'
+        err?.message || t('auth.verify.failed')
       );
     } finally {
       setIsLoading(false);
@@ -58,8 +60,8 @@ export const VerifyCertificateScreen: React.FC<VerifyCertificateScreenProps> = (
   return (
     <ScreenContainer scrollable testID="verify-certificate-screen">
       <ScreenHeader
-        title="Verify Certificate"
-        subtitle="Official martial arts credentials"
+        title={t('auth.verify.title')}
+        subtitle={t('auth.verify.subtitle')}
         onBack={onBack}
         testID="verify-cert-header"
       />
@@ -68,15 +70,15 @@ export const VerifyCertificateScreen: React.FC<VerifyCertificateScreenProps> = (
         {/* Verification Input Form */}
         <Card variant="standard" style={styles.inputCard}>
           <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: 8 }]}>
-            Certificate Lookup
+            {t('auth.verify.lookupTitle')}
           </Text>
           <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginBottom: 16 }]}>
-            Enter the unique verification code printed on the official Persatuan grading certificate.
+            {t('auth.verify.lookupBody')}
           </Text>
 
           <Input
-            label="Certificate Code"
-            placeholder="e.g. CERT-2024-001"
+            label={t('auth.verify.codeLabel')}
+            placeholder={t('auth.verify.codePlaceholder')}
             value={code}
             onChangeText={text => {
               setCode(text);
@@ -91,7 +93,7 @@ export const VerifyCertificateScreen: React.FC<VerifyCertificateScreenProps> = (
 
           <View style={{ marginTop: spacing.sm }}>
             <Button
-              label="Verify Certificate"
+              label={t('auth.verify.submit')}
               onPress={handleVerify}
               loading={isLoading}
               disabled={isLoading}
@@ -107,7 +109,7 @@ export const VerifyCertificateScreen: React.FC<VerifyCertificateScreenProps> = (
         {errorMessage ? (
           <View style={{ marginTop: spacing.lg }}>
             <ErrorState
-              title="Verification Notice"
+              title={t('auth.verify.errorTitle')}
               message={errorMessage}
               testID="verify-error-state"
             />
@@ -142,14 +144,14 @@ export const VerifyCertificateScreen: React.FC<VerifyCertificateScreenProps> = (
                       }
                     ]}
                   >
-                    {verifiedCert.status === 'REVOKED' ? 'CERTIFICATE REVOKED' : 'OFFICIALLY VERIFIED'}
+                    {verifiedCert.status === 'REVOKED' ? t('auth.verify.revokedBanner') : t('auth.verify.verifiedBanner')}
                   </Text>
                 </View>
 
                 {verifiedCert.status === 'REVOKED' ? (
-                  <StatusBadge status="CANCELLED" label="Revoked" variant="danger" />
+                  <StatusBadge status="CANCELLED" label={t('auth.verify.revoked')} variant="danger" />
                 ) : (
-                  <StatusBadge status="ACTIVE" label="Valid" variant="success" />
+                  <StatusBadge status="ACTIVE" label={t('auth.verify.valid')} variant="success" />
                 )}
               </View>
 
@@ -165,7 +167,7 @@ export const VerifyCertificateScreen: React.FC<VerifyCertificateScreenProps> = (
                   }}
                 >
                   <Text style={[typography.caption, { color: colors.badgeDangerText, fontWeight: '700' }]}>
-                    REVOCATION NOTICE:
+                    {t('auth.verify.revocationNotice')}
                   </Text>
                   <Text style={[typography.caption, { color: colors.textPrimary, marginTop: 2 }]}>
                     {verifiedCert.revocationReason}
@@ -178,14 +180,14 @@ export const VerifyCertificateScreen: React.FC<VerifyCertificateScreenProps> = (
               {/* Certificate Details */}
               <View style={styles.certBody}>
                 <Text style={[typography.caption, { color: colors.textMuted }]}>
-                  STUDENT NAME
+                  {t('auth.verify.studentName')}
                 </Text>
                 <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: 12 }]}>
                   {verifiedCert.studentName}
                 </Text>
 
                 <Text style={[typography.caption, { color: colors.textMuted }]}>
-                  AWARDED RANK / TITLE
+                  {t('auth.verify.rank')}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 6 }}>
                   <BeltBadge beltName={verifiedCert.rankOrTitle} showDanBadge size="md" />
@@ -197,14 +199,14 @@ export const VerifyCertificateScreen: React.FC<VerifyCertificateScreenProps> = (
                 <View style={{ height: 12 }} />
 
                 <Text style={[typography.caption, { color: colors.textMuted }]}>
-                  ACADEMY / PERSATUAN
+                  {t('auth.verify.academy')}
                 </Text>
                 <Text style={[typography.bodyMedium, { color: colors.textPrimary, marginBottom: 12 }]}>
                   {verifiedCert.organizationName}
                 </Text>
 
                 <Text style={[typography.caption, { color: colors.textMuted }]}>
-                  EXAMINER / MASTER
+                  {t('auth.verify.examiner')}
                 </Text>
                 <Text style={[typography.bodyMedium, { color: colors.textPrimary, marginBottom: 12 }]}>
                   {verifiedCert.masterName}
@@ -212,14 +214,14 @@ export const VerifyCertificateScreen: React.FC<VerifyCertificateScreenProps> = (
 
                 <View style={styles.metaRow}>
                   <View style={{ flex: 1 }}>
-                    <Text style={[typography.caption, { color: colors.textMuted }]}>ISSUE DATE</Text>
+                    <Text style={[typography.caption, { color: colors.textMuted }]}>{t('auth.verify.issueDate')}</Text>
                     <Text style={[typography.bodyMedium, { color: colors.textPrimary }]}>
                       {verifiedCert.issueDate}
                     </Text>
                   </View>
 
                   <View style={{ flex: 1 }}>
-                    <Text style={[typography.caption, { color: colors.textMuted }]}>CODE</Text>
+                    <Text style={[typography.caption, { color: colors.textMuted }]}>{t('auth.verify.code')}</Text>
                     <Text style={[typography.bodyMedium, { color: colors.buttonPrimaryBg, fontWeight: '700' }]}>
                       {verifiedCert.code}
                     </Text>

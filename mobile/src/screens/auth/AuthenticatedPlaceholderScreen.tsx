@@ -8,6 +8,7 @@ import { Button } from '../../components/Button';
 import { StatusBadge } from '../../components/Badges';
 import { authService } from '../../services/authService';
 import { AuthUser } from '../../types/auth';
+import { useI18n } from '../../i18n';
 
 export interface AuthenticatedPlaceholderScreenProps {
   user: AuthUser;
@@ -19,6 +20,7 @@ export const AuthenticatedPlaceholderScreen: React.FC<AuthenticatedPlaceholderSc
   onLogout,
 }) => {
   const { colors, typography, iconSize, spacing } = useTheme();
+  const { t } = useI18n();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
@@ -49,8 +51,8 @@ export const AuthenticatedPlaceholderScreen: React.FC<AuthenticatedPlaceholderSc
   return (
     <ScreenContainer scrollable testID="auth-placeholder-screen">
       <ScreenHeader
-        title="BeltFlow Portal"
-        subtitle="Active verified session"
+        title={t('auth.placeholder.title')}
+        subtitle={t('auth.placeholder.subtitle')}
         testID="auth-placeholder-header"
       />
 
@@ -83,7 +85,7 @@ export const AuthenticatedPlaceholderScreen: React.FC<AuthenticatedPlaceholderSc
           <View style={styles.detailRow}>
             <View style={styles.labelCol}>
               <Text style={[typography.caption, { color: colors.textMuted }]}>
-                VERIFIED ROLE
+                {t('auth.placeholder.verifiedRole')}
               </Text>
               <View style={{ marginTop: 4 }}>
                 <StatusBadge
@@ -96,10 +98,10 @@ export const AuthenticatedPlaceholderScreen: React.FC<AuthenticatedPlaceholderSc
 
             <View style={styles.labelCol}>
               <Text style={[typography.caption, { color: colors.textMuted }]}>
-                TENANT ID
+                {t('auth.placeholder.tenantId')}
               </Text>
               <Text style={[typography.bodyMedium, { color: colors.textPrimary, marginTop: 4 }]}>
-                {user.organizationId || 'System Global'}
+                {user.organizationId || t('auth.placeholder.systemGlobal')}
               </Text>
             </View>
           </View>
@@ -109,7 +111,7 @@ export const AuthenticatedPlaceholderScreen: React.FC<AuthenticatedPlaceholderSc
             <View style={[styles.tenantNotice, { backgroundColor: colors.surfaceElevated }]}>
               <Building size={iconSize.sm} color={colors.buttonPrimaryBg} style={{ marginRight: 8 }} />
               <Text style={[typography.caption, { color: colors.textSecondary, flex: 1 }]}>
-                Tenant isolation enforced: All student, mat, and grading operations bound to your Persatuan.
+                {t('auth.placeholder.tenantIsolation')}
               </Text>
             </View>
           ) : null}
@@ -120,20 +122,18 @@ export const AuthenticatedPlaceholderScreen: React.FC<AuthenticatedPlaceholderSc
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
             <Shield size={iconSize.md} color={colors.buttonPrimaryBg} style={{ marginRight: 8 }} />
             <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
-              Phase 1 Task 1.5 Milestone
+              {t('auth.placeholder.milestoneTitle')}
             </Text>
           </View>
           <Text style={[typography.bodyMedium, { color: colors.textSecondary, lineHeight: 20 }]}>
-            Authentication and secure storage are fully active. Complete role-based operational
-            portals for Super Admin, Persatuan Admin, Masters, Parents, and Students will be
-            orchestrated in Task 1.6.
+            {t('auth.placeholder.milestoneBody')}
           </Text>
         </Card>
 
         {/* Logout CTA */}
         <View style={{ marginTop: spacing.xxl }}>
           <Button
-            label="Sign Out"
+            label={t('auth.common.signOut')}
             onPress={handleLogout}
             loading={isLoggingOut}
             disabled={isLoggingOut}
@@ -142,7 +142,7 @@ export const AuthenticatedPlaceholderScreen: React.FC<AuthenticatedPlaceholderSc
             fullWidth
             leftIcon={<LogOut size={iconSize.md} color={colors.badgeDangerText} />}
             testID="btn-auth-logout"
-            accessibilityLabel="Sign Out Button"
+            accessibilityLabel={t('auth.placeholder.signOutA11y')}
           />
         </View>
       </View>

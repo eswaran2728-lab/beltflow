@@ -4,6 +4,7 @@ import { Shield } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import { authService } from '../../services/authService';
 import { AuthUser } from '../../types/auth';
+import { useI18n } from '../../i18n';
 
 export interface SplashScreenProps {
   onSessionRestored?: (user: AuthUser) => void;
@@ -21,6 +22,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   autoRestore = true,
 }) => {
   const { colors, typography, spacing } = useTheme();
+  const { t } = useI18n();
 
   useEffect(() => {
     if (!autoRestore) return;
@@ -55,7 +57,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
       style={[styles.container, { backgroundColor: colors.background }]}
       testID="splash-screen"
       accessibilityRole="text"
-      accessibilityLabel="BeltFlow Splash Screen"
+      accessibilityLabel={t('auth.splash.a11y')}
     >
       <View style={styles.brandContainer}>
         <View
@@ -72,14 +74,14 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
         </Text>
 
         <Text style={[typography.bodyMedium, styles.brandSubtitle, { color: colors.textSecondary }]}>
-          Martial Arts Academy Management
+          {t('auth.common.tagline')}
         </Text>
       </View>
 
       <View style={[styles.loaderContainer, { marginBottom: spacing.xxl }]}>
         <ActivityIndicator size="large" color={colors.buttonPrimaryBg} />
         <Text style={[typography.caption, { color: colors.textMuted, marginTop: 12 }]}>
-          Initializing session...
+          {t('auth.splash.loading')}
         </Text>
       </View>
     </View>
