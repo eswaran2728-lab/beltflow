@@ -2,6 +2,14 @@
  * Bahasa Melayu dictionary (H28). Needs native-speaker review before release.
  */
 import type { Dictionary } from './en';
+import { authMs } from './modules/auth';
+import { superAdminHomeMs } from './modules/superAdminHome';
+import { adminHomeMs } from './modules/adminHome';
+import { masterHomeMs } from './modules/masterHome';
+import { masterOpsMs } from './modules/masterOps';
+import { parentHomeMs } from './modules/parentHome';
+import { studentHomeMs } from './modules/studentHome';
+
 
 export const ms: Dictionary = {
   'app.name': 'BeltFlow',
@@ -94,4 +102,11 @@ export const ms: Dictionary = {
   'pending.ENROLLMENT_APPLICATION.WAITLISTED.action': 'Tiada tindakan diperlukan. Anda boleh menarik balik jika tidak lagi memerlukan tempat.',
   'pending.ENROLLMENT_APPLICATION.REJECTED.next': 'Permohonan ini tidak diterima.',
   'pending.ENROLLMENT_APPLICATION.REJECTED.action': 'Baca sebabnya. Anda boleh memohon kelas lain.',
+  ...authMs,
+  ...superAdminHomeMs,
+  ...adminHomeMs,
+  ...masterHomeMs,
+  ...masterOpsMs,
+  ...parentHomeMs,
+  ...studentHomeMs,
 };

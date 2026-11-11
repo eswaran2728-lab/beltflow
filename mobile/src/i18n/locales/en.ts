@@ -2,6 +2,14 @@
  * English source dictionary (H28). Every key here must exist in ms.ts and
  * ta.ts with the same {placeholders}; localizationUsabilityH28 enforces it.
  */
+import { authEn } from './modules/auth';
+import { superAdminHomeEn } from './modules/superAdminHome';
+import { adminHomeEn } from './modules/adminHome';
+import { masterHomeEn } from './modules/masterHome';
+import { masterOpsEn } from './modules/masterOps';
+import { parentHomeEn } from './modules/parentHome';
+import { studentHomeEn } from './modules/studentHome';
+
 export const en = {
   'app.name': 'BeltFlow',
 
@@ -93,6 +101,13 @@ export const en = {
   'pending.ENROLLMENT_APPLICATION.WAITLISTED.action': 'No action is needed. You can withdraw if you no longer want a seat.',
   'pending.ENROLLMENT_APPLICATION.REJECTED.next': 'This application was not accepted.',
   'pending.ENROLLMENT_APPLICATION.REJECTED.action': 'Read the reason. You can apply to another class.',
+  ...authEn,
+  ...superAdminHomeEn,
+  ...adminHomeEn,
+  ...masterHomeEn,
+  ...masterOpsEn,
+  ...parentHomeEn,
+  ...studentHomeEn,
 };
 
 export type TranslationKey = keyof typeof en;

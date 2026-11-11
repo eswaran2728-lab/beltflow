@@ -3,6 +3,14 @@
  * சங்கம் (association). Needs native-speaker review before release.
  */
 import type { Dictionary } from './en';
+import { authTa } from './modules/auth';
+import { superAdminHomeTa } from './modules/superAdminHome';
+import { adminHomeTa } from './modules/adminHome';
+import { masterHomeTa } from './modules/masterHome';
+import { masterOpsTa } from './modules/masterOps';
+import { parentHomeTa } from './modules/parentHome';
+import { studentHomeTa } from './modules/studentHome';
+
 
 export const ta: Dictionary = {
   'app.name': 'BeltFlow',
@@ -95,4 +103,11 @@ export const ta: Dictionary = {
   'pending.ENROLLMENT_APPLICATION.WAITLISTED.action': 'எந்த நடவடிக்கையும் தேவையில்லை. இனி இடம் தேவையில்லை என்றால் திரும்பப் பெறலாம்.',
   'pending.ENROLLMENT_APPLICATION.REJECTED.next': 'இந்த விண்ணப்பம் ஏற்றுக்கொள்ளப்படவில்லை.',
   'pending.ENROLLMENT_APPLICATION.REJECTED.action': 'காரணத்தைப் படிக்கவும். வேறு வகுப்பில் விண்ணப்பிக்கலாம்.',
+  ...authTa,
+  ...superAdminHomeTa,
+  ...adminHomeTa,
+  ...masterHomeTa,
+  ...masterOpsTa,
+  ...parentHomeTa,
+  ...studentHomeTa,
 };
