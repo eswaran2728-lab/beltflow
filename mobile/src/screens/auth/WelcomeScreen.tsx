@@ -34,7 +34,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             <Shield size={44} color={colors.buttonPrimaryBg} />
           </View>
           <Text style={[typography.display, styles.title, { color: colors.textPrimary }]}>
-            BeltFlow
+            {t('app.name')}
           </Text>
           <Text style={[typography.bodyMedium, styles.subtitle, { color: colors.textSecondary }]}>
             {t('auth.common.tagline')}

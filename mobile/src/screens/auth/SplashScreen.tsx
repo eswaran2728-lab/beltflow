@@ -70,7 +70,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
         </View>
 
         <Text style={[typography.display, styles.brandTitle, { color: colors.textPrimary }]}>
-          BeltFlow
+          {t('app.name')}
         </Text>
 
         <Text style={[typography.bodyMedium, styles.brandSubtitle, { color: colors.textSecondary }]}>

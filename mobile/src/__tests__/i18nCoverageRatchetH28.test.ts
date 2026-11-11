@@ -12,8 +12,9 @@ import fs from 'fs';
 import path from 'path';
 
 const SRC = path.join(__dirname, '..');
-// Measured 2026-11-11 after the first H28 pass. Only ever decrease this.
-const HARDCODED_BASELINE = 978;
+// Measured 2026-11-11 after the core role journeys pass (was 978 after the
+// first H28 pass). Only ever decrease this.
+const HARDCODED_BASELINE = 644;
 
 const FULLY_LOCALISED = [
   'components/PendingNextStep.tsx',
@@ -25,6 +26,25 @@ const FULLY_LOCALISED = [
   'navigation/roleNavigators/MasterNavigator.tsx',
   'navigation/roleNavigators/ParentNavigator.tsx',
   'navigation/roleNavigators/StudentNavigator.tsx',
+  'screens/auth/WelcomeScreen.tsx',
+  'screens/auth/LoginScreen.tsx',
+  'screens/auth/ForgotPasswordScreen.tsx',
+  'screens/auth/SplashScreen.tsx',
+  'screens/auth/VerifyCertificateScreen.tsx',
+  'screens/auth/AuthenticatedPlaceholderScreen.tsx',
+  'screens/roles/UnauthorizedRoleScreen.tsx',
+  'screens/roles/RolePlaceholderBase.tsx',
+  'screens/roles/superAdmin/index.tsx',
+  'screens/roles/adminPersatuan/index.tsx',
+  'screens/roles/adminPersatuan/AdminFinanceScreen.tsx',
+  'screens/roles/master/index.tsx',
+  'screens/roles/master/ClassesScreen.tsx',
+  'screens/roles/master/AttendanceScreen.tsx',
+  'screens/roles/master/MasterGradingScreen.tsx',
+  'screens/roles/master/QRScannerModal.tsx',
+  'screens/roles/parent/index.tsx',
+  'screens/roles/parent/ParentFeesPaymentScreen.tsx',
+  'screens/roles/student/index.tsx',
 ];
 
 function hardcodedStrings(source: string): string[] {
