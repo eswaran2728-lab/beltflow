@@ -36,6 +36,7 @@ import { dashboardService, StudentDashboardData, StudentCertificateSummary } fro
 import { StudentDigitalPass } from '../../../components/StudentDigitalPass';
 import { getNextBeltLevel } from '../../../theme/belts';
 import { LearningLibraryRewardsScreen } from './LearningLibraryRewardsScreen';
+import { useI18n } from '../../../i18n';
 
 export interface RoleScreenProps {
   user: AuthUser;
@@ -51,6 +52,7 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
   navigation,
 }) => {
   const { colors, typography, spacing, iconSize, belts, borderRadius } = useTheme();
+  const { t } = useI18n();
   const [selectedQrCert, setSelectedQrCert] = useState<StudentCertificateSummary | null>(null);
 
   const fetcher = useCallback(() => {
@@ -64,13 +66,13 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
 
   const headerRightAction = onLogout ? (
     <Button
-      label="Sign Out"
+      label={t('studentHome.signOut')}
       onPress={onLogout}
       variant="outline"
       size="sm"
       leftIcon={<LogOut size={iconSize.sm} color={colors.textSecondary} />}
       testID="btn-role-logout"
-      accessibilityLabel="Sign Out of BeltFlow"
+      accessibilityLabel={t('studentHome.signOutA11y')}
     />
   ) : undefined;
 
@@ -92,7 +94,7 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
     if (studentSkills && studentSkills.length > 0) {
       return studentSkills.map((s, idx) => ({
         id: s.id || `skill_${idx}`,
-        name: s.name || `Technique Drill #${idx + 1}`,
+        name: s.name || t('studentHome.techniqueDrill', { number: idx + 1 }),
         isCompleted: s.level === 'Mastered' || s.status === 'COMPLETED' || s.level === 'PASSED',
       }));
     }
@@ -104,13 +106,13 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
       { id: 'tech_4', name: 'Padam 1 Salutation Sequence', isCompleted: true },
       { id: 'tech_5', name: 'Sparring Fundamentals & Distance Control', isCompleted: false },
     ];
-  }, [studentSkills]);
+  }, [studentSkills, t]);
 
   const handleDownloadCertificate = (cert: StudentCertificateSummary) => {
     Alert.alert(
-      'Download Certificate',
-      `Certificate #${cert.certificateNumber} (${cert.beltRank}) is ready for download in official PDF format.`,
-      [{ text: 'OK' }]
+      t('studentHome.downloadTitle'),
+      t('studentHome.downloadMessage', { number: cert.certificateNumber, belt: cert.beltRank }),
+      [{ text: t('studentHome.ok') }]
     );
   };
 
@@ -130,7 +132,7 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
           </Text>
           {user.organizationId ? (
             <Text style={[typography.caption, { color: colors.buttonPrimaryBg, marginTop: 2, fontWeight: '600' }]}>
-              Persatuan: {user.organizationId}
+              {t('studentHome.persatuanLabel', { organization: user.organizationId })}
             </Text>
           ) : null}
         </View>
@@ -152,17 +154,17 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
           roleBadgeText="STUDENT"
           hasUnreadNotifications={false}
         />
-        <ScreenHeader title={`Welcome, ${user.fullName}`} subtitle="Student Home" rightAction={headerRightAction} />
+        <ScreenHeader title={t('studentHome.welcome', { name: user.fullName })} subtitle={t('studentHome.subtitle')} rightAction={headerRightAction} />
         {isOffline ? (
           <View style={{ marginBottom: spacing.md }}>
             <OfflineBanner
-              message="Offline Mode: Locally Cached Identity — Sensitive server operations are locked until online."
+              message={t('studentHome.offlineBanner')}
               testID="offline-security-banner"
             />
           </View>
         ) : null}
         {renderIdentityCard()}
-        <LoadingState message="Loading training journey..." />
+        <LoadingState message={t('studentHome.loading')} />
       </ScreenContainer>
     );
   }
@@ -175,11 +177,11 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
           roleBadgeText="STUDENT"
           hasUnreadNotifications={false}
         />
-        <ScreenHeader title={`Welcome, ${user.fullName}`} subtitle="Student Home" rightAction={headerRightAction} />
+        <ScreenHeader title={t('studentHome.welcome', { name: user.fullName })} subtitle={t('studentHome.subtitle')} rightAction={headerRightAction} />
         {isOffline ? (
           <View style={{ marginBottom: spacing.md }}>
             <OfflineBanner
-              message="Offline Mode: Locally Cached Identity — Sensitive server operations are locked until online."
+              message={t('studentHome.offlineBanner')}
               testID="offline-security-banner"
             />
           </View>
@@ -214,21 +216,21 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
         hasUnreadNotifications={Boolean(data?.notices && data.notices.length > 0)}
         onNotificationPress={() => {
           if (data?.notices && data.notices.length > 0) {
-            Alert.alert('Academy Notices', `${data.notices.length} active notices from your Master.`);
+            Alert.alert(t('studentHome.noticesAlertTitle'), t('studentHome.noticesAlertMessage', { count: data.notices.length }));
           }
         }}
       />
 
       <ScreenHeader
-        title={`Welcome, ${user.fullName}`}
-        subtitle="Student Home"
+        title={t('studentHome.welcome', { name: user.fullName })}
+        subtitle={t('studentHome.subtitle')}
         rightAction={headerRightAction}
       />
 
       {isOffline ? (
         <View style={{ marginBottom: spacing.md }}>
           <OfflineBanner
-            message="Offline Mode: Locally Cached Identity — Sensitive server operations are locked until online."
+            message={t('studentHome.offlineBanner')}
             testID="offline-security-banner"
           />
         </View>
@@ -239,19 +241,19 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
       {/* 2. Google Stitch KPI Stat Cards */}
       <View style={[styles.stitchStatRow, { marginBottom: spacing.md }]}>
         <StitchStatCard
-          label="ATTENDANCE"
+          label={t('studentHome.statAttendance')}
           value={`${data?.attendancePresent ?? 0} / ${data?.attendanceTotal ?? 0}`}
-          subtext="Sessions Attended"
-          trendText="Active Streak"
+          subtext={t('studentHome.statSessionsAttended')}
+          trendText={t('studentHome.statActiveStreak')}
           accentColor={StitchTokens.colors.bfGreen}
           style={{ flex: 1 }}
           testID="stat-student-attendance"
         />
         <StitchStatCard
-          label="SYLLABUS PROGRESS"
+          label={t('studentHome.statSyllabus')}
           value={`${skillsCompleted} / ${skillsTotal}`}
-          subtext="Techniques Mastered"
-          trendText={`${readinessPercent}% Ready`}
+          subtext={t('studentHome.statTechniquesMastered')}
+          trendText={t('studentHome.statReady', { percent: readinessPercent })}
           accentColor={StitchTokens.colors.colorAccent}
           style={{ flex: 1 }}
           testID="stat-student-skills"
@@ -263,7 +265,7 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
         <View style={styles.beltHeaderRow}>
           <View style={{ flex: 1, paddingRight: 8 }}>
             <Text style={[typography.caption, { color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1 }]}>
-              Affiliated Persatuan
+              {t('studentHome.affiliatedPersatuan')}
             </Text>
             <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginTop: 2 }]} numberOfLines={2}>
               {data?.persatuanName || 'Persatuan Silambam'}
@@ -282,14 +284,14 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
         <View style={styles.rankDetailsRow}>
           <View style={{ flex: 1 }}>
             <Text style={[typography.caption, { color: colors.textSecondary }]}>
-              Current Rank
+              {t('studentHome.currentRank')}
             </Text>
             <View style={{ marginTop: 6 }}>
               <BeltBadge beltName={currentBeltRank} customBelts={belts} size="md" testID="student-current-belt-badge" />
             </View>
           </View>
           <View style={styles.readinessBadge}>
-            <Text style={styles.readinessBadgeText}>{readinessPercent}% READINESS</Text>
+            <Text style={styles.readinessBadgeText}>{t('studentHome.readiness', { percent: readinessPercent })}</Text>
           </View>
         </View>
 
@@ -313,19 +315,19 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
           <Sparkles size={18} color={colors.buttonPrimaryBg} />
           {nextTargetBelt ? (
             <Text style={[typography.bodyMedium, { color: colors.textPrimary, flex: 1, fontWeight: '600' }]}>
-              Next Target: {nextTargetBelt.name}
+              {t('studentHome.nextTarget', { belt: nextTargetBelt.name })}
             </Text>
           ) : !hasConfiguredBelts ? (
             <Text style={[typography.bodyMedium, { color: colors.textSecondary, flex: 1 }]} testID="belt-progression-unavailable">
-              Belt progression unavailable — Organization curriculum not configured
+              {t('studentHome.beltUnavailableNoCurriculum')}
             </Text>
           ) : isHighestRank ? (
             <Text style={[typography.bodyMedium, { color: colors.textSecondary, flex: 1 }]} testID="belt-highest-rank-text">
-              Highest Belt Rank Achieved
+              {t('studentHome.highestRank')}
             </Text>
           ) : (
             <Text style={[typography.bodyMedium, { color: colors.textSecondary, flex: 1 }]} testID="belt-progression-unavailable">
-              Belt progression unavailable for current rank: {currentBeltRank}
+              {t('studentHome.beltUnavailableForRank', { rank: currentBeltRank })}
             </Text>
           )}
         </View>
@@ -334,7 +336,7 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
       {/* 4. Google Stitch Technique Checklist Card */}
       <View style={{ marginBottom: spacing.md }}>
         <TechniqueChecklistCard
-          syllabusTitle={`${currentBeltRank} Syllabus`}
+          syllabusTitle={t('studentHome.syllabusTitle', { belt: currentBeltRank })}
           techniques={techniqueList}
         />
       </View>
@@ -342,14 +344,14 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
       {/* 5. Google Stitch Verified Digital Certificates */}
       <View style={{ marginBottom: spacing.md }}>
         <Text style={[styles.sectionTitle, { color: StitchTokens.colors.brandNavy, marginBottom: 8 }]}>
-          Verified Digital Certificates
+          {t('studentHome.verifiedCertificates')}
         </Text>
         {data?.certificates && data.certificates.length > 0 ? (
           <View style={{ gap: spacing.sm }}>
             {data.certificates.map(cert => (
               <DigitalCertificateCard
                 key={cert.id}
-                title={`Promotion to ${cert.beltRank}`}
+                title={t('studentHome.promotionTo', { belt: cert.beltRank })}
                 issuedDate={new Date(cert.issuedDate).toLocaleDateString()}
                 certificateNumber={cert.certificateNumber}
                 isVerified={cert.status === 'ACTIVE' || cert.status === 'VERIFIED'}
@@ -360,8 +362,8 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
           </View>
         ) : (
           <DigitalCertificateCard
-            title={`Promotion to ${currentBeltRank}`}
-            issuedDate="Pending Final Examination"
+            title={t('studentHome.promotionTo', { belt: currentBeltRank })}
+            issuedDate={t('studentHome.pendingExam')}
             certificateNumber="BF-PENDING-EVAL"
             isVerified={false}
           />
@@ -372,7 +374,7 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
       <Card variant="elevated" style={[styles.sectionCard, { marginBottom: spacing.md }]}>
         <View style={styles.sectionHeaderRow}>
           <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
-            Upcoming Classes
+            {t('studentHome.upcomingClasses')}
           </Text>
           <Calendar size={20} color={colors.buttonPrimaryBg} />
         </View>
@@ -400,7 +402,7 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
           </View>
         ) : (
           <Text style={[typography.caption, { color: colors.textMuted, marginTop: spacing.sm }]}>
-            No upcoming sessions scheduled.
+            {t('studentHome.noUpcoming')}
           </Text>
         )}
       </Card>
@@ -409,7 +411,7 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
       <Card variant="elevated" style={[styles.sectionCard, { marginBottom: spacing.md }]}>
         <View style={styles.sectionHeaderRow}>
           <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
-            Learning & Skill Achievements
+            {t('studentHome.learningTitle')}
           </Text>
           <BookOpen size={20} color={StitchTokens.colors.colorAccent} />
         </View>
@@ -417,13 +419,13 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
         <View style={styles.governanceNoticeBox}>
           <Info size={16} color="#0284C7" />
           <Text style={styles.governanceNoticeText}>
-            Notice: Self-directed video and quiz completion awards practice badges but does not grant a formal belt promotion. Rank advancement is granted exclusively through Master examination.
+            {t('studentHome.governanceNotice')}
           </Text>
         </View>
 
         <View style={{ marginTop: spacing.sm }}>
           <Button
-            label="Open Learning Library & Badges"
+            label={t('studentHome.openLibrary')}
             onPress={() => navigation?.navigate('Progress')}
             variant="primary"
             size="md"
@@ -439,7 +441,7 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
       <Card variant="elevated" style={[styles.sectionCard, { marginBottom: spacing.md }]}>
         <View style={styles.sectionHeaderRow}>
           <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
-            Digital Student Pass
+            {t('studentHome.digitalPass')}
           </Text>
           <Shield size={20} color={colors.badgeSuccessText} />
         </View>
@@ -463,7 +465,7 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
         <Card variant="elevated" style={[styles.sectionCard, { marginBottom: spacing.md }]}>
           <View style={styles.sectionHeaderRow}>
             <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
-              Academy Notices
+              {t('studentHome.academyNotices')}
             </Text>
             <Bell size={20} color={colors.buttonPrimaryBg} />
           </View>
@@ -493,11 +495,11 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
       {/* 10. Quick Navigation Shortcuts */}
       <Card variant="standard" style={[styles.sectionCard, { marginBottom: spacing.xl }]}>
         <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
-          Student Shortcuts
+          {t('studentHome.shortcuts')}
         </Text>
         <View style={{ gap: spacing.sm }}>
           <Button
-            label="Syllabus Progress & Drills"
+            label={t('studentHome.shortcutProgress')}
             onPress={() => navigation?.navigate('Progress')}
             variant="secondary"
             size="md"
@@ -506,7 +508,7 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
             testID="shortcut-student-progress"
           />
           <Button
-            label="My Attendance Log"
+            label={t('studentHome.shortcutAttendance')}
             onPress={() => navigation?.navigate('Attendance')}
             variant="secondary"
             size="md"
@@ -515,7 +517,7 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
             testID="shortcut-student-attendance"
           />
           <Button
-            label="Official Certificates"
+            label={t('studentHome.shortcutCertificates')}
             onPress={() => navigation?.navigate('Certificates')}
             variant="secondary"
             size="md"
@@ -524,7 +526,7 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
             testID="shortcut-student-certs"
           />
           <Button
-            label="Student Profile"
+            label={t('studentHome.shortcutProfile')}
             onPress={() => navigation?.navigate('Profile')}
             variant="outline"
             size="md"
@@ -546,7 +548,7 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Certificate QR Credential</Text>
+                <Text style={styles.modalTitle}>{t('studentHome.qrTitle')}</Text>
                 <TouchableOpacity onPress={() => setSelectedQrCert(null)}>
                   <X size={20} color="#64748B" />
                 </TouchableOpacity>
@@ -557,10 +559,10 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
               <Text style={styles.qrCertCode}>#{selectedQrCert.certificateNumber}</Text>
               <Text style={styles.qrCertBelt}>{selectedQrCert.beltRank}</Text>
               <Text style={styles.qrCertSubtext}>
-                Official Ed25519 digitally verified certificate credential issued by Persatuan Academy.
+                {t('studentHome.qrSubtext')}
               </Text>
               <Button
-                label="Close"
+                label={t('studentHome.close')}
                 onPress={() => setSelectedQrCert(null)}
                 variant="primary"
                 size="md"
@@ -587,20 +589,21 @@ export const ProgressScreen: React.FC<RoleScreenProps> = props => {
 
 export const StudentAttendanceScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();
+  const { t } = useI18n();
   return (
     <ScreenContainer scrollable testID="student-attendance-screen">
       <StitchAppHeader
-        dojangName="PERSATUAN ATTENDANCE PASS"
+        dojangName={t('studentHome.attendance.header')}
         roleBadgeText="STUDENT"
         hasUnreadNotifications={false}
       />
       <ScreenHeader
-        title="Digital Attendance Pass"
-        subtitle="Official Roll-Call QR Credential"
+        title={t('studentHome.attendance.title')}
+        subtitle={t('studentHome.attendance.subtitle')}
       />
       {props.isOffline && (
         <View style={{ marginBottom: 12 }}>
-          <OfflineBanner message="Operating in offline mode. Your digital pass remains valid for mat roll-call." />
+          <OfflineBanner message={t('studentHome.attendance.offline')} />
         </View>
       )}
       <StudentDigitalPass
@@ -615,15 +618,15 @@ export const StudentAttendanceScreen: React.FC<RoleScreenProps> = props => {
         testID="student-personal-pass"
       />
       <RolePlaceholderBase
-        title="Attendance Log"
-        subtitle="Training Log & Session Attendance"
+        title={t('studentHome.attendance.logTitle')}
+        subtitle={t('studentHome.attendance.logSubtitle')}
         role={UserRole.STUDENT}
         user={props.user}
         onLogout={props.onLogout}
         isOffline={props.isOffline}
         testID="student-attendance-log"
         icon={<CheckSquare size={iconSize.lg} color={colors.buttonPrimaryBg} />}
-        scopeDescription="Attendance Log: View confirmed practice mat attendance, monthly check-in history, and training streaks."
+        scopeDescription={t('studentHome.attendance.logScope')}
       />
     </ScreenContainer>
   );
@@ -631,36 +634,37 @@ export const StudentAttendanceScreen: React.FC<RoleScreenProps> = props => {
 
 export const CertificatesScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();
+  const { t } = useI18n();
 
   return (
     <ScreenContainer scrollable testID="student-certificates-screen">
       <StitchAppHeader
-        dojangName="OFFICIAL CREDENTIALS"
+        dojangName={t('studentHome.certificates.header')}
         roleBadgeText="STUDENT"
         hasUnreadNotifications={false}
       />
       <ScreenHeader
-        title="Certificates"
-        subtitle="Official Grading & Tournament Credentials"
+        title={t('studentHome.certificates.title')}
+        subtitle={t('studentHome.certificates.subtitle')}
       />
       <View style={{ marginBottom: 16 }}>
         <DigitalCertificateCard
-          title="Silambam Rank Credential"
-          issuedDate="Active Persatuan Record"
+          title={t('studentHome.certificates.credentialTitle')}
+          issuedDate={t('studentHome.certificates.credentialIssued')}
           certificateNumber="BF-CREDENTIAL-ACTIVE"
           isVerified={true}
         />
       </View>
       <RolePlaceholderBase
-        title="Certificates Archive"
-        subtitle="Official Grading Credentials"
+        title={t('studentHome.certificates.archiveTitle')}
+        subtitle={t('studentHome.certificates.archiveSubtitle')}
         role={UserRole.STUDENT}
         user={props.user}
         onLogout={props.onLogout}
         isOffline={props.isOffline}
         testID="student-certificates-screen"
         icon={<FileText size={iconSize.lg} color={colors.buttonPrimaryBg} />}
-        scopeDescription="Credentials: Digitally signed Persatuan grading certificates, rank verifications, and official QR verification codes."
+        scopeDescription={t('studentHome.certificates.archiveScope')}
       />
     </ScreenContainer>
   );
@@ -668,18 +672,19 @@ export const CertificatesScreen: React.FC<RoleScreenProps> = props => {
 
 export const StudentProfileScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();
+  const { t } = useI18n();
   return (
     <RolePlaceholderBase
       showLanguageSelector
-      title="Profile"
-      subtitle="Student Martial Artist Profile"
+      title={t('studentHome.profile.title')}
+      subtitle={t('studentHome.profile.subtitle')}
       role={UserRole.STUDENT}
       user={props.user}
       onLogout={props.onLogout}
       isOffline={props.isOffline}
       testID="student-profile-screen"
       icon={<User size={iconSize.lg} color={colors.buttonPrimaryBg} />}
-      scopeDescription="Personal Identity: Student identification number, affiliated Persatuan academy, dojo location, and sign out."
+      scopeDescription={t('studentHome.profile.scope')}
     />
   );
 };
