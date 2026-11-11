@@ -21,6 +21,7 @@ import { StatusBadge } from '../../../components/Badges';
 import { OfflineBanner, LoadingState, ErrorState } from '../../../components/Feedback';
 import { useDashboardData } from '../../../hooks/useDashboardData';
 import { dashboardService, SuperAdminDashboardData } from '../../../services/dashboardService';
+import { useI18n } from '../../../i18n';
 
 export interface RoleScreenProps {
   user: AuthUser;
@@ -36,6 +37,7 @@ export const SuperAdminHomeScreen: React.FC<RoleScreenProps> = ({
   navigation,
 }) => {
   const { colors, typography, spacing, iconSize } = useTheme();
+  const { t } = useI18n();
 
   const fetcher = useCallback(() => {
     return dashboardService.getSuperAdminDashboard();
@@ -48,13 +50,13 @@ export const SuperAdminHomeScreen: React.FC<RoleScreenProps> = ({
 
   const headerRightAction = onLogout ? (
     <Button
-      label="Sign Out"
+      label={t('superAdminHome.signOut')}
       onPress={onLogout}
       variant="outline"
       size="sm"
       leftIcon={<LogOut size={iconSize.sm} color={colors.textSecondary} />}
       testID="btn-role-logout"
-      accessibilityLabel="Sign Out of BeltFlow"
+      accessibilityLabel={t('superAdminHome.signOutA11y')}
     />
   ) : undefined;
 
@@ -71,7 +73,7 @@ export const SuperAdminHomeScreen: React.FC<RoleScreenProps> = ({
         </View>
         <StatusBadge
           status={UserRole.SUPER_ADMIN}
-          label="SUPER ADMIN"
+          label={t('superAdminHome.roleBadge')}
           variant="info"
           testID="badge-role-super_admin"
         />
@@ -82,17 +84,17 @@ export const SuperAdminHomeScreen: React.FC<RoleScreenProps> = ({
   if (loading && !data) {
     return (
       <ScreenContainer scrollable testID="super-admin-home-screen">
-        <ScreenHeader title="BeltFlow Platform" subtitle="Super Admin Home" rightAction={headerRightAction} />
+        <ScreenHeader title={t('superAdminHome.headerTitle')} subtitle={t('superAdminHome.headerSubtitle')} rightAction={headerRightAction} />
         {isOffline ? (
           <View style={{ marginBottom: spacing.md }}>
             <OfflineBanner
-              message="Offline Mode: Locally Cached Identity — Sensitive server operations are locked until online."
+              message={t('superAdminHome.offlineBanner')}
               testID="offline-security-banner"
             />
           </View>
         ) : null}
         {renderIdentityCard()}
-        <LoadingState message="Loading platform overview..." />
+        <LoadingState message={t('superAdminHome.loading')} />
       </ScreenContainer>
     );
   }
@@ -100,11 +102,11 @@ export const SuperAdminHomeScreen: React.FC<RoleScreenProps> = ({
   if (error && !data) {
     return (
       <ScreenContainer scrollable testID="super-admin-home-screen">
-        <ScreenHeader title="BeltFlow Platform" subtitle="Super Admin Home" rightAction={headerRightAction} />
+        <ScreenHeader title={t('superAdminHome.headerTitle')} subtitle={t('superAdminHome.headerSubtitle')} rightAction={headerRightAction} />
         {isOffline ? (
           <View style={{ marginBottom: spacing.md }}>
             <OfflineBanner
-              message="Offline Mode: Locally Cached Identity — Sensitive server operations are locked until online."
+              message={t('superAdminHome.offlineBanner')}
               testID="offline-security-banner"
             />
           </View>
@@ -129,15 +131,15 @@ export const SuperAdminHomeScreen: React.FC<RoleScreenProps> = ({
       }
     >
       <ScreenHeader
-        title="BeltFlow Platform"
-        subtitle="Super Admin Home"
+        title={t('superAdminHome.headerTitle')}
+        subtitle={t('superAdminHome.headerSubtitle')}
         rightAction={headerRightAction}
       />
 
       {isOffline ? (
         <View style={{ marginBottom: spacing.md }}>
           <OfflineBanner
-            message="Offline Mode: Locally Cached Identity — Sensitive server operations are locked until online."
+            message={t('superAdminHome.offlineBanner')}
             testID="offline-security-banner"
           />
         </View>
@@ -148,19 +150,19 @@ export const SuperAdminHomeScreen: React.FC<RoleScreenProps> = ({
       {/* Platform Overview Stat Cards */}
       <View style={[styles.statsGrid, { gap: spacing.sm, marginBottom: spacing.md }]}>
         <StatCard
-          title="Total Academies"
+          title={t('superAdminHome.stat.totalAcademies')}
           value={data?.totalPersatuans ?? 0}
           icon={<Building2 size={iconSize.md} color={colors.buttonPrimaryBg} />}
           testID="stat-sa-total-orgs"
         />
         <StatCard
-          title="Active"
+          title={t('status.active')}
           value={data?.activePersatuans ?? 0}
           icon={<CheckCircle size={iconSize.md} color={colors.badgeSuccessText} />}
           testID="stat-sa-active-orgs"
         />
         <StatCard
-          title="Pending"
+          title={t('status.pending')}
           value={data?.pendingPersatuans ?? 0}
           icon={<Clock size={iconSize.md} color={colors.badgeWarningText} />}
           testID="stat-sa-pending-orgs"
@@ -172,11 +174,11 @@ export const SuperAdminHomeScreen: React.FC<RoleScreenProps> = ({
         <View style={styles.scopeHeader}>
           <ShieldAlert size={20} color={colors.badgeInfoText} />
           <Text style={[typography.titleMedium, { color: colors.textPrimary, flex: 1 }]}>
-            Platform Governance Boundary
+            {t('superAdminHome.governance.title')}
           </Text>
         </View>
         <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 4, lineHeight: 18 }]}>
-          Super Admin maintains platform infrastructure and academy tenant provisioning. Access to individual academy operational records (student rosters, attendance logs, tuition fees, and grading evaluations) is strictly prohibited.
+          {t('superAdminHome.governance.body')}
         </Text>
       </Card>
 
@@ -184,9 +186,9 @@ export const SuperAdminHomeScreen: React.FC<RoleScreenProps> = ({
       <Card variant="elevated" style={[styles.sectionCard, { marginBottom: spacing.md }]}>
         <View style={styles.sectionHeaderRow}>
           <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
-            Registered Persatuans
+            {t('superAdminHome.orgs.title')}
           </Text>
-          <StatusBadge status="ACTIVE" label={`${data?.totalPersatuans ?? 0} Total`} variant="info" />
+          <StatusBadge status="ACTIVE" label={t('superAdminHome.orgs.totalBadge', { count: data?.totalPersatuans ?? 0 })} variant="info" />
         </View>
 
         {data?.recentOrganizations && data.recentOrganizations.length > 0 ? (
@@ -204,7 +206,7 @@ export const SuperAdminHomeScreen: React.FC<RoleScreenProps> = ({
                     {org.name}
                   </Text>
                   <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                    {org.state} • Master: {org.masterName}
+                    {t('superAdminHome.orgs.masterLine', { state: org.state, master: org.masterName })}
                   </Text>
                 </View>
                 <StatusBadge
@@ -217,7 +219,7 @@ export const SuperAdminHomeScreen: React.FC<RoleScreenProps> = ({
           </View>
         ) : (
           <Text style={[typography.caption, { color: colors.textMuted, marginTop: spacing.sm }]}>
-            No organizations registered yet.
+            {t('superAdminHome.orgs.empty')}
           </Text>
         )}
       </Card>
@@ -226,7 +228,7 @@ export const SuperAdminHomeScreen: React.FC<RoleScreenProps> = ({
       <Card variant="elevated" style={[styles.sectionCard, { marginBottom: spacing.md }]}>
         <View style={styles.sectionHeaderRow}>
           <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
-            Recent Platform Audit
+            {t('superAdminHome.audit.title')}
           </Text>
           <ShieldCheck size={20} color={colors.buttonPrimaryBg} />
         </View>
@@ -257,7 +259,7 @@ export const SuperAdminHomeScreen: React.FC<RoleScreenProps> = ({
           </View>
         ) : (
           <Text style={[typography.caption, { color: colors.textMuted, marginTop: spacing.sm }]}>
-            No recent platform audit events.
+            {t('superAdminHome.audit.empty')}
           </Text>
         )}
       </Card>
@@ -265,11 +267,11 @@ export const SuperAdminHomeScreen: React.FC<RoleScreenProps> = ({
       {/* Quick Navigation Shortcuts */}
       <Card variant="standard" style={[styles.sectionCard, { marginBottom: spacing.xl }]}>
         <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
-          Platform Navigation
+          {t('superAdminHome.nav.title')}
         </Text>
         <View style={{ gap: spacing.sm }}>
           <Button
-            label="Persatuan Management"
+            label={t('superAdminHome.nav.persatuanManagement')}
             onPress={() => navigation?.navigate('Persatuans')}
             variant="secondary"
             size="md"
@@ -278,7 +280,7 @@ export const SuperAdminHomeScreen: React.FC<RoleScreenProps> = ({
             testID="shortcut-sa-persatuans"
           />
           <Button
-            label="Platform Audit Logs"
+            label={t('superAdminHome.nav.auditLogs')}
             onPress={() => navigation?.navigate('Audit')}
             variant="secondary"
             size="md"
@@ -287,7 +289,7 @@ export const SuperAdminHomeScreen: React.FC<RoleScreenProps> = ({
             testID="shortcut-sa-audit"
           />
           <Button
-            label="Super Admin Profile"
+            label={t('superAdminHome.nav.profile')}
             onPress={() => navigation?.navigate('Profile')}
             variant="outline"
             size="md"
@@ -303,52 +305,55 @@ export const SuperAdminHomeScreen: React.FC<RoleScreenProps> = ({
 
 export const PersatuanManagementScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();
+  const { t } = useI18n();
   return (
     <RolePlaceholderBase
-      title="Persatuan Management"
-      subtitle="Federation & Organization Registry"
+      title={t('superAdminHome.persatuanMgmt.title')}
+      subtitle={t('superAdminHome.persatuanMgmt.subtitle')}
       role={UserRole.SUPER_ADMIN}
       user={props.user}
       onLogout={props.onLogout}
       isOffline={props.isOffline}
       testID="persatuan-management-screen"
       icon={<Building2 size={iconSize.lg} color={colors.buttonPrimaryBg} />}
-      scopeDescription="Tenant Governance: Review registered Silambam Persatuans, manage active status, and configure multi-tenant dojos."
+      scopeDescription={t('superAdminHome.persatuanMgmt.scope')}
     />
   );
 };
 
 export const PlatformAuditScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();
+  const { t } = useI18n();
   return (
     <RolePlaceholderBase
-      title="Platform Audit"
-      subtitle="System Security & Event Logs"
+      title={t('superAdminHome.platformAudit.title')}
+      subtitle={t('superAdminHome.platformAudit.subtitle')}
       role={UserRole.SUPER_ADMIN}
       user={props.user}
       onLogout={props.onLogout}
       isOffline={props.isOffline}
       testID="platform-audit-screen"
       icon={<ShieldCheck size={iconSize.lg} color={colors.buttonPrimaryBg} />}
-      scopeDescription="Audit Scope: Security compliance records, privileged access audits, and tamper-resistant system event logs."
+      scopeDescription={t('superAdminHome.platformAudit.scope')}
     />
   );
 };
 
 export const SuperAdminProfileScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();
+  const { t } = useI18n();
   return (
     <RolePlaceholderBase
       showLanguageSelector
-      title="Profile"
-      subtitle="Super Administrator Identity"
+      title={t('superAdminHome.profile.title')}
+      subtitle={t('superAdminHome.profile.subtitle')}
       role={UserRole.SUPER_ADMIN}
       user={props.user}
       onLogout={props.onLogout}
       isOffline={props.isOffline}
       testID="super-admin-profile-screen"
       icon={<User size={iconSize.lg} color={colors.buttonPrimaryBg} />}
-      scopeDescription="Credential Scope: System administration profile, security settings, and session termination."
+      scopeDescription={t('superAdminHome.profile.scope')}
     />
   );
 };
