@@ -45,6 +45,14 @@ import {
   CachedSession,
   AttendanceStatus,
 } from '../../../database/types';
+import { useI18n } from '../../../i18n';
+
+const STATUS_LABEL_KEYS: Record<AttendanceStatus, string> = {
+  Present: 'status.present',
+  Late: 'status.late',
+  Absent: 'status.absent',
+  Excused: 'status.excused',
+};
 
 export interface AttendanceScreenProps {
   user: AuthUser;
@@ -57,6 +65,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
   isOffline = false,
 }) => {
   const { colors, iconSize } = useTheme();
+  const { t } = useI18n();
 
   // State
   const [loading, setLoading] = useState(true);
@@ -116,11 +125,11 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
       setPendingCount(ctx.pendingCount);
       setErrorMessage(ctx.errorMessage);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to load attendance roster.');
+      setErrorMessage(err.message || t('masterOps.attendance.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [user, isOffline, selectedClassId, selectedGroupId]);
+  }, [user, isOffline, selectedClassId, selectedGroupId, t]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -146,7 +155,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
         setLoading(false);
       } catch (err: any) {
         if (isCancelled) return;
-        setErrorMessage(err.message || 'Failed to load attendance roster.');
+        setErrorMessage(err.message || t('masterOps.attendance.loadFailed'));
         setLoading(false);
       }
     })();
@@ -154,7 +163,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
     return () => {
       isCancelled = true;
     };
-  }, [user, isOffline, selectedClassId, selectedGroupId]);
+  }, [user, isOffline, selectedClassId, selectedGroupId, t]);
 
   // Handle class selection
   const handleSelectClass = (clsId: string) => {
@@ -203,7 +212,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
   // Manual sync trigger
   const handleManualSync = async () => {
     if (isOffline) {
-      Alert.alert('Offline Mode', 'Cannot synchronize while device is offline.');
+      Alert.alert(t('masterOps.attendance.offlineTitle'), t('masterOps.attendance.offlineMessage'));
       return;
     }
     try {
@@ -211,12 +220,12 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
       setErrorMessage(null);
       const res = await offlineSyncService.syncNow(user);
       if (res.error) {
-        Alert.alert('Sync Feedback', res.error);
+        Alert.alert(t('masterOps.attendance.syncFeedbackTitle'), res.error);
       } else {
         await loadContext();
       }
     } catch (err: any) {
-      Alert.alert('Sync Error', err.message || 'Synchronization failed.');
+      Alert.alert(t('masterOps.attendance.syncErrorTitle'), err.message || t('masterOps.attendance.syncFailed'));
     } finally {
       setManualSyncing(false);
     }
@@ -225,7 +234,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
   // Save attendance locally with robust failure protection
   const handleSaveAttendance = async () => {
     if (!activeSession) {
-      Alert.alert('Session Required', 'No active training session found for this class.');
+      Alert.alert(t('masterOps.attendance.sessionRequiredTitle'), t('masterOps.attendance.sessionRequiredMessage'));
       return;
     }
 
@@ -255,7 +264,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
       const counts = await offlineSyncService.refreshCounts(user);
       setPendingCount(counts.pending);
       setSaveSuccessMsg(
-        `Saved locally to queue (${savedCount} updated, ${counts.pending} total pending sync).`
+        t('masterOps.attendance.savedToQueue', { updated: savedCount, pending: counts.pending })
       );
 
       // Auto-trigger sync if connected
@@ -264,8 +273,8 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
       }
     } catch (err: any) {
       // Failed local persistence must never appear saved
-      setSaveError(err.message || 'Storage write failed.');
-      Alert.alert('Save Failed', 'Could not save attendance to local storage. Unsaved changes are present.');
+      setSaveError(err.message || t('masterOps.attendance.storageWriteFailed'));
+      Alert.alert(t('masterOps.attendance.saveFailed'), t('masterOps.attendance.saveFailedMessage'));
     } finally {
       setSaving(false);
     }
@@ -274,8 +283,8 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
   return (
     <ScreenContainer testID="master-attendance-screen">
       <ScreenHeader
-        title="Mat Attendance"
-        subtitle="Offline Roll Call & Roster"
+        title={t('masterOps.attendance.title')}
+        subtitle={t('masterOps.attendance.subtitle')}
       />
 
       <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
@@ -283,7 +292,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
         {isOffline && (
           <View testID="attendance-offline-banner" style={styles.bannerMargin}>
             <OfflineBanner
-              message="Operating in offline mode. Roll-call marks will be saved to the local queue."
+              message={t('masterOps.attendance.offlineBanner')}
             />
           </View>
         )}
@@ -293,7 +302,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
           <View testID="attendance-syncing-banner" style={[styles.syncingContainer, { backgroundColor: '#EFF6FF', borderColor: '#3B82F6' }]}>
             <ActivityIndicator size="small" color="#2563EB" />
             <Text style={[styles.syncingText, { color: '#1E40AF' }]}>
-              Synchronizing attendance records with server...
+              {t('masterOps.attendance.syncingBanner')}
             </Text>
           </View>
         )}
@@ -303,7 +312,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
           <View testID="attendance-conflict-badge" style={[styles.conflictContainer, { backgroundColor: '#FEF2F2', borderColor: '#EF4444' }]}>
             <AlertTriangle size={iconSize.sm} color="#B91C1C" />
             <Text style={[styles.conflictText, { color: '#B91C1C' }]}>
-              {syncState.conflictCount} attendance conflict(s) require review.
+              {t('masterOps.attendance.conflicts', { count: syncState.conflictCount })}
             </Text>
           </View>
         )}
@@ -313,9 +322,9 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
           <View testID="attendance-save-failure-banner" style={[styles.failureContainer, { backgroundColor: '#FFF1F2', borderColor: '#E11D48' }]}>
             <AlertCircle size={iconSize.sm} color="#BE123C" />
             <View style={styles.failureTextContainer}>
-              <Text style={[styles.failureTitle, { color: '#9F1239' }]}>Save Failed</Text>
+              <Text style={[styles.failureTitle, { color: '#9F1239' }]}>{t('masterOps.attendance.saveFailed')}</Text>
               <Text style={[styles.failureSubtitle, { color: '#BE123C' }]}>
-                Unsaved changes present. {saveError}
+                {t('masterOps.attendance.unsavedChanges', { error: saveError })}
               </Text>
             </View>
             <TouchableOpacity
@@ -323,9 +332,9 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
               onPress={handleSaveAttendance}
               style={styles.retryButton}
               accessibilityRole="button"
-              accessibilityLabel="Retry saving attendance"
+              accessibilityLabel={t('masterOps.attendance.retrySaveA11y')}
             >
-              <Text style={styles.retryButtonText}>Retry</Text>
+              <Text style={styles.retryButtonText}>{t('masterOps.attendance.retry')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -339,7 +348,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
             <View style={styles.unsyncedRow}>
               <CloudOff size={iconSize.sm} color={colors.badgeWarningText} />
               <Text style={[styles.unsyncedText, { color: colors.badgeWarningText }]}>
-                {pendingCount} unsynchronized record(s) pending sync
+                {t('masterOps.attendance.pendingSync', { count: pendingCount })}
               </Text>
             </View>
 
@@ -350,11 +359,11 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
                 disabled={manualSyncing || syncState.status === 'syncing'}
                 style={styles.syncNowButton}
                 accessibilityRole="button"
-                accessibilityLabel="Sync attendance records now"
+                accessibilityLabel={t('masterOps.attendance.syncNowA11y')}
               >
                 <RefreshCw size={12} color="#FFFFFF" />
                 <Text style={styles.syncNowButtonText}>
-                  {manualSyncing ? 'Syncing...' : 'Sync Now'}
+                  {manualSyncing ? t('masterOps.attendance.syncing') : t('masterOps.attendance.syncNow')}
                 </Text>
               </TouchableOpacity>
             )}
@@ -372,7 +381,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
         {/* Class Selector */}
         {classes.length > 0 && (
           <View testID="attendance-class-selector" style={styles.sectionMargin}>
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>ASSIGNED CLASS</Text>
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('masterOps.attendance.assignedClass')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillRow}>
               {classes.map(cls => {
                 const isSelected = cls.id === selectedClassId;
@@ -389,7 +398,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
                     ]}
                     accessibilityRole="button"
                     accessibilityState={{ selected: isSelected }}
-                    accessibilityLabel={`Select class ${cls.name}`}
+                    accessibilityLabel={t('masterOps.attendance.selectClassA11y', { name: cls.name })}
                   >
                     <Text
                       style={[
@@ -409,7 +418,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
         {/* Training Group Selector */}
         {groups.length > 0 && (
           <View testID="attendance-group-selector" style={styles.sectionMargin}>
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>TRAINING GROUP</Text>
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('masterOps.attendance.trainingGroup')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillRow}>
               <TouchableOpacity
                 onPress={() => handleSelectGroup(null)}
@@ -422,7 +431,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
                 ]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: selectedGroupId === null }}
-                accessibilityLabel="All groups"
+                accessibilityLabel={t('masterOps.attendance.allGroupsA11y')}
               >
                 <Text
                   style={[
@@ -430,7 +439,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
                     { color: selectedGroupId === null ? '#0D2B47' : colors.textSecondary },
                   ]}
                 >
-                  All Groups
+                  {t('masterOps.attendance.allGroups')}
                 </Text>
               </TouchableOpacity>
 
@@ -449,7 +458,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
                     ]}
                     accessibilityRole="button"
                     accessibilityState={{ selected: isSelected }}
-                    accessibilityLabel={`Group ${grp.name}`}
+                    accessibilityLabel={t('masterOps.attendance.groupA11y', { name: grp.name })}
                   >
                     <Text
                       style={[
@@ -486,7 +495,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
               </View>
 
               <View style={styles.sessionBadge}>
-                <Text style={styles.sessionBadgeText}>{activeSession.status || 'Scheduled'}</Text>
+                <Text style={styles.sessionBadgeText}>{activeSession.status || t('masterOps.attendance.sessionScheduled')}</Text>
               </View>
             </View>
           </Card>
@@ -498,37 +507,37 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
             <Text style={[styles.statNum, { color: colors.textPrimary }]} testID="stat-total-count">
               {summary.total}
             </Text>
-            <Text style={[styles.statLbl, { color: colors.textSecondary }]}>TOTAL</Text>
+            <Text style={[styles.statLbl, { color: colors.textSecondary }]}>{t('masterOps.attendance.statTotal')}</Text>
           </View>
           <View style={[styles.statBox, { backgroundColor: '#DCFCE7' }]}>
             <Text style={[styles.statNum, { color: '#166534' }]} testID="stat-present-count">
               {summary.present}
             </Text>
-            <Text style={[styles.statLbl, { color: '#166534' }]}>PRESENT</Text>
+            <Text style={[styles.statLbl, { color: '#166534' }]}>{t('masterOps.attendance.statPresent')}</Text>
           </View>
           <View style={[styles.statBox, { backgroundColor: '#FEF3C7' }]}>
             <Text style={[styles.statNum, { color: '#92400E' }]} testID="stat-late-count">
               {summary.late}
             </Text>
-            <Text style={[styles.statLbl, { color: '#92400E' }]}>LATE</Text>
+            <Text style={[styles.statLbl, { color: '#92400E' }]}>{t('masterOps.attendance.statLate')}</Text>
           </View>
           <View style={[styles.statBox, { backgroundColor: '#FEE2E2' }]}>
             <Text style={[styles.statNum, { color: '#991B1B' }]} testID="stat-absent-count">
               {summary.absent}
             </Text>
-            <Text style={[styles.statLbl, { color: '#991B1B' }]}>ABSENT</Text>
+            <Text style={[styles.statLbl, { color: '#991B1B' }]}>{t('masterOps.attendance.statAbsent')}</Text>
           </View>
           <View style={[styles.statBox, { backgroundColor: '#E0E7FF' }]}>
             <Text style={[styles.statNum, { color: '#3730A3' }]} testID="stat-excused-count">
               {summary.excused}
             </Text>
-            <Text style={[styles.statLbl, { color: '#3730A3' }]}>EXCUSED</Text>
+            <Text style={[styles.statLbl, { color: '#3730A3' }]}>{t('masterOps.attendance.statExcused')}</Text>
           </View>
           <View style={[styles.statBox, { backgroundColor: colors.surface }]}>
             <Text style={[styles.statNum, { color: colors.textSecondary }]} testID="stat-unmarked-count">
               {summary.unmarked}
             </Text>
-            <Text style={[styles.statLbl, { color: colors.textSecondary }]}>UNMARKED</Text>
+            <Text style={[styles.statLbl, { color: colors.textSecondary }]}>{t('masterOps.attendance.statUnmarked')}</Text>
           </View>
         </View>
 
@@ -540,10 +549,10 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
               testID="input-student-search"
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholder="Search students by name..."
+              placeholder={t('masterOps.attendance.searchPlaceholder')}
               placeholderTextColor={colors.textSecondary}
               style={[styles.searchInput, { color: colors.textPrimary }]}
-              accessibilityLabel="Search students by name"
+              accessibilityLabel={t('masterOps.attendance.searchA11y')}
             />
           </View>
 
@@ -552,10 +561,10 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
             onPress={() => setShowQRScanner(true)}
             style={[styles.qrScanButton, { backgroundColor: colors.buttonPrimaryBg }]}
             accessibilityRole="button"
-            accessibilityLabel="Open camera QR scanner for student attendance"
+            accessibilityLabel={t('masterOps.attendance.scanQrA11y')}
           >
             <QrCode size={18} color="#FFFFFF" />
-            <Text style={styles.qrScanButtonText}>Scan QR</Text>
+            <Text style={styles.qrScanButtonText}>{t('masterOps.attendance.scanQr')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -565,15 +574,15 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
         ) : errorMessage ? (
           <Card style={styles.emptyCard}>
             <Users size={iconSize.lg} color={colors.textSecondary} />
-            <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>Roster Unavailable</Text>
+            <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>{t('masterOps.attendance.rosterUnavailable')}</Text>
             <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>{errorMessage}</Text>
           </Card>
         ) : filteredStudents.length === 0 ? (
           <Card style={styles.emptyCard}>
             <Users size={iconSize.lg} color={colors.textSecondary} />
-            <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No Students Found</Text>
+            <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>{t('masterOps.attendance.noStudentsFound')}</Text>
             <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-              {searchQuery ? 'No student names match your search query.' : 'No students enrolled in this group.'}
+              {searchQuery ? t('masterOps.attendance.noSearchMatch') : t('masterOps.attendance.noStudentsEnrolled')}
             </Text>
           </Card>
         ) : (
@@ -616,7 +625,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
                     {selectedStatus && (
                       <View style={styles.statusIndicator}>
                         <Text style={styles.statusIndicatorText}>
-                          {selectedStatus.toUpperCase()}
+                          {t(STATUS_LABEL_KEYS[selectedStatus] ?? selectedStatus).toUpperCase()}
                         </Text>
                       </View>
                     )}
@@ -635,7 +644,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
                           : { backgroundColor: colors.surface, borderColor: colors.border },
                       ]}
                       accessibilityRole="button"
-                      accessibilityLabel={`Mark ${student.full_name} Present`}
+                      accessibilityLabel={t('masterOps.attendance.markPresentA11y', { name: student.full_name })}
                       accessibilityState={{ selected: selectedStatus === 'Present' }}
                     >
                       <Text
@@ -644,7 +653,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
                           { color: selectedStatus === 'Present' ? '#FFFFFF' : '#16A34A' },
                         ]}
                       >
-                        Present
+                        {t('status.present')}
                       </Text>
                     </TouchableOpacity>
 
@@ -659,7 +668,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
                           : { backgroundColor: colors.surface, borderColor: colors.border },
                       ]}
                       accessibilityRole="button"
-                      accessibilityLabel={`Mark ${student.full_name} Late`}
+                      accessibilityLabel={t('masterOps.attendance.markLateA11y', { name: student.full_name })}
                       accessibilityState={{ selected: selectedStatus === 'Late' }}
                     >
                       <Text
@@ -668,7 +677,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
                           { color: selectedStatus === 'Late' ? '#FFFFFF' : '#D97706' },
                         ]}
                       >
-                        Late
+                        {t('status.late')}
                       </Text>
                     </TouchableOpacity>
 
@@ -683,7 +692,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
                           : { backgroundColor: colors.surface, borderColor: colors.border },
                       ]}
                       accessibilityRole="button"
-                      accessibilityLabel={`Mark ${student.full_name} Absent`}
+                      accessibilityLabel={t('masterOps.attendance.markAbsentA11y', { name: student.full_name })}
                       accessibilityState={{ selected: selectedStatus === 'Absent' }}
                     >
                       <Text
@@ -692,7 +701,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
                           { color: selectedStatus === 'Absent' ? '#FFFFFF' : '#DC2626' },
                         ]}
                       >
-                        Absent
+                        {t('status.absent')}
                       </Text>
                     </TouchableOpacity>
 
@@ -707,7 +716,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
                           : { backgroundColor: colors.surface, borderColor: colors.border },
                       ]}
                       accessibilityRole="button"
-                      accessibilityLabel={`Mark ${student.full_name} Excused`}
+                      accessibilityLabel={t('masterOps.attendance.markExcusedA11y', { name: student.full_name })}
                       accessibilityState={{ selected: selectedStatus === 'Excused' }}
                     >
                       <Text
@@ -716,7 +725,7 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
                           { color: selectedStatus === 'Excused' ? '#FFFFFF' : '#4F46E5' },
                         ]}
                       >
-                        Excused
+                        {t('status.excused')}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -729,16 +738,16 @@ export const AttendanceScreen: React.FC<AttendanceScreenProps> = ({
         {/* Save Attendance Action */}
         <View style={styles.footerActionContainer}>
           <Button
-            label={saving ? 'Saving...' : 'Save Attendance to Local Queue'}
+            label={saving ? t('masterOps.attendance.saving') : t('masterOps.attendance.saveButton')}
             onPress={handleSaveAttendance}
             disabled={saving || !activeSession || !hasChanges}
             testID="btn-attendance-save"
             variant="primary"
             leftIcon={<Save size={iconSize.md} color="#FFFFFF" />}
-            accessibilityLabel="Save attendance records to local offline database"
+            accessibilityLabel={t('masterOps.attendance.saveA11y')}
           />
           <Text style={[styles.disclaimerText, { color: colors.textSecondary }]}>
-            Records are persisted safely in local SQLite and will synchronize when online.
+            {t('masterOps.attendance.disclaimer')}
           </Text>
         </View>
       </ScrollView>

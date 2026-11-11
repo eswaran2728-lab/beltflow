@@ -29,6 +29,14 @@ import { offlineSyncService } from '../../../services/offlineSyncService';
 import { networkService } from '../../../services/networkService';
 import { BeltBadge } from '../../../components/Badges';
 import { Button } from '../../../components/Button';
+import { useI18n } from '../../../i18n';
+
+const STATUS_LABEL_KEYS: Record<AttendanceStatus, string> = {
+  Present: 'status.present',
+  Late: 'status.late',
+  Absent: 'status.absent',
+  Excused: 'status.excused',
+};
 
 export interface QRScannerModalProps {
   visible: boolean;
@@ -53,6 +61,8 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
   isOffline = false,
   isCameraAvailable = true,
 }) => {
+  const { t } = useI18n();
+  const statusLabel = (status: AttendanceStatus) => t(STATUS_LABEL_KEYS[status] ?? status);
   const [permission, requestPermission] = useCameraPermissions();
   const [torchOn, setTorchOn] = useState(false);
   const [scanningLocked, setScanningLocked] = useState(false);
@@ -87,7 +97,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
     });
 
     if (!validation.isValid || !validation.student) {
-      setScanError(validation.errorMessage || 'Invalid digital pass.');
+      setScanError(validation.errorMessage || t('masterOps.qr.invalidPass'));
       // Unlock after delay to allow re-scan
       setTimeout(() => {
         setScanningLocked(false);
@@ -123,7 +133,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
       });
 
       onAttendanceRecorded(scannedStudent.id, selectedStatus);
-      setSaveSuccessMsg(`Marked ${scannedStudent.full_name} as ${selectedStatus}.`);
+      setSaveSuccessMsg(t('masterOps.qr.markedAs', { name: scannedStudent.full_name, status: statusLabel(selectedStatus) }));
 
       // Trigger background sync if online
       if (!isOffline && networkService.isConnected()) {
@@ -140,7 +150,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
       }, 1200);
     } catch (err: any) {
       setSavingAttendance(false);
-      setScanError(err.message || 'Failed to persist attendance mutation.');
+      setScanError(err.message || t('masterOps.qr.saveFailed'));
     }
   };
 
@@ -169,19 +179,19 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
             onPress={onClose}
             style={styles.iconButton}
             accessibilityRole="button"
-            accessibilityLabel="Close scanner and return to manual roll-call"
+            accessibilityLabel={t('masterOps.qr.closeA11y')}
           >
             <X size={24} color="#FFFFFF" />
           </TouchableOpacity>
 
-          <Text style={styles.topBarTitle}>QR Attendance Scanner</Text>
+          <Text style={styles.topBarTitle}>{t('masterOps.qr.title')}</Text>
 
           <TouchableOpacity
             testID="btn-toggle-torch"
             onPress={() => setTorchOn(!torchOn)}
             style={styles.iconButton}
             accessibilityRole="button"
-            accessibilityLabel={torchOn ? 'Turn flashlight off' : 'Turn flashlight on'}
+            accessibilityLabel={torchOn ? t('masterOps.qr.torchOffA11y') : t('masterOps.qr.torchOnA11y')}
           >
             {torchOn ? <Zap size={22} color="#FBBF24" /> : <ZapOff size={22} color="#94A3B8" />}
           </TouchableOpacity>
@@ -191,12 +201,12 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
         {!isCameraAvailable ? (
           <View testID="camera-hardware-unavailable-state" style={styles.centerMessage}>
             <Camera size={48} color="#EF4444" />
-            <Text style={styles.errorTitle}>Camera Hardware Unavailable</Text>
+            <Text style={styles.errorTitle}>{t('masterOps.qr.cameraUnavailableTitle')}</Text>
             <Text style={styles.errorSubtitle}>
-              Unable to initialize device camera hardware. Please switch to manual roll-call list.
+              {t('masterOps.qr.cameraUnavailableMessage')}
             </Text>
             <Button
-              label="Switch to Manual List"
+              label={t('masterOps.qr.switchToManual')}
               onPress={onClose}
               variant="primary"
               size="md"
@@ -207,25 +217,25 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
         ) : !permission ? (
           <View style={styles.centerMessage}>
             <ActivityIndicator size="large" color="#3B82F6" />
-            <Text style={styles.loadingText}>Initializing camera...</Text>
+            <Text style={styles.loadingText}>{t('masterOps.qr.initializingCamera')}</Text>
           </View>
         ) : !permission.granted ? (
           <View testID="camera-permission-denied-state" style={styles.centerMessage}>
             <AlertTriangle size={48} color="#F59E0B" />
-            <Text style={styles.errorTitle}>Camera Permission Required</Text>
+            <Text style={styles.errorTitle}>{t('masterOps.qr.permissionTitle')}</Text>
             <Text style={styles.errorSubtitle}>
-              Camera access is needed to scan student digital QR passes during roll-call.
+              {t('masterOps.qr.permissionMessage')}
             </Text>
             <View style={{ gap: 12, marginTop: 16, width: '100%', maxWidth: 280 }}>
               <Button
-                label="Grant Permission"
+                label={t('masterOps.qr.grantPermission')}
                 onPress={requestPermission}
                 variant="primary"
                 size="md"
                 testID="btn-grant-camera-permission"
               />
               <Button
-                label="Manual Roll-Call"
+                label={t('masterOps.qr.manualRollCall')}
                 onPress={onClose}
                 variant="outline"
                 size="md"
@@ -254,7 +264,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
                 <View style={[styles.corner, styles.cornerBR]} />
               </View>
               <Text style={styles.reticleInstructions}>
-                Align student QR pass inside the frame
+                {t('masterOps.qr.alignInstructions')}
               </Text>
             </View>
 
@@ -283,7 +293,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
                       {scannedStudent.full_name}
                     </Text>
                     <Text style={styles.studentMeta}>
-                      ID: {scannedStudent.id}
+                      {t('masterOps.qr.studentId', { id: scannedStudent.id })}
                     </Text>
                   </View>
                   <BeltBadge beltName={scannedStudent.belt_rank} size="sm" />
@@ -294,13 +304,13 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
                   <View testID="dialog-duplicate-scan" style={styles.duplicateWarningBox}>
                     <Clock size={16} color="#B45309" />
                     <Text style={styles.duplicateWarningText}>
-                      Already marked as {duplicateWarning}. Select a new status to update.
+                      {t('masterOps.qr.alreadyMarked', { status: statusLabel(duplicateWarning) })}
                     </Text>
                   </View>
                 )}
 
                 {/* Status Selector */}
-                <Text style={styles.statusLabel}>Roll-Call Status:</Text>
+                <Text style={styles.statusLabel}>{t('masterOps.qr.statusLabel')}</Text>
                 <View style={styles.statusRow}>
                   {(['Present', 'Late', 'Absent', 'Excused'] as AttendanceStatus[]).map(status => {
                     const isSelected = selectedStatus === status;
@@ -322,7 +332,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
                             isSelected && styles.statusBtnTextSelected,
                           ]}
                         >
-                          {status}
+                          {statusLabel(status)}
                         </Text>
                       </TouchableOpacity>
                     );
@@ -332,7 +342,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
                 {/* Action Buttons */}
                 <View style={styles.cardActionRow}>
                   <Button
-                    label="Cancel"
+                    label={t('masterOps.qr.cancel')}
                     onPress={handleCancelConfirmation}
                     variant="outline"
                     size="sm"
@@ -340,7 +350,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
                     style={{ flex: 1 }}
                   />
                   <Button
-                    label={savingAttendance ? 'Saving...' : 'Confirm Attendance'}
+                    label={savingAttendance ? t('masterOps.qr.saving') : t('masterOps.qr.confirm')}
                     onPress={handleConfirmAttendance}
                     variant="primary"
                     size="sm"
