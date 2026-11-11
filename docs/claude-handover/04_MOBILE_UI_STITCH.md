@@ -89,3 +89,9 @@ npm ci
 npm run typecheck          # Verifies 0 TypeScript errors across all 42 screens
 npm test                   # Runs Jest test suites across components and screens
 ```
+
+---
+
+## 4. H28 localisation and accessibility (2026-11-11)
+
+See `11_H28_LOCALIZATION_USABILITY.md`. App-wide EN/BM/Tamil via `src/i18n` (`useI18n`, `I18nProvider`), `LanguageSelector` on all Profile screens, translated tab labels, `StatusBadge` icons + text, and `PendingNextStep` on the three approval-status screens. 978 hard-coded strings remain (ratchet test prevents growth).
