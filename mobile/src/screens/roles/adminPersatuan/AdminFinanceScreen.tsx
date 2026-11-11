@@ -30,6 +30,7 @@ import {
 } from '../../../services/paymentGatewayService';
 import { StitchAppHeader, StitchStatCard } from '../../../components/stitch';
 import { StitchTokens } from '../../../theme/tokens';
+import { useI18n } from '../../../i18n';
 
 export interface AdminFinanceScreenProps {
   user: AuthUser;
@@ -45,6 +46,7 @@ export const AdminFinanceScreen: React.FC<AdminFinanceScreenProps> = ({
   navigation,
 }) => {
   const { colors, typography, spacing } = useTheme();
+  const { t } = useI18n();
 
   const [loading, setLoading] = useState<boolean>(!isOffline);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -138,7 +140,7 @@ export const AdminFinanceScreen: React.FC<AdminFinanceScreenProps> = ({
 
   const handleSaveMerchantConfig = async () => {
     if (!merchantAccountId.trim() || !merchantName.trim()) {
-      Alert.alert('Validation Error', 'Merchant Account ID and Merchant Name are required.');
+      Alert.alert(t('adminHome.finance.validationTitle'), t('adminHome.finance.validationMessage'));
       return;
     }
 
@@ -158,9 +160,9 @@ export const AdminFinanceScreen: React.FC<AdminFinanceScreenProps> = ({
       setIsConfigured(true);
       setShowConfigForm(false);
       setSettlementAccountNumber(''); // Never keep plaintext account in form
-      Alert.alert('Settings Saved', 'Persatuan merchant configuration has been updated successfully.');
+      Alert.alert(t('adminHome.finance.savedTitle'), t('adminHome.finance.savedMessage'));
     } catch (err: any) {
-      Alert.alert('Save Failed', err.message || 'Could not save merchant configuration.');
+      Alert.alert(t('adminHome.finance.saveFailedTitle'), err.message || t('adminHome.finance.saveFailedMessage'));
     } finally {
       setSavingConfig(false);
     }
@@ -172,11 +174,11 @@ export const AdminFinanceScreen: React.FC<AdminFinanceScreenProps> = ({
   if (loading && !refreshing) {
     return (
       <ScreenContainer scrollable testID="admin-finance-screen">
-        <ScreenHeader title="Financial Integrity & Gateway" subtitle="Persatuan Direct Merchant Operations" />
+        <ScreenHeader title={t('adminHome.finance.loadingTitle')} subtitle={t('adminHome.finance.loadingSubtitle')} />
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={colors.buttonPrimaryBg} />
           <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginTop: spacing.md }]}>
-            Loading merchant and reconciliation records...
+            {t('adminHome.finance.loading')}
           </Text>
         </View>
       </ScreenContainer>
@@ -192,13 +194,13 @@ export const AdminFinanceScreen: React.FC<AdminFinanceScreenProps> = ({
       />
 
       <ScreenHeader
-        title="Persatuan Finance & Settlements"
-        subtitle="Independent Academy Merchant & Reconciliation"
+        title={t('adminHome.finance.title')}
+        subtitle={t('adminHome.finance.subtitle')}
         rightAction={
           <TouchableOpacity
             onPress={loadFinanceData}
             style={[styles.refreshButton, { borderColor: colors.border }]}
-            accessibilityLabel="Refresh finance records"
+            accessibilityLabel={t('adminHome.finance.refresh')}
           >
             <RefreshCw size={16} color={colors.textSecondary} />
           </TouchableOpacity>
@@ -207,25 +209,25 @@ export const AdminFinanceScreen: React.FC<AdminFinanceScreenProps> = ({
 
       {isOffline && (
         <View style={{ marginBottom: spacing.md }}>
-          <OfflineBanner message="Offline Mode: Merchant modifications and gateway reconciliation are locked until online." />
+          <OfflineBanner message={t('adminHome.finance.offline')} />
         </View>
       )}
 
       {/* KPI Overview Grid */}
       <View style={[styles.statsRow, { marginBottom: spacing.md }]}>
         <StitchStatCard
-          label="SETTLEMENTS"
+          label={t('adminHome.finance.statSettlements')}
           value={matchedCount}
-          subtext="Reconciled Online"
+          subtext={t('adminHome.finance.statReconciled')}
           hasAccentBorder
           accentColor={StitchTokens.colors.bfGreen}
           testID="stat-matched-settlements"
           style={{ flex: 1, marginRight: spacing.xs }}
         />
         <StitchStatCard
-          label="DISCREPANCIES"
+          label={t('adminHome.finance.statDiscrepancies')}
           value={discrepancyCount}
-          subtext={discrepancyCount > 0 ? 'Requires Review' : 'Zero Discrepancies'}
+          subtext={discrepancyCount > 0 ? t('adminHome.finance.requiresReview') : t('adminHome.finance.zeroDiscrepancies')}
           hasAccentBorder
           accentColor={discrepancyCount > 0 ? StitchTokens.colors.bfRed : StitchTokens.colors.colorAccent}
           testID="stat-discrepancies"
@@ -249,7 +251,7 @@ export const AdminFinanceScreen: React.FC<AdminFinanceScreenProps> = ({
               { color: activeTab === 'MERCHANT' ? colors.buttonPrimaryBg : colors.textSecondary, fontWeight: '700' },
             ]}
           >
-            Merchant Configuration
+            {t('adminHome.finance.tabMerchant')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -266,7 +268,7 @@ export const AdminFinanceScreen: React.FC<AdminFinanceScreenProps> = ({
               { color: activeTab === 'RECONCILIATION' ? colors.buttonPrimaryBg : colors.textSecondary, fontWeight: '700' },
             ]}
           >
-            Ledger Reconciliation ({reconciliationRecords.length})
+            {t('adminHome.finance.tabLedger', { count: reconciliationRecords.length })}
           </Text>
         </TouchableOpacity>
       </View>
@@ -285,12 +287,12 @@ export const AdminFinanceScreen: React.FC<AdminFinanceScreenProps> = ({
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Building2 size={22} color={colors.buttonPrimaryBg} />
                 <Text style={[typography.titleMedium, { color: colors.textPrimary, marginLeft: spacing.xs, fontWeight: '700' }]}>
-                  Persatuan Direct Merchant
+                  {t('adminHome.finance.directMerchant')}
                 </Text>
               </View>
               <StatusBadge
                 status={isConfigured ? 'ACTIVE' : 'UNCONFIGURED'}
-                label={isConfigured ? 'ACTIVE GATEWAY' : 'NOT CONFIGURED'}
+                label={isConfigured ? t('adminHome.finance.activeGateway') : t('adminHome.finance.notConfigured')}
                 variant={isConfigured ? 'success' : 'danger'}
               />
             </View>
@@ -298,53 +300,53 @@ export const AdminFinanceScreen: React.FC<AdminFinanceScreenProps> = ({
             {isConfigured && merchant ? (
               <View style={{ marginTop: spacing.md, gap: spacing.xs }}>
                 <View style={styles.detailRow}>
-                  <Text style={[typography.caption, { color: colors.textSecondary }]}>Gateway Provider:</Text>
+                  <Text style={[typography.caption, { color: colors.textSecondary }]}>{t('adminHome.finance.provider')}</Text>
                   <Text style={[typography.bodyMedium, { color: colors.textPrimary, fontWeight: '600' }]} testID="merchant-provider-value">
                     {merchant.provider}
                   </Text>
                 </View>
                 <View style={styles.detailRow}>
-                  <Text style={[typography.caption, { color: colors.textSecondary }]}>Merchant Account ID:</Text>
+                  <Text style={[typography.caption, { color: colors.textSecondary }]}>{t('adminHome.finance.accountId')}</Text>
                   <Text style={[typography.bodyMedium, { color: colors.textPrimary, fontWeight: '600' }]} testID="merchant-account-id-value">
                     {merchant.merchant_account_id}
                   </Text>
                 </View>
                 <View style={styles.detailRow}>
-                  <Text style={[typography.caption, { color: colors.textSecondary }]}>Merchant Registered Name:</Text>
+                  <Text style={[typography.caption, { color: colors.textSecondary }]}>{t('adminHome.finance.registeredName')}</Text>
                   <Text style={[typography.bodyMedium, { color: colors.textPrimary, fontWeight: '600' }]}>
                     {merchant.merchant_name}
                   </Text>
                 </View>
                 <View style={styles.detailRow}>
-                  <Text style={[typography.caption, { color: colors.textSecondary }]}>Settlement Bank:</Text>
+                  <Text style={[typography.caption, { color: colors.textSecondary }]}>{t('adminHome.finance.settlementBank')}</Text>
                   <Text style={[typography.bodyMedium, { color: colors.textPrimary, fontWeight: '600' }]}>
-                    {merchant.settlement_bank_name || 'Not Specified'}
+                    {merchant.settlement_bank_name || t('adminHome.finance.notSpecified')}
                   </Text>
                 </View>
                 <View style={styles.detailRow}>
-                  <Text style={[typography.caption, { color: colors.textSecondary }]}>Settlement Account (Masked):</Text>
+                  <Text style={[typography.caption, { color: colors.textSecondary }]}>{t('adminHome.finance.maskedAccount')}</Text>
                   <Text style={[typography.bodyMedium, { color: colors.textPrimary, fontWeight: '600' }]} testID="merchant-masked-account">
-                    {merchant.settlement_account_masked || 'None'}
+                    {merchant.settlement_account_masked || t('adminHome.finance.none')}
                   </Text>
                 </View>
                 <View style={styles.detailRow}>
-                  <Text style={[typography.caption, { color: colors.textSecondary }]}>Enabled Payment Rails:</Text>
+                  <Text style={[typography.caption, { color: colors.textSecondary }]}>{t('adminHome.finance.rails')}</Text>
                   <View style={{ flexDirection: 'row', gap: 6 }}>
-                    {merchant.fpx_enabled && <StatusBadge status="FPX" label="FPX Online Banking" variant="info" />}
-                    {merchant.duitnow_enabled && <StatusBadge status="DUITNOW" label="DuitNow QR" variant="info" />}
+                    {merchant.fpx_enabled && <StatusBadge status="FPX" label={t('adminHome.finance.railFpx')} variant="info" />}
+                    {merchant.duitnow_enabled && <StatusBadge status="DUITNOW" label={t('adminHome.finance.railDuitnow')} variant="info" />}
                   </View>
                 </View>
               </View>
             ) : (
               <View style={{ marginTop: spacing.sm }}>
                 <Text style={[typography.bodyMedium, { color: colors.textSecondary }]}>
-                  Your Persatuan does not have an active payment gateway configured. Direct student tuition payments will not be processed online until configured.
+                  {t('adminHome.finance.unconfiguredNotice')}
                 </Text>
               </View>
             )}
 
             <Button
-              label={showConfigForm ? 'Cancel Editing' : isConfigured ? 'Edit Merchant Settings' : 'Configure Gateway'}
+              label={showConfigForm ? t('adminHome.finance.cancelEditing') : isConfigured ? t('adminHome.finance.editSettings') : t('adminHome.finance.configureGateway')}
               onPress={() => setShowConfigForm(!showConfigForm)}
               variant={showConfigForm ? 'outline' : 'secondary'}
               size="sm"
@@ -364,20 +366,20 @@ export const AdminFinanceScreen: React.FC<AdminFinanceScreenProps> = ({
               testID="merchant-config-form"
             >
               <Text style={[typography.titleMedium, { color: colors.textPrimary, fontWeight: '700', marginBottom: spacing.xs }]}>
-                Configure Direct Settlement Credentials
+                {t('adminHome.finance.formTitle')}
               </Text>
               <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.md }]}>
-                All tuition payments will route directly to this registered Persatuan account. BeltFlow never accesses academy funds.
+                {t('adminHome.finance.formNotice')}
               </Text>
 
               <View style={styles.inputGroup}>
                 <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: 4, fontWeight: '600' }]}>
-                  MERCHANT ACCOUNT ID / CODE *
+                  {t('adminHome.finance.fieldAccountId')}
                 </Text>
                 <TextInput
                   value={merchantAccountId}
                   onChangeText={setMerchantAccountId}
-                  placeholder="e.g. MERCH_PERSATUAN_SEL_01"
+                  placeholder={t('adminHome.finance.placeholderAccountId')}
                   placeholderTextColor={colors.textMuted}
                   style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary }]}
                   testID="input-merchant-account-id"
@@ -386,12 +388,12 @@ export const AdminFinanceScreen: React.FC<AdminFinanceScreenProps> = ({
 
               <View style={styles.inputGroup}>
                 <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: 4, fontWeight: '600' }]}>
-                  PERSATUAN REGISTERED MERCHANT NAME *
+                  {t('adminHome.finance.fieldMerchantName')}
                 </Text>
                 <TextInput
                   value={merchantName}
                   onChangeText={setMerchantName}
-                  placeholder="e.g. Persatuan Silat Gayong Selangor"
+                  placeholder={t('adminHome.finance.placeholderMerchantName')}
                   placeholderTextColor={colors.textMuted}
                   style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary }]}
                   testID="input-merchant-name"
@@ -400,12 +402,12 @@ export const AdminFinanceScreen: React.FC<AdminFinanceScreenProps> = ({
 
               <View style={styles.inputGroup}>
                 <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: 4, fontWeight: '600' }]}>
-                  SETTLEMENT BANK NAME
+                  {t('adminHome.finance.fieldBankName')}
                 </Text>
                 <TextInput
                   value={settlementBankName}
                   onChangeText={setSettlementBankName}
-                  placeholder="e.g. Maybank / CIMB"
+                  placeholder={t('adminHome.finance.placeholderBankName')}
                   placeholderTextColor={colors.textMuted}
                   style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary }]}
                 />
@@ -413,12 +415,12 @@ export const AdminFinanceScreen: React.FC<AdminFinanceScreenProps> = ({
 
               <View style={styles.inputGroup}>
                 <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: 4, fontWeight: '600' }]}>
-                  SETTLEMENT BANK ACCOUNT NUMBER (STORED STRICTLY MASKED)
+                  {t('adminHome.finance.fieldAccountNumber')}
                 </Text>
                 <TextInput
                   value={settlementAccountNumber}
                   onChangeText={setSettlementAccountNumber}
-                  placeholder="e.g. 512345678901 (only last 4 digits stored)"
+                  placeholder={t('adminHome.finance.placeholderAccountNumber')}
                   placeholderTextColor={colors.textMuted}
                   keyboardType="numeric"
                   style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary }]}
@@ -427,7 +429,7 @@ export const AdminFinanceScreen: React.FC<AdminFinanceScreenProps> = ({
               </View>
 
               <Button
-                label={savingConfig ? 'Saving Settings...' : 'Save Merchant Configuration'}
+                label={savingConfig ? t('adminHome.finance.saving') : t('adminHome.finance.save')}
                 onPress={handleSaveMerchantConfig}
                 variant="primary"
                 size="md"
@@ -448,10 +450,10 @@ export const AdminFinanceScreen: React.FC<AdminFinanceScreenProps> = ({
             <Card variant="standard" style={{ padding: spacing.lg, alignItems: 'center' }}>
               <FileCheck2 size={40} color="#10B981" />
               <Text style={[typography.titleMedium, { color: colors.textPrimary, marginTop: spacing.sm }]}>
-                No Online Settlements Yet
+                {t('adminHome.finance.emptyTitle')}
               </Text>
               <Text style={[typography.caption, { color: colors.textSecondary, textAlign: 'center', marginTop: 4 }]}>
-                When parents pay tuition via FPX or DuitNow, bank reconciliation records and matched receipts will appear here automatically.
+                {t('adminHome.finance.emptyMessage')}
               </Text>
             </Card>
           ) : (
@@ -484,26 +486,26 @@ export const AdminFinanceScreen: React.FC<AdminFinanceScreenProps> = ({
                       </View>
                       <StatusBadge
                         status={rec.match_status}
-                        label={isMatched ? 'MATCHED' : 'DISCREPANCY'}
+                        label={isMatched ? t('adminHome.finance.matched') : t('adminHome.finance.discrepancy')}
                         variant={isMatched ? 'success' : 'danger'}
                       />
                     </View>
 
                     <View style={{ marginTop: spacing.xs, gap: 2 }}>
                       <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                        Expected: <Text style={{ color: colors.textPrimary }}>RM {(rec.expected_amount_cents / 100).toFixed(2)}</Text> • Settled: <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>RM {(rec.settled_amount_cents / 100).toFixed(2)}</Text>
+                        {t('adminHome.finance.expected')} <Text style={{ color: colors.textPrimary }}>RM {(rec.expected_amount_cents / 100).toFixed(2)}</Text> • {t('adminHome.finance.settled')} <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>RM {(rec.settled_amount_cents / 100).toFixed(2)}</Text>
                       </Text>
                       <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                        Provider Reference: {rec.provider_tx_id}
+                        {t('adminHome.finance.providerRef', { ref: rec.provider_tx_id })}
                       </Text>
                       {rec.receipt_no && (
                         <Text style={[typography.caption, { color: colors.buttonPrimaryBg, fontWeight: '700' }]}>
-                          Digital Receipt: {rec.receipt_no}
+                          {t('adminHome.finance.digitalReceipt', { receipt: rec.receipt_no })}
                         </Text>
                       )}
                       {rec.notes && (
                         <Text style={[typography.caption, { color: isMatched ? colors.textMuted : '#DC2626', fontStyle: 'italic', marginTop: 2 }]}>
-                          Notes: {rec.notes}
+                          {t('adminHome.finance.notes', { notes: rec.notes })}
                         </Text>
                       )}
                     </View>
