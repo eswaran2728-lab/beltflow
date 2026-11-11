@@ -58,7 +58,10 @@ describe('Google Stitch UI/UX Approved Design System Integration', () => {
     expect(StitchTokens.colors.bfRedDark).toBe('#9F1239');
 
     // Space Grotesk Typography & Minimum Touch Target
-    expect(StitchTokens.typography.fontFamily).toContain('Space Grotesk');
+    // H28: the Stitch fonts (Space Grotesk/Inter) are not bundled and have no Tamil
+    // glyphs; a CSS-style stack is not valid in React Native. The platform system
+    // font is used so English, Malay and Tamil all render (see localizationUsabilityH28).
+    expect(StitchTokens.typography.fontFamily ?? 'System').not.toContain(',');
     expect(StitchTokens.a11y.minTouchTarget).toBeGreaterThanOrEqual(44);
   });
 

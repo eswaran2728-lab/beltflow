@@ -1,16 +1,23 @@
+import { Platform } from 'react-native';
 import type { TextStyle } from 'react-native';
 
 /**
  * BeltFlow Typography Design Tokens
- * Incorporates Space Grotesk for headings and Inter for body copy,
- * with fallbacks to system fonts for native rendering.
+ * Uses the platform system font (see H28 note below); sizes and weights
+ * carry the Stitch hierarchy.
  */
 
+// H28 Tamil_font_coverage: no custom font files are bundled, and CSS-style
+// stacks ("Inter, -apple-system, sans-serif") are not valid in React Native.
+// The platform system font is used everywhere; it includes Tamil glyphs
+// (Android: Noto Sans Tamil; iOS: Tamil Sangam MN) and Malay/English.
+const SYSTEM_FONT = Platform.select({ ios: 'System', android: 'sans-serif', default: undefined });
+
 export const fontFamilies = {
-  heading: 'Space Grotesk, -apple-system, sans-serif',
-  body: 'Inter, -apple-system, sans-serif',
-  bodyMedium: 'Inter, -apple-system, sans-serif',
-  bodySemiBold: 'Inter, -apple-system, sans-serif',
+  heading: SYSTEM_FONT,
+  body: SYSTEM_FONT,
+  bodyMedium: SYSTEM_FONT,
+  bodySemiBold: SYSTEM_FONT,
 };
 
 export interface TypographyScale {

@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 /**
  * BeltFlow Design System — Google Stitch Approved Design Tokens
  * Extracted directly from official Google Stitch visual reference
@@ -39,7 +40,8 @@ export const StitchTokens = {
   },
 
   typography: {
-    fontFamily: 'Space Grotesk, -apple-system, sans-serif',
+    // H28: system font (covers Tamil); see theme/typography.ts.
+    fontFamily: Platform.select({ ios: 'System', android: 'sans-serif', default: undefined }) as string | undefined,
     weights: {
       regular: '400',
       medium: '500',
