@@ -24,6 +24,7 @@ import { StatusBadge } from '../../../components/Badges';
 import { OfflineBanner, LoadingState, ErrorState } from '../../../components/Feedback';
 import { useDashboardData } from '../../../hooks/useDashboardData';
 import { dashboardService, MasterDashboardData } from '../../../services/dashboardService';
+import { useI18n } from '../../../i18n';
 
 export interface RoleScreenProps {
   user: AuthUser;
@@ -39,6 +40,7 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
   navigation,
 }) => {
   const { colors, typography, spacing, iconSize } = useTheme();
+  const { t } = useI18n();
 
   const fetcher = useCallback(() => {
     return dashboardService.getMasterDashboard(user);
@@ -51,13 +53,13 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
 
   const headerRightAction = onLogout ? (
     <Button
-      label="Sign Out"
+      label={t('masterHome.signOut')}
       onPress={onLogout}
       variant="outline"
       size="sm"
       leftIcon={<LogOut size={iconSize.sm} color={colors.textSecondary} />}
       testID="btn-role-logout"
-      accessibilityLabel="Sign Out of BeltFlow"
+      accessibilityLabel={t('masterHome.signOutA11y')}
     />
   ) : undefined;
 
@@ -73,7 +75,7 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
           </Text>
           {user.organizationId ? (
             <Text style={[typography.caption, { color: colors.buttonPrimaryBg, marginTop: 2, fontWeight: '600' }]}>
-              Persatuan: {user.organizationId}
+              {t('masterHome.persatuanLabel', { org: user.organizationId })}
             </Text>
           ) : null}
         </View>
@@ -91,22 +93,22 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <StitchAppHeader
-          dojangName={user.organizationId ? `PERSATUAN: ${user.organizationId.toUpperCase()}` : 'PERSATUAN DOJANG'}
+          dojangName={user.organizationId ? t('masterHome.headerPersatuan', { org: user.organizationId.toUpperCase() }) : t('masterHome.headerPersatuanFallback')}
           roleBadgeText="MASTER"
           hasUnreadNotifications={false}
         />
         <ScreenContainer scrollable testID="master-home-screen">
-          <ScreenHeader title={`Welcome, ${user.fullName}`} subtitle="Master Home" rightAction={headerRightAction} />
+          <ScreenHeader title={t('masterHome.welcome', { name: user.fullName })} subtitle={t('masterHome.subtitle')} rightAction={headerRightAction} />
           {isOffline ? (
             <View style={{ marginBottom: spacing.md }}>
               <OfflineBanner
-                message="Offline Mode: Locally Cached Identity — Sensitive server operations are locked until online."
+                message={t('masterHome.offlineBanner')}
                 testID="offline-security-banner"
               />
             </View>
           ) : null}
           {renderIdentityCard()}
-          <LoadingState message="Loading instructor dashboard..." />
+          <LoadingState message={t('masterHome.loading')} />
         </ScreenContainer>
       </View>
     );
@@ -116,16 +118,16 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <StitchAppHeader
-          dojangName={user.organizationId ? `PERSATUAN: ${user.organizationId.toUpperCase()}` : 'PERSATUAN DOJANG'}
+          dojangName={user.organizationId ? t('masterHome.headerPersatuan', { org: user.organizationId.toUpperCase() }) : t('masterHome.headerPersatuanFallback')}
           roleBadgeText="MASTER"
           hasUnreadNotifications={false}
         />
         <ScreenContainer scrollable testID="master-home-screen">
-          <ScreenHeader title={`Welcome, ${user.fullName}`} subtitle="Master Home" rightAction={headerRightAction} />
+          <ScreenHeader title={t('masterHome.welcome', { name: user.fullName })} subtitle={t('masterHome.subtitle')} rightAction={headerRightAction} />
           {isOffline ? (
             <View style={{ marginBottom: spacing.md }}>
               <OfflineBanner
-                message="Offline Mode: Locally Cached Identity — Sensitive server operations are locked until online."
+                message={t('masterHome.offlineBanner')}
                 testID="offline-security-banner"
               />
             </View>
@@ -140,7 +142,7 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StitchAppHeader
-        dojangName={user.organizationId ? `PERSATUAN: ${user.organizationId.toUpperCase()}` : 'PERSATUAN DOJANG'}
+        dojangName={user.organizationId ? t('masterHome.headerPersatuan', { org: user.organizationId.toUpperCase() }) : t('masterHome.headerPersatuanFallback')}
         roleBadgeText="MASTER"
         hasUnreadNotifications={Boolean(data?.recentNotices?.length || data?.pendingApplicationsCount)}
         onNotificationPress={() => navigation?.navigate?.('Classes')}
@@ -159,15 +161,15 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
         }
       >
         <ScreenHeader
-          title={`Welcome, ${user.fullName}`}
-          subtitle="Master Home"
+          title={t('masterHome.welcome', { name: user.fullName })}
+          subtitle={t('masterHome.subtitle')}
           rightAction={headerRightAction}
         />
 
         {isOffline ? (
           <View style={{ marginBottom: spacing.md }}>
             <OfflineBanner
-              message="Offline Mode: Locally Cached Identity — Sensitive server operations are locked until online."
+              message={t('masterHome.offlineBanner')}
               testID="offline-security-banner"
             />
           </View>
@@ -182,12 +184,12 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
               <View style={{ flex: 1 }}>
                 {data.offlineSyncPendingCount ? (
                   <Text style={[typography.caption, { color: colors.buttonPrimaryBg, fontWeight: '700' }]} testID="badge-offline-pending-sync">
-                    Pending Sync: {data.offlineSyncPendingCount} attendance mutation(s) queued
+                    {t('masterHome.pendingSync', { count: data.offlineSyncPendingCount })}
                   </Text>
                 ) : null}
                 {data.offlineConflictCount ? (
                   <Text style={[typography.caption, { color: colors.badgeWarningText, fontWeight: '700', marginTop: 2 }]} testID="badge-attendance-conflicts">
-                    Sync Conflicts: {data.offlineConflictCount} conflict(s) require review
+                    {t('masterHome.syncConflicts', { count: data.offlineConflictCount })}
                   </Text>
                 ) : null}
               </View>
@@ -200,13 +202,13 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
           <Card variant="standard" style={{ padding: 20, alignItems: 'center', marginBottom: spacing.md }} testID="master-onboarding-card">
             <Calendar size={iconSize.lg} color={colors.buttonPrimaryBg} />
             <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginTop: spacing.sm, textAlign: 'center' }]}>
-              Welcome to BeltFlow Class Management
+              {t('masterHome.onboardingTitle')}
             </Text>
             <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginTop: spacing.xs, textAlign: 'center' }]}>
-              {data?.onboarding?.message || 'You currently have no active approved classes. Propose a new class to your Persatuan to start enrolling students.'}
+              {data?.onboarding?.message || t('masterHome.onboardingMessage')}
             </Text>
             <Button
-              label="Propose a New Class"
+              label={t('masterHome.proposeClass')}
               onPress={() => navigation?.navigate?.('Classes', { screen: 'CreateClass' })}
               variant="primary"
               size="md"
@@ -220,8 +222,8 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
         {data?.todaySessions && data.todaySessions.length > 0 ? (
           <View style={{ marginBottom: spacing.md }}>
             <LiveSessionCard
-              categoryLabel="ACTIVE MAT SESSION"
-              className={(data.todaySessions[0] as any).group_name || data.todaySessions[0].location || 'Silambam Session'}
+              categoryLabel={t('masterHome.activeMatSession')}
+              className={(data.todaySessions[0] as any).group_name || data.todaySessions[0].location || t('masterHome.sessionFallback')}
               scheduleTime={`${data.todaySessions[0].startTime} - ${data.todaySessions[0].endTime}`}
               enrolledCount={data.assignedStudentsCount ?? 0}
               onRosterCheckPress={() => navigation?.navigate?.('Attendance', { classId: data.todaySessions[0].classId || data.classes?.[0]?.id })}
@@ -233,20 +235,20 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
         {/* Master Coaching Stat Metrics - Google Stitch Hierarchy */}
         <View style={[styles.statsGrid, { gap: spacing.sm, marginBottom: spacing.md }]}>
           <StitchStatCard
-            label="My Classes"
+            label={t('masterHome.statClasses')}
             value={data?.assignedClassesCount ?? 0}
             hasAccentBorder={true}
             testID="stat-master-classes"
             style={{ flex: 1 }}
           />
           <StitchStatCard
-            label="Students"
+            label={t('masterHome.statStudents')}
             value={data?.assignedStudentsCount ?? 0}
             testID="stat-master-students"
             style={{ flex: 1 }}
           />
           <StitchStatCard
-            label="Today's Sessions"
+            label={t('masterHome.statTodaySessions')}
             value={data?.todaySessionsCount ?? 0}
             testID="stat-master-sessions"
             style={{ flex: 1 }}
@@ -255,19 +257,19 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
 
         <View style={[styles.statsGrid, { gap: spacing.sm, marginBottom: spacing.md }]}>
           <StitchStatCard
-            label="Pending Apps"
+            label={t('masterHome.statPendingApps')}
             value={data?.pendingApplicationsCount ?? 0}
             testID="stat-master-applications"
             style={{ flex: 1 }}
           />
           <StitchStatCard
-            label="Class Proposals"
+            label={t('masterHome.statProposals')}
             value={data?.pendingProposalsCount ?? 0}
             testID="stat-master-proposals"
             style={{ flex: 1 }}
           />
           <StitchStatCard
-            label="Pending Gradings"
+            label={t('masterHome.statPendingGradings')}
             value={data?.pendingGradingCount ?? 0}
             testID="stat-master-gradings"
             style={{ flex: 1 }}
@@ -278,7 +280,7 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
       <Card variant="elevated" style={[styles.sectionCard, { marginBottom: spacing.md }]}>
         <View style={styles.sectionHeaderRow}>
           <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
-            {"Today's Mat Sessions"}
+            {t('masterHome.todaySessionsTitle')}
           </Text>
           <Clock size={20} color={colors.buttonPrimaryBg} />
         </View>
@@ -311,7 +313,7 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
           </View>
         ) : (
           <Text style={[typography.caption, { color: colors.textMuted, marginTop: spacing.sm }]}>
-            No training sessions scheduled for today.
+            {t('masterHome.noSessionsToday')}
           </Text>
         )}
       </Card>
@@ -320,9 +322,9 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
       <Card variant="elevated" style={[styles.sectionCard, { marginBottom: spacing.md }]}>
         <View style={styles.sectionHeaderRow}>
           <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
-            Assigned Classes
+            {t('masterHome.assignedClasses')}
           </Text>
-          <StatusBadge status="ASSIGNED" label={`${data?.assignedClassesCount ?? 0} Active`} variant="info" />
+          <StatusBadge status="ASSIGNED" label={t('masterHome.activeCount', { count: data?.assignedClassesCount ?? 0 })} variant="info" />
         </View>
 
         {data?.classes && data.classes.length > 0 ? (
@@ -340,11 +342,11 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
                     {cls.name}
                   </Text>
                   <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                    {cls.location} • Fee: RM {cls.monthlyFee}/mo
+                    {t('masterHome.classFee', { location: cls.location, fee: cls.monthlyFee })}
                   </Text>
                 </View>
                 <Button
-                  label="Workspace"
+                  label={t('masterHome.workspace')}
                   onPress={() => navigation?.navigate?.('Classes', { screen: 'ClassWorkspace', params: { classId: cls.id, className: cls.name } })}
                   variant="primary"
                   size="sm"
@@ -355,7 +357,7 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
           </View>
         ) : (
           <Text style={[typography.caption, { color: colors.textMuted, marginTop: spacing.sm }]}>
-            No classes assigned to your master account.
+            {t('masterHome.noClassesAssigned')}
           </Text>
         )}
       </Card>
@@ -364,7 +366,7 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
       <Card variant="elevated" style={[styles.sectionCard, { marginBottom: spacing.md }]}>
         <View style={styles.sectionHeaderRow}>
           <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
-            Grading Examinations
+            {t('masterHome.gradingTitle')}
           </Text>
           <Award size={20} color={colors.badgeWarningText} />
         </View>
@@ -388,7 +390,7 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
                   </Text>
                   {grd.candidateCount ? (
                     <Text style={[typography.caption, { color: colors.buttonPrimaryBg, marginTop: 1 }]}>
-                      {grd.candidateCount} Candidates Registered
+                      {t('masterHome.candidatesRegistered', { count: grd.candidateCount })}
                     </Text>
                   ) : null}
                 </View>
@@ -402,7 +404,7 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
           </View>
         ) : (
           <Text style={[typography.caption, { color: colors.textMuted, marginTop: spacing.sm }]}>
-            No pending grading events scheduled.
+            {t('masterHome.noGradingEvents')}
           </Text>
         )}
       </Card>
@@ -410,11 +412,11 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
       {/* Quick Navigation Shortcuts */}
       <Card variant="standard" style={[styles.sectionCard, { marginBottom: spacing.xl }]}>
         <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
-          Master Navigation
+          {t('masterHome.navTitle')}
         </Text>
         <View style={{ gap: spacing.sm }}>
           <Button
-            label="Class Schedules & Rosters"
+            label={t('masterHome.navClasses')}
             onPress={() => navigation?.navigate('Classes')}
             variant="secondary"
             size="md"
@@ -423,7 +425,7 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
             testID="shortcut-master-classes"
           />
           <Button
-            label="Mat Session Attendance"
+            label={t('masterHome.navAttendance')}
             onPress={() => navigation?.navigate('Attendance')}
             variant="secondary"
             size="md"
@@ -432,7 +434,7 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
             testID="shortcut-master-attendance"
           />
           <Button
-            label="Grading Evaluations"
+            label={t('masterHome.navGrading')}
             onPress={() => navigation?.navigate('Grading')}
             variant="secondary"
             size="md"
@@ -441,7 +443,7 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
             testID="shortcut-master-grading"
           />
           <Button
-            label="Parent-Master Messages"
+            label={t('masterHome.navMessages')}
             onPress={() => navigation?.navigate('Classes', { screen: 'ParentMasterMessaging' })}
             variant="secondary"
             size="md"
@@ -450,7 +452,7 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
             testID="shortcut-master-messaging"
           />
           <Button
-            label="Master Profile"
+            label={t('masterHome.navProfile')}
             onPress={() => navigation?.navigate('Profile')}
             variant="outline"
             size="md"
@@ -473,17 +475,18 @@ export { ClassWorkspaceScreen } from './ClassWorkspaceScreen';
 
 export const StudentsScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();
+  const { t } = useI18n();
   return (
     <RolePlaceholderBase
-      title="Class Students"
-      subtitle="Enrolled Silambam Students"
+      title={t('masterHome.studentsTitle')}
+      subtitle={t('masterHome.studentsSubtitle')}
       role={UserRole.MASTER}
       user={props.user}
       onLogout={props.onLogout}
       isOffline={props.isOffline}
       testID="master-students-screen"
       icon={<Users size={iconSize.lg} color={colors.buttonPrimaryBg} />}
-      scopeDescription="Student Scope: Student belt progression history, contact emergency numbers, and individual grading eligibility."
+      scopeDescription={t('masterHome.studentsScope')}
     />
   );
 };
@@ -502,18 +505,19 @@ export { MasterGradingScreen as GradingScreen } from './MasterGradingScreen';
 
 export const MasterProfileScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();
+  const { t } = useI18n();
   return (
     <RolePlaceholderBase
       showLanguageSelector
-      title="Profile"
-      subtitle="Master Instructor Profile"
+      title={t('masterHome.profileTitle')}
+      subtitle={t('masterHome.profileSubtitle')}
       role={UserRole.MASTER}
       user={props.user}
       onLogout={props.onLogout}
       isOffline={props.isOffline}
       testID="master-profile-screen"
       icon={<User size={iconSize.lg} color={colors.buttonPrimaryBg} />}
-      scopeDescription="Coach Identity: Master qualifications, Dan rank certifications, affiliated dojos, and session sign out."
+      scopeDescription={t('masterHome.profileScope')}
     />
   );
 };

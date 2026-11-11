@@ -8,6 +8,7 @@ import { Button } from '../../../components/Button';
 import { StatusBadge } from '../../../components/Badges';
 import { AuthUser } from '../../../types/auth';
 import { apiClient } from '../../../services/apiClient';
+import { useI18n } from '../../../i18n';
 
 export interface ClassesScreenProps {
   user: AuthUser;
@@ -21,6 +22,7 @@ export const ClassesScreen: React.FC<ClassesScreenProps> = ({
   navigation,
 }) => {
   const { colors, typography, spacing, iconSize } = useTheme();
+  const { t } = useI18n();
 
   const [refreshing, setRefreshing] = useState(false);
   const [approvedClasses, setApprovedClasses] = useState<any[]>([]);
@@ -78,11 +80,11 @@ export const ClassesScreen: React.FC<ClassesScreenProps> = ({
   return (
     <ScreenContainer scrollable testID="master-classes-screen">
       <ScreenHeader
-        title="Assigned Classes"
-        subtitle="Manage approved classes and track proposals"
+        title={t('masterHome.classes.title')}
+        subtitle={t('masterHome.classes.subtitle')}
         rightAction={
           <Button
-            label="New Class"
+            label={t('masterHome.classes.newClass')}
             onPress={() => navigation?.navigate?.('CreateClass')}
             variant="primary"
             size="sm"
@@ -94,20 +96,20 @@ export const ClassesScreen: React.FC<ClassesScreenProps> = ({
 
       <View style={{ marginBottom: spacing.sm }}>
         <Button
-          label="View Class Students"
+          label={t('masterHome.classes.viewStudents')}
           onPress={() => navigation?.navigate?.('Students')}
           variant="outline"
           size="sm"
           rightIcon={<ArrowRight size={iconSize.sm} color={colors.buttonSecondaryText} />}
           testID="btn-view-class-students"
-          accessibilityLabel="View Class Students via nested stack"
+          accessibilityLabel={t('masterHome.classes.viewStudentsA11y')}
         />
       </View>
 
       {/* Tabs */}
       <View style={styles.tabBar}>
         <Button
-          label={`Approved (${approvedClasses.length})`}
+          label={t('masterHome.classes.tabApproved', { count: approvedClasses.length })}
           onPress={() => setActiveTab('APPROVED')}
           variant={activeTab === 'APPROVED' ? 'primary' : 'outline'}
           size="sm"
@@ -115,7 +117,7 @@ export const ClassesScreen: React.FC<ClassesScreenProps> = ({
           testID="tab-approved-classes"
         />
         <Button
-          label={`Proposals (${pendingProposals.length})`}
+          label={t('masterHome.classes.tabProposals', { count: pendingProposals.length })}
           onPress={() => setActiveTab('PENDING')}
           variant={activeTab === 'PENDING' ? 'primary' : 'outline'}
           size="sm"
@@ -123,7 +125,7 @@ export const ClassesScreen: React.FC<ClassesScreenProps> = ({
           testID="tab-pending-proposals"
         />
         <Button
-          label={`Rejected (${rejectedProposals.length})`}
+          label={t('masterHome.classes.tabRejected', { count: rejectedProposals.length })}
           onPress={() => setActiveTab('REJECTED')}
           variant={activeTab === 'REJECTED' ? 'primary' : 'outline'}
           size="sm"
@@ -140,10 +142,10 @@ export const ClassesScreen: React.FC<ClassesScreenProps> = ({
             {approvedClasses.length === 0 ? (
               <Card variant="standard" style={{ padding: 20, alignItems: 'center' }}>
                 <Text style={[typography.bodyMedium, { color: colors.textSecondary }]}>
-                  No active approved classes yet.
+                  {t('masterHome.classes.noApproved')}
                 </Text>
                 <Button
-                  label="Propose a New Class"
+                  label={t('masterHome.classes.proposeClass')}
                   onPress={() => navigation?.navigate?.('CreateClass')}
                   variant="outline"
                   size="sm"
@@ -159,21 +161,21 @@ export const ClassesScreen: React.FC<ClassesScreenProps> = ({
                         {cls.name}
                       </Text>
                       <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                        {cls.schedule} • {cls.venue_details || cls.location || 'Dojo'}
+                        {cls.schedule} • {cls.venue_details || cls.location || t('masterHome.classes.venueFallback')}
                       </Text>
                       <Text style={[typography.caption, { color: colors.buttonPrimaryBg, marginTop: 2, fontWeight: '600' }]}>
-                        Capacity: {cls.capacity ?? 30} • Availability: {cls.enrollment_availability || 'OPEN'}
+                        {t('masterHome.classes.capacity', { capacity: cls.capacity ?? 30, availability: cls.enrollment_availability || 'OPEN' })}
                       </Text>
                     </View>
                     <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                      <StatusBadge status={cls.operational_status || 'ACTIVE'} label={cls.operational_status || 'Approved'} variant="success" />
+                      <StatusBadge status={cls.operational_status || 'ACTIVE'} label={cls.operational_status || t('masterHome.classes.approved')} variant="success" />
                     </View>
                   </View>
 
                   {/* Operational actions: ONLY allowed for approved classes */}
                   <View style={[styles.operationalActions, { flexDirection: 'row', gap: spacing.xs, justifyContent: 'flex-end', marginTop: spacing.sm }]}>
                     <Button
-                      label="Applications"
+                      label={t('masterHome.classes.applications')}
                       onPress={() => navigation?.navigate?.('ClassEnrollmentInbox', { classId: cls.id, className: cls.name })}
                       variant="outline"
                       size="sm"
@@ -181,7 +183,7 @@ export const ClassesScreen: React.FC<ClassesScreenProps> = ({
                     />
                     <View testID={`btn-operate-${cls.id}`}>
                       <Button
-                        label="Open Workspace"
+                        label={t('masterHome.classes.openWorkspace')}
                         onPress={() => navigation?.navigate?.('ClassWorkspace', { classId: cls.id, className: cls.name })}
                         variant="primary"
                         size="sm"
@@ -201,7 +203,7 @@ export const ClassesScreen: React.FC<ClassesScreenProps> = ({
             {pendingProposals.length === 0 ? (
               <Card variant="standard" style={{ padding: 20, alignItems: 'center' }}>
                 <Text style={[typography.bodyMedium, { color: colors.textSecondary }]}>
-                  No pending class proposals.
+                  {t('masterHome.classes.noPending')}
                 </Text>
               </Card>
             ) : (
@@ -213,17 +215,17 @@ export const ClassesScreen: React.FC<ClassesScreenProps> = ({
                         {item.name}
                       </Text>
                       <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                        {item.schedule || 'Schedule pending'}
+                        {item.schedule || t('masterHome.classes.schedulePending')}
                       </Text>
                     </View>
                     <StatusBadge
                       status={item.status === 'SUBMITTED' ? 'PENDING' : 'WARNING'}
-                      label={item.status === 'SUBMITTED' ? 'Awaiting Review' : 'Needs Info'}
+                      label={item.status === 'SUBMITTED' ? t('masterHome.classes.awaitingReview') : t('masterHome.classes.needsInfo')}
                       variant="warning"
                     />
                   </View>
                   <Text style={[typography.caption, { color: colors.textMuted, marginTop: spacing.xs }]}>
-                    Notice: Class operations are unavailable until Persatuan approval is granted.
+                    {t('masterHome.classes.pendingNotice')}
                   </Text>
                 </Card>
               ))
@@ -236,7 +238,7 @@ export const ClassesScreen: React.FC<ClassesScreenProps> = ({
             {rejectedProposals.length === 0 ? (
               <Card variant="standard" style={{ padding: 20, alignItems: 'center' }}>
                 <Text style={[typography.bodyMedium, { color: colors.textSecondary }]}>
-                  No rejected proposals.
+                  {t('masterHome.classes.noRejected')}
                 </Text>
               </Card>
             ) : (
@@ -249,11 +251,11 @@ export const ClassesScreen: React.FC<ClassesScreenProps> = ({
                       </Text>
                       {item.rejection_reason ? (
                         <Text style={[typography.caption, { color: colors.errorText, marginTop: 4 }]}>
-                          Reason: {item.rejection_reason}
+                          {t('masterHome.classes.reason', { reason: item.rejection_reason })}
                         </Text>
                       ) : null}
                     </View>
-                    <StatusBadge status="EXPIRED" label="Rejected" variant="danger" />
+                    <StatusBadge status="EXPIRED" label={t('masterHome.classes.rejected')} variant="danger" />
                   </View>
                 </Card>
               ))
