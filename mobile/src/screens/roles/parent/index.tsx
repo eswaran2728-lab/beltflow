@@ -29,6 +29,7 @@ import { useDashboardData } from '../../../hooks/useDashboardData';
 import { dashboardService, ParentDashboardData, ParentChildSummary } from '../../../services/dashboardService';
 import { ParentChildPassViewer, LinkedChildPassData } from '../../../components/ParentChildPassViewer';
 import { ParentFeesPaymentScreen } from './ParentFeesPaymentScreen';
+import { useI18n } from '../../../i18n';
 
 export interface RoleScreenProps {
   user: AuthUser;
@@ -44,6 +45,7 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
   navigation,
 }) => {
   const { colors, typography, spacing, iconSize } = useTheme();
+  const { t } = useI18n();
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
 
   const fetcher = useCallback(() => {
@@ -57,13 +59,13 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
 
   const headerRightAction = onLogout ? (
     <Button
-      label="Sign Out"
+      label={t('parentHome.signOut')}
       onPress={onLogout}
       variant="outline"
       size="sm"
       leftIcon={<LogOut size={iconSize.sm} color={colors.textSecondary} />}
       testID="btn-role-logout"
-      accessibilityLabel="Sign Out of BeltFlow"
+      accessibilityLabel={t('parentHome.signOutA11y')}
     />
   ) : undefined;
 
@@ -80,7 +82,7 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
       totalOutstanding += (c.totalPending || 0);
 
       const orgId = c.organizationId || user.organizationId || 'org_default';
-      const orgName = c.organizationName || 'Persatuan Academy';
+      const orgName = c.organizationName || t('parentHome.defaultOrgName');
 
       if (!merchantsMap.has(orgId)) {
         merchantsMap.set(orgId, {
@@ -117,7 +119,7 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
       hasSiblingDiscount: isSiblingEligible,
       siblingDiscountSavings: discountSavings,
     };
-  }, [children, user.organizationId]);
+  }, [children, user.organizationId, t]);
 
   const renderIdentityCard = () => (
     <Card variant="standard" style={[styles.identityCard, { borderColor: colors.border, marginBottom: spacing.md }]}>
@@ -131,13 +133,13 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
           </Text>
           {user.organizationId ? (
             <Text style={[typography.caption, { color: colors.buttonPrimaryBg, marginTop: 2, fontWeight: '600' }]}>
-              Primary Persatuan: {user.organizationId}
+              {t('parentHome.primaryPersatuan', { id: user.organizationId })}
             </Text>
           ) : null}
         </View>
         <StatusBadge
           status={UserRole.PARENT}
-          label="PARENT / GUARDIAN"
+          label={t('parentHome.roleBadge')}
           variant="info"
           testID="badge-role-parent"
         />
@@ -149,22 +151,22 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <StitchAppHeader
-          dojangName="BELTFLOW FAMILY HUB"
-          roleBadgeText="PARENT"
+          dojangName={t('parentHome.headerHub')}
+          roleBadgeText={t('parentHome.headerRole')}
           hasUnreadNotifications={false}
         />
         <ScreenContainer scrollable testID="parent-home-screen">
-          <ScreenHeader title={`Welcome, ${user.fullName}`} subtitle="Parent Home" rightAction={headerRightAction} />
+          <ScreenHeader title={t('parentHome.welcome', { name: user.fullName })} subtitle={t('parentHome.subtitle')} rightAction={headerRightAction} />
           {isOffline ? (
             <View style={{ marginBottom: spacing.md }}>
               <OfflineBanner
-                message="Offline Mode: Locally Cached Identity — Sensitive server operations are locked until online."
+                message={t('parentHome.offlineBanner')}
                 testID="offline-security-banner"
               />
             </View>
           ) : null}
           {renderIdentityCard()}
-          <LoadingState message="Loading family dashboard..." />
+          <LoadingState message={t('parentHome.loading')} />
         </ScreenContainer>
       </View>
     );
@@ -174,16 +176,16 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <StitchAppHeader
-          dojangName="BELTFLOW FAMILY HUB"
-          roleBadgeText="PARENT"
+          dojangName={t('parentHome.headerHub')}
+          roleBadgeText={t('parentHome.headerRole')}
           hasUnreadNotifications={false}
         />
         <ScreenContainer scrollable testID="parent-home-screen">
-          <ScreenHeader title={`Welcome, ${user.fullName}`} subtitle="Parent Home" rightAction={headerRightAction} />
+          <ScreenHeader title={t('parentHome.welcome', { name: user.fullName })} subtitle={t('parentHome.subtitle')} rightAction={headerRightAction} />
           {isOffline ? (
             <View style={{ marginBottom: spacing.md }}>
               <OfflineBanner
-                message="Offline Mode: Locally Cached Identity — Sensitive server operations are locked until online."
+                message={t('parentHome.offlineBanner')}
                 testID="offline-security-banner"
               />
             </View>
@@ -198,8 +200,8 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StitchAppHeader
-        dojangName="BELTFLOW FAMILY HUB"
-        roleBadgeText="PARENT"
+        dojangName={t('parentHome.headerHub')}
+        roleBadgeText={t('parentHome.headerRole')}
         hasUnreadNotifications={(data?.notices && data.notices.length > 0) || false}
       />
 
@@ -216,15 +218,15 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
         }
       >
         <ScreenHeader
-          title={`Welcome, ${user.fullName}`}
-          subtitle="Parent Home"
+          title={t('parentHome.welcome', { name: user.fullName })}
+          subtitle={t('parentHome.subtitle')}
           rightAction={headerRightAction}
         />
 
         {isOffline ? (
           <View style={{ marginBottom: spacing.md }}>
             <OfflineBanner
-              message="Offline Mode: Locally Cached Identity — Sensitive server operations are locked until online."
+              message={t('parentHome.offlineBanner')}
               testID="offline-security-banner"
             />
           </View>
@@ -236,8 +238,8 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
         {children.length === 0 ? (
           <Card variant="elevated" style={[styles.sectionCard, { marginBottom: spacing.md }]}>
             <EmptyState
-              title="No Linked Children"
-              description="No approved student profiles are currently linked to your family account. Contact your Persatuan academy to approve family linking."
+              title={t('parentHome.noChildrenTitle')}
+              description={t('parentHome.noChildrenDesc')}
               testID="empty-linked-children"
             />
           </Card>
@@ -246,7 +248,7 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
             {/* Multi-Child Switcher Tabs (Stitch Pills) */}
             {children.length > 1 ? (
               <View style={[styles.childSwitcherContainer, { marginBottom: spacing.md }]}>
-                <Text style={styles.childSwitcherLabel}>LINKED MARTIAL ARTISTS ({children.length})</Text>
+                <Text style={styles.childSwitcherLabel}>{t('parentHome.linkedArtists', { count: children.length })}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                   {children.map(child => {
                     const isSelected = (activeChild?.id === child.id);
@@ -261,7 +263,7 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
                         ]}
                         accessibilityRole="tab"
                         accessibilityState={{ selected: isSelected }}
-                        accessibilityLabel={`Select child ${child.fullName}`}
+                        accessibilityLabel={t('parentHome.selectChildA11y', { name: child.fullName })}
                       >
                         <View style={[styles.childAvatarCircle, isSelected && styles.childAvatarCircleActive]}>
                           <Text style={[styles.childAvatarText, isSelected && styles.childAvatarTextActive]}>
@@ -294,7 +296,7 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
                       {activeChild.fullName}
                     </Text>
                     <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                      {activeChild.className || 'Silambam Cohort'} • Standard Monthly Fee: RM {activeChild.monthlyFee.toFixed(2)}
+                      {t('parentHome.classAndFee', { className: activeChild.className || t('parentHome.defaultClass'), fee: activeChild.monthlyFee.toFixed(2) })}
                     </Text>
                   </View>
                   <BeltBadge beltName={activeChild.beltRank} size="md" testID="parent-active-child-belt" />
@@ -303,17 +305,17 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
                 {/* Child Stat Metrics Grid (StitchStatCard) */}
                 <View style={[styles.statsGrid, { gap: spacing.sm, marginTop: spacing.md }]}>
                   <StitchStatCard
-                    label="ATTENDANCE"
+                    label={t('parentHome.statAttendance')}
                     value={`${activeChild.attendancePresent} / ${activeChild.attendanceTotal}`}
-                    subtext="Sessions Attended"
+                    subtext={t('parentHome.statSessionsAttended')}
                     accentColor={StitchTokens.colors.bfGreen}
                     style={{ flex: 1 }}
                     testID="stat-parent-attendance"
                   />
                   <StitchStatCard
-                    label="OUTSTANDING"
+                    label={t('parentHome.statOutstanding')}
                     value={`RM ${activeChild.totalPending % 1 === 0 ? activeChild.totalPending.toFixed(0) : activeChild.totalPending.toFixed(2)}`}
-                    subtext={activeChild.monthsPendingCount > 0 ? `${activeChild.monthsPendingCount} Mo. Due` : 'All Settled'}
+                    subtext={activeChild.monthsPendingCount > 0 ? t('parentHome.monthsDue', { count: activeChild.monthsPendingCount }) : t('parentHome.allSettled')}
                     accentColor={activeChild.totalPending > 0 ? StitchTokens.colors.colorAccent : StitchTokens.colors.bfGreen}
                     style={{ flex: 1 }}
                     testID="stat-parent-fees"
@@ -333,16 +335,16 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
                   }}
                   testID="btn-message-active-child-master"
                   accessibilityRole="button"
-                  accessibilityLabel={`Message Master regarding ${activeChild.fullName}`}
+                  accessibilityLabel={t('parentHome.messageMasterA11y', { name: activeChild.fullName })}
                 >
                   <View style={styles.messageMasterLeft}>
                     <View style={styles.messageIconCircle}>
                       <MessageSquare size={16} color="#FFFFFF" />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.messageMasterTitle}>Message Class Master</Text>
+                      <Text style={styles.messageMasterTitle}>{t('parentHome.messageMasterTitle')}</Text>
                       <Text style={styles.messageMasterSub}>
-                        Private consultations, absence notes & safety updates
+                        {t('parentHome.messageMasterSub')}
                       </Text>
                     </View>
                   </View>
@@ -353,7 +355,7 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
                 {activeChild.upcomingSessions && activeChild.upcomingSessions.length > 0 ? (
                   <View style={{ marginTop: spacing.md }}>
                     <View style={styles.sessionHeaderRow}>
-                      <Text style={styles.subSectionTitle}>UPCOMING MAT SESSIONS</Text>
+                      <Text style={styles.subSectionTitle}>{t('parentHome.upcomingSessions')}</Text>
                       <Calendar size={14} color={StitchTokens.colors.brandNavy} />
                     </View>
 
@@ -375,7 +377,7 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
                           </Text>
                         </View>
                         <View style={styles.sessionStatusPill}>
-                          <Text style={styles.sessionStatusText}>Scheduled</Text>
+                          <Text style={styles.sessionStatusText}>{t('parentHome.scheduled')}</Text>
                         </View>
                       </View>
                     ))}
@@ -385,7 +387,7 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
                 {/* Certificates for Active Child */}
                 {activeChild.certificates && activeChild.certificates.length > 0 ? (
                   <View style={{ marginTop: spacing.md }}>
-                    <Text style={styles.subSectionTitle}>VERIFIED BELT CERTIFICATES</Text>
+                    <Text style={styles.subSectionTitle}>{t('parentHome.certificates')}</Text>
                     {activeChild.certificates.map(cert => (
                       <View
                         key={cert.id}
@@ -399,7 +401,7 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
                             {cert.beltRank}
                           </Text>
                           <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                            Cert #{cert.certificateNumber} • Issued {new Date(cert.issuedDate).toLocaleDateString()}
+                            {t('parentHome.certLine', { number: cert.certificateNumber, date: new Date(cert.issuedDate).toLocaleDateString() })}
                           </Text>
                         </View>
                         <Award size={20} color={StitchTokens.colors.colorAccent} />
@@ -417,8 +419,8 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
                 totalFamilyOutstanding={totalFamilyOutstanding}
                 currency="MYR"
                 hasSiblingDiscount={hasSiblingDiscount}
-                siblingDiscountLabel={children.length >= 2 ? `${children.length}-Child Sibling Discount Active` : 'Sibling Discount Applied'}
-                siblingDiscountDetails="Multi-child enrollment verified by academy"
+                siblingDiscountLabel={children.length >= 2 ? t('parentHome.siblingDiscountActive', { count: children.length }) : t('parentHome.siblingDiscountApplied')}
+                siblingDiscountDetails={t('parentHome.siblingDiscountDetails')}
                 siblingDiscountSavings={siblingDiscountSavings}
                 onPayNow={() => navigation?.navigate('Fees')}
                 onViewHistory={() => navigation?.navigate('Fees')}
@@ -431,7 +433,7 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
         <Card variant="elevated" style={[styles.sectionCard, { marginBottom: spacing.md }]}>
           <View style={styles.sectionHeaderRow}>
             <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
-              Academy Notices
+              {t('parentHome.noticesTitle')}
             </Text>
             <Bell size={18} color={StitchTokens.colors.brandNavy} />
           </View>
@@ -459,14 +461,14 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
                     </Text>
                   </View>
                   {notice.priority === 'HIGH' ? (
-                    <StatusBadge status="URGENT" label="Urgent" variant="danger" />
+                    <StatusBadge status="URGENT" label={t('parentHome.urgent')} variant="danger" />
                   ) : null}
                 </View>
               ))}
             </View>
           ) : (
             <Text style={[typography.caption, { color: colors.textMuted, marginTop: spacing.sm }]}>
-              No announcements posted at this time.
+              {t('parentHome.noNotices')}
             </Text>
           )}
         </Card>
@@ -474,11 +476,11 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
         {/* Quick Navigation Shortcuts */}
         <Card variant="standard" style={[styles.sectionCard, { marginBottom: spacing.xl }]}>
           <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
-            Family Hub Shortcuts
+            {t('parentHome.shortcutsTitle')}
           </Text>
           <View style={{ gap: spacing.sm }}>
             <Button
-              label="Tuition Fees & Payments"
+              label={t('parentHome.shortcutFees')}
               onPress={() => navigation?.navigate('Fees')}
               variant="secondary"
               size="md"
@@ -487,7 +489,7 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
               testID="shortcut-parent-fees"
             />
             <Button
-              label="Children's Passes & Roster"
+              label={t('parentHome.shortcutChildren')}
               onPress={() => navigation?.navigate('Children')}
               variant="secondary"
               size="md"
@@ -496,7 +498,7 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
               testID="shortcut-parent-children"
             />
             <Button
-              label="Parent-Master Messaging"
+              label={t('parentHome.shortcutMessaging')}
               onPress={() => navigation?.navigate('Messaging')}
               variant="secondary"
               size="md"
@@ -505,7 +507,7 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
               testID="shortcut-parent-messaging"
             />
             <Button
-              label="Parent Profile & Guardianship"
+              label={t('parentHome.shortcutProfile')}
               onPress={() => navigation?.navigate('Profile')}
               variant="outline"
               size="md"
@@ -533,6 +535,7 @@ function getBeltDotColor(beltRank?: string): string {
 
 export const ChildrenScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();
+  const { t } = useI18n();
   const fetcher = useCallback(() => {
     return dashboardService.getParentDashboard(props.user);
   }, [props.user]);
@@ -552,12 +555,12 @@ export const ChildrenScreen: React.FC<RoleScreenProps> = props => {
   return (
     <ScreenContainer scrollable testID="parent-children-screen">
       <ScreenHeader
-        title="Children's Passes"
-        subtitle="Approved Linked Martial Artists"
+        title={t('parentHome.children.title')}
+        subtitle={t('parentHome.children.subtitle')}
       />
       {props.isOffline && (
         <View style={{ marginBottom: 12 }}>
-          <OfflineBanner message="Operating in offline mode. Viewing locally cached student passes." />
+          <OfflineBanner message={t('parentHome.children.offline')} />
         </View>
       )}
       <ParentChildPassViewer
@@ -566,15 +569,15 @@ export const ChildrenScreen: React.FC<RoleScreenProps> = props => {
         testID="parent-pass-viewer"
       />
       <RolePlaceholderBase
-        title="Student Progress Overview"
-        subtitle="Approved Linked Students"
+        title={t('parentHome.children.overviewTitle')}
+        subtitle={t('parentHome.children.overviewSubtitle')}
         role={UserRole.PARENT}
         user={props.user}
         onLogout={props.onLogout}
         isOffline={props.isOffline}
         testID="parent-children-overview"
         icon={<Users size={iconSize.lg} color={colors.buttonPrimaryBg} />}
-        scopeDescription="Linked Students: Monitor children's training attendance streaks, syllabus milestones, and grading eligibility."
+        scopeDescription={t('parentHome.children.scope')}
       />
     </ScreenContainer>
   );
@@ -592,35 +595,37 @@ export { ParentMasterMessagingScreen } from './ParentMasterMessagingScreen';
 
 export const NoticesScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();
+  const { t } = useI18n();
   return (
     <RolePlaceholderBase
-      title="Notices"
-      subtitle="Academy Announcements & Grading Dates"
+      title={t('parentHome.notices.title')}
+      subtitle={t('parentHome.notices.subtitle')}
       role={UserRole.PARENT}
       user={props.user}
       onLogout={props.onLogout}
       isOffline={props.isOffline}
       testID="parent-notices-screen"
       icon={<Bell size={iconSize.lg} color={colors.buttonPrimaryBg} />}
-      scopeDescription="Notice Board: Academy holiday notifications, tournament invitations, and federation announcements."
+      scopeDescription={t('parentHome.notices.scope')}
     />
   );
 };
 
 export const ParentProfileScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize } = useTheme();
+  const { t } = useI18n();
   return (
     <RolePlaceholderBase
       showLanguageSelector
-      title="Profile"
-      subtitle="Parent & Guardian Identity"
+      title={t('parentHome.profile.title')}
+      subtitle={t('parentHome.profile.subtitle')}
       role={UserRole.PARENT}
       user={props.user}
       onLogout={props.onLogout}
       isOffline={props.isOffline}
       testID="parent-profile-screen"
       icon={<User size={iconSize.lg} color={colors.buttonPrimaryBg} />}
-      scopeDescription="Guardian Scope: Contact information, emergency notification preferences, linked students, and sign out."
+      scopeDescription={t('parentHome.profile.scope')}
     />
   );
 };

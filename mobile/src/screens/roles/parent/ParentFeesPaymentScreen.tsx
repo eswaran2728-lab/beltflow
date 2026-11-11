@@ -36,6 +36,7 @@ import {
 } from '../../../services/paymentGatewayService';
 import { apiClient } from '../../../services/apiClient';
 import { onboardingService, FamilySummary } from '../../../services/onboardingService';
+import { useI18n } from '../../../i18n';
 
 export interface ParentFeesPaymentScreenProps {
   user: AuthUser;
@@ -69,6 +70,7 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
   isOffline,
 }) => {
   const { colors, typography, spacing } = useTheme();
+  const { t } = useI18n();
 
   const [loading, setLoading] = useState<boolean>(!isOffline);
   const [children, setChildren] = useState<any[]>([]);
@@ -219,14 +221,14 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
   // Initiate Online Payment Intent
   const handleInitiatePayment = async () => {
     if (!selectedChildId || selectedDueIds.length === 0) {
-      Alert.alert('Selection Required', 'Please select at least one outstanding billing month to pay.');
+      Alert.alert(t('parentHome.fees.selectionRequiredTitle'), t('parentHome.fees.selectionRequiredMsg'));
       return;
     }
 
     if (!merchantConfigured) {
       Alert.alert(
-        'Gateway Not Configured',
-        'Online payment gateway is not configured for this Persatuan. Please pay in person or via direct bank transfer.'
+        t('parentHome.fees.gatewayNotConfiguredTitle'),
+        t('parentHome.fees.gatewayNotConfiguredMsg')
       );
       return;
     }
@@ -252,7 +254,7 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
         });
       }
     } catch (err: any) {
-      Alert.alert('Payment Initiation Failed', err.message || 'Unable to start payment session.');
+      Alert.alert(t('parentHome.fees.initiationFailedTitle'), err.message || t('parentHome.fees.initiationFailedMsg'));
     } finally {
       setInitiatingPayment(false);
     }
@@ -282,11 +284,11 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
   if (loading) {
     return (
       <ScreenContainer scrollable testID="parent-fees-payment-screen">
-        <ScreenHeader title="Tuition Fees & Payments" subtitle="Online FPX & DuitNow Direct Settlement" />
+        <ScreenHeader title={t('parentHome.fees.loadingTitle')} subtitle={t('parentHome.fees.loadingSubtitle')} />
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={colors.buttonPrimaryBg} />
           <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginTop: spacing.md }]}>
-            Loading tuition records...
+            {t('parentHome.fees.loading')}
           </Text>
         </View>
       </ScreenContainer>
@@ -296,13 +298,13 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
   return (
     <ScreenContainer scrollable testID="parent-fees-payment-screen">
       <ScreenHeader
-        title="Tuition Fees & Receipts"
-        subtitle="Persatuan-Owned Direct Settlement"
+        title={t('parentHome.fees.title')}
+        subtitle={t('parentHome.fees.subtitle')}
         rightAction={
           <TouchableOpacity
             onPress={loadParentData}
             style={[styles.refreshButton, { borderColor: colors.border }]}
-            accessibilityLabel="Refresh fee records"
+            accessibilityLabel={t('parentHome.fees.refreshA11y')}
           >
             <RefreshCw size={16} color={colors.textSecondary} />
           </TouchableOpacity>
@@ -311,7 +313,7 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
 
       {isOffline && (
         <View style={{ marginBottom: spacing.md }}>
-          <OfflineBanner message="Offline Mode: Viewing cached billing details. Online FPX and DuitNow payments are disabled until connected." />
+          <OfflineBanner message={t('parentHome.fees.offline')} />
         </View>
       )}
 
@@ -319,7 +321,7 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
       {children.length > 1 && (
         <View style={{ marginBottom: spacing.md }}>
           <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.xs, fontWeight: '600' }]}>
-            SELECT STUDENT
+            {t('parentHome.fees.selectStudent')}
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
             {children.map(child => {
@@ -371,10 +373,10 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
             <Building2 size={24} color="#D97706" />
             <View style={{ flex: 1, marginLeft: spacing.sm }}>
               <Text style={[typography.titleMedium, { color: '#92400E', fontWeight: '700' }]}>
-                Multiple Academy Merchants Detected
+                {t('parentHome.fees.crossMerchantTitle')}
               </Text>
               <Text style={[typography.caption, { color: '#B45309', marginTop: 2 }]}>
-                Your children train across independent martial arts Persatuans. Each academy receives tuition directly into its own verified merchant settlement account. Checkouts are strictly separated per Persatuan.
+                {t('parentHome.fees.crossMerchantBody')}
               </Text>
             </View>
           </View>
@@ -400,17 +402,17 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
             <Text style={[typography.titleMedium, { color: colors.textPrimary, fontWeight: '700' }]}>
               {merchantConfigured && merchantConfig
                 ? merchantConfig.merchantName
-                : 'Direct Settlement Not Configured'}
+                : t('parentHome.fees.notConfiguredTitle')}
             </Text>
             <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
               {merchantConfigured && merchantConfig
-                ? `Funds route directly to Persatuan account (${merchantConfig.settlementBankName || 'Bank'} ${merchantConfig.settlementAccountMasked || ''}). BeltFlow does not pool academy payments.`
-                : 'This Persatuan has not yet configured its direct merchant account. Online payments are unavailable.'}
+                ? t('parentHome.fees.fundsRoute', { bank: merchantConfig.settlementBankName || t('parentHome.fees.bankFallback'), account: merchantConfig.settlementAccountMasked || '' })
+                : t('parentHome.fees.notConfiguredBody')}
             </Text>
           </View>
           <StatusBadge
             status={merchantConfigured ? 'ACTIVE' : 'UNCONFIGURED'}
-            label={merchantConfigured ? 'Direct Merchant' : 'Offline Only'}
+            label={merchantConfigured ? t('parentHome.fees.badgeDirect') : t('parentHome.fees.badgeOffline')}
             variant={merchantConfigured ? 'success' : 'danger'}
           />
         </View>
@@ -446,10 +448,10 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
               )}
               <Text style={[typography.titleMedium, { color: colors.textPrimary, marginLeft: spacing.xs, fontWeight: '700' }]}>
                 {activeIntent.status === 'SUCCEEDED'
-                  ? 'Payment Confirmed'
+                  ? t('parentHome.fees.intentConfirmed')
                   : activeIntent.status === 'FAILED'
-                  ? 'Payment Failed'
-                  : 'Payment Pending Authoritative Confirmation'}
+                  ? t('parentHome.fees.intentFailed')
+                  : t('parentHome.fees.intentPending')}
               </Text>
             </View>
             <StatusBadge
@@ -467,16 +469,16 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
 
           <View style={[styles.intentDetails, { marginTop: spacing.sm }]}>
             <Text style={[typography.caption, { color: colors.textSecondary }]}>
-              Amount Payable: <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>RM {activeIntent.amountRM}</Text> ({activeIntent.amountCents} sen)
+              {t('parentHome.fees.amountPayable')} <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>RM {activeIntent.amountRM}</Text> {t('parentHome.fees.amountSen', { cents: activeIntent.amountCents })}
             </Text>
             <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-              Method: <Text style={{ color: colors.textPrimary }}>{activeIntent.paymentMethod === 'FPX' ? 'FPX Online Banking' : 'DuitNow QR'}</Text>
+              {t('parentHome.fees.method')} <Text style={{ color: colors.textPrimary }}>{activeIntent.paymentMethod === 'FPX' ? t('parentHome.fees.fpx') : t('parentHome.fees.duitnow')}</Text>
             </Text>
             {activeIntent.receiptNo ? (
               <View style={[styles.receiptHighlight, { backgroundColor: '#ECFDF5', borderColor: '#10B981' }]}>
                 <Receipt size={18} color="#059669" />
                 <Text style={[typography.bodyMedium, { color: '#065F46', marginLeft: spacing.xs, fontWeight: '700' }]}>
-                  Official Receipt: {activeIntent.receiptNo}
+                  {t('parentHome.fees.officialReceipt', { receipt: activeIntent.receiptNo })}
                 </Text>
               </View>
             ) : null}
@@ -485,7 +487,7 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
           {activeIntent.status === 'PENDING_PROCESSING' && (
             <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
               <Button
-                label={pollingStatus ? 'Checking Bank Evidence...' : 'I Have Completed Payment (Check Status)'}
+                label={pollingStatus ? t('parentHome.fees.checkingStatus') : t('parentHome.fees.checkStatus')}
                 onPress={handleCheckPaymentStatus}
                 variant="primary"
                 size="md"
@@ -495,7 +497,7 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
               />
               {activeIntent.providerSessionUrl ? (
                 <Button
-                  label="Reopen Bank Checkout Portal"
+                  label={t('parentHome.fees.reopenCheckout')}
                   onPress={() => Linking.openURL(activeIntent.providerSessionUrl)}
                   variant="outline"
                   size="sm"
@@ -507,7 +509,7 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
 
           {activeIntent.status === 'SUCCEEDED' && (
             <Button
-              label="Dismiss / View Receipt"
+              label={t('parentHome.fees.dismissReceipt')}
               onPress={() => setActiveIntent(null)}
               variant="outline"
               size="sm"
@@ -517,7 +519,7 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
 
           {activeIntent.status === 'FAILED' && (
             <Button
-              label="Try Again"
+              label={t('parentHome.fees.tryAgain')}
               onPress={() => setActiveIntent(null)}
               variant="secondary"
               size="sm"
@@ -543,7 +545,7 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
               { color: activeTab === 'DUES' ? colors.buttonPrimaryBg : colors.textSecondary, fontWeight: '700' },
             ]}
           >
-            Outstanding Dues ({dues.filter(d => d.status !== 'Paid').length})
+            {t('parentHome.fees.tabDues', { count: dues.filter(d => d.status !== 'Paid').length })}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -560,7 +562,7 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
               { color: activeTab === 'HISTORY' ? colors.buttonPrimaryBg : colors.textSecondary, fontWeight: '700' },
             ]}
           >
-            Payment History ({history.length})
+            {t('parentHome.fees.tabHistory', { count: history.length })}
           </Text>
         </TouchableOpacity>
       </View>
@@ -572,10 +574,10 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
             <Card variant="standard" style={{ padding: spacing.lg, alignItems: 'center' }}>
               <CheckCircle2 size={40} color="#10B981" />
               <Text style={[typography.titleMedium, { color: colors.textPrimary, marginTop: spacing.sm }]}>
-                All Tuition Fees Settled
+                {t('parentHome.fees.allSettledTitle')}
               </Text>
               <Text style={[typography.caption, { color: colors.textSecondary, textAlign: 'center', marginTop: 4 }]}>
-                There are no pending or outstanding monthly dues recorded for this student.
+                {t('parentHome.fees.allSettledBody')}
               </Text>
             </Card>
           ) : (
@@ -584,7 +586,7 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
               {familySummary?.checkoutBundles && familySummary.checkoutBundles.length > 1 && (
                 <View style={{ marginBottom: spacing.md }}>
                   <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.xs, fontWeight: '600' }]}>
-                    SEPARATED ACADEMY CHECKOUTS ({familySummary.checkoutBundles.length} PERSATUANS)
+                    {t('parentHome.fees.separatedCheckouts', { count: familySummary.checkoutBundles.length })}
                   </Text>
                   <View style={{ gap: spacing.xs }}>
                     {familySummary.checkoutBundles.map((bundle: any) => (
@@ -599,7 +601,7 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
                             {bundle.organizationName}
                           </Text>
                           <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                            {bundle.itemCount} billing item(s) pending
+                            {t('parentHome.fees.bundlePending', { count: bundle.itemCount })}
                           </Text>
                         </View>
                         <Text style={[typography.titleMedium, { color: colors.buttonPrimaryBg, fontWeight: '800' }]}>
@@ -612,7 +614,7 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
               )}
 
               <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.xs, fontWeight: '600' }]}>
-                SELECT MONTHS TO SETTLE
+                {t('parentHome.fees.selectMonths')}
               </Text>
               <View style={{ gap: spacing.sm }}>
                 {dues.map(due => {
@@ -637,13 +639,13 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
                     >
                       <View style={{ flex: 1 }}>
                         <Text style={[typography.titleMedium, { color: colors.textPrimary, fontWeight: '700' }]}>
-                          Month: {due.billing_month}
+                          {t('parentHome.fees.month', { month: due.billing_month })}
                         </Text>
                         <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                          Fee: RM {Number(due.fee_amount).toFixed(2)} • Paid: RM {Number(due.amount_paid).toFixed(2)}
+                          {t('parentHome.fees.feeAndPaid', { fee: Number(due.fee_amount).toFixed(2), paid: Number(due.amount_paid).toFixed(2) })}
                         </Text>
                         <Text style={[typography.caption, { color: isPaid ? '#10B981' : '#D97706', fontWeight: '700', marginTop: 2 }]}>
-                          Balance: RM {remaining.toFixed(2)}
+                          {t('parentHome.fees.balance', { amount: remaining.toFixed(2) })}
                         </Text>
                       </View>
                       <StatusBadge
@@ -660,10 +662,10 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
               {totalAmountRM > 0 && merchantConfigured && (
                 <Card variant="elevated" style={[styles.checkoutCard, { marginTop: spacing.md, backgroundColor: colors.surfaceElevated, borderColor: colors.border }]}>
                   <Text style={[typography.titleMedium, { color: colors.textPrimary, fontWeight: '700' }]}>
-                    Payment Method
+                    {t('parentHome.fees.paymentMethod')}
                   </Text>
                   <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.sm }]}>
-                    Direct server-authoritative settlement with Persatuan merchant
+                    {t('parentHome.fees.paymentMethodDesc')}
                   </Text>
 
                   {/* Method Picker */}
@@ -681,7 +683,7 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
                     >
                       <CreditCard size={20} color={paymentMethod === 'FPX' ? colors.buttonPrimaryBg : colors.textSecondary} />
                       <Text style={[typography.bodyMedium, { color: colors.textPrimary, marginTop: 4, fontWeight: '700' }]}>
-                        FPX Online Banking
+                        {t('parentHome.fees.fpx')}
                       </Text>
                     </TouchableOpacity>
 
@@ -698,7 +700,7 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
                     >
                       <QrCode size={20} color={paymentMethod === 'DUITNOW_QR' ? colors.buttonPrimaryBg : colors.textSecondary} />
                       <Text style={[typography.bodyMedium, { color: colors.textPrimary, marginTop: 4, fontWeight: '700' }]}>
-                        DuitNow QR
+                        {t('parentHome.fees.duitnow')}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -707,7 +709,7 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
                   {paymentMethod === 'FPX' && (
                     <View style={{ marginTop: spacing.md }}>
                       <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.xs, fontWeight: '600' }]}>
-                        SELECT MALAYSIAN BANK
+                        {t('parentHome.fees.selectBank')}
                       </Text>
                       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
                         {MALAYSIAN_FPX_BANKS.map(bank => {
@@ -739,7 +741,7 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
                   {/* Total Amount Summary */}
                   <View style={[styles.totalRow, { borderTopColor: colors.border, marginTop: spacing.md, paddingTop: spacing.md }]}>
                     <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
-                      Total Payable:
+                      {t('parentHome.fees.totalPayable')}
                     </Text>
                     <Text style={[typography.sectionHeading, { color: colors.buttonPrimaryBg, fontWeight: '800' }]} testID="total-payable-amount">
                       RM {totalAmountRM.toFixed(2)}
@@ -747,7 +749,7 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
                   </View>
 
                   <Button
-                    label={initiatingPayment ? 'Connecting to Gateway...' : `Pay RM ${totalAmountRM.toFixed(2)} Now`}
+                    label={initiatingPayment ? t('parentHome.fees.connecting') : t('parentHome.fees.payNow', { amount: totalAmountRM.toFixed(2) })}
                     onPress={handleInitiatePayment}
                     variant="primary"
                     size="lg"
@@ -760,7 +762,7 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
                   <View style={[styles.securityNotice, { marginTop: spacing.sm }]}>
                     <ShieldCheck size={14} color="#10B981" />
                     <Text style={[typography.caption, { color: colors.textMuted, marginLeft: 4 }]}>
-                      Protected by TLS 1.3 & HMAC-SHA256 authoritative settlement.
+                      {t('parentHome.fees.securityNotice')}
                     </Text>
                   </View>
                 </Card>
@@ -777,10 +779,10 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
             <Card variant="standard" style={{ padding: spacing.lg, alignItems: 'center' }}>
               <FileText size={40} color={colors.textSecondary} />
               <Text style={[typography.titleMedium, { color: colors.textPrimary, marginTop: spacing.sm }]}>
-                No Historical Receipts
+                {t('parentHome.fees.noReceiptsTitle')}
               </Text>
               <Text style={[typography.caption, { color: colors.textSecondary, textAlign: 'center', marginTop: 4 }]}>
-                Confirmed tuition receipts will be permanently archived and available here.
+                {t('parentHome.fees.noReceiptsBody')}
               </Text>
             </Card>
           ) : (
@@ -796,11 +798,11 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                       <Receipt size={16} color={colors.buttonPrimaryBg} />
                       <Text style={[typography.titleMedium, { color: colors.textPrimary, fontWeight: '700', marginLeft: spacing.xs }]}>
-                        {item.receipt_no || 'Receipt Pending'}
+                        {item.receipt_no || t('parentHome.fees.receiptPending')}
                       </Text>
                     </View>
                     <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                      Method: {item.method} • {new Date(item.created_at).toLocaleDateString()}
+                      {t('parentHome.fees.historyMethod', { method: item.method, date: new Date(item.created_at).toLocaleDateString() })}
                     </Text>
                     <Text style={[typography.titleMedium, { color: colors.buttonPrimaryBg, fontWeight: '800', marginTop: 4 }]}>
                       RM {Number(item.amount).toFixed(2)}
