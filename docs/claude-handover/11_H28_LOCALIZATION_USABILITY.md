@@ -4,7 +4,7 @@
 > Contract: localized role journeys and accessibility evidence.
 > **Verdict: PARTIAL.** All five official acceptance tests pass (component and screen level, Jest), and the
 > localisation foundation is in place. H28 is "continuous", and most of the work remains:
-> - 978 hard-coded English UI strings across 46 screens still need translation keys.
+> - Core role journeys translated on 2026-11-11 (§5). 644 hard-coded English UI strings remain (was 978), mostly in secondary screens.
 > - Malay and Tamil need native-speaker review.
 > - Real-device checks (large text, TalkBack/VoiceOver, low-memory phones, slow networks) and real-user sessions have not been done.
 > - The remaining Stitch screen migration has not been done.
@@ -48,7 +48,7 @@
 - **Fonts:** see commit `145641a`. The theme used CSS stacks for fonts that were never bundled; it now uses system fonts.
 - **`i18nCoverageRatchetH28`:**
   - H28-localised files must contain no hard-coded English.
-  - The app-wide count of hard-coded UI strings may not exceed **978**. Lower it as screens are translated.
+  - The app-wide count of hard-coded UI strings may not exceed **644** (was 978). Lower it as screens are translated.
 
 **Native-speaker review needed:** `mobile/src/i18n/locales/ms.ts` and `ta.ts`, and the H26 `assistantStrings.ts`. The Tamil uses ஆசான் for Master and சங்கம் for Persatuan.
 
@@ -65,27 +65,21 @@ Backend unchanged by H28 (42/42 suites, see `10`).
 
 ## 4. Remaining H28 work (backlog, in suggested order)
 
-1. **Translate the R1 core journeys first** (Admin, Master, Parent, Student home screens, login, fees, attendance, grading). Then move every screen to `t()` keys and lower the ratchet baseline as each one is done. The files with the most hard-coded strings:
+1. **Translate the remaining screens** with `t()` keys and lower the ratchet baseline as each one is done. The core journeys are done (§5). The largest remaining files:
 
 | File | Hard-coded UI strings |
 |---|---|
 | `screens/roles/master/ClassWorkspaceScreen.tsx` | 51 |
-| `screens/roles/student/index.tsx` | 41 |
 | `screens/roles/parent/ParentStudentLifecycleScreen.tsx` | 39 |
 | `screens/roles/master/MasterApplicationStatusScreen.tsx` | 36 |
-| `screens/roles/master/index.tsx` | 33 |
 | `screens/roles/adminPersatuan/MasterApprovalsScreen.tsx` | 33 |
 | `screens/roles/master/MasterTrialsFollowUpScreen.tsx` | 31 |
-| `screens/roles/parent/index.tsx` | 31 |
-| `screens/roles/superAdmin/index.tsx` | 31 |
 | `screens/roles/student/VideoFeedbackScreen.tsx` | 29 |
 | `screens/roles/master/LessonPlanModal.tsx` | 27 |
 | `screens/roles/master/ClassHandoverScreen.tsx` | 26 |
-| `screens/roles/adminPersatuan/AdminFinanceScreen.tsx` | 26 |
 | `screens/roles/master/CreateClassScreen.tsx` | 25 |
-| `screens/roles/parent/ParentFeesPaymentScreen.tsx` | 24 |
 
-   Total: 978 across 46 screen files; no screen is fully translated yet. Re-measure with the same patterns as `i18nCoverageRatchetH28.test.ts`.
+   Total: 644. Shared components (e.g. `FamilyBillingCard`, `StudentProfileModal`, `Resilience`) also still hold English. Re-measure with the same patterns as `i18nCoverageRatchetH28.test.ts`.
 
 2. **Native-speaker review** of all BM and Tamil strings, including the assistant's.
 3. **Device checks:**
@@ -97,3 +91,23 @@ Backend unchanged by H28 (42/42 suites, see `10`).
 5. **Server-side text:** notices, notification templates and API error messages are still English; the notification outbox has no sender yet (`10` §5).
 6. **Stitch migration** of the remaining 31 screens (`04`, `07`). Keep the system-font decision, or bundle Space Grotesk/Inter for Latin text only with a Tamil fallback.
 7. **Next-step cards** for other waiting states: parent-link approval, transfer requests, payment verification, make-up and waitlist offers, Master handover.
+
+## 5. Core role journeys translated (2026-11-11)
+
+Keys live in per-area files under `mobile/src/i18n/locales/modules/` (`auth`, `superAdminHome`, `adminHome`, `masterHome`, `masterOps`, `parentHome`, `studentHome`), spread into `en.ts`/`ms.ts`/`ta.ts`. 689 keys in total, each in EN/BM/Tamil.
+
+| Area | Screens | Keys |
+|---|---|---|
+| Sign-in | Welcome (now with language picker), Login, Forgot Password, Splash, Verify Certificate, signed-in placeholder, Unauthorized Role, role placeholder base | 81 |
+| Super Admin | home, Persatuan management, audit, profile | 29 |
+| Admin Persatuan | dashboard (old in-file EN/BM/TA dictionary moved to keys; BM "Guru Utama" → "Master"), placeholders, finance | 117 |
+| Master | home, students, profile, classes | 67 |
+| Master operations | attendance, grading, QR scanner | 148 |
+| Parent | home, children, notices, profile, fees and payment | 109 |
+| Student | home, attendance, certificates, profile | 63 |
+
+Rules followed: English output unchanged (existing tests pin it); server data, role codes, enum values sent to the API, and "RM" formatting are not translated; payment wording only says "settled/confirmed" where the server data already says so.
+
+Evidence: all 19 files above are in the ratchet's fully-localised list (0 hard-coded strings); a key-usage scan found no `t('…')` key missing from the dictionaries; `tsc` 0 errors; ESLint 0 errors; Jest 44 suites / 496 tests pass; `expo export --platform android` succeeds.
+
+Not done: native-speaker review of the new BM/Tamil text, and on-device checks of longer BM/Tamil labels on small screens.
