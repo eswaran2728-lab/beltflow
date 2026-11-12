@@ -41,6 +41,8 @@ export interface AvailableClassCard {
 export interface AvailableClassesScreenProps {
   user: AuthUser;
   navigation?: any;
+  /** Show 'Book a Trial' per class. The navigator sets it when the trials module is on. */
+  canBookTrial?: boolean;
   onLogout?: () => void;
   isOffline?: boolean;
 }
@@ -48,6 +50,7 @@ export interface AvailableClassesScreenProps {
 export const AvailableClassesScreen: React.FC<AvailableClassesScreenProps> = ({
   user,
   navigation,
+  canBookTrial = false,
 }) => {
   const { colors, typography, spacing, iconSize, borderRadius } = useTheme();
   const { t } = useI18n();
@@ -321,6 +324,22 @@ export const AvailableClassesScreen: React.FC<AvailableClassesScreenProps> = ({
                     disabled={cls.enrollmentAvailability === 'CLOSED'}
                     testID={`btn-apply-${cls.id}`}
                   />
+                  {canBookTrial && navigation?.navigate && cls.enrollmentAvailability !== 'CLOSED' ? (
+                    <Button
+                      label={t('parentFlows.classes.bookTrial')}
+                      onPress={() =>
+                        navigation.navigate('BookTrial', {
+                          targetClassId: cls.id,
+                          targetClassName: cls.name,
+                          targetOrganizationId: cls.organizationId,
+                        })
+                      }
+                      variant="outline"
+                      size="sm"
+                      style={{ marginTop: spacing.sm }}
+                      testID={`btn-trial-${cls.id}`}
+                    />
+                  ) : null}
                 </View>
               </View>
             </Card>

@@ -55,7 +55,7 @@ function ParentHomeStackNavigator(props: RoleNavigatorProps) {
   );
 }
 
-function ParentChildrenStackNavigator(props: RoleNavigatorProps) {
+function ParentChildrenStackNavigator({ trialsEnabled, ...props }: RoleNavigatorProps & { trialsEnabled: boolean }) {
   return (
     <ChildrenStack.Navigator screenOptions={{ headerShown: false }}>
       <ChildrenStack.Screen name="ChildrenList">
@@ -68,7 +68,7 @@ function ParentChildrenStackNavigator(props: RoleNavigatorProps) {
         {navProps => <ParentMakeUpBookingScreen {...props} {...navProps} />}
       </ChildrenStack.Screen>
       <ChildrenStack.Screen name="AvailableClasses">
-        {navProps => <AvailableClassesScreen {...props} {...navProps} />}
+        {navProps => <AvailableClassesScreen {...props} {...navProps} canBookTrial={trialsEnabled} />}
       </ChildrenStack.Screen>
       <ChildrenStack.Screen name="BookTrial">
         {navProps => <ParentBookTrialScreen {...props} {...navProps} />}
@@ -139,6 +139,7 @@ export const ParentNavigator: React.FC<RoleNavigatorProps> = ({
             user={user}
             onLogout={onLogout}
             isOffline={isOffline}
+            trialsEnabled={release.isEnabled('trials')}
           />
         )}
       </Tab.Screen>

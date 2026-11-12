@@ -169,6 +169,7 @@ export const parentFlowsEn = {
   'parentFlows.makeUp.acceptOfferSuccessMessage': 'Your make-up seat is confirmed.',
   'parentFlows.makeUp.acceptOfferErrorTitle': 'Could Not Accept',
   'parentFlows.makeUp.acceptOfferErrorMessage': 'The offer may have expired. Pull down to refresh.',
+  'parentFlows.classes.bookTrial': 'Book a Trial',
 };
 
 export const parentFlowsMs: Record<keyof typeof parentFlowsEn, string> = {
@@ -332,6 +333,7 @@ export const parentFlowsMs: Record<keyof typeof parentFlowsEn, string> = {
   'parentFlows.makeUp.acceptOfferSuccessMessage': 'Tempat kelas ganti anda telah disahkan.',
   'parentFlows.makeUp.acceptOfferErrorTitle': 'Tidak Dapat Menerima',
   'parentFlows.makeUp.acceptOfferErrorMessage': 'Tawaran mungkin telah tamat tempoh. Tarik ke bawah untuk muat semula.',
+  'parentFlows.classes.bookTrial': 'Tempah Kelas Percubaan',
 };
 
 export const parentFlowsTa: Record<keyof typeof parentFlowsEn, string> = {
@@ -495,4 +497,5 @@ export const parentFlowsTa: Record<keyof typeof parentFlowsEn, string> = {
   'parentFlows.makeUp.acceptOfferSuccessMessage': 'உங்கள் ஈடுசெய் வகுப்பு இடம் உறுதிசெய்யப்பட்டது.',
   'parentFlows.makeUp.acceptOfferErrorTitle': 'ஏற்க முடியவில்லை',
   'parentFlows.makeUp.acceptOfferErrorMessage': 'வாய்ப்பு காலாவதியாகியிருக்கலாம். புதுப்பிக்கக் கீழே இழுக்கவும்.',
+  'parentFlows.classes.bookTrial': 'சோதனை வகுப்பை முன்பதிவு செய்',
 };

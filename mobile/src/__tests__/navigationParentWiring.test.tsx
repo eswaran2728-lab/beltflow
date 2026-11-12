@@ -4,6 +4,7 @@
  * optional release modules are hidden when the server switches them off.
  * Synthetic test data only.
  */
+import { roleNavigationRef } from '../navigation/RoleNavigationContainer';
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -153,6 +154,47 @@ describe('Parent navigation wiring', () => {
       fireEvent.press(utils.getByTestId('btn-parent-find-class'));
     });
     expect(await utils.findByTestId('available-classes-screen')).toBeTruthy();
+  });
+
+  const trialClass = {
+    id: 'cls_trial_01', organizationId: 'org_test', persatuanName: 'Test Persatuan', name: 'Test Trial Class',
+    schedule: 'Sat 09:00', location: 'Test Hall', capacity: 20, enrollmentAvailability: 'OPEN', monthlyFee: 80,
+  };
+
+  test('children: Book a Trial on a class opens trial booking for that class', async () => {
+    mockApi();
+    const base = (apiClient.get as jest.Mock).getMockImplementation()!;
+    (apiClient.get as jest.Mock).mockImplementation((path: string) =>
+      path.includes('/available-classes') ? Promise.resolve({ classes: [trialClass] }) : base(path)
+    );
+    const utils = await renderParent();
+    await openChildrenTab(utils);
+    await act(async () => {
+      fireEvent.press(utils.getByTestId('btn-parent-find-class'));
+    });
+    await act(async () => {
+      fireEvent.press(await utils.findByTestId('btn-trial-cls_trial_01'));
+    });
+    expect(await utils.findByText('Book Martial Arts Trial')).toBeTruthy();
+    // The trial screen gets the chosen class, not its 'cls_default' fallback.
+    const route = roleNavigationRef.getCurrentRoute();
+    expect(route?.name).toBe('BookTrial');
+    expect(route?.params).toEqual({ targetClassId: 'cls_trial_01', targetClassName: 'Test Trial Class', targetOrganizationId: 'org_test' });
+  });
+
+  test('children: Book a Trial is hidden when the trials module is off', async () => {
+    setModules(ALL_MODULES.filter(m => m !== 'trials'));
+    const base = (apiClient.get as jest.Mock).getMockImplementation()!;
+    (apiClient.get as jest.Mock).mockImplementation((path: string) =>
+      path.includes('/available-classes') ? Promise.resolve({ classes: [trialClass] }) : base(path)
+    );
+    const utils = await renderParent();
+    await openChildrenTab(utils);
+    await act(async () => {
+      fireEvent.press(utils.getByTestId('btn-parent-find-class'));
+    });
+    expect(await utils.findByTestId('btn-apply-cls_trial_01')).toBeTruthy();
+    expect(utils.queryByTestId('btn-trial-cls_trial_01')).toBeNull();
   });
 
   test('children: My applications opens the applications list', async () => {
