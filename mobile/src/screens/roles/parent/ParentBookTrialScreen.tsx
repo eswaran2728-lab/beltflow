@@ -15,6 +15,7 @@ import { ScreenContainer, ScreenHeader } from '../../../components/Layout';
 import { Card } from '../../../components/Card';
 import { Button } from '../../../components/Button';
 import { trialsService, TrialBooking } from '../../../services/trialsService';
+import { useI18n } from '../../../i18n';
 
 export interface ParentBookTrialScreenProps {
   user: AuthUser;
@@ -38,10 +39,11 @@ export const ParentBookTrialScreen: React.FC<ParentBookTrialScreenProps> = ({
   route,
 }) => {
   const { colors } = useTheme();
+  const { t } = useI18n();
 
   const orgId = route?.params?.targetOrganizationId || user.organizationId || '';
   const classId = route?.params?.targetClassId || 'cls_default';
-  const className = route?.params?.targetClassName || 'Trial Session';
+  const className = route?.params?.targetClassName || t('parentFlows.trial.defaultClassName');
 
   const [candidateName, setCandidateName] = useState<string>('');
   const [candidateAge, setCandidateAge] = useState<string>('');
@@ -59,15 +61,15 @@ export const ParentBookTrialScreen: React.FC<ParentBookTrialScreenProps> = ({
 
   const handleBook = async () => {
     if (!candidateName.trim()) {
-      Alert.alert('Required Field', 'Please enter the candidate student name.');
+      Alert.alert(t('parentFlows.common.requiredField'), t('parentFlows.trial.nameRequired'));
       return;
     }
     if (!guardianPhone.trim()) {
-      Alert.alert('Required Field', 'Please provide a guardian contact phone number.');
+      Alert.alert(t('parentFlows.common.requiredField'), t('parentFlows.trial.phoneRequired'));
       return;
     }
     if (!consentAccepted) {
-      Alert.alert('Consent Required', 'You must accept the legal and martial arts safety consent.');
+      Alert.alert(t('parentFlows.trial.consentRequiredTitle'), t('parentFlows.trial.consentRequiredMessage'));
       return;
     }
 
@@ -88,9 +90,9 @@ export const ParentBookTrialScreen: React.FC<ParentBookTrialScreenProps> = ({
       });
 
       setBookedTrial(trial);
-      Alert.alert('Trial Booked!', `Your trial session has been reserved for ${scheduledDate}.`);
+      Alert.alert(t('parentFlows.trial.bookedTitle'), t('parentFlows.trial.bookedMessage', { date: scheduledDate }));
     } catch (err: any) {
-      Alert.alert('Booking Failed', err?.message || 'Could not complete trial booking.');
+      Alert.alert(t('parentFlows.trial.bookingFailedTitle'), err?.message || t('parentFlows.trial.bookingFailedMessage'));
     } finally {
       setSubmitting(false);
     }
@@ -107,8 +109,8 @@ export const ParentBookTrialScreen: React.FC<ParentBookTrialScreenProps> = ({
   return (
     <ScreenContainer>
       <ScreenHeader
-        title="Book Martial Arts Trial"
-        subtitle="Reserve a zero-obligation introductory trial session"
+        title={t('parentFlows.trial.title')}
+        subtitle={t('parentFlows.trial.subtitle')}
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -117,26 +119,26 @@ export const ParentBookTrialScreen: React.FC<ParentBookTrialScreenProps> = ({
             <View style={styles.successIconWrapper}>
               <CheckCircle2 size={48} color="#10B981" />
             </View>
-            <Text style={[styles.successTitle, { color: colors.textPrimary }]}>Trial Confirmed!</Text>
+            <Text style={[styles.successTitle, { color: colors.textPrimary }]}>{t('parentFlows.trial.confirmedTitle')}</Text>
             <Text style={[styles.successSubtitle, { color: colors.textMuted }]}>
-              Booking Ref: {bookedTrial.id}
+              {t('parentFlows.trial.bookingRef', { id: bookedTrial.id })}
             </Text>
 
             <View style={styles.summaryBox}>
               <Text style={styles.summaryLine}>
-                <Text style={styles.summaryBold}>Candidate: </Text>
+                <Text style={styles.summaryBold}>{t('parentFlows.trial.summaryCandidate')}</Text>
                 {bookedTrial.candidate_name}
               </Text>
               <Text style={styles.summaryLine}>
-                <Text style={styles.summaryBold}>Class: </Text>
+                <Text style={styles.summaryBold}>{t('parentFlows.trial.summaryClass')}</Text>
                 {className}
               </Text>
               <Text style={styles.summaryLine}>
-                <Text style={styles.summaryBold}>Scheduled Date: </Text>
+                <Text style={styles.summaryBold}>{t('parentFlows.trial.summaryDate')}</Text>
                 {bookedTrial.scheduled_date}
               </Text>
               <Text style={styles.summaryLine}>
-                <Text style={styles.summaryBold}>Contact: </Text>
+                <Text style={styles.summaryBold}>{t('parentFlows.trial.summaryContact')}</Text>
                 {bookedTrial.guardian_phone}
               </Text>
             </View>
@@ -144,36 +146,36 @@ export const ParentBookTrialScreen: React.FC<ParentBookTrialScreenProps> = ({
             <View style={styles.instructionsBox}>
               <Info size={16} color="#F2941C" />
               <Text style={styles.instructionsText}>
-                Please arrive 15 minutes before session time in comfortable sportswear. The assigned Master will introduce basic stances and assess readiness.
+                {t('parentFlows.trial.instructions')}
               </Text>
             </View>
 
-            <Button label="Book Another Trial" onPress={handleReset} variant="outline" />
+            <Button label={t('parentFlows.trial.bookAnother')} onPress={handleReset} variant="outline" />
           </Card>
         ) : (
           <Card style={styles.formCard}>
-            <Text style={[styles.formTitle, { color: colors.textPrimary }]}>Candidate Information</Text>
+            <Text style={[styles.formTitle, { color: colors.textPrimary }]}>{t('parentFlows.trial.candidateInfo')}</Text>
 
-            <Text style={[styles.label, { color: colors.textPrimary }]}>Candidate Full Name *</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>{t('parentFlows.trial.candidateNameLabel')}</Text>
             <TextInput
               style={[styles.input, { borderColor: colors.border, color: colors.textPrimary }]}
-              placeholder="e.g. Aiman bin Razak"
+              placeholder={t('parentFlows.trial.candidateNamePlaceholder')}
               placeholderTextColor={colors.textMuted}
               value={candidateName}
               onChangeText={setCandidateName}
             />
 
-            <Text style={[styles.label, { color: colors.textPrimary }]}>Age</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>{t('parentFlows.trial.ageLabel')}</Text>
             <TextInput
               style={[styles.input, { borderColor: colors.border, color: colors.textPrimary }]}
-              placeholder="e.g. 10"
+              placeholder={t('parentFlows.trial.agePlaceholder')}
               placeholderTextColor={colors.textMuted}
               value={candidateAge}
               onChangeText={setCandidateAge}
               keyboardType="numeric"
             />
 
-            <Text style={[styles.label, { color: colors.textPrimary }]}>Trial Session Date (YYYY-MM-DD) *</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>{t('parentFlows.trial.dateLabel')}</Text>
             <TextInput
               style={[styles.input, { borderColor: colors.border, color: colors.textPrimary }]}
               value={scheduledDate}
@@ -183,42 +185,42 @@ export const ParentBookTrialScreen: React.FC<ParentBookTrialScreenProps> = ({
             />
 
             <Text style={[styles.formTitle, { color: colors.textPrimary, marginTop: 16 }]}>
-              Guardian & Emergency Contact
+              {t('parentFlows.trial.guardianSection')}
             </Text>
 
-            <Text style={[styles.label, { color: colors.textPrimary }]}>Guardian Name</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>{t('parentFlows.trial.guardianNameLabel')}</Text>
             <TextInput
               style={[styles.input, { borderColor: colors.border, color: colors.textPrimary }]}
-              placeholder="e.g. Puan Siti"
+              placeholder={t('parentFlows.trial.guardianNamePlaceholder')}
               placeholderTextColor={colors.textMuted}
               value={guardianName}
               onChangeText={setGuardianName}
             />
 
-            <Text style={[styles.label, { color: colors.textPrimary }]}>Primary Phone Number *</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>{t('parentFlows.trial.primaryPhoneLabel')}</Text>
             <TextInput
               style={[styles.input, { borderColor: colors.border, color: colors.textPrimary }]}
-              placeholder="e.g. 0123456789"
+              placeholder={t('parentFlows.trial.primaryPhonePlaceholder')}
               placeholderTextColor={colors.textMuted}
               value={guardianPhone}
               onChangeText={setGuardianPhone}
               keyboardType="phone-pad"
             />
 
-            <Text style={[styles.label, { color: colors.textPrimary }]}>Emergency Contact Phone</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>{t('parentFlows.trial.emergencyPhoneLabel')}</Text>
             <TextInput
               style={[styles.input, { borderColor: colors.border, color: colors.textPrimary }]}
-              placeholder="e.g. 0198765432"
+              placeholder={t('parentFlows.trial.emergencyPhonePlaceholder')}
               placeholderTextColor={colors.textMuted}
               value={emergencyPhone}
               onChangeText={setEmergencyPhone}
               keyboardType="phone-pad"
             />
 
-            <Text style={[styles.label, { color: colors.textPrimary }]}>Medical Disclosures / Injuries / Notes</Text>
+            <Text style={[styles.label, { color: colors.textPrimary }]}>{t('parentFlows.trial.medicalLabel')}</Text>
             <TextInput
               style={[styles.inputMulti, { borderColor: colors.border, color: colors.textPrimary }]}
-              placeholder="Disclose any asthma, past joint injuries, or allergies..."
+              placeholder={t('parentFlows.trial.medicalPlaceholder')}
               placeholderTextColor={colors.textMuted}
               value={medicalNotes}
               onChangeText={setMedicalNotes}
@@ -235,12 +237,12 @@ export const ParentBookTrialScreen: React.FC<ParentBookTrialScreenProps> = ({
                 thumbColor={consentAccepted ? '#FFF' : '#A0AEC0'}
               />
               <Text style={[styles.consentText, { color: colors.textPrimary }]}>
-                I confirm I am the legal parent/guardian. I authorize the candidate to participate in this introductory martial arts trial class under the supervision of academy certified instructors.
+                {t('parentFlows.trial.consent')}
               </Text>
             </View>
 
             <Button
-              label={submitting ? 'Reserving...' : 'Confirm Trial Booking'}
+              label={submitting ? t('parentFlows.trial.reserving') : t('parentFlows.trial.confirmBooking')}
               onPress={handleBook}
               disabled={submitting || isOffline}
               variant="primary"

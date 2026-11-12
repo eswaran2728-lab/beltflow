@@ -29,6 +29,7 @@ import {
   FamilyChild,
   ChildTimelineData,
 } from '../../../services/familyService';
+import { useI18n } from '../../../i18n';
 
 export interface FamilyTimelineHubScreenProps {
   user: AuthUser;
@@ -42,6 +43,7 @@ export const FamilyTimelineHubScreen: React.FC<FamilyTimelineHubScreenProps> = (
   isOffline,
 }) => {
   const { colors, typography, spacing, iconSize, borderRadius } = useTheme();
+  const { t } = useI18n();
 
   const [children, setChildren] = useState<FamilyChild[]>([]);
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
@@ -68,11 +70,11 @@ export const FamilyTimelineHubScreen: React.FC<FamilyTimelineHubScreenProps> = (
         setSelectedChildId(prev => (prev ? prev : kids[0].id));
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to load children list.');
+      setError(err.message || t('parentFlows.family.loadChildrenFailed'));
     } finally {
       setLoadingChildren(false);
     }
-  }, []);
+  }, [t]);
 
   // Load child timeline
   const fetchTimeline = useCallback(
@@ -94,16 +96,16 @@ export const FamilyTimelineHubScreen: React.FC<FamilyTimelineHubScreenProps> = (
           setIsRevokedGuardian(true);
           setError(
             err.message ||
-              'Access Restricted: Guardian authorization revoked or inactive for this student.'
+              t('parentFlows.family.accessRestrictedError')
           );
         } else {
-          setError(err.message || 'Failed to load student timeline.');
+          setError(err.message || t('parentFlows.family.loadTimelineFailed'));
         }
       } finally {
         setLoadingTimeline(false);
       }
     },
-    []
+    [t]
   );
 
   useEffect(() => {
@@ -119,20 +121,20 @@ export const FamilyTimelineHubScreen: React.FC<FamilyTimelineHubScreenProps> = (
   return (
     <ScreenContainer scrollable testID="family-timeline-hub-screen">
       <ScreenHeader
-        title="Family Hub & Timeline"
-        subtitle="Child Progression & Merchant Dues"
+        title={t('parentFlows.family.title')}
+        subtitle={t('parentFlows.family.subtitle')}
       />
 
       {isOffline && (
         <View style={{ marginBottom: spacing.md }}>
-          <OfflineBanner message="Offline Mode: Displaying cached family records." />
+          <OfflineBanner message={t('parentFlows.family.offline')} />
         </View>
       )}
 
       {/* Multilingual Child Selector (Acceptance: long_multilingual_child_names_readable) */}
       <View style={[styles.childSelectorSection, { marginBottom: spacing.md }]}>
         <Text style={[typography.caption, { fontWeight: '700', color: colors.textSecondary, marginBottom: 8 }]}>
-          SELECT FAMILY MEMBER
+          {t('parentFlows.family.selectMember')}
         </Text>
         <ScrollView
           horizontal
@@ -144,7 +146,7 @@ export const FamilyTimelineHubScreen: React.FC<FamilyTimelineHubScreenProps> = (
             <ActivityIndicator size="small" color={colors.buttonPrimaryBg} />
           ) : children.length === 0 ? (
             <Text style={[typography.caption, { color: colors.textSecondary }]}>
-              No linked children found.
+              {t('parentFlows.family.noChildren')}
             </Text>
           ) : (
             children.map(child => {
@@ -210,18 +212,17 @@ export const FamilyTimelineHubScreen: React.FC<FamilyTimelineHubScreenProps> = (
                 { color: BrandColors.danger, marginLeft: spacing.sm, fontSize: 16 },
               ]}
             >
-              Access Restricted (HTTP 403)
+              {t('parentFlows.family.accessRestrictedTitle')}
             </Text>
           </View>
           <Text
             style={[typography.bodyMedium, { color: colors.textPrimary, marginTop: spacing.xs }]}
             testID="revoked-guardian-message"
           >
-            {error || 'Guardian authorization revoked or inactive for this student.'}
+            {error || t('parentFlows.family.revokedDefault')}
           </Text>
           <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 4 }]}>
-            BeltFlow Security: Only active, verified guardians have legal access to inspect student training
-            records and private academy schedules.
+            {t('parentFlows.family.securityNote')}
           </Text>
         </Card>
       )}
@@ -255,7 +256,7 @@ export const FamilyTimelineHubScreen: React.FC<FamilyTimelineHubScreenProps> = (
                   },
                 ]}
               >
-                Progress Timeline
+                {t('parentFlows.family.tabTimeline')}
               </Text>
             </TouchableOpacity>
 
@@ -283,7 +284,7 @@ export const FamilyTimelineHubScreen: React.FC<FamilyTimelineHubScreenProps> = (
                   },
                 ]}
               >
-                Merchant Dues & Balances
+                {t('parentFlows.family.tabFinances')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -292,7 +293,7 @@ export const FamilyTimelineHubScreen: React.FC<FamilyTimelineHubScreenProps> = (
             <View style={styles.loadingBox}>
               <ActivityIndicator size="large" color={colors.buttonPrimaryBg} />
               <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginTop: spacing.md }]}>
-                Loading timeline & dues...
+                {t('parentFlows.family.loading')}
               </Text>
             </View>
           ) : activeTab === 'TIMELINE' ? (
@@ -307,10 +308,13 @@ export const FamilyTimelineHubScreen: React.FC<FamilyTimelineHubScreenProps> = (
                         {timelineData.student.fullName}
                       </Text>
                       <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                        IC: {timelineData.student.icNumber} • Registered: {timelineData.student.registeredAt}
+                        {t('parentFlows.family.studentMeta', {
+                          ic: timelineData.student.icNumber,
+                          date: timelineData.student.registeredAt,
+                        })}
                       </Text>
                       <Text style={[typography.caption, { color: colors.buttonPrimaryBg, fontWeight: '600', marginTop: 2 }]}>
-                        Class: {timelineData.student.className || 'General Dojo'}
+                        {t('parentFlows.family.studentClass', { name: timelineData.student.className || t('parentFlows.family.defaultClass') })}
                       </Text>
                     </View>
                     <BeltBadge beltName={timelineData.student.beltRank || 'White Belt'} testID="timeline-student-belt" />
@@ -323,13 +327,13 @@ export const FamilyTimelineHubScreen: React.FC<FamilyTimelineHubScreenProps> = (
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
                   <Award size={iconSize.md} color={colors.buttonPrimaryBg} />
                   <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginLeft: spacing.xs }]}>
-                    Belt Rank History
+                    {t('parentFlows.family.beltHistory')}
                   </Text>
                 </View>
                 <View testID="rank-history-list">
                   {(timelineData?.rankHistory || []).length === 0 ? (
                     <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                      No past grading promotions recorded.
+                      {t('parentFlows.family.noPromotions')}
                     </Text>
                   ) : (
                     timelineData?.rankHistory.map((rank, idx) => (
@@ -345,11 +349,11 @@ export const FamilyTimelineHubScreen: React.FC<FamilyTimelineHubScreenProps> = (
                             {rank.rank_name}
                           </Text>
                           <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                            Awarded: {new Date(rank.awarded_at).toLocaleDateString()}
+                            {t('parentFlows.family.awarded', { date: new Date(rank.awarded_at).toLocaleDateString() })}
                           </Text>
                           {rank.certificate_code ? (
                             <Text style={[typography.caption, { color: colors.buttonPrimaryBg, marginTop: 2 }]}>
-                              Certificate: {rank.certificate_code}
+                              {t('parentFlows.family.certificate', { code: rank.certificate_code })}
                             </Text>
                           ) : null}
                         </View>
@@ -365,13 +369,13 @@ export const FamilyTimelineHubScreen: React.FC<FamilyTimelineHubScreenProps> = (
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
                   <Calendar size={iconSize.md} color={colors.buttonPrimaryBg} />
                   <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginLeft: spacing.xs }]}>
-                    Recent Training Attendance
+                    {t('parentFlows.family.attendanceTitle')}
                   </Text>
                 </View>
                 <View testID="attendance-history-list">
                   {(timelineData?.attendance || []).length === 0 ? (
                     <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                      No attendance sessions marked yet.
+                      {t('parentFlows.family.noAttendance')}
                     </Text>
                   ) : (
                     timelineData?.attendance.map((att, idx) => (
@@ -387,7 +391,9 @@ export const FamilyTimelineHubScreen: React.FC<FamilyTimelineHubScreenProps> = (
                             {att.session_date} — {att.class_name}
                           </Text>
                           <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                            Logged: {att.marked_at ? new Date(att.marked_at).toLocaleTimeString() : 'N/A'}
+                            {t('parentFlows.family.logged', {
+                              time: att.marked_at ? new Date(att.marked_at).toLocaleTimeString() : t('parentFlows.family.notAvailable'),
+                            })}
                           </Text>
                         </View>
                         <StatusBadge
@@ -406,13 +412,13 @@ export const FamilyTimelineHubScreen: React.FC<FamilyTimelineHubScreenProps> = (
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
                   <Clock size={iconSize.md} color={colors.buttonPrimaryBg} />
                   <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginLeft: spacing.xs }]}>
-                    Upcoming Class Sessions
+                    {t('parentFlows.family.upcomingTitle')}
                   </Text>
                 </View>
                 <View testID="upcoming-sessions-list">
                   {(timelineData?.upcomingSessions || []).length === 0 ? (
                     <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                      No future sessions currently scheduled.
+                      {t('parentFlows.family.noUpcoming')}
                     </Text>
                   ) : (
                     timelineData?.upcomingSessions.map((session, idx) => (
@@ -441,14 +447,13 @@ export const FamilyTimelineHubScreen: React.FC<FamilyTimelineHubScreenProps> = (
             /* MERCHANT PARTITIONED DUES & BALANCES (Acceptance: family_totals_correct_per_merchant) */
             <View style={{ marginTop: spacing.md, marginBottom: spacing.xl }} testID="merchant-finances-section">
               <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.sm }]}>
-                Strict Merchant Segregation: Dues and balances are calculated and held per Persatuan
-                merchant entity and are never mingled.
+                {t('parentFlows.family.segregationNote')}
               </Text>
 
               {(timelineData?.financialPartitions || []).length === 0 ? (
                 <Card variant="standard">
                   <Text style={[typography.bodyMedium, { color: colors.textSecondary, textAlign: 'center' }]}>
-                    No outstanding fees or billing records found for this student.
+                    {t('parentFlows.family.noFees')}
                   </Text>
                 </Card>
               ) : (
@@ -483,7 +488,7 @@ export const FamilyTimelineHubScreen: React.FC<FamilyTimelineHubScreenProps> = (
                     {/* Merchant Partition Financial Summary */}
                     <View style={styles.financialStatsGrid}>
                       <View style={styles.statBox}>
-                        <Text style={[typography.caption, { color: colors.textSecondary }]}>Total Billed</Text>
+                        <Text style={[typography.caption, { color: colors.textSecondary }]}>{t('parentFlows.family.totalBilled')}</Text>
                         <Text
                           style={[typography.button, { color: colors.textPrimary, marginTop: 2 }]}
                           testID={`merchant-billed-${partition.organizationId}`}
@@ -492,7 +497,7 @@ export const FamilyTimelineHubScreen: React.FC<FamilyTimelineHubScreenProps> = (
                         </Text>
                       </View>
                       <View style={styles.statBox}>
-                        <Text style={[typography.caption, { color: colors.textSecondary }]}>Total Paid</Text>
+                        <Text style={[typography.caption, { color: colors.textSecondary }]}>{t('parentFlows.family.totalPaid')}</Text>
                         <Text
                           style={[typography.button, { color: BrandColors.success, marginTop: 2 }]}
                           testID={`merchant-paid-${partition.organizationId}`}
@@ -501,7 +506,7 @@ export const FamilyTimelineHubScreen: React.FC<FamilyTimelineHubScreenProps> = (
                         </Text>
                       </View>
                       <View style={styles.statBox}>
-                        <Text style={[typography.caption, { color: colors.textSecondary }]}>Outstanding</Text>
+                        <Text style={[typography.caption, { color: colors.textSecondary }]}>{t('parentFlows.family.outstanding')}</Text>
                         <Text
                           style={[
                             typography.button,
@@ -523,7 +528,7 @@ export const FamilyTimelineHubScreen: React.FC<FamilyTimelineHubScreenProps> = (
                     {/* Dues Breakdown */}
                     <View style={{ marginTop: spacing.sm }}>
                       <Text style={[typography.caption, { fontWeight: '700', color: colors.textPrimary }]}>
-                        Itemized Monthly Dues:
+                        {t('parentFlows.family.itemizedDues')}
                       </Text>
                       {partition.dues.map(due => (
                         <View
@@ -536,11 +541,14 @@ export const FamilyTimelineHubScreen: React.FC<FamilyTimelineHubScreenProps> = (
                         >
                           <View style={{ flex: 1 }}>
                             <Text style={[typography.button, { color: colors.textPrimary }]}>
-                              Month: {due.billingMonth}
+                              {t('parentFlows.family.month', { month: due.billingMonth })}
                             </Text>
                             <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                              Fee: {partition.currency} {due.feeAmount.toFixed(2)} | Paid: {partition.currency}{' '}
-                              {due.amountPaid.toFixed(2)}
+                              {t('parentFlows.family.feeLine', {
+                                currency: partition.currency,
+                                fee: due.feeAmount.toFixed(2),
+                                paid: due.amountPaid.toFixed(2),
+                              })}
                             </Text>
                           </View>
                           <StatusBadge

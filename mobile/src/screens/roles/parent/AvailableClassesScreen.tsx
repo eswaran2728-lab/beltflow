@@ -18,6 +18,7 @@ import { Input } from '../../../components/Input';
 import { LoadingState, EmptyState } from '../../../components/Feedback';
 import { AuthUser } from '../../../types/auth';
 import { apiClient } from '../../../services/apiClient';
+import { useI18n } from '../../../i18n';
 
 export interface AvailableClassCard {
   id: string;
@@ -49,6 +50,7 @@ export const AvailableClassesScreen: React.FC<AvailableClassesScreenProps> = ({
   navigation,
 }) => {
   const { colors, typography, spacing, iconSize, borderRadius } = useTheme();
+  const { t } = useI18n();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -163,12 +165,12 @@ export const AvailableClassesScreen: React.FC<AvailableClassesScreenProps> = ({
     if (!selectedClass) return;
 
     if (!studentName.trim()) {
-      setApplyError('Student name is required.');
+      setApplyError(t('parentFlows.classes.errorNameRequired'));
       return;
     }
 
     if (!isDraft && !consentAccepted) {
-      setApplyError('You must acknowledge and accept enrollment consent before submitting.');
+      setApplyError(t('parentFlows.classes.errorConsent'));
       return;
     }
 
@@ -199,15 +201,15 @@ export const AvailableClassesScreen: React.FC<AvailableClassesScreenProps> = ({
 
       setApplySuccess(
         isDraft
-          ? 'Draft application saved successfully!'
-          : 'Application submitted! AWAITING MASTER APPROVAL.'
+          ? t('parentFlows.classes.draftSaved')
+          : t('parentFlows.classes.submitted')
       );
       setTimeout(() => {
         setSelectedClass(null);
         setApplySuccess(null);
       }, 1500);
     } catch (err: any) {
-      const msg = err?.response?.data?.error || err?.message || 'Failed to submit enrollment application.';
+      const msg = err?.response?.data?.error || err?.message || t('parentFlows.classes.submitFailed');
       setApplyError(msg);
     } finally {
       setApplySubmitting(false);
@@ -218,11 +220,11 @@ export const AvailableClassesScreen: React.FC<AvailableClassesScreenProps> = ({
     return (
       <ScreenContainer scrollable testID="available-classes-screen">
         <ScreenHeader
-          title="Available Classes"
-          subtitle="Explore approved martial arts classes"
+          title={t('parentFlows.classes.title')}
+          subtitle={t('parentFlows.classes.subtitle')}
           onBack={navigation?.goBack ? () => navigation.goBack() : undefined}
         />
-        <LoadingState message="Finding available classes..." />
+        <LoadingState message={t('parentFlows.classes.loading')} />
       </ScreenContainer>
     );
   }
@@ -230,8 +232,8 @@ export const AvailableClassesScreen: React.FC<AvailableClassesScreenProps> = ({
   return (
     <ScreenContainer scrollable testID="available-classes-screen">
       <ScreenHeader
-        title="Available Classes"
-        subtitle="Explore approved martial arts classes"
+        title={t('parentFlows.classes.title')}
+        subtitle={t('parentFlows.classes.subtitle')}
         onBack={navigation?.goBack ? () => navigation.goBack() : undefined}
       />
 
@@ -240,8 +242,8 @@ export const AvailableClassesScreen: React.FC<AvailableClassesScreenProps> = ({
       >
         {classes.length === 0 ? (
           <EmptyState
-            title="No Classes Available"
-            description="No approved classes are currently accepting applications in this Persatuan."
+            title={t('parentFlows.classes.emptyTitle')}
+            description={t('parentFlows.classes.emptyDescription')}
             testID="empty-available-classes"
           />
         ) : (
@@ -281,7 +283,7 @@ export const AvailableClassesScreen: React.FC<AvailableClassesScreenProps> = ({
                 <View style={styles.detailRow}>
                   <DollarSign size={iconSize.sm} color={colors.textSecondary} />
                   <Text style={[typography.bodyMedium, { color: colors.textPrimary, marginLeft: spacing.xs, fontWeight: '700' }]}>
-                    RM {cls.monthlyFee.toFixed(2)} / month
+                    {t('parentFlows.classes.feePerMonth', { amount: cls.monthlyFee.toFixed(2) })}
                   </Text>
                 </View>
 
@@ -289,7 +291,10 @@ export const AvailableClassesScreen: React.FC<AvailableClassesScreenProps> = ({
                   <View style={styles.detailRow}>
                     <Users size={iconSize.sm} color={colors.textSecondary} />
                     <Text style={[typography.caption, { color: colors.textSecondary, marginLeft: spacing.xs }]}>
-                      Eligibility: {cls.ageEligibility || 'All ages'} | {cls.trainingLevel || 'All levels'}
+                      {t('parentFlows.classes.eligibility', {
+                        age: cls.ageEligibility || t('parentFlows.classes.allAges'),
+                        level: cls.trainingLevel || t('parentFlows.classes.allLevels'),
+                      })}
                     </Text>
                   </View>
                 ) : null}
@@ -305,10 +310,10 @@ export const AvailableClassesScreen: React.FC<AvailableClassesScreenProps> = ({
                   <Button
                     label={
                       cls.enrollmentAvailability === 'CLOSED'
-                        ? 'Class Closed'
+                        ? t('parentFlows.classes.classClosed')
                         : cls.enrollmentAvailability === 'WAITLIST'
-                        ? 'Join Waitlist'
-                        : 'Apply to Class'
+                        ? t('parentFlows.classes.joinWaitlist')
+                        : t('parentFlows.classes.applyToClass')
                     }
                     onPress={() => handleOpenApply(cls)}
                     variant={cls.enrollmentAvailability === 'CLOSED' ? 'outline' : 'primary'}
@@ -334,7 +339,7 @@ export const AvailableClassesScreen: React.FC<AvailableClassesScreenProps> = ({
           <Card variant="elevated" style={[styles.modalCard, { backgroundColor: colors.surface }]} testID="modal-apply-class">
             <ScrollView contentContainerStyle={{ paddingBottom: spacing.lg }}>
               <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: 2 }]}>
-                Enrollment Application
+                {t('parentFlows.classes.applicationTitle')}
               </Text>
               <Text style={[typography.caption, { color: colors.buttonPrimaryBg, fontWeight: '600', marginBottom: spacing.md }]}>
                 {selectedClass?.name} ({selectedClass?.persatuanName})
@@ -360,7 +365,7 @@ export const AvailableClassesScreen: React.FC<AvailableClassesScreenProps> = ({
               {user.role === 'PARENT' && linkedChildren.length > 0 ? (
                 <View style={{ marginBottom: spacing.md }}>
                   <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: 4, fontWeight: '600' }]}>
-                    Select Child to Enroll *
+                    {t('parentFlows.classes.selectChild')}
                   </Text>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                     {linkedChildren.map((c) => (
@@ -411,7 +416,7 @@ export const AvailableClassesScreen: React.FC<AvailableClassesScreenProps> = ({
                           },
                         ]}
                       >
-                        + New Child
+                        {t('parentFlows.classes.newChild')}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -420,8 +425,8 @@ export const AvailableClassesScreen: React.FC<AvailableClassesScreenProps> = ({
 
               {/* Form Inputs */}
               <Input
-                label="Student Full Name *"
-                placeholder="Full official name"
+                label={t('parentFlows.classes.studentNameLabel')}
+                placeholder={t('parentFlows.classes.studentNamePlaceholder')}
                 value={studentName}
                 onChangeText={setStudentName}
                 containerStyle={{ marginBottom: spacing.sm }}
@@ -429,8 +434,8 @@ export const AvailableClassesScreen: React.FC<AvailableClassesScreenProps> = ({
               />
 
               <Input
-                label="IC / MyKid / Passport Number"
-                placeholder="e.g. 100512-10-1234"
+                label={t('parentFlows.classes.icLabel')}
+                placeholder={t('parentFlows.classes.icPlaceholder')}
                 value={icNumber}
                 onChangeText={setIcNumber}
                 containerStyle={{ marginBottom: spacing.sm }}
@@ -438,7 +443,7 @@ export const AvailableClassesScreen: React.FC<AvailableClassesScreenProps> = ({
               />
 
               <Input
-                label="Date of Birth"
+                label={t('parentFlows.classes.dobLabel')}
                 placeholder="YYYY-MM-DD"
                 value={dateOfBirth}
                 onChangeText={setDateOfBirth}
@@ -447,8 +452,8 @@ export const AvailableClassesScreen: React.FC<AvailableClassesScreenProps> = ({
               />
 
               <Input
-                label="Emergency Contact Name *"
-                placeholder="Guardian / Emergency contact"
+                label={t('parentFlows.classes.emergencyNameLabel')}
+                placeholder={t('parentFlows.classes.emergencyNamePlaceholder')}
                 value={emergencyName}
                 onChangeText={setEmergencyName}
                 containerStyle={{ marginBottom: spacing.sm }}
@@ -456,8 +461,8 @@ export const AvailableClassesScreen: React.FC<AvailableClassesScreenProps> = ({
               />
 
               <Input
-                label="Emergency Contact Phone *"
-                placeholder="e.g. +60123456789"
+                label={t('parentFlows.classes.emergencyPhoneLabel')}
+                placeholder={t('parentFlows.classes.emergencyPhonePlaceholder')}
                 value={emergencyPhone}
                 onChangeText={setEmergencyPhone}
                 keyboardType="phone-pad"
@@ -466,8 +471,8 @@ export const AvailableClassesScreen: React.FC<AvailableClassesScreenProps> = ({
               />
 
               <Input
-                label="Medical Notes / Allergies"
-                placeholder="Any health or physical conditions..."
+                label={t('parentFlows.classes.medicalLabel')}
+                placeholder={t('parentFlows.classes.medicalPlaceholder')}
                 value={medicalNotes}
                 onChangeText={setMedicalNotes}
                 multiline
@@ -477,8 +482,8 @@ export const AvailableClassesScreen: React.FC<AvailableClassesScreenProps> = ({
               />
 
               <Input
-                label="Additional Notes"
-                placeholder="Optional notes or requests..."
+                label={t('parentFlows.classes.notesLabel')}
+                placeholder={t('parentFlows.classes.notesPlaceholder')}
                 value={notes}
                 onChangeText={setNotes}
                 multiline
@@ -500,14 +505,14 @@ export const AvailableClassesScreen: React.FC<AvailableClassesScreenProps> = ({
                   <Square size={iconSize.md} color={colors.textSecondary} />
                 )}
                 <Text style={[typography.caption, { color: colors.textPrimary, flex: 1, marginLeft: spacing.xs }]}>
-                  I confirm the accuracy of this information, accept the academy rules, and grant enrollment consent.
+                  {t('parentFlows.classes.consent')}
                 </Text>
               </TouchableOpacity>
 
               {/* Modal Actions */}
               <View style={[styles.modalActionsRow, { gap: spacing.xs }]}>
                 <Button
-                  label="Cancel"
+                  label={t('parentFlows.common.cancel')}
                   onPress={() => setSelectedClass(null)}
                   variant="outline"
                   size="md"
@@ -515,7 +520,7 @@ export const AvailableClassesScreen: React.FC<AvailableClassesScreenProps> = ({
                   testID="btn-cancel-apply"
                 />
                 <Button
-                  label="Save Draft"
+                  label={t('parentFlows.classes.saveDraft')}
                   onPress={() => void handleSubmitApplication(true)}
                   variant="secondary"
                   size="md"
@@ -524,7 +529,7 @@ export const AvailableClassesScreen: React.FC<AvailableClassesScreenProps> = ({
                   testID="btn-save-draft"
                 />
                 <Button
-                  label={applySubmitting ? 'Submitting...' : 'Submit'}
+                  label={applySubmitting ? t('parentFlows.common.submitting') : t('parentFlows.classes.submit')}
                   onPress={() => void handleSubmitApplication(false)}
                   variant="primary"
                   size="md"

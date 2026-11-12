@@ -26,6 +26,7 @@ import {
   MakeUpBooking,
   MakeUpRequestInput,
 } from '../../../services/bookingsService';
+import { useI18n } from '../../../i18n';
 
 export interface ParentMakeUpBookingScreenProps {
   user: AuthUser;
@@ -47,6 +48,7 @@ export const ParentMakeUpBookingScreen: React.FC<ParentMakeUpBookingScreenProps>
   isOffline,
   route,
 }) => {
+  const { t } = useI18n();
   const initialStudentId = route?.params?.studentId || '';
   const initialSessionId = route?.params?.targetSessionId || '';
 
@@ -100,11 +102,11 @@ export const ParentMakeUpBookingScreen: React.FC<ParentMakeUpBookingScreenProps>
 
   const handleRequestBooking = async () => {
     if (!studentId.trim()) {
-      Alert.alert('Required Field', 'Please provide or select a student ID.');
+      Alert.alert(t('parentFlows.common.requiredField'), t('parentFlows.makeUp.studentIdRequired'));
       return;
     }
     if (!targetSessionId.trim()) {
-      Alert.alert('Required Field', 'Please provide the Target Session ID.');
+      Alert.alert(t('parentFlows.common.requiredField'), t('parentFlows.makeUp.sessionIdRequired'));
       return;
     }
 
@@ -120,24 +122,24 @@ export const ParentMakeUpBookingScreen: React.FC<ParentMakeUpBookingScreenProps>
 
       if (booking.status === 'CONFIRMED') {
         Alert.alert(
-          'Make-Up Confirmed!',
-          'Your place has been confirmed for this session. Primary class enrollment remains unchanged.'
+          t('parentFlows.makeUp.confirmedTitle'),
+          t('parentFlows.makeUp.confirmedMessage')
         );
       } else if (booking.status === 'WAITLISTED') {
         Alert.alert(
-          'Placed on Waitlist',
-          `This session is currently at capacity. Your child is at Waitlist position #${booking.waitlist_position}. You will be auto-promoted when a place is released.`
+          t('parentFlows.makeUp.waitlistTitle'),
+          t('parentFlows.makeUp.waitlistMessage', { position: String(booking.waitlist_position) })
         );
       } else {
         Alert.alert(
-          'Request Submitted',
-          `Your make-up request is now ${booking.status}. The Master will review capacity.`
+          t('parentFlows.makeUp.requestSubmittedTitle'),
+          t('parentFlows.makeUp.requestSubmittedMessage', { status: booking.status })
         );
       }
 
       loadStudentBookings();
     } catch (err: any) {
-      Alert.alert('Booking Error', err?.message || 'Failed to submit make-up booking.');
+      Alert.alert(t('parentFlows.makeUp.bookingErrorTitle'), err?.message || t('parentFlows.makeUp.bookingErrorMessage'));
     } finally {
       setSubmitting(false);
     }
@@ -145,20 +147,20 @@ export const ParentMakeUpBookingScreen: React.FC<ParentMakeUpBookingScreenProps>
 
   const handleCancelBooking = async (booking: MakeUpBooking) => {
     Alert.alert(
-      'Cancel Make-Up',
-      'Are you sure you want to cancel this make-up booking? If you hold a place, it will be immediately released to the next family on the waitlist.',
+      t('parentFlows.makeUp.cancelTitle'),
+      t('parentFlows.makeUp.cancelMessage'),
       [
-        { text: 'Keep Booking', style: 'cancel' },
+        { text: t('parentFlows.makeUp.keepBooking'), style: 'cancel' },
         {
-          text: 'Confirm Cancellation',
+          text: t('parentFlows.makeUp.confirmCancellation'),
           style: 'destructive',
           onPress: async () => {
             try {
               await bookingsService.cancelMakeUp(booking.id, 'Cancelled by Parent/Family');
-              Alert.alert('Cancelled', 'Make-up place has been released.');
+              Alert.alert(t('parentFlows.makeUp.cancelledTitle'), t('parentFlows.makeUp.cancelledMessage'));
               loadStudentBookings();
             } catch (err: any) {
-              Alert.alert('Cancellation Error', err?.message || 'Could not cancel booking.');
+              Alert.alert(t('parentFlows.makeUp.cancelErrorTitle'), err?.message || t('parentFlows.makeUp.cancelErrorMessage'));
             }
           },
         },
@@ -169,8 +171,8 @@ export const ParentMakeUpBookingScreen: React.FC<ParentMakeUpBookingScreenProps>
   return (
     <ScreenContainer testID="parent-makeup-booking-screen">
       <ScreenHeader
-        title="Make-Up Classes"
-        subtitle="Request alternate training sessions for missed classes"
+        title={t('parentFlows.makeUp.title')}
+        subtitle={t('parentFlows.makeUp.subtitle')}
       />
 
       <ScrollView
@@ -183,49 +185,48 @@ export const ParentMakeUpBookingScreen: React.FC<ParentMakeUpBookingScreenProps>
         <Card style={styles.governanceBanner}>
           <ShieldCheck size={20} color={BrandColors.navy} />
           <View style={styles.governanceTextContainer}>
-            <Text style={styles.governanceTitle}>Session-Only Entitlement</Text>
+            <Text style={styles.governanceTitle}>{t('parentFlows.makeUp.governanceTitle')}</Text>
             <Text style={styles.governanceBody}>
-              Make-up bookings apply solely to the specific date/session. Your child&apos;s official class,
-              assigned Master, and primary enrollment remain completely unchanged.
+              {t('parentFlows.makeUp.governanceBody')}
             </Text>
           </View>
         </Card>
 
         {/* Booking Form Card */}
         <Card style={styles.formCard}>
-          <Text style={styles.formTitle}>Request a Make-Up Place</Text>
+          <Text style={styles.formTitle}>{t('parentFlows.makeUp.formTitle')}</Text>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Student ID</Text>
+            <Text style={styles.inputLabel}>{t('parentFlows.makeUp.studentIdLabel')}</Text>
             <TextInput
               style={styles.input}
               value={studentId}
               onChangeText={setStudentId}
-              placeholder="e.g. stu_12345"
+              placeholder={t('parentFlows.makeUp.studentIdPlaceholder')}
               autoCapitalize="none"
               testID="student-id-input"
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Target Session ID</Text>
+            <Text style={styles.inputLabel}>{t('parentFlows.makeUp.sessionIdLabel')}</Text>
             <TextInput
               style={styles.input}
               value={targetSessionId}
               onChangeText={setTargetSessionId}
-              placeholder="e.g. sess_67890"
+              placeholder={t('parentFlows.makeUp.sessionIdPlaceholder')}
               autoCapitalize="none"
               testID="session-id-input"
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Reason / Absence Note</Text>
+            <Text style={styles.inputLabel}>{t('parentFlows.makeUp.reasonLabel')}</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
               value={reason}
               onChangeText={setReason}
-              placeholder="Reason for make-up class..."
+              placeholder={t('parentFlows.makeUp.reasonPlaceholder')}
               multiline
               numberOfLines={3}
               testID="reason-input"
@@ -233,7 +234,7 @@ export const ParentMakeUpBookingScreen: React.FC<ParentMakeUpBookingScreenProps>
           </View>
 
           <Button
-            label={submitting ? 'Submitting...' : 'Submit Make-Up Request'}
+            label={submitting ? t('parentFlows.common.submitting') : t('parentFlows.makeUp.submitRequest')}
             onPress={handleRequestBooking}
             disabled={isOffline || submitting}
             testID="submit-makeup-btn"
@@ -244,14 +245,14 @@ export const ParentMakeUpBookingScreen: React.FC<ParentMakeUpBookingScreenProps>
 
         {/* Active Bookings Section */}
         <View style={styles.historySection} testID="active-bookings-list">
-          <Text style={styles.historySectionTitle}>Current Make-Up Bookings</Text>
+          <Text style={styles.historySectionTitle}>{t('parentFlows.makeUp.currentBookings')}</Text>
 
           {loading ? (
-            <LoadingState message="Fetching active bookings..." />
+            <LoadingState message={t('parentFlows.makeUp.loading')} />
           ) : myBookings.length === 0 ? (
             <EmptyState
-              title="No Active Make-Ups"
-              description="No make-up bookings found for this student. Use the form above to request a place."
+              title={t('parentFlows.makeUp.emptyTitle')}
+              description={t('parentFlows.makeUp.emptyDescription')}
             />
           ) : (
             myBookings.map((b) => {
@@ -263,12 +264,12 @@ export const ParentMakeUpBookingScreen: React.FC<ParentMakeUpBookingScreenProps>
                   <View style={styles.cardHeader}>
                     <View style={styles.bookingClassInfo}>
                       <Text style={styles.className}>
-                        {b.target_class_name || 'Make-Up Session'}
+                        {b.target_class_name || t('parentFlows.makeUp.defaultSessionName')}
                       </Text>
                       <Text style={styles.sessionMeta}>
-                        {b.session_date} ({b.day_of_week || 'Scheduled'}) • {b.start_time} - {b.end_time}
+                        {b.session_date} ({b.day_of_week || t('parentFlows.makeUp.defaultDay')}) • {b.start_time} - {b.end_time}
                       </Text>
-                      <Text style={styles.locationText}>{b.location || 'Gelanggang'}</Text>
+                      <Text style={styles.locationText}>{b.location || t('parentFlows.makeUp.defaultLocation')}</Text>
                     </View>
                     <StatusBadge
                       status={
@@ -280,7 +281,7 @@ export const ParentMakeUpBookingScreen: React.FC<ParentMakeUpBookingScreenProps>
                       }
                       label={
                         isWaitlisted
-                          ? `Waitlist #${b.waitlist_position}`
+                          ? t('parentFlows.makeUp.waitlistBadge', { position: String(b.waitlist_position) })
                           : b.status
                       }
                     />
@@ -290,7 +291,7 @@ export const ParentMakeUpBookingScreen: React.FC<ParentMakeUpBookingScreenProps>
                     <View style={styles.waitlistCardNotice}>
                       <Clock size={14} color={BrandColors.amber} />
                       <Text style={styles.waitlistNoticeText}>
-                        You are position #{b.waitlist_position}. The system will automatically offer you a place if a seat becomes available.
+                        {t('parentFlows.makeUp.waitlistNotice', { position: String(b.waitlist_position) })}
                       </Text>
                     </View>
                   )}
@@ -303,7 +304,7 @@ export const ParentMakeUpBookingScreen: React.FC<ParentMakeUpBookingScreenProps>
                     >
                       <XCircle size={14} color={BrandColors.danger} />
                       <Text style={[styles.cancelLinkText, { color: BrandColors.danger }]}>
-                        Cancel / Release Place
+                        {t('parentFlows.makeUp.cancelRelease')}
                       </Text>
                     </TouchableOpacity>
                   )}
