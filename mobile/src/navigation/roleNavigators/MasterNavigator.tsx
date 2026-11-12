@@ -23,6 +23,7 @@ import {
   MasterMakeUpManagementScreen,
   MasterTransferManagementScreen,
   ParentMasterMessagingScreen,
+  ClassHandoverScreen,
 } from '../../screens/roles/master';
 import {
   RoleNavigatorProps,
@@ -41,6 +42,9 @@ function MasterClassesStackNavigator(props: RoleNavigatorProps) {
       </ClassesStack.Screen>
       <ClassesStack.Screen name="ClassWorkspace">
         {navProps => <ClassWorkspaceScreen {...props} {...navProps} />}
+      </ClassesStack.Screen>
+      <ClassesStack.Screen name="ClassHandover">
+        {navProps => <ClassHandoverScreen {...props} {...navProps} />}
       </ClassesStack.Screen>
       <ClassesStack.Screen name="Students">
         {navProps => <StudentsScreen {...props} {...navProps} />}
