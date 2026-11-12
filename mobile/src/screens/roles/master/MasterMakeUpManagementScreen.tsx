@@ -323,15 +323,15 @@ export const MasterMakeUpManagementScreen: React.FC<MasterMakeUpManagementScreen
                     <View style={styles.detailRow}>
                       <Calendar size={14} color={colors.textSecondary} />
                       <Text style={[styles.detailText, { color: colors.textSecondary }]}>
-                        {t('masterHandover.mu.session', { date: booking.session_date, day: booking.day_of_week || t('masterHandover.mu.dayFallback') })}
+                        {t('masterHandover.mu.session', { date: booking.session_date ?? '', day: booking.day_of_week || t('masterHandover.mu.dayFallback') })}
                       </Text>
                     </View>
                     <View style={styles.detailRow}>
                       <Clock size={14} color={colors.textSecondary} />
                       <Text style={[styles.detailText, { color: colors.textSecondary }]}>
                         {t('masterHandover.mu.time', {
-                          start: booking.start_time,
-                          end: booking.end_time,
+                          start: booking.start_time ?? '',
+                          end: booking.end_time ?? '',
                           location: booking.location || t('masterHandover.mu.locationFallback'),
                         })}
                       </Text>

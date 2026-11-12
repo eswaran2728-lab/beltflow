@@ -451,7 +451,7 @@ export const MasterTrialsFollowUpScreen: React.FC<MasterTrialsFollowUpScreenProp
                     <View style={styles.convertedInfoBox}>
                       <CheckCircle2 size={16} color="#10B981" />
                       <Text style={styles.convertedInfoText}>
-                        {t('masterHandover.tf.enrolledId', { id: trl.converted_student_id })}
+                        {t('masterHandover.tf.enrolledId', { id: trl.converted_student_id ?? '' })}
                       </Text>
                     </View>
                   )}

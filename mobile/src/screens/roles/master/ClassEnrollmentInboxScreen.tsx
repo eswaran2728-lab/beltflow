@@ -68,6 +68,11 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
   navigation,
 }) => {
   const { t } = useI18n();
+  // Server values without a translation key are shown as they were before H28.
+  const labelOr = (key: string, fallback: string) => {
+    const label = t(key);
+    return label === key ? fallback : label;
+  };
   const { colors, typography, spacing, iconSize } = useTheme();
   const classId = route?.params?.classId || '';
   const className = route?.params?.className || t('masterLifecycle.inbox.defaultClassName');
@@ -358,7 +363,7 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
                     </Text>
                     <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
                       {t('masterLifecycle.inbox.applicantLine', {
-                        type: t(`masterLifecycle.inbox.applicantType.${app.applicant_type}`),
+                        type: labelOr(`masterLifecycle.inbox.applicantType.${app.applicant_type}`, app.applicant_type),
                         date: app.submitted_at ? new Date(app.submitted_at).toLocaleDateString() : t('status.draft'),
                       })}
                     </Text>
@@ -366,7 +371,7 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
                     <StatusBadge
                       status={app.status === 'APPROVED' ? 'ACTIVE' : app.status === 'REJECTED' ? 'REJECTED' : 'PENDING'}
-                      label={t(`masterLifecycle.inbox.appStatus.${app.status}`)}
+                      label={labelOr(`masterLifecycle.inbox.appStatus.${app.status}`, app.status.replace('_', ' '))}
                       variant={
                         app.status === 'APPROVED'
                           ? 'success'
