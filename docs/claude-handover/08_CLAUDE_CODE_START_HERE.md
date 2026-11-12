@@ -54,7 +54,7 @@ npm test                   # Runs Jest component and unit test suites
 
 ## 4. Task H26 status (see `09_H26_ROLE_AWARE_AI.md`)
 
-H26 PASS (see `09`). H27 CONDITIONAL PASS on 2026-11-10 (see `10`): 3 of 4 official tests pass on PGlite and real PostgreSQL 16; native E2E needs a real device. Release flags: `BELTFLOW_RELEASE`, `BELTFLOW_DISABLED_MODULES`. H28 PARTIAL on 2026-11-11 (see `11`): 5/5 official tests pass; translate remaining screens with `useI18n().t()` and lower the ratchet baseline in `i18nCoverageRatchetH28.test.ts`.
+H26 PASS (see `09`). H27 CONDITIONAL PASS on 2026-11-10 (see `10`): 3 of 4 official tests pass on PGlite and real PostgreSQL 16; native E2E needs a real device. Release flags: `BELTFLOW_RELEASE`, `BELTFLOW_DISABLED_MODULES`. H28 PARTIAL (see `11`): 5/5 official tests pass; since 2026-11-12 every screen uses `useI18n().t()` keys and `i18nCoverageRatchetH28.test.ts` fails on any hard-coded English. Add new text to a module in `mobile/src/i18n/locales/modules/` in EN, BM and Tamil.
 
 ### Original H26 brief (kept for reference)
 

@@ -94,4 +94,4 @@ npm test                   # Runs Jest test suites across components and screens
 
 ## 4. H28 localisation and accessibility (2026-11-11)
 
-See `11_H28_LOCALIZATION_USABILITY.md`. App-wide EN/BM/Tamil via `src/i18n` (`useI18n`, `I18nProvider`), `LanguageSelector` on all Profile screens, translated tab labels, `StatusBadge` icons + text, and `PendingNextStep` on the three approval-status screens. 644 hard-coded strings remain after the core journeys pass (ratchet test prevents growth).
+See `11_H28_LOCALIZATION_USABILITY.md`. App-wide EN/BM/Tamil via `src/i18n` (`useI18n`, `I18nProvider`), `LanguageSelector` on all Profile screens, translated tab labels, `StatusBadge` icons + text, and `PendingNextStep` on the three approval-status screens. Every screen and component now uses translation keys (2,156 keys); `i18nCoverageRatchetH28.test.ts` fails on any new hard-coded English.

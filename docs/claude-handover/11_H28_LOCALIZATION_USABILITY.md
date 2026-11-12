@@ -4,7 +4,7 @@
 > Contract: localized role journeys and accessibility evidence.
 > **Verdict: PARTIAL.** All five official acceptance tests pass (component and screen level, Jest), and the
 > localisation foundation is in place. H28 is "continuous", and most of the work remains:
-> - Core role journeys translated on 2026-11-11 (§5). 644 hard-coded English UI strings remain (was 978), mostly in secondary screens.
+> - Every screen and shared component now takes its text from EN/BM/Tamil keys (core journeys 2026-11-11 §5, the rest 2026-11-12 §6). Hard-coded English UI strings: 978 → 0.
 > - Malay and Tamil need native-speaker review.
 > - Real-device checks (large text, TalkBack/VoiceOver, low-memory phones, slow networks) and real-user sessions have not been done.
 > - The remaining Stitch screen migration has not been done.
@@ -47,8 +47,8 @@
 - **`PendingNextStep`** on `MasterApplicationStatusScreen`, `ClassProposalStatusScreen` and `MyApplicationsScreen`. Badge labels on these screens are translated.
 - **Fonts:** see commit `145641a`. The theme used CSS stacks for fonts that were never bundled; it now uses system fonts.
 - **`i18nCoverageRatchetH28`:**
-  - H28-localised files must contain no hard-coded English.
-  - The app-wide count of hard-coded UI strings may not exceed **644** (was 978). Lower it as screens are translated.
+  - Since 2026-11-12 it checks **every** `.tsx` file under `src/` (83 files, plus any added later) and fails on any hard-coded English UI text.
+  - Four pattern matches that are code, not text, are listed exactly in `KNOWN_NON_TEXT`.
 
 **Native-speaker review needed:** `mobile/src/i18n/locales/ms.ts` and `ta.ts`, and the H26 `assistantStrings.ts`. The Tamil uses ஆசான் for Master and சங்கம் for Persatuan.
 
@@ -65,22 +65,7 @@ Backend unchanged by H28 (42/42 suites, see `10`).
 
 ## 4. Remaining H28 work (backlog, in suggested order)
 
-1. **Translate the remaining screens** with `t()` keys and lower the ratchet baseline as each one is done. The core journeys are done (§5). The largest remaining files:
-
-| File | Hard-coded UI strings |
-|---|---|
-| `screens/roles/master/ClassWorkspaceScreen.tsx` | 51 |
-| `screens/roles/parent/ParentStudentLifecycleScreen.tsx` | 39 |
-| `screens/roles/master/MasterApplicationStatusScreen.tsx` | 36 |
-| `screens/roles/adminPersatuan/MasterApprovalsScreen.tsx` | 33 |
-| `screens/roles/master/MasterTrialsFollowUpScreen.tsx` | 31 |
-| `screens/roles/student/VideoFeedbackScreen.tsx` | 29 |
-| `screens/roles/master/LessonPlanModal.tsx` | 27 |
-| `screens/roles/master/ClassHandoverScreen.tsx` | 26 |
-| `screens/roles/master/CreateClassScreen.tsx` | 25 |
-
-   Total: 644. Shared components (e.g. `FamilyBillingCard`, `StudentProfileModal`, `Resilience`) also still hold English. Re-measure with the same patterns as `i18nCoverageRatchetH28.test.ts`.
-
+1. ~~Translate the remaining screens~~ — done 2026-11-12 (§6). New screens must use `t()`; the guard test enforces it.
 2. **Native-speaker review** of all BM and Tamil strings, including the assistant's.
 3. **Device checks:**
    - Android at the largest text size plus TalkBack, and iPhone at the largest Dynamic Type plus VoiceOver, for each role's core journey.
@@ -111,3 +96,35 @@ Rules followed: English output unchanged (existing tests pin it); server data, r
 Evidence: all 19 files above are in the ratchet's fully-localised list (0 hard-coded strings); a key-usage scan found no `t('…')` key missing from the dictionaries; `tsc` 0 errors; ESLint 0 errors; Jest 44 suites / 496 tests pass; `expo export --platform android` succeeds.
 
 Not done: native-speaker review of the new BM/Tamil text, and on-device checks of longer BM/Tamil labels on small screens.
+
+## 6. Remaining screens and shared components translated (2026-11-12)
+
+Nine more area modules under `mobile/src/i18n/locales/modules/`. Total dictionary: 2,156 keys, each in EN/BM/Tamil.
+
+| Area module | Screens / files | Keys |
+|---|---|---|
+| `adminOps` | Academy setup, grading, curriculum | 166 |
+| `adminApprovals` | Class, handover and Master approvals | 163 |
+| `masterClasses` | Class workspace, lesson plan editor | 140 |
+| `masterLifecycle` | Enrollment inbox, class proposal status, create class, Master application status | 187 |
+| `masterHandover` | Class handover, incoming handovers, make-ups, transfers, trial follow-up | 244 |
+| `parentFlows` | Available classes, book trial, make-up booking, family timeline | 164 |
+| `parentLifecycle` | Student lifecycle (pause/transfer), Master messaging | 135 |
+| `studentFlows` | Learning library and rewards, my applications, video feedback | 141 |
+| `components` | Billing card, student profile, digital pass, certificate card, attendance row, sync/offline banners, dialogs, dev panel | 140 |
+
+Code fixes made along the way:
+- Two screens chose a message colour by searching the English text ("Error…", "…successfully"); they now use a success/error flag, so the colour stays right in BM/Tamil.
+- `ParentMasterMessagingScreen` had its own EN/BM/TA table fixed to English; moved to keys. Its BM/Tamil safety notices had lost meaning and now match the English.
+- Server statuses shown as labels use a key lookup that falls back to the raw value (as before) when the server sends a value with no key.
+- Four TypeScript errors from optional values passed to `t()` fixed.
+
+Left in English on purpose: values sent to the server (default reasons, lesson-plan defaults, upload titles, enum values), names and messages written by people or returned by the server, role codes, "RM" formatting, test-account names in the dev panel, and machine-readable error-code prefixes at the start of consent/policy messages.
+
+**Decisions for the owner:**
+- Lesson-plan starting text (drill names, "New Drill", equipment) is saved with the plan, so it stays English. Translating it would store plans in mixed languages.
+- The WhatsApp message pre-filled for a guardian from the at-risk attendance alert stays English.
+
+Evidence (2026-11-12): guard test 84/84 (all 83 files clean, and a deliberately added English string makes it fail); key scan finds no key used in code that is missing from the dictionary; `tsc` 0 errors; ESLint 0 errors (59 old warnings, unchanged); Jest 44 suites / 551 tests pass; `expo export` for Android and iOS succeeds.
+
+Still needed before release: native-speaker review of all BM and Tamil text (now ~2,150 strings), and on-device checks that longer BM/Tamil labels fit on small screens and at large text sizes.
