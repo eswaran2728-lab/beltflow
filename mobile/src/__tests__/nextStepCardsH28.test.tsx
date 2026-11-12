@@ -187,6 +187,38 @@ describe('H28 next-step cards for more waiting states', () => {
     await act(async () => { await r.unmount(); });
   });
 
+  test('payment screen: an expired payment link says so and lets the parent start again', async () => {
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url === '/dashboard/parent') return Promise.resolve({ children: [{ id: 'stu_x', fullName: 'Test Child', currentBeltRank: 'White', organizationId: 'org_x' }] });
+      if (url.includes('/billing/student/')) return Promise.resolve({ dues: [{ id: 'due_x', class_id: 'cls_x', student_id: 'stu_x', billing_month: '2026-03', fee_amount: 80, amount_paid: 0, status: 'Pending' }] });
+      if (url.includes('/payments')) return Promise.resolve({ payments: [] });
+      return Promise.reject(new Error(`Unhandled URL: ${url}`));
+    });
+    (paymentGatewayService.getMerchantConfig as jest.Mock).mockResolvedValue({
+      configured: true,
+      merchant: { id: 'm', merchantName: 'Test Persatuan', provider: 'SANDBOX', settlementBankName: 'Test Bank', settlementAccountMasked: '****0000', fpxEnabled: true, duitnowEnabled: true, status: 'ACTIVE' },
+    });
+    const pending = { id: 'intent_exp', amountCents: 8000, amountRM: '80.00', currency: 'MYR', paymentMethod: 'FPX', status: 'PENDING_PROCESSING', createdAt: new Date().toISOString() };
+    (paymentGatewayService.createPaymentIntent as jest.Mock).mockResolvedValue({ intent: pending });
+    (paymentGatewayService.getPaymentIntent as jest.Mock).mockResolvedValue({ intent: { ...pending, status: 'EXPIRED' } });
+    const parent: AuthUser = { id: 'usr_p', fullName: 'Test Parent', email: 'p@example.test', role: UserRole.PARENT, organizationId: 'org_x' };
+
+    const r = await render(wrap(<ParentFeesPaymentScreen user={parent} />));
+    await waitFor(() => expect(r.getByTestId('btn-pay-now')).toBeTruthy());
+    await act(async () => { fireEvent.press(r.getByTestId('btn-pay-now')); });
+    await waitFor(() => expect(r.getByTestId('btn-check-payment-status')).toBeTruthy());
+    await act(async () => { fireEvent.press(r.getByTestId('btn-check-payment-status')); });
+
+    await waitFor(() => expect(r.getByText(en['parentHome.fees.intentExpired'])).toBeTruthy());
+    // A late bank confirmation can still settle it, so the parent is told to check before paying again.
+    expect(r.getByText(en['parentHome.fees.intentExpiredNote'])).toBeTruthy();
+    expect(r.queryByTestId('btn-check-payment-status')).toBeNull();
+    expect(r.queryByText(en['parentHome.fees.intentPending'])).toBeNull();
+    await act(async () => { fireEvent.press(r.getByTestId('btn-payment-start-again')); });
+    expect(r.queryByTestId('active-intent-card')).toBeNull();
+    await act(async () => { await r.unmount(); });
+  });
+
   const booking = (over: Partial<MakeUpBooking>): MakeUpBooking => ({
     id: 'bk_x', organization_id: 'org_x', student_id: 'stu_x', original_class_id: 'cls_a', target_session_id: 'sess_x',
     target_class_id: 'cls_b', status: 'REQUESTED', version: 1, target_class_name: 'Test Make-Up Class',

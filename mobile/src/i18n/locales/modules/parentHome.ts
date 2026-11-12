@@ -130,6 +130,9 @@ export const parentHomeEn = {
   'parentHome.fees.noReceiptsBody': 'Confirmed tuition receipts will be permanently archived and available here.',
   'parentHome.fees.receiptPending': 'Receipt Pending',
   'parentHome.fees.historyMethod': 'Method: {method} • {date}',
+  'parentHome.fees.intentExpired': 'Payment Link Expired',
+  'parentHome.fees.intentExpiredNote': 'This payment link has expired. If you already paid at your bank, your receipt will still appear: check your fees before paying again.',
+  'parentHome.fees.startAgain': 'Start Again',
 };
 
 export const parentHomeMs: Record<keyof typeof parentHomeEn, string> = {
@@ -254,6 +257,9 @@ export const parentHomeMs: Record<keyof typeof parentHomeEn, string> = {
   'parentHome.fees.noReceiptsBody': 'Resit yuran yang disahkan akan diarkibkan secara kekal dan tersedia di sini.',
   'parentHome.fees.receiptPending': 'Resit Belum Tersedia',
   'parentHome.fees.historyMethod': 'Kaedah: {method} • {date}',
+  'parentHome.fees.intentExpired': 'Pautan Bayaran Tamat Tempoh',
+  'parentHome.fees.intentExpiredNote': 'Pautan bayaran ini telah tamat tempoh. Jika anda sudah membayar di bank, resit anda tetap akan dipaparkan: semak yuran anda sebelum membayar semula.',
+  'parentHome.fees.startAgain': 'Mula Semula',
 };
 
 export const parentHomeTa: Record<keyof typeof parentHomeEn, string> = {
@@ -378,4 +384,7 @@ export const parentHomeTa: Record<keyof typeof parentHomeEn, string> = {
   'parentHome.fees.noReceiptsBody': 'உறுதிசெய்யப்பட்ட கட்டண ரசீதுகள் நிரந்தரமாகச் சேமிக்கப்பட்டு இங்கே கிடைக்கும்.',
   'parentHome.fees.receiptPending': 'ரசீது நிலுவையில்',
   'parentHome.fees.historyMethod': 'முறை: {method} • {date}',
+  'parentHome.fees.intentExpired': 'கட்டண இணைப்பு காலாவதியானது',
+  'parentHome.fees.intentExpiredNote': 'இந்தக் கட்டண இணைப்பு காலாவதியாகிவிட்டது. வங்கியில் ஏற்கனவே செலுத்தியிருந்தால், உங்கள் ரசீது இன்னும் தோன்றும்: மீண்டும் செலுத்தும் முன் கட்டணங்களைச் சரிபார்க்கவும்.',
+  'parentHome.fees.startAgain': 'மீண்டும் தொடங்கு',
 };

@@ -452,6 +452,8 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
                   ? t('parentHome.fees.intentConfirmed')
                   : activeIntent.status === 'FAILED'
                   ? t('parentHome.fees.intentFailed')
+                  : activeIntent.status === 'EXPIRED'
+                  ? t('parentHome.fees.intentExpired')
                   : t('parentHome.fees.intentPending')}
               </Text>
             </View>
@@ -528,6 +530,24 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
               size="sm"
               style={{ marginTop: spacing.md }}
             />
+          )}
+
+          {activeIntent.status === 'EXPIRED' && (
+            <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
+              <Text style={[typography.bodyMedium, { color: colors.textSecondary }]}>
+                {t('parentHome.fees.intentExpiredNote')}
+              </Text>
+              <Button
+                label={t('parentHome.fees.startAgain')}
+                onPress={() => {
+                  setActiveIntent(null);
+                  if (selectedChildId) loadChildFinances(selectedChildId);
+                }}
+                variant="secondary"
+                size="sm"
+                testID="btn-payment-start-again"
+              />
+            </View>
           )}
         </Card>
       )}

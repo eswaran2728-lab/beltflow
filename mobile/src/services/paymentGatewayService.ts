@@ -47,7 +47,7 @@ export interface PaymentIntentDetails {
   amountCents: number;
   amountRM: string;
   currency: string;
-  status: 'REQUIRES_PAYMENT_METHOD' | 'PENDING_PROCESSING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
+  status: 'REQUIRES_PAYMENT_METHOD' | 'PENDING_PROCESSING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED' | 'EXPIRED';
   providerSessionUrl: string;
   providerTxId: string;
   paymentMethod: string;
