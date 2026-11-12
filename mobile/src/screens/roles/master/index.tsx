@@ -25,6 +25,7 @@ import { OfflineBanner, LoadingState, ErrorState } from '../../../components/Fee
 import { useDashboardData } from '../../../hooks/useDashboardData';
 import { dashboardService, MasterDashboardData } from '../../../services/dashboardService';
 import { useI18n } from '../../../i18n';
+import { useNotificationInbox } from '../../../components/NotificationsInbox';
 import { useReleaseModules } from '../../../hooks/useReleaseModules';
 
 export interface RoleScreenProps {
@@ -52,6 +53,7 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
     fetcher,
     isOffline,
   });
+  const inbox = useNotificationInbox(Boolean(data));
 
   const headerRightAction = onLogout ? (
     <Button
@@ -146,9 +148,11 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
       <StitchAppHeader
         dojangName={user.organizationId ? t('masterHome.headerPersatuan', { org: user.organizationId.toUpperCase() }) : t('masterHome.headerPersatuanFallback')}
         roleBadgeText="MASTER"
-        hasUnreadNotifications={Boolean(data?.recentNotices?.length || data?.pendingApplicationsCount)}
-        onNotificationPress={() => navigation?.navigate?.('Classes')}
+        hasUnreadNotifications={inbox.unreadCount > 0}
+        onNotificationPress={inbox.openInbox}
+        notificationAccessibilityLabel={inbox.bellLabel}
       />
+      {inbox.element}
 
       <ScreenContainer
         scrollable

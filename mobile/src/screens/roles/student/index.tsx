@@ -37,6 +37,7 @@ import { StudentDigitalPass } from '../../../components/StudentDigitalPass';
 import { getNextBeltLevel } from '../../../theme/belts';
 import { LearningLibraryRewardsScreen } from './LearningLibraryRewardsScreen';
 import { useI18n } from '../../../i18n';
+import { useNotificationInbox } from '../../../components/NotificationsInbox';
 import { useReleaseModules } from '../../../hooks/useReleaseModules';
 import { apiClient } from '../../../services/apiClient';
 
@@ -68,6 +69,7 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
     fetcher,
     isOffline,
   });
+  const inbox = useNotificationInbox(Boolean(data));
 
   const headerRightAction = onLogout ? (
     <Button
@@ -218,13 +220,11 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
       <StitchAppHeader
         dojangName={data?.persatuanName ? data.persatuanName.toUpperCase() : 'PERSATUAN DOJANG (SELANGOR)'}
         roleBadgeText="STUDENT"
-        hasUnreadNotifications={Boolean(data?.notices && data.notices.length > 0)}
-        onNotificationPress={() => {
-          if (data?.notices && data.notices.length > 0) {
-            Alert.alert(t('studentHome.noticesAlertTitle'), t('studentHome.noticesAlertMessage', { count: data.notices.length }));
-          }
-        }}
+        hasUnreadNotifications={inbox.unreadCount > 0}
+        onNotificationPress={inbox.openInbox}
+        notificationAccessibilityLabel={inbox.bellLabel}
       />
+      {inbox.element}
 
       <ScreenHeader
         title={t('studentHome.welcome', { name: user.fullName })}

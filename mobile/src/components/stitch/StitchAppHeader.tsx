@@ -9,6 +9,8 @@ export interface StitchAppHeaderProps {
   roleBadgeText?: string;
   hasUnreadNotifications?: boolean;
   onNotificationPress?: () => void;
+  /** Overrides the bell's screen-reader label, e.g. with the unread count. */
+  notificationAccessibilityLabel?: string;
   style?: ViewStyle;
 }
 
@@ -17,6 +19,7 @@ export const StitchAppHeader: React.FC<StitchAppHeaderProps> = ({
   roleBadgeText,
   hasUnreadNotifications = true,
   onNotificationPress,
+  notificationAccessibilityLabel,
   style,
 }) => {
   const { t } = useI18n();
@@ -46,7 +49,8 @@ export const StitchAppHeader: React.FC<StitchAppHeaderProps> = ({
         <TouchableOpacity
           style={styles.bellButton}
           onPress={onNotificationPress}
-          accessibilityLabel={t('components.header.notificationsA11y')}
+          accessibilityLabel={notificationAccessibilityLabel ?? t('components.header.notificationsA11y')}
+          accessibilityRole="button"
           testID="header-bell-btn"
         >
           <Bell size={18} color="#FFFFFF" />

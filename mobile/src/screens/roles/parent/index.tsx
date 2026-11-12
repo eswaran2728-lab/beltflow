@@ -30,6 +30,7 @@ import { dashboardService, ParentDashboardData, ParentChildSummary } from '../..
 import { ParentChildPassViewer, LinkedChildPassData } from '../../../components/ParentChildPassViewer';
 import { ParentFeesPaymentScreen } from './ParentFeesPaymentScreen';
 import { useI18n } from '../../../i18n';
+import { useNotificationInbox } from '../../../components/NotificationsInbox';
 import { useReleaseModules } from '../../../hooks/useReleaseModules';
 
 export interface RoleScreenProps {
@@ -59,6 +60,7 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
     fetcher,
     isOffline,
   });
+  const inbox = useNotificationInbox(Boolean(data));
 
   const headerRightAction = onLogout ? (
     <Button
@@ -205,8 +207,11 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
       <StitchAppHeader
         dojangName={t('parentHome.headerHub')}
         roleBadgeText={t('parentHome.headerRole')}
-        hasUnreadNotifications={(data?.notices && data.notices.length > 0) || false}
+        hasUnreadNotifications={inbox.unreadCount > 0}
+        onNotificationPress={inbox.openInbox}
+        notificationAccessibilityLabel={inbox.bellLabel}
       />
+      {inbox.element}
 
       <ScreenContainer
         scrollable

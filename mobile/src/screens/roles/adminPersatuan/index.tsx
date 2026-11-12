@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { useI18n, translate } from '../../../i18n';
+import { useNotificationInbox } from '../../../components/NotificationsInbox';
 import { View, Text, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
 import {
   MapPin,
@@ -80,6 +81,7 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
     fetcher,
     isOffline,
   });
+  const inbox = useNotificationInbox(Boolean(data));
 
   const cycleLanguage = () => {
     if (lang === 'en') setLang('ms');
@@ -190,9 +192,11 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
       <StitchAppHeader
         dojangName="PERSATUAN DOJANG"
         roleBadgeText="ADMIN PERSATUAN"
-        hasUnreadNotifications={Boolean((data as any)?.pendingApprovalsCount && (data as any).pendingApprovalsCount > 0)}
-        onNotificationPress={() => navigation?.navigate('Masters')}
+        hasUnreadNotifications={inbox.unreadCount > 0}
+        onNotificationPress={inbox.openInbox}
+        notificationAccessibilityLabel={inbox.bellLabel}
       />
+      {inbox.element}
 
       <View style={styles.bodyContent}>
         <Text style={[typography.pageTitle, styles.screenTitle]}>

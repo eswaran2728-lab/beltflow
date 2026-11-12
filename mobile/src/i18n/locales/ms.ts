@@ -18,6 +18,7 @@ import { parentFlowsMs } from './modules/parentFlows';
 import { parentLifecycleMs } from './modules/parentLifecycle';
 import { studentFlowsMs } from './modules/studentFlows';
 import { componentsMs } from './modules/components';
+import { notificationsMs } from './modules/notifications';
 
 
 export const ms: Dictionary = {
@@ -159,4 +160,5 @@ export const ms: Dictionary = {
   ...parentLifecycleMs,
   ...studentFlowsMs,
   ...componentsMs,
+  ...notificationsMs,
 };

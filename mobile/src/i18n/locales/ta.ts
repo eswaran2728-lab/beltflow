@@ -19,6 +19,7 @@ import { parentFlowsTa } from './modules/parentFlows';
 import { parentLifecycleTa } from './modules/parentLifecycle';
 import { studentFlowsTa } from './modules/studentFlows';
 import { componentsTa } from './modules/components';
+import { notificationsTa } from './modules/notifications';
 
 
 export const ta: Dictionary = {
@@ -160,4 +161,5 @@ export const ta: Dictionary = {
   ...parentLifecycleTa,
   ...studentFlowsTa,
   ...componentsTa,
+  ...notificationsTa,
 };
