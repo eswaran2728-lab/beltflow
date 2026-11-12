@@ -50,6 +50,16 @@ export type AdminPersatuanTabParamList = {
   AcademySetup?: undefined;
 };
 
+// Admin Persatuan Home tab: dashboard plus the screens its buttons open.
+export type AdminPersatuanHomeStackParamList = {
+  Dashboard: undefined;
+  ClassApprovals: undefined;
+  HandoverApprovals: undefined;
+  AdminGrading: undefined;
+  Curriculum: undefined;
+  Finance: undefined;
+};
+
 export type MasterClassesStackParamList = {
   ClassesList: undefined;
   Students: { classId?: string } | undefined;
@@ -62,6 +72,7 @@ export type MasterClassesStackParamList = {
   MakeUpWaitlist: { sessionId?: string; classId?: string } | undefined;
   TransfersManagement: { classId?: string } | undefined;
   ParentMasterMessaging: { threadId?: string; classId?: string; childId?: string } | undefined;
+  IncomingHandovers: undefined;
 };
 
 export type MasterTabParamList = {
@@ -80,6 +91,30 @@ export type ParentTabParamList = {
   Notices: undefined;
   Assistant: undefined;
   Profile: undefined;
+};
+
+// Parent Home tab: dashboard plus messaging and the family timeline.
+export type ParentHomeStackParamList = {
+  Dashboard: undefined;
+  Messaging: { threadId?: string; classId?: string; childId?: string } | undefined;
+  FamilyTimeline: { studentId?: string } | undefined;
+};
+
+// Parent Children tab: list of children plus per-child journeys.
+export type ParentChildrenStackParamList = {
+  ChildrenList: undefined;
+  StudentLifecycle: { studentId: string; studentName?: string };
+  MakeUpBooking: { studentId: string; targetSessionId?: string };
+  AvailableClasses: { studentId?: string } | undefined;
+  BookTrial: { classId?: string } | undefined;
+  MyApplications: undefined;
+};
+
+// Student Home tab: dashboard plus applications and video feedback.
+export type StudentHomeStackParamList = {
+  Dashboard: undefined;
+  MyApplications: undefined;
+  VideoFeedback: undefined;
 };
 
 export type StudentTabParamList = {
