@@ -20,6 +20,7 @@ import { ScreenContainer, ScreenHeader } from '../../../components/Layout';
 import { Card } from '../../../components/Card';
 import { Button } from '../../../components/Button';
 import { StatusBadge } from '../../../components/Badges';
+import { PendingNextStep } from '../../../components/PendingNextStep';
 import { LoadingState, EmptyState } from '../../../components/Feedback';
 import {
   bookingsService,
@@ -145,6 +146,17 @@ export const ParentMakeUpBookingScreen: React.FC<ParentMakeUpBookingScreenProps>
     }
   };
 
+  const handleAcceptOffer = async (booking: MakeUpBooking) => {
+    try {
+      await bookingsService.acceptOffer(booking.id);
+      Alert.alert(t('parentFlows.makeUp.acceptOfferSuccessTitle'), t('parentFlows.makeUp.acceptOfferSuccessMessage'));
+    } catch (err: any) {
+      Alert.alert(t('parentFlows.makeUp.acceptOfferErrorTitle'), err?.message || t('parentFlows.makeUp.acceptOfferErrorMessage'));
+    } finally {
+      loadStudentBookings();
+    }
+  };
+
   const handleCancelBooking = async (booking: MakeUpBooking) => {
     Alert.alert(
       t('parentFlows.makeUp.cancelTitle'),
@@ -258,6 +270,7 @@ export const ParentMakeUpBookingScreen: React.FC<ParentMakeUpBookingScreenProps>
             myBookings.map((b) => {
               const isConfirmed = b.status === 'CONFIRMED' || b.status === 'ATTENDED';
               const isWaitlisted = b.status === 'WAITLISTED';
+              const isOffered = b.status === 'OFFERED';
 
               return (
                 <Card key={b.id} style={styles.bookingItemCard} testID={`booking-card-${b.id}`}>
@@ -275,7 +288,7 @@ export const ParentMakeUpBookingScreen: React.FC<ParentMakeUpBookingScreenProps>
                       status={
                         isConfirmed
                           ? 'ACTIVE'
-                          : isWaitlisted
+                          : isWaitlisted || isOffered
                           ? 'PENDING'
                           : 'INACTIVE'
                       }
@@ -294,6 +307,20 @@ export const ParentMakeUpBookingScreen: React.FC<ParentMakeUpBookingScreenProps>
                         {t('parentFlows.makeUp.waitlistNotice', { position: String(b.waitlist_position) })}
                       </Text>
                     </View>
+                  )}
+
+                  <PendingNextStep kind="MAKE_UP_BOOKING" status={b.status} testID={`booking-next-step-${b.id}`} />
+
+                  {isOffered && (
+                    <Button
+                      label={t('parentFlows.makeUp.acceptOffer')}
+                      onPress={() => handleAcceptOffer(b)}
+                      variant="primary"
+                      size="sm"
+                      fullWidth
+                      style={{ marginTop: 12 }}
+                      testID={`accept-offer-btn-${b.id}`}
+                    />
                   )}
 
                   {b.status !== 'CANCELLED' && b.status !== 'ATTENDED' && (

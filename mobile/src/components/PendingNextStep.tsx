@@ -10,12 +10,27 @@ import { useI18n } from '../i18n';
  * plain language and in the app's language. Renders nothing for finished
  * states (approved, withdrawn, active).
  */
-export type PendingKind = 'MASTER_APPLICATION' | 'CLASS_PROPOSAL' | 'ENROLLMENT_APPLICATION';
+export type PendingKind =
+  | 'MASTER_APPLICATION'
+  | 'CLASS_PROPOSAL'
+  | 'ENROLLMENT_APPLICATION'
+  | 'PAYMENT'
+  | 'MAKE_UP_BOOKING'
+  | 'PAUSE_REQUEST'
+  | 'TRANSFER_REQUEST'
+  | 'HANDOVER';
 
+// Waiting states only. Who decides and the timings come from the server
+// routes (see nextStepCardsH28.test.tsx for the references).
 const STATUSES_WITH_NEXT_STEP: Record<PendingKind, string[]> = {
   MASTER_APPLICATION: ['DRAFT', 'SUBMITTED', 'NEEDS_INFORMATION', 'REJECTED'],
   CLASS_PROPOSAL: ['DRAFT', 'SUBMITTED', 'NEEDS_INFORMATION', 'REJECTED'],
   ENROLLMENT_APPLICATION: ['DRAFT', 'SUBMITTED', 'NEEDS_INFORMATION', 'WAITLISTED', 'REJECTED'],
+  PAYMENT: ['REQUIRES_PAYMENT_METHOD', 'PENDING_PROCESSING'],
+  MAKE_UP_BOOKING: ['REQUESTED', 'WAITLISTED', 'OFFERED'],
+  PAUSE_REQUEST: ['REQUESTED'],
+  TRANSFER_REQUEST: ['PENDING_RECEIVING', 'REQUESTED', 'PENDING_OLD_MASTER', 'PENDING_NEW_MASTER'],
+  HANDOVER: ['REQUESTED', 'INCOMING_ACCEPTED'],
 };
 
 export const hasNextStep = (kind: PendingKind, status: string) =>
@@ -32,8 +47,13 @@ export const PendingNextStep: React.FC<PendingNextStepProps> = ({ kind, status, 
   const code = String(status).toUpperCase();
   if (!hasNextStep(kind, code)) return null;
 
+  // A status can name a different decision maker than the kind as a whole.
+  const statusWhoKey = `pending.${kind}.${code}.who`;
+  const statusWho = t(statusWhoKey);
+  const whoText = statusWho === statusWhoKey ? t(`pending.${kind}.who`) : statusWho;
+
   const rows: { part: 'who' | 'next' | 'action'; label: string; text: string; Icon: typeof UserCheck }[] = [
-    { part: 'who', label: t('pending.whoReviews'), text: t(`pending.${kind}.who`), Icon: UserCheck },
+    { part: 'who', label: t('pending.whoReviews'), text: whoText, Icon: UserCheck },
     { part: 'next', label: t('pending.whatNext'), text: t(`pending.${kind}.${code}.next`), Icon: ArrowRight },
     { part: 'action', label: t('pending.whatYouCanDo'), text: t(`pending.${kind}.${code}.action`), Icon: Hand },
   ];

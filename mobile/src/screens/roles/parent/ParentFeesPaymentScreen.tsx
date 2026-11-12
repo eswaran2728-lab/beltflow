@@ -26,6 +26,7 @@ import { ScreenContainer, ScreenHeader } from '../../../components/Layout';
 import { Card } from '../../../components/Card';
 import { Button } from '../../../components/Button';
 import { StatusBadge } from '../../../components/Badges';
+import { PendingNextStep } from '../../../components/PendingNextStep';
 import { OfflineBanner } from '../../../components/Feedback';
 import { AuthUser } from '../../../types/auth';
 import {
@@ -483,6 +484,8 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
               </View>
             ) : null}
           </View>
+
+          <PendingNextStep kind="PAYMENT" status={activeIntent.status} testID="payment-next-step" />
 
           {activeIntent.status === 'PENDING_PROCESSING' && (
             <View style={{ marginTop: spacing.md, gap: spacing.sm }}>

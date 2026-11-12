@@ -164,6 +164,11 @@ export const parentFlowsEn = {
   'parentFlows.family.itemizedDues': 'Itemized Monthly Dues:',
   'parentFlows.family.month': 'Month: {month}',
   'parentFlows.family.feeLine': 'Fee: {currency} {fee} | Paid: {currency} {paid}',
+  'parentFlows.makeUp.acceptOffer': 'Accept Seat',
+  'parentFlows.makeUp.acceptOfferSuccessTitle': 'Seat Confirmed',
+  'parentFlows.makeUp.acceptOfferSuccessMessage': 'Your make-up seat is confirmed.',
+  'parentFlows.makeUp.acceptOfferErrorTitle': 'Could Not Accept',
+  'parentFlows.makeUp.acceptOfferErrorMessage': 'The offer may have expired. Pull down to refresh.',
 };
 
 export const parentFlowsMs: Record<keyof typeof parentFlowsEn, string> = {
@@ -322,6 +327,11 @@ export const parentFlowsMs: Record<keyof typeof parentFlowsEn, string> = {
   'parentFlows.family.itemizedDues': 'Butiran Yuran Bulanan:',
   'parentFlows.family.month': 'Bulan: {month}',
   'parentFlows.family.feeLine': 'Yuran: {currency} {fee} | Dibayar: {currency} {paid}',
+  'parentFlows.makeUp.acceptOffer': 'Terima Tempat',
+  'parentFlows.makeUp.acceptOfferSuccessTitle': 'Tempat Disahkan',
+  'parentFlows.makeUp.acceptOfferSuccessMessage': 'Tempat kelas ganti anda telah disahkan.',
+  'parentFlows.makeUp.acceptOfferErrorTitle': 'Tidak Dapat Menerima',
+  'parentFlows.makeUp.acceptOfferErrorMessage': 'Tawaran mungkin telah tamat tempoh. Tarik ke bawah untuk muat semula.',
 };
 
 export const parentFlowsTa: Record<keyof typeof parentFlowsEn, string> = {
@@ -480,4 +490,9 @@ export const parentFlowsTa: Record<keyof typeof parentFlowsEn, string> = {
   'parentFlows.family.itemizedDues': 'மாதாந்திரக் கட்டண விவரம்:',
   'parentFlows.family.month': 'மாதம்: {month}',
   'parentFlows.family.feeLine': 'கட்டணம்: {currency} {fee} | செலுத்தியது: {currency} {paid}',
+  'parentFlows.makeUp.acceptOffer': 'இடத்தை ஏற்கவும்',
+  'parentFlows.makeUp.acceptOfferSuccessTitle': 'இடம் உறுதிசெய்யப்பட்டது',
+  'parentFlows.makeUp.acceptOfferSuccessMessage': 'உங்கள் ஈடுசெய் வகுப்பு இடம் உறுதிசெய்யப்பட்டது.',
+  'parentFlows.makeUp.acceptOfferErrorTitle': 'ஏற்க முடியவில்லை',
+  'parentFlows.makeUp.acceptOfferErrorMessage': 'வாய்ப்பு காலாவதியாகியிருக்கலாம். புதுப்பிக்கக் கீழே இழுக்கவும்.',
 };

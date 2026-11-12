@@ -21,6 +21,7 @@ import { ScreenContainer, ScreenHeader } from '../../../components/Layout';
 import { Card } from '../../../components/Card';
 import { Button } from '../../../components/Button';
 import { StatusBadge } from '../../../components/Badges';
+import { PendingNextStep } from '../../../components/PendingNextStep';
 import { LoadingState, ErrorState } from '../../../components/Feedback';
 import { AuthUser } from '../../../types/auth';
 import { apiClient } from '../../../services/apiClient';
@@ -373,6 +374,7 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
                 <Text style={[typography.caption, { color: colors.textMuted }]}>
                   {t('masterHandover.ch.initiated', { date: new Date(activeHandover.created_at).toLocaleDateString() })}
                 </Text>
+                <PendingNextStep kind="HANDOVER" status={activeHandover.status} testID="handover-next-step" />
               </Card>
             )}
 

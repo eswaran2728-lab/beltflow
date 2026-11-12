@@ -26,6 +26,7 @@ import { ScreenContainer, ScreenHeader } from '../../../components/Layout';
 import { Card } from '../../../components/Card';
 import { Button } from '../../../components/Button';
 import { StatusBadge } from '../../../components/Badges';
+import { PendingNextStep } from '../../../components/PendingNextStep';
 import { LoadingState, ErrorState, EmptyState } from '../../../components/Feedback';
 import {
   membershipService,
@@ -243,7 +244,11 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
   const activePause = historyData?.pauses.find((p) => p.status === 'APPROVED');
   const pendingPause = historyData?.pauses.find((p) => p.status === 'REQUESTED');
   const pendingTransfer = historyData?.transfers.find(
-    (tr) => tr.status === 'PENDING_RECEIVING' || tr.status === 'REQUESTED'
+    (tr) =>
+      tr.status === 'PENDING_RECEIVING' ||
+      tr.status === 'REQUESTED' ||
+      tr.status === 'PENDING_OLD_MASTER' ||
+      tr.status === 'PENDING_NEW_MASTER'
   );
   const primaryEnrollment = historyData?.enrollments.find((e) => e.is_primary && e.status === 'ACTIVE');
 
@@ -385,6 +390,9 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
                   </Text>
                 </View>
               ) : null}
+              {!activePause && pendingPause ? (
+                <PendingNextStep kind="PAUSE_REQUEST" status={pendingPause.status} testID="pause-next-step" />
+              ) : null}
 
               {/* Pending Transfer Banner */}
               {pendingTransfer ? (
@@ -394,6 +402,9 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
                     {t('parentLifecycle.transferPending', { date: pendingTransfer.effective_date })}
                   </Text>
                 </View>
+              ) : null}
+              {pendingTransfer ? (
+                <PendingNextStep kind="TRANSFER_REQUEST" status={pendingTransfer.status} testID="transfer-next-step" />
               ) : null}
             </Card>
 
