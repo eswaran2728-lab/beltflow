@@ -48,4 +48,19 @@ describe('navigation targets', () => {
     const fixed = Object.keys(KNOWN_UNREGISTERED).filter(t => registered.has(t) || !targets.has(t));
     expect(fixed).toEqual([]);
   });
+
+  test('every role screen is rendered somewhere, so users can reach it', () => {
+    const rolesDir = path.join(SRC, 'screens', 'roles');
+    const screenFiles = sourceFiles(rolesDir).filter(f => /(Screen|Modal)\.tsx$/.test(f));
+    const all = sourceFiles(SRC).map(f => ({ f, s: fs.readFileSync(f, 'utf8') }));
+    const unused = screenFiles
+      .map(f => path.basename(f, '.tsx'))
+      .filter(name => {
+        // Names the component is rendered under: its own name plus any `export { X as Y }` alias.
+        const names = [name, ...all.flatMap(({ s }) => Array.from(s.matchAll(new RegExp(`\\b${name} as (\\w+)`, 'g')), m => m[1]))];
+        return !all.some(({ f, s }) => path.basename(f, '.tsx') !== name && names.some(n => new RegExp(`<${n}\\b`).test(s)));
+      });
+    expect(screenFiles.length).toBeGreaterThan(30);
+    expect(unused).toEqual([]);
+  });
 });
