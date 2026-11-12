@@ -114,7 +114,8 @@ export type ParentChildrenStackParamList = {
 export type StudentHomeStackParamList = {
   Dashboard: undefined;
   MyApplications: undefined;
-  VideoFeedback: undefined;
+  // studentId is the student record id (students.id) from the dashboard, not the user id.
+  VideoFeedback: { studentId: string; studentName?: string };
 };
 
 export type StudentTabParamList = {

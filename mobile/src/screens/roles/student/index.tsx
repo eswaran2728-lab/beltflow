@@ -37,6 +37,7 @@ import { StudentDigitalPass } from '../../../components/StudentDigitalPass';
 import { getNextBeltLevel } from '../../../theme/belts';
 import { LearningLibraryRewardsScreen } from './LearningLibraryRewardsScreen';
 import { useI18n } from '../../../i18n';
+import { useReleaseModules } from '../../../hooks/useReleaseModules';
 
 export interface RoleScreenProps {
   user: AuthUser;
@@ -53,6 +54,9 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
 }) => {
   const { colors, typography, spacing, iconSize, belts, borderRadius } = useTheme();
   const { t } = useI18n();
+  const release = useReleaseModules();
+  const learningEnabled = release.isEnabled('learning');
+  const mediaEnabled = release.isEnabled('media');
   const [selectedQrCert, setSelectedQrCert] = useState<StudentCertificateSummary | null>(null);
 
   const fetcher = useCallback(() => {
@@ -407,35 +411,37 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
         )}
       </Card>
 
-      {/* 7. Learning Library, Badges & Governance Note (H20 Integration) */}
-      <Card variant="elevated" style={[styles.sectionCard, { marginBottom: spacing.md }]}>
-        <View style={styles.sectionHeaderRow}>
-          <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
-            {t('studentHome.learningTitle')}
-          </Text>
-          <BookOpen size={20} color={StitchTokens.colors.colorAccent} />
-        </View>
+      {/* 7. Learning Library, Badges & Governance Note (H20 Integration), hidden when the learning module is off */}
+      {learningEnabled ? (
+        <Card variant="elevated" style={[styles.sectionCard, { marginBottom: spacing.md }]}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
+              {t('studentHome.learningTitle')}
+            </Text>
+            <BookOpen size={20} color={StitchTokens.colors.colorAccent} />
+          </View>
 
-        <View style={styles.governanceNoticeBox}>
-          <Info size={16} color="#0284C7" />
-          <Text style={styles.governanceNoticeText}>
-            {t('studentHome.governanceNotice')}
-          </Text>
-        </View>
+          <View style={styles.governanceNoticeBox}>
+            <Info size={16} color="#0284C7" />
+            <Text style={styles.governanceNoticeText}>
+              {t('studentHome.governanceNotice')}
+            </Text>
+          </View>
 
-        <View style={{ marginTop: spacing.sm }}>
-          <Button
-            label={t('studentHome.openLibrary')}
-            onPress={() => navigation?.navigate('Progress')}
-            variant="primary"
-            size="md"
-            fullWidth
-            leftIcon={<Sparkles size={iconSize.md} color={colors.buttonPrimaryText} />}
-            rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonPrimaryText} />}
-            testID="shortcut-student-learning"
-          />
-        </View>
-      </Card>
+          <View style={{ marginTop: spacing.sm }}>
+            <Button
+              label={t('studentHome.openLibrary')}
+              onPress={() => navigation?.navigate('Progress')}
+              variant="primary"
+              size="md"
+              fullWidth
+              leftIcon={<Sparkles size={iconSize.md} color={colors.buttonPrimaryText} />}
+              rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonPrimaryText} />}
+              testID="shortcut-student-learning"
+            />
+          </View>
+        </Card>
+      ) : null}
 
       {/* 8. Digital Student Pass for Mat Check-in */}
       <Card variant="elevated" style={[styles.sectionCard, { marginBottom: spacing.md }]}>
@@ -498,15 +504,42 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
           {t('studentHome.shortcuts')}
         </Text>
         <View style={{ gap: spacing.sm }}>
+          {learningEnabled ? (
+            <Button
+              label={t('studentHome.shortcutProgress')}
+              onPress={() => navigation?.navigate('Progress')}
+              variant="secondary"
+              size="md"
+              fullWidth
+              rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
+              testID="shortcut-student-progress"
+            />
+          ) : null}
           <Button
-            label={t('studentHome.shortcutProgress')}
-            onPress={() => navigation?.navigate('Progress')}
+            label={t('studentHome.shortcutApplications')}
+            onPress={() => navigation?.navigate('MyApplications')}
             variant="secondary"
             size="md"
             fullWidth
             rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
-            testID="shortcut-student-progress"
+            testID="shortcut-student-applications"
           />
+          {mediaEnabled && data?.student?.id ? (
+            <Button
+              label={t('studentHome.shortcutVideoFeedback')}
+              onPress={() =>
+                navigation?.navigate('VideoFeedback', {
+                  studentId: data.student.id,
+                  studentName: data.student.fullName || user.fullName,
+                })
+              }
+              variant="secondary"
+              size="md"
+              fullWidth
+              rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
+              testID="shortcut-student-video-feedback"
+            />
+          ) : null}
           <Button
             label={t('studentHome.shortcutAttendance')}
             onPress={() => navigation?.navigate('Attendance')}

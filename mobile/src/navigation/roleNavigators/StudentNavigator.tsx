@@ -1,5 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Home, Award, CheckSquare, FileText, User, Sparkles } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import { RoleNavigationContainer } from '../RoleNavigationContainer';
@@ -12,10 +13,42 @@ import {
   StudentAttendanceScreen,
   CertificatesScreen,
   StudentProfileScreen,
+  MyApplicationsScreen,
 } from '../../screens/roles/student';
-import { RoleNavigatorProps, StudentTabParamList } from '../types';
+import { VideoFeedbackScreen } from '../../screens/roles/student/VideoFeedbackScreen';
+import { RoleNavigatorProps, StudentHomeStackParamList, StudentTabParamList } from '../types';
 
 const Tab = createBottomTabNavigator<StudentTabParamList>();
+const HomeStack = createNativeStackNavigator<StudentHomeStackParamList>();
+
+/** Home tab: the dashboard plus the screens its quick actions open. */
+function StudentHomeStackNavigator(props: RoleNavigatorProps) {
+  const { t } = useI18n();
+  return (
+    <HomeStack.Navigator screenOptions={{ headerShown: false }}>
+      <HomeStack.Screen name="Dashboard">
+        {navProps => <StudentHomeScreen {...props} {...navProps} />}
+      </HomeStack.Screen>
+      <HomeStack.Screen name="MyApplications">
+        {navProps => <MyApplicationsScreen user={props.user} {...navProps} />}
+      </HomeStack.Screen>
+      {/* VideoFeedbackScreen has no back control of its own, so this one shows the stack header. */}
+      <HomeStack.Screen
+        name="VideoFeedback"
+        options={{ headerShown: true, title: t('studentHome.videoFeedbackTitle') }}
+      >
+        {({ route }) => (
+          <VideoFeedbackScreen
+            studentId={route.params.studentId}
+            studentName={route.params.studentName}
+            userRole="STUDENT"
+            isOffline={props.isOffline}
+          />
+        )}
+      </HomeStack.Screen>
+    </HomeStack.Navigator>
+  );
+}
 
 export const StudentNavigator: React.FC<RoleNavigatorProps> = ({
   user,
@@ -54,7 +87,7 @@ export const StudentNavigator: React.FC<RoleNavigatorProps> = ({
         }}
       >
         {() => (
-          <StudentHomeScreen
+          <StudentHomeStackNavigator
             user={user}
             onLogout={onLogout}
             isOffline={isOffline}
@@ -62,23 +95,25 @@ export const StudentNavigator: React.FC<RoleNavigatorProps> = ({
         )}
       </Tab.Screen>
 
-      <Tab.Screen
-        name="Progress"
-        options={{
-          tabBarLabel: t('tabs.progress'),
-          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.progress') }),
-          tabBarButtonTestID: 'tab-student-progress',
-          tabBarIcon: ({ color }) => <Award size={iconSize.md} color={color} />,
-        }}
-      >
-        {() => (
-          <ProgressScreen
-            user={user}
-            onLogout={onLogout}
-            isOffline={isOffline}
-          />
-        )}
-      </Tab.Screen>
+      {release.isEnabled('learning') && (
+        <Tab.Screen
+          name="Progress"
+          options={{
+            tabBarLabel: t('tabs.progress'),
+            tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.progress') }),
+            tabBarButtonTestID: 'tab-student-progress',
+            tabBarIcon: ({ color }) => <Award size={iconSize.md} color={color} />,
+          }}
+        >
+          {() => (
+            <ProgressScreen
+              user={user}
+              onLogout={onLogout}
+              isOffline={isOffline}
+            />
+          )}
+        </Tab.Screen>
+      )}
 
       <Tab.Screen
         name="Attendance"
