@@ -1636,3 +1636,21 @@ CREATE TABLE IF NOT EXISTS ai_audit_events (
 );
 CREATE INDEX IF NOT EXISTS idx_ai_audit_events_org_time ON ai_audit_events(organization_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_ai_audit_events_actor_time ON ai_audit_events(actor_id, created_at);
+
+-- In-app notification inbox: one row per recipient, filled from
+-- notification_outbox by services/notifications/deliver.ts. params holds only
+-- display-safe fields (never free-text reasons, tokens or message text).
+CREATE TABLE IF NOT EXISTS user_notifications (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    outbox_id TEXT NOT NULL,
+    event_type VARCHAR(100) NOT NULL,
+    aggregate_type VARCHAR(50),
+    aggregate_id TEXT,
+    params JSONB NOT NULL DEFAULT '{}',
+    read_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (outbox_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_notifications_user ON user_notifications (user_id, created_at DESC);
