@@ -1,5 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Home, Users, DollarSign, Bell, User, Sparkles } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import { RoleNavigationContainer } from '../RoleNavigationContainer';
@@ -12,10 +13,72 @@ import {
   FeesScreen,
   NoticesScreen,
   ParentProfileScreen,
+  ParentMasterMessagingScreen,
+  FamilyTimelineHubScreen,
+  ParentStudentLifecycleScreen,
+  ParentMakeUpBookingScreen,
+  AvailableClassesScreen,
+  ParentBookTrialScreen,
+  MyApplicationsScreen,
 } from '../../screens/roles/parent';
-import { RoleNavigatorProps, ParentTabParamList } from '../types';
+import {
+  RoleNavigatorProps,
+  ParentTabParamList,
+  ParentHomeStackParamList,
+  ParentChildrenStackParamList,
+} from '../types';
 
 const Tab = createBottomTabNavigator<ParentTabParamList>();
+const HomeStack = createNativeStackNavigator<ParentHomeStackParamList>();
+const ChildrenStack = createNativeStackNavigator<ParentChildrenStackParamList>();
+
+function ParentHomeStackNavigator(props: RoleNavigatorProps) {
+  return (
+    <HomeStack.Navigator screenOptions={{ headerShown: false }}>
+      <HomeStack.Screen name="Dashboard">
+        {navProps => <ParentHomeScreen {...props} {...navProps} />}
+      </HomeStack.Screen>
+      <HomeStack.Screen name="Messaging">
+        {navProps => (
+          <ParentMasterMessagingScreen
+            userRole="PARENT"
+            isOffline={props.isOffline}
+            studentId={navProps.route.params?.studentId}
+            classId={navProps.route.params?.classId}
+          />
+        )}
+      </HomeStack.Screen>
+      <HomeStack.Screen name="FamilyTimeline">
+        {navProps => <FamilyTimelineHubScreen {...props} {...navProps} />}
+      </HomeStack.Screen>
+    </HomeStack.Navigator>
+  );
+}
+
+function ParentChildrenStackNavigator(props: RoleNavigatorProps) {
+  return (
+    <ChildrenStack.Navigator screenOptions={{ headerShown: false }}>
+      <ChildrenStack.Screen name="ChildrenList">
+        {navProps => <ChildrenScreen {...props} {...navProps} />}
+      </ChildrenStack.Screen>
+      <ChildrenStack.Screen name="StudentLifecycle">
+        {navProps => <ParentStudentLifecycleScreen {...props} {...navProps} />}
+      </ChildrenStack.Screen>
+      <ChildrenStack.Screen name="MakeUpBooking">
+        {navProps => <ParentMakeUpBookingScreen {...props} {...navProps} />}
+      </ChildrenStack.Screen>
+      <ChildrenStack.Screen name="AvailableClasses">
+        {navProps => <AvailableClassesScreen {...props} {...navProps} />}
+      </ChildrenStack.Screen>
+      <ChildrenStack.Screen name="BookTrial">
+        {navProps => <ParentBookTrialScreen {...props} {...navProps} />}
+      </ChildrenStack.Screen>
+      <ChildrenStack.Screen name="MyApplications">
+        {navProps => <MyApplicationsScreen {...props} {...navProps} />}
+      </ChildrenStack.Screen>
+    </ChildrenStack.Navigator>
+  );
+}
 
 export const ParentNavigator: React.FC<RoleNavigatorProps> = ({
   user,
@@ -54,7 +117,7 @@ export const ParentNavigator: React.FC<RoleNavigatorProps> = ({
         }}
       >
         {() => (
-          <ParentHomeScreen
+          <ParentHomeStackNavigator
             user={user}
             onLogout={onLogout}
             isOffline={isOffline}
@@ -72,7 +135,7 @@ export const ParentNavigator: React.FC<RoleNavigatorProps> = ({
         }}
       >
         {() => (
-          <ChildrenScreen
+          <ParentChildrenStackNavigator
             user={user}
             onLogout={onLogout}
             isOffline={isOffline}

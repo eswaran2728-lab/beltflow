@@ -96,17 +96,17 @@ export type ParentTabParamList = {
 // Parent Home tab: dashboard plus messaging and the family timeline.
 export type ParentHomeStackParamList = {
   Dashboard: undefined;
-  Messaging: { threadId?: string; classId?: string; childId?: string } | undefined;
-  FamilyTimeline: { studentId?: string } | undefined;
+  Messaging: { studentId?: string; classId?: string } | undefined;
+  FamilyTimeline: undefined;
 };
 
 // Parent Children tab: list of children plus per-child journeys.
 export type ParentChildrenStackParamList = {
   ChildrenList: undefined;
-  StudentLifecycle: { studentId: string; studentName?: string };
-  MakeUpBooking: { studentId: string; targetSessionId?: string };
-  AvailableClasses: { studentId?: string } | undefined;
-  BookTrial: { classId?: string } | undefined;
+  StudentLifecycle: { studentId: string; studentName?: string; targetClassId?: string };
+  MakeUpBooking: { studentId: string; studentName?: string; targetSessionId?: string };
+  AvailableClasses: undefined;
+  BookTrial: { targetClassId: string; targetClassName?: string; targetOrganizationId?: string };
   MyApplications: undefined;
 };
 

@@ -30,6 +30,7 @@ import { dashboardService, ParentDashboardData, ParentChildSummary } from '../..
 import { ParentChildPassViewer, LinkedChildPassData } from '../../../components/ParentChildPassViewer';
 import { ParentFeesPaymentScreen } from './ParentFeesPaymentScreen';
 import { useI18n } from '../../../i18n';
+import { useReleaseModules } from '../../../hooks/useReleaseModules';
 
 export interface RoleScreenProps {
   user: AuthUser;
@@ -46,6 +47,8 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
 }) => {
   const { colors, typography, spacing, iconSize } = useTheme();
   const { t } = useI18n();
+  const release = useReleaseModules();
+  const messagingEnabled = release.isEnabled('messaging');
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
 
   const fetcher = useCallback(() => {
@@ -323,33 +326,35 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
                 </View>
 
                 {/* Parent-Master Direct Messaging Shortcut */}
-                <TouchableOpacity
-                  style={styles.messageMasterBanner}
-                  onPress={() => {
-                    if (navigation) {
-                      navigation.navigate('Messaging', {
-                        studentId: activeChild.id,
-                        classId: activeChild.classId,
-                      });
-                    }
-                  }}
-                  testID="btn-message-active-child-master"
-                  accessibilityRole="button"
-                  accessibilityLabel={t('parentHome.messageMasterA11y', { name: activeChild.fullName })}
-                >
-                  <View style={styles.messageMasterLeft}>
-                    <View style={styles.messageIconCircle}>
-                      <MessageSquare size={16} color="#FFFFFF" />
+                {messagingEnabled ? (
+                  <TouchableOpacity
+                    style={styles.messageMasterBanner}
+                    onPress={() => {
+                      if (navigation) {
+                        navigation.navigate('Messaging', {
+                          studentId: activeChild.id,
+                          classId: activeChild.classId,
+                        });
+                      }
+                    }}
+                    testID="btn-message-active-child-master"
+                    accessibilityRole="button"
+                    accessibilityLabel={t('parentHome.messageMasterA11y', { name: activeChild.fullName })}
+                  >
+                    <View style={styles.messageMasterLeft}>
+                      <View style={styles.messageIconCircle}>
+                        <MessageSquare size={16} color="#FFFFFF" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.messageMasterTitle}>{t('parentHome.messageMasterTitle')}</Text>
+                        <Text style={styles.messageMasterSub}>
+                          {t('parentHome.messageMasterSub')}
+                        </Text>
+                      </View>
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.messageMasterTitle}>{t('parentHome.messageMasterTitle')}</Text>
-                      <Text style={styles.messageMasterSub}>
-                        {t('parentHome.messageMasterSub')}
-                      </Text>
-                    </View>
-                  </View>
-                  <ArrowRight size={16} color={StitchTokens.colors.brandNavy} />
-                </TouchableOpacity>
+                    <ArrowRight size={16} color={StitchTokens.colors.brandNavy} />
+                  </TouchableOpacity>
+                ) : null}
 
                 {/* Upcoming Classes for Active Child */}
                 {activeChild.upcomingSessions && activeChild.upcomingSessions.length > 0 ? (
@@ -497,15 +502,29 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
               rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
               testID="shortcut-parent-children"
             />
-            <Button
-              label={t('parentHome.shortcutMessaging')}
-              onPress={() => navigation?.navigate('Messaging')}
-              variant="secondary"
-              size="md"
-              fullWidth
-              rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
-              testID="shortcut-parent-messaging"
-            />
+            {messagingEnabled ? (
+              <Button
+                label={t('parentHome.shortcutMessaging')}
+                onPress={() => navigation?.navigate('Messaging')}
+                variant="secondary"
+                size="md"
+                fullWidth
+                rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
+                testID="shortcut-parent-messaging"
+              />
+            ) : null}
+            {release.isEnabled('family') ? (
+              <Button
+                label={t('parentHome.shortcutFamilyTimeline')}
+                onPress={() => navigation?.navigate('FamilyTimeline')}
+                variant="secondary"
+                size="md"
+                fullWidth
+                rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
+                testID="shortcut-parent-family-timeline"
+                accessibilityLabel={t('parentHome.shortcutFamilyTimelineA11y')}
+              />
+            ) : null}
             <Button
               label={t('parentHome.shortcutProfile')}
               onPress={() => navigation?.navigate('Profile')}
@@ -534,8 +553,12 @@ function getBeltDotColor(beltRank?: string): string {
 }
 
 export const ChildrenScreen: React.FC<RoleScreenProps> = props => {
-  const { colors, iconSize } = useTheme();
+  const { colors, iconSize, typography, spacing } = useTheme();
   const { t } = useI18n();
+  const release = useReleaseModules();
+  const transfersEnabled = release.isEnabled('transfers');
+  const bookingsEnabled = release.isEnabled('bookings');
+  const navigation = props.navigation;
   const fetcher = useCallback(() => {
     return dashboardService.getParentDashboard(props.user);
   }, [props.user]);
@@ -568,6 +591,89 @@ export const ChildrenScreen: React.FC<RoleScreenProps> = props => {
         isOffline={props.isOffline}
         testID="parent-pass-viewer"
       />
+
+      {/* Enrolment: find a class for a child and follow applications */}
+      <Card variant="standard" style={[styles.sectionCard, { marginTop: spacing.md }]} testID="parent-enrolment-actions">
+        <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
+          {t('parentHome.children.enrolmentTitle')}
+        </Text>
+        <View style={{ gap: spacing.sm }}>
+          <Button
+            label={t('parentHome.children.findClass')}
+            onPress={() => navigation?.navigate('AvailableClasses')}
+            variant="secondary"
+            size="md"
+            fullWidth
+            rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
+            testID="btn-parent-find-class"
+            accessibilityLabel={t('parentHome.children.findClassA11y')}
+          />
+          <Button
+            label={t('parentHome.children.myApplications')}
+            onPress={() => navigation?.navigate('MyApplications')}
+            variant="secondary"
+            size="md"
+            fullWidth
+            rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
+            testID="btn-parent-my-applications"
+            accessibilityLabel={t('parentHome.children.myApplicationsA11y')}
+          />
+        </View>
+      </Card>
+
+      {/* Per-child requests: each action carries that child's own student id */}
+      {(transfersEnabled || bookingsEnabled) && (data?.children || []).length > 0 ? (
+        <View style={{ marginTop: spacing.md, gap: spacing.md }}>
+          {(data?.children || []).map(child => (
+            <Card
+              key={child.id}
+              variant="standard"
+              style={styles.sectionCard}
+              testID={`parent-child-actions-${child.id}`}
+            >
+              <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
+                {t('parentHome.children.actionsFor', { name: child.fullName })}
+              </Text>
+              <View style={{ gap: spacing.sm }}>
+                {transfersEnabled ? (
+                  <Button
+                    label={t('parentHome.children.pauseOrTransfer')}
+                    onPress={() =>
+                      navigation?.navigate('StudentLifecycle', {
+                        studentId: child.id,
+                        studentName: child.fullName,
+                      })
+                    }
+                    variant="secondary"
+                    size="md"
+                    fullWidth
+                    rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
+                    testID={`btn-child-lifecycle-${child.id}`}
+                    accessibilityLabel={t('parentHome.children.pauseOrTransferA11y', { name: child.fullName })}
+                  />
+                ) : null}
+                {bookingsEnabled ? (
+                  <Button
+                    label={t('parentHome.children.bookMakeUp')}
+                    onPress={() =>
+                      navigation?.navigate('MakeUpBooking', {
+                        studentId: child.id,
+                        studentName: child.fullName,
+                      })
+                    }
+                    variant="secondary"
+                    size="md"
+                    fullWidth
+                    rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
+                    testID={`btn-child-makeup-${child.id}`}
+                    accessibilityLabel={t('parentHome.children.bookMakeUpA11y', { name: child.fullName })}
+                  />
+                ) : null}
+              </View>
+            </Card>
+          ))}
+        </View>
+      ) : null}
       <RolePlaceholderBase
         title={t('parentHome.children.overviewTitle')}
         subtitle={t('parentHome.children.overviewSubtitle')}
