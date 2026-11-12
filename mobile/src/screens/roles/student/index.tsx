@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, RefreshControl, TouchableOpacity, Alert, Modal } from 'react-native';
 import {
   CheckSquare,
@@ -38,6 +38,7 @@ import { getNextBeltLevel } from '../../../theme/belts';
 import { LearningLibraryRewardsScreen } from './LearningLibraryRewardsScreen';
 import { useI18n } from '../../../i18n';
 import { useReleaseModules } from '../../../hooks/useReleaseModules';
+import { apiClient } from '../../../services/apiClient';
 
 export interface RoleScreenProps {
   user: AuthUser;
@@ -611,9 +612,58 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
 };
 
 export const ProgressScreen: React.FC<RoleScreenProps> = props => {
+  const { t } = useI18n();
+  // The learning API takes the student record id (students.id), which is
+  // different from the login account id (users.id).
+  const [recordId, setRecordId] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    apiClient
+      .get<{ student?: { id?: string } }>('/api/v1/students/me')
+      .then(res => {
+        if (!active) return;
+        if (res?.student?.id) {
+          setRecordId(res.student.id);
+          setFailed(false);
+        } else {
+          setFailed(true);
+        }
+      })
+      .catch(() => {
+        if (active) setFailed(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [attempt]);
+
+  if (failed) {
+    return (
+      <ScreenContainer>
+        <ErrorState
+          message={t('studentHome.progressRecordError')}
+          onRetry={() => {
+            setFailed(false);
+            setAttempt(a => a + 1);
+          }}
+          testID="student-progress-error"
+        />
+      </ScreenContainer>
+    );
+  }
+  if (!recordId) {
+    return (
+      <ScreenContainer>
+        <LoadingState message={t('studentHome.progressLoading')} />
+      </ScreenContainer>
+    );
+  }
   return (
     <LearningLibraryRewardsScreen
-      studentId={props.user.id}
+      studentId={recordId}
       studentName={props.user.fullName}
       isOffline={props.isOffline}
     />

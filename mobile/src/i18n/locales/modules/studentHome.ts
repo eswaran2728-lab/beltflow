@@ -70,6 +70,8 @@ export const studentHomeEn = {
   'studentHome.profile.title': 'Profile',
   'studentHome.profile.subtitle': 'Student Martial Artist Profile',
   'studentHome.profile.scope': 'Personal Identity: Student identification number, affiliated Persatuan academy, dojo location, and sign out.',
+  'studentHome.progressRecordError': 'Your student record could not be loaded. Check your connection and try again.',
+  'studentHome.progressLoading': 'Loading your progress...',
 };
 
 export const studentHomeMs: Record<keyof typeof studentHomeEn, string> = {
@@ -139,6 +141,8 @@ export const studentHomeMs: Record<keyof typeof studentHomeEn, string> = {
   'studentHome.profile.title': 'Profil',
   'studentHome.profile.subtitle': 'Profil Pesilat Pelajar',
   'studentHome.profile.scope': 'Identiti Peribadi: Nombor pengenalan pelajar, akademi Persatuan bergabung, lokasi dojo dan log keluar.',
+  'studentHome.progressRecordError': 'Rekod pelajar anda tidak dapat dimuatkan. Semak sambungan anda dan cuba lagi.',
+  'studentHome.progressLoading': 'Memuatkan kemajuan anda...',
 };
 
 export const studentHomeTa: Record<keyof typeof studentHomeEn, string> = {
@@ -208,4 +212,6 @@ export const studentHomeTa: Record<keyof typeof studentHomeEn, string> = {
   'studentHome.profile.title': 'சுயவிவரம்',
   'studentHome.profile.subtitle': 'மாணவர் தற்காப்புக் கலைஞர் சுயவிவரம்',
   'studentHome.profile.scope': 'தனிப்பட்ட அடையாளம்: மாணவர் அடையாள எண், இணைந்த சங்க அகாடமி, டோஜோ இடம் மற்றும் வெளியேறுதல்.',
+  'studentHome.progressRecordError': 'உங்கள் மாணவர் பதிவை ஏற்ற முடியவில்லை. இணைப்பைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.',
+  'studentHome.progressLoading': 'உங்கள் முன்னேற்றம் ஏற்றப்படுகிறது...',
 };
