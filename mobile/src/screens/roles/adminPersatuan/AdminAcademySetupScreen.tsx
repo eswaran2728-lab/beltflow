@@ -33,6 +33,7 @@ import {
   ImportPreviewResponse,
   CommitImportResponse,
 } from '../../../services/onboardingService';
+import { useI18n } from '../../../i18n';
 
 export interface AdminAcademySetupScreenProps {
   user?: AuthUser;
@@ -83,6 +84,11 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
   organizationId,
 }) => {
   const { colors, typography, spacing, iconSize } = useTheme();
+  const { t } = useI18n();
+  const enumLabel = (key: string, raw: string) => {
+    const value = t(key);
+    return value === key ? raw : value;
+  };
 
   const targetOrgId = (organizationId || user?.organizationId) ?? undefined;
 
@@ -109,11 +115,11 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
       const res = await onboardingService.getAcademyReadiness(targetOrgId);
       setReadiness(res);
     } catch (err: any) {
-      setError(err?.message || 'Failed to load academy setup readiness.');
+      setError(err?.message || t('adminOps.setup.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [targetOrgId, isOffline]);
+  }, [targetOrgId, isOffline, t]);
 
   useEffect(() => {
     let isMounted = true;
@@ -129,18 +135,18 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
       })
       .catch((err: any) => {
         if (!isMounted) return;
-        setError(err?.message || 'Failed to load academy setup readiness.');
+        setError(err?.message || t('adminOps.setup.loadFailed'));
         setLoading(false);
       });
 
     return () => {
       isMounted = false;
     };
-  }, [targetOrgId, isOffline]);
+  }, [targetOrgId, isOffline, t]);
 
   const handleRunPreview = async () => {
     if (!importInput.trim()) {
-      Alert.alert('Empty Input', 'Please paste student JSON or CSV rows to preview.');
+      Alert.alert(t('adminOps.setup.emptyInputTitle'), t('adminOps.setup.emptyInputMsg'));
       return;
     }
 
@@ -165,13 +171,13 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
       }
 
       if (!Array.isArray(parsedRows) || parsedRows.length === 0) {
-        throw new Error('Input must be a non-empty array of student objects.');
+        throw new Error(t('adminOps.setup.inputNotArray'));
       }
 
       const res = await onboardingService.previewImport(parsedRows, 'legacy_onboarding_batch.json');
       setPreviewResult(res);
     } catch (err: any) {
-      Alert.alert('Preview Failed', err?.message || 'Failed to generate dry-run preview.');
+      Alert.alert(t('adminOps.setup.previewFailedTitle'), err?.message || t('adminOps.setup.previewFailedMsg'));
     } finally {
       setPreviewing(false);
     }
@@ -179,7 +185,7 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
 
   const executeCommit = async () => {
     if (!previewResult || !previewResult.canCommit) {
-      Alert.alert('Cannot Commit', 'Batch contains blocking errors or 0 valid rows.');
+      Alert.alert(t('adminOps.setup.cannotCommitTitle'), t('adminOps.setup.cannotCommitMsg'));
       return;
     }
 
@@ -193,7 +199,7 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
       setImportInput('');
       fetchReadiness();
     } catch (err: any) {
-      Alert.alert('Commit Failed', err?.message || 'Failed to commit import batch.');
+      Alert.alert(t('adminOps.setup.commitFailedTitle'), err?.message || t('adminOps.setup.commitFailedMsg'));
     } finally {
       setCommitting(false);
     }
@@ -209,16 +215,16 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
 
       <View style={styles.bodyContent}>
         <Text style={[typography.pageTitle, styles.screenTitle]}>
-          Academy Setup & Readiness
+          {t('adminOps.setup.title')}
         </Text>
         <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.sm }]}>
-          Operational Checklist & Validated Legacy Migration
+          {t('adminOps.setup.subtitle')}
         </Text>
 
         {isOffline && (
           <View style={{ marginBottom: spacing.md }}>
             <OfflineBanner
-              message="Offline Mode: Academy Setup & Legacy Imports are locked until online."
+              message={t('adminOps.setup.offline')}
               testID="offline-onboarding-banner"
             />
           </View>
@@ -228,30 +234,30 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
           <View style={styles.centerBox}>
             <ActivityIndicator size="large" color={StitchTokens.colors.brandNavy} />
             <Text style={[typography.caption, { color: colors.textSecondary, marginTop: spacing.sm }]}>
-              Evaluating academy readiness...
+              {t('adminOps.setup.evaluating')}
             </Text>
           </View>
         ) : error ? (
           <Card variant="standard" style={{ borderColor: colors.badgeDangerText, marginBottom: spacing.md }}>
             <Text style={[typography.bodyMedium, { color: colors.badgeDangerText }]}>{error}</Text>
-            <Button label="Retry" onPress={fetchReadiness} size="sm" style={{ marginTop: spacing.sm }} />
+            <Button label={t('adminOps.common.retry')} onPress={fetchReadiness} size="sm" style={{ marginTop: spacing.sm }} />
           </Card>
         ) : (
           <>
             {readiness && (
               <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
                 <StitchStatCard
-                  label="Readiness"
+                  label={t('adminOps.setup.readiness')}
                   value={`${readiness.readinessScorePercent}%`}
-                  subtext={readiness.isReadyForOperations ? 'Ready for Ops' : 'Setup Pending'}
+                  subtext={readiness.isReadyForOperations ? t('adminOps.setup.readyForOps') : t('adminOps.setup.setupPending')}
                   hasAccentBorder
                   accentColor={readiness.isReadyForOperations ? StitchTokens.colors.bfGreen : StitchTokens.colors.colorAccent}
                   style={{ flex: 1 }}
                 />
                 <StitchStatCard
-                  label="Checklist"
+                  label={t('adminOps.setup.checklist')}
                   value={`${readiness.checklist.filter(i => i.status === 'COMPLETE').length}/${readiness.checklist.length}`}
-                  subtext="Completed Items"
+                  subtext={t('adminOps.setup.completedItems')}
                   hasAccentBorder
                   accentColor={StitchTokens.colors.brandNavy}
                   style={{ flex: 1 }}
@@ -271,12 +277,12 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
                   {readiness.organizationName}
                 </Text>
                 <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                  {readiness.martialArtStyle} Academy • {readiness.state}
+                  {t('adminOps.setup.academyMeta', { style: readiness.martialArtStyle, state: readiness.state })}
                 </Text>
               </View>
               <StatusBadge
                 status={readiness.isReadyForOperations ? 'OPERATIONAL' : 'SETUP_PENDING'}
-                label={readiness.isReadyForOperations ? 'READY FOR OPS' : 'SETUP PENDING'}
+                label={readiness.isReadyForOperations ? t('adminOps.setup.badgeReady') : t('adminOps.setup.badgePending')}
                 variant={readiness.isReadyForOperations ? 'success' : 'warning'}
                 testID="badge-readiness-status"
               />
@@ -286,10 +292,13 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
             <View style={styles.progressContainer}>
               <View style={styles.progressLabelRow}>
                 <Text style={[typography.caption, { color: colors.textSecondary }]} testID="readiness-score-value">
-                  Readiness Score: {readiness.readinessScorePercent}%
+                  {t('adminOps.setup.readinessScore', { score: readiness.readinessScorePercent })}
                 </Text>
                 <Text style={[typography.caption, { color: colors.buttonPrimaryBg, fontWeight: '700' }]}>
-                  {readiness.checklist.filter(i => i.status === 'COMPLETE').length} of {readiness.checklist.length} Complete
+                  {t('adminOps.setup.completeCount', {
+                    done: readiness.checklist.filter(i => i.status === 'COMPLETE').length,
+                    total: readiness.checklist.length,
+                  })}
                 </Text>
               </View>
               <View style={[styles.progressBarTrack, { backgroundColor: colors.border }]}>
@@ -335,7 +344,7 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
                   </View>
                   <StatusBadge
                     status={item.status}
-                    label={item.status}
+                    label={enumLabel(`adminOps.setup.itemStatus.${item.status}`, item.status)}
                     variant={item.status === 'COMPLETE' ? 'success' : item.status === 'PENDING' ? 'warning' : 'neutral'}
                   />
                 </View>
@@ -352,10 +361,10 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
-                  Legacy Roster & Student Migration
+                  {t('adminOps.setup.importTitle')}
                 </Text>
                 <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                  Import existing students with rank provenance, guardian consent, and attendance history.
+                  {t('adminOps.setup.importDesc')}
                 </Text>
               </View>
             </View>
@@ -367,7 +376,7 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
               >
                 <Sparkles size={14} color={colors.buttonPrimaryBg} />
                 <Text style={[typography.caption, { color: colors.buttonPrimaryBg, fontWeight: '600', marginLeft: 4 }]}>
-                  Load Sample Roster JSON
+                  {t('adminOps.setup.loadSample')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -379,7 +388,7 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
               >
                 <RotateCcw size={14} color={colors.textSecondary} />
                 <Text style={[typography.caption, { color: colors.textSecondary, marginLeft: 4 }]}>
-                  Reset
+                  {t('adminOps.setup.reset')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -397,14 +406,14 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
               numberOfLines={8}
               value={importInput}
               onChangeText={setImportInput}
-              placeholder="Paste student rows JSON here..."
+              placeholder={t('adminOps.setup.inputPlaceholder')}
               placeholderTextColor={colors.textSecondary}
               testID="input-import-data"
             />
 
             <View style={styles.actionRow}>
               <Button
-                label="Clear"
+                label={t('adminOps.setup.clear')}
                 variant="outline"
                 size="sm"
                 onPress={() => {
@@ -414,7 +423,7 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
                 disabled={previewing || committing}
               />
               <Button
-                label={previewing ? 'Validating...' : 'Preview Dry Run'}
+                label={previewing ? t('adminOps.setup.validating') : t('adminOps.setup.previewDryRun')}
                 onPress={handleRunPreview}
                 disabled={previewing || committing || isOffline}
                 leftIcon={previewing ? <ActivityIndicator size="small" color="#fff" /> : <FileText size={iconSize.sm} color="#fff" />}
@@ -429,15 +438,15 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
               <View style={styles.previewHeaderRow}>
                 <View style={{ flex: 1 }}>
                   <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
-                    Dry Run Preview Results
+                    {t('adminOps.setup.previewTitle')}
                   </Text>
                   <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                    Batch ID: {previewResult.previewId} • Zero production mutations until commit
+                    {t('adminOps.setup.previewBatch', { id: previewResult.previewId })}
                   </Text>
                 </View>
                 <StatusBadge
                   status={previewResult.canCommit ? 'READY' : 'BLOCKED'}
-                  label={previewResult.canCommit ? 'CAN COMMIT' : 'BLOCKED'}
+                  label={previewResult.canCommit ? t('adminOps.setup.badgeCanCommit') : t('adminOps.setup.badgeBlocked')}
                   variant={previewResult.canCommit ? 'success' : 'danger'}
                   testID="badge-preview-committable"
                 />
@@ -446,25 +455,25 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
               {/* Stats Grid */}
               <View style={styles.statsGrid}>
                 <View style={[styles.statBox, { backgroundColor: colors.background }]}>
-                  <Text style={[typography.caption, { color: colors.textSecondary }]}>Total Rows</Text>
+                  <Text style={[typography.caption, { color: colors.textSecondary }]}>{t('adminOps.setup.totalRows')}</Text>
                   <Text style={[typography.sectionHeading, { color: colors.textPrimary }]} testID="preview-total-rows">
                     {previewResult.totalRows}
                   </Text>
                 </View>
                 <View style={[styles.statBox, { backgroundColor: colors.background }]}>
-                  <Text style={[typography.caption, { color: '#22C55E' }]}>Valid Rows</Text>
+                  <Text style={[typography.caption, { color: '#22C55E' }]}>{t('adminOps.setup.validRows')}</Text>
                   <Text style={[typography.sectionHeading, { color: '#22C55E' }]} testID="preview-valid-rows">
                     {previewResult.validRowsCount}
                   </Text>
                 </View>
                 <View style={[styles.statBox, { backgroundColor: colors.background }]}>
-                  <Text style={[typography.caption, { color: colors.badgeWarningText }]}>Duplicates</Text>
+                  <Text style={[typography.caption, { color: colors.badgeWarningText }]}>{t('adminOps.setup.duplicates')}</Text>
                   <Text style={[typography.sectionHeading, { color: colors.badgeWarningText }]}>
                     {previewResult.duplicateRowsCount}
                   </Text>
                 </View>
                 <View style={[styles.statBox, { backgroundColor: colors.background }]}>
-                  <Text style={[typography.caption, { color: colors.badgeDangerText }]}>Errors</Text>
+                  <Text style={[typography.caption, { color: colors.badgeDangerText }]}>{t('adminOps.setup.errors')}</Text>
                   <Text style={[typography.sectionHeading, { color: colors.badgeDangerText }]} testID="preview-invalid-rows">
                     {previewResult.malformedRowsCount + previewResult.wrongTenantRowsCount + previewResult.unverifiedParentRowsCount}
                   </Text>
@@ -488,20 +497,24 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
                     >
                       <View style={{ flex: 1 }}>
                         <Text style={[typography.bodyMedium, { color: colors.textPrimary, fontWeight: '600' }]}>
-                          Row {row.rowIndex}: {row.data?.fullName || 'Unknown Student'}
+                          {t('adminOps.setup.rowTitle', { index: row.rowIndex, name: row.data?.fullName || t('adminOps.setup.unknownStudent') })}
                         </Text>
                         <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                          IC: {row.data?.icNumber || '-'} • Rank: {row.data?.beltRank || '-'} • Guardian: {row.data?.parentName || '-'}
+                          {t('adminOps.setup.rowDetails', {
+                            ic: row.data?.icNumber || '-',
+                            rank: row.data?.beltRank || '-',
+                            guardian: row.data?.parentName || '-',
+                          })}
                         </Text>
                         {row.errorMessage && (
                           <Text style={[typography.caption, { color: '#EF4444', marginTop: 2, fontWeight: '600' }]}>
-                            Error: {row.errorMessage}
+                            {t('adminOps.setup.rowError', { message: row.errorMessage })}
                           </Text>
                         )}
                       </View>
                       <StatusBadge
                         status={row.status}
-                        label={row.status}
+                        label={enumLabel(`adminOps.setup.rowStatus.${row.status}`, row.status)}
                         variant={row.status === 'VALID' ? 'success' : 'danger'}
                       />
                     </View>
@@ -513,11 +526,15 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
               {previewResult.errors.length > 0 && (
                 <View style={[styles.errorSection, { backgroundColor: '#FEE2E2', borderColor: '#F87171' }]}>
                   <Text style={[typography.caption, { color: '#991B1B', fontWeight: '700', marginBottom: 4 }]}>
-                    Validation Warnings ({previewResult.errors.length}):
+                    {t('adminOps.setup.warningsTitle', { count: previewResult.errors.length })}
                   </Text>
                   {previewResult.errors.map((err, i) => (
                     <Text key={i} style={[typography.caption, { color: '#B91C1C', marginTop: 2 }]}>
-                      • Row {err.rowIndex} [{err.status}]: {err.error}
+                      {t('adminOps.setup.warningItem', {
+                        index: err.rowIndex,
+                        status: enumLabel(`adminOps.setup.rowStatus.${err.status}`, err.status),
+                        error: err.error,
+                      })}
                     </Text>
                   ))}
                 </View>
@@ -526,7 +543,7 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
               {/* Commit Button */}
               <View style={{ marginTop: spacing.md }}>
                 <Button
-                  label={committing ? 'Committing Batch...' : `Commit ${previewResult.validRowsCount} Verified Students`}
+                  label={committing ? t('adminOps.setup.committing') : t('adminOps.setup.commitVerified', { count: previewResult.validRowsCount })}
                   onPress={() => setShowCommitModal(true)}
                   disabled={committing || !previewResult.canCommit || isOffline}
                   variant="primary"
@@ -542,20 +559,20 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
             <View style={styles.modalOverlay} testID="import-commit-modal">
               <Card variant="elevated" style={[styles.modalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
-                  Confirm Legacy Migration
+                  {t('adminOps.setup.confirmTitle')}
                 </Text>
                 <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginTop: 8 }]}>
-                  You are about to commit {previewResult.validRowsCount} verified student(s) into your academy roster. An immutable audit record will be created. Proceed?
+                  {t('adminOps.setup.confirmBody', { count: previewResult.validRowsCount })}
                 </Text>
                 <View style={{ flexDirection: 'row', gap: 10, marginTop: 16, justifyContent: 'flex-end' }}>
                   <Button
-                    label="Cancel"
+                    label={t('adminOps.common.cancel')}
                     variant="outline"
                     size="sm"
                     onPress={() => setShowCommitModal(false)}
                   />
                   <Button
-                    label="Commit Import"
+                    label={t('adminOps.setup.commitImport')}
                     variant="primary"
                     size="sm"
                     onPress={executeCommit}
@@ -573,10 +590,10 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
                 <CheckCircle2 size={iconSize.md} color="#22C55E" style={{ marginRight: spacing.sm }} />
                 <View style={{ flex: 1 }}>
                   <Text style={[typography.sectionHeading, { color: '#166534' }]}>
-                    Import Successfully Committed!
+                    {t('adminOps.setup.successTitle')}
                   </Text>
                   <Text style={[typography.caption, { color: '#15803D', marginTop: 2 }]}>
-                    Batch ID: {commitResult.batchId}
+                    {t('adminOps.setup.batchId', { id: commitResult.batchId })}
                   </Text>
                 </View>
               </View>
@@ -585,13 +602,13 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
               </Text>
               <View style={{ flexDirection: 'row', marginTop: spacing.sm }}>
                 <Text style={[typography.caption, { color: '#15803D', marginRight: spacing.md }]}>
-                  • Students: {commitResult.importedStudentsCount}
+                  {t('adminOps.setup.studentsCount', { count: commitResult.importedStudentsCount })}
                 </Text>
                 <Text style={[typography.caption, { color: '#15803D', marginRight: spacing.md }]}>
-                  • Guardians: {commitResult.importedGuardiansCount}
+                  {t('adminOps.setup.guardiansCount', { count: commitResult.importedGuardiansCount })}
                 </Text>
                 <Text style={[typography.caption, { color: '#15803D' }]}>
-                  • Ranks: {commitResult.importedRanksCount}
+                  {t('adminOps.setup.ranksCount', { count: commitResult.importedRanksCount })}
                 </Text>
               </View>
             </Card>

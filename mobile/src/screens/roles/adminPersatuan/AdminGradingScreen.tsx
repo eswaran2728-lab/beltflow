@@ -35,6 +35,13 @@ import {
 import { StitchAppHeader, StitchStatCard } from '../../../components/stitch';
 import { StitchTokens } from '../../../theme/tokens';
 import { CheckCheck, Users } from 'lucide-react-native';
+import { useI18n } from '../../../i18n';
+
+const RESULT_LABEL_KEYS: Record<string, string> = {
+  Passed: 'adminOps.grading.result.passed',
+  Failed: 'adminOps.grading.result.failed',
+  'Double Promotion': 'adminOps.grading.result.double',
+};
 
 export interface AdminGradingScreenProps {
   user: AuthUser;
@@ -50,6 +57,13 @@ export const AdminGradingScreen: React.FC<AdminGradingScreenProps> = ({
   navigation,
 }) => {
   const { colors, typography, spacing, iconSize, borderRadius, belts } = useTheme();
+  const { t } = useI18n();
+  const eventStatusLabel = (status: string) => {
+    const key = `adminOps.grading.eventStatus.${status}`;
+    const value = t(key);
+    return value === key ? status : value;
+  };
+  const resultLabel = (result: string) => (RESULT_LABEL_KEYS[result] ? t(RESULT_LABEL_KEYS[result]) : result);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -148,7 +162,7 @@ export const AdminGradingScreen: React.FC<AdminGradingScreenProps> = ({
 
   const handleCreateEvent = async () => {
     if (!newTitle.trim()) {
-      Alert.alert('Required', 'Please enter a title for the grading event.');
+      Alert.alert(t('adminOps.grading.requiredTitle'), t('adminOps.grading.requiredMsg'));
       return;
     }
     setCreatingEvent(true);
@@ -161,13 +175,13 @@ export const AdminGradingScreen: React.FC<AdminGradingScreenProps> = ({
         fee: parseFloat(newFee) || 0,
         status: 'REGISTRATION_OPEN',
       });
-      Alert.alert('Success', 'Grading event created successfully.');
+      Alert.alert(t('adminOps.grading.successTitle'), t('adminOps.grading.createdMsg'));
       setShowCreateModal(false);
       setNewTitle('');
       await loadEvents();
       setSelectedEventId(created.event.id);
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to create grading event.');
+      Alert.alert(t('adminOps.common.error'), err?.message || t('adminOps.grading.createFailed'));
     } finally {
       setCreatingEvent(false);
     }
@@ -177,7 +191,7 @@ export const AdminGradingScreen: React.FC<AdminGradingScreenProps> = ({
     if (!selectedEventDetails?.event) return;
     const candidates = selectedEventDetails.candidates || [];
     if (candidates.length === 0) {
-      Alert.alert('No Candidates', 'Cannot finalize an event without registered candidates.');
+      Alert.alert(t('adminOps.grading.noCandidatesTitle'), t('adminOps.grading.noCandidatesMsg'));
       return;
     }
 
@@ -202,13 +216,13 @@ export const AdminGradingScreen: React.FC<AdminGradingScreenProps> = ({
       );
 
       Alert.alert(
-        'Grading Finalized',
-        `Atomic transaction completed. ${res.issuedCertificates?.length || 0} certificates issued.`
+        t('adminOps.grading.finalizedTitle'),
+        t('adminOps.grading.finalizedMsg', { count: res.issuedCertificates?.length || 0 })
       );
       await loadEvents();
       await loadEventDetails(selectedEventDetails.event.id);
     } catch (err: any) {
-      Alert.alert('Finalization Error', err?.message || 'Failed to finalize grading results.');
+      Alert.alert(t('adminOps.grading.finalizeErrorTitle'), err?.message || t('adminOps.grading.finalizeFailed'));
     } finally {
       setFinalizing(false);
     }
@@ -216,27 +230,27 @@ export const AdminGradingScreen: React.FC<AdminGradingScreenProps> = ({
 
   const handleRevokeCertificate = async (certId: string) => {
     if (!revocationReason.trim()) {
-      Alert.alert('Reason Required', 'Please provide an official audit reason for revocation.');
+      Alert.alert(t('adminOps.grading.reasonRequiredTitle'), t('adminOps.grading.reasonRequiredMsg'));
       return;
     }
     try {
       await gradingService.revokeCertificate(certId, revocationReason.trim());
-      Alert.alert('Revoked', 'Certificate revoked and audit log generated.');
+      Alert.alert(t('adminOps.grading.revokedTitle'), t('adminOps.grading.revokedMsg'));
       setRevokingCertId(null);
       setRevocationReason('');
       if (selectedEventId) {
         await loadEventDetails(selectedEventId);
       }
     } catch (err: any) {
-      Alert.alert('Revocation Error', err?.message || 'Failed to revoke certificate.');
+      Alert.alert(t('adminOps.grading.revokeErrorTitle'), err?.message || t('adminOps.grading.revokeFailed'));
     }
   };
 
   if (loading && !refreshing) {
     return (
       <ScreenContainer scrollable testID="admin-grading-screen">
-        <ScreenHeader title="Belt Grading Management" subtitle="Academy examination administration" />
-        <LoadingState message="Loading examination records..." />
+        <ScreenHeader title={t('adminOps.grading.loadingTitle')} subtitle={t('adminOps.grading.loadingSubtitle')} />
+        <LoadingState message={t('adminOps.grading.loadingMsg')} />
       </ScreenContainer>
     );
   }
@@ -260,8 +274,8 @@ export const AdminGradingScreen: React.FC<AdminGradingScreenProps> = ({
       />
 
       <ScreenHeader
-        title="Grading Administration"
-        subtitle="Manage official examinations, approvals & certificates"
+        title={t('adminOps.grading.headerTitle')}
+        subtitle={t('adminOps.grading.headerSubtitle')}
         testID="admin-grading-header"
       />
 
@@ -269,7 +283,7 @@ export const AdminGradingScreen: React.FC<AdminGradingScreenProps> = ({
       <View style={styles.kpiGrid}>
         <View style={styles.kpiCol}>
           <StitchStatCard
-            label="EVENTS"
+            label={t('adminOps.grading.kpiEvents')}
             value={events.length}
             hasAccentBorder
             accentColor={StitchTokens.colors.colorAccent}
@@ -277,7 +291,7 @@ export const AdminGradingScreen: React.FC<AdminGradingScreenProps> = ({
         </View>
         <View style={styles.kpiCol}>
           <StitchStatCard
-            label="CANDIDATES"
+            label={t('adminOps.grading.kpiCandidates')}
             value={candidates.length}
             hasAccentBorder
             accentColor={StitchTokens.colors.bfGreen}
@@ -285,8 +299,8 @@ export const AdminGradingScreen: React.FC<AdminGradingScreenProps> = ({
         </View>
         <View style={styles.kpiCol}>
           <StitchStatCard
-            label="STATUS"
-            value={isFinalized ? 'FINAL' : 'ACTIVE'}
+            label={t('adminOps.grading.kpiStatus')}
+            value={isFinalized ? t('adminOps.grading.kpiFinal') : t('adminOps.grading.kpiActive')}
             hasAccentBorder
             accentColor={StitchTokens.colors.brandNavy}
           />
@@ -297,10 +311,10 @@ export const AdminGradingScreen: React.FC<AdminGradingScreenProps> = ({
       <Card variant="standard" style={[styles.selectorCard, { borderColor: colors.border, marginBottom: spacing.md }]}>
         <View style={styles.rowBetween}>
           <Text style={[typography.caption, { color: colors.textSecondary, fontWeight: '700' }]}>
-            GRADING EXAMINATION EVENTS
+            {t('adminOps.grading.eventsHeading')}
           </Text>
           <Button
-            label="New Event"
+            label={t('adminOps.grading.newEvent')}
             onPress={() => setShowCreateModal(!showCreateModal)}
             variant="outline"
             size="sm"
@@ -312,12 +326,12 @@ export const AdminGradingScreen: React.FC<AdminGradingScreenProps> = ({
         {showCreateModal ? (
           <View style={[styles.createModal, { backgroundColor: colors.surfaceElevated, borderColor: colors.border }]}>
             <Text style={[typography.titleMedium, { color: colors.textPrimary, marginBottom: 8, fontWeight: '700' }]}>
-              Schedule New Examination
+              {t('adminOps.grading.scheduleTitle')}
             </Text>
             <TextInput
               value={newTitle}
               onChangeText={setNewTitle}
-              placeholder="e.g. Summer 2026 Belt Examination"
+              placeholder={t('adminOps.grading.titlePlaceholder')}
               placeholderTextColor={colors.textMuted}
               style={[styles.input, { borderColor: colors.border, color: colors.textPrimary, marginBottom: 8 }]}
               testID="input-event-title"
@@ -325,7 +339,7 @@ export const AdminGradingScreen: React.FC<AdminGradingScreenProps> = ({
             <TextInput
               value={newLocation}
               onChangeText={setNewLocation}
-              placeholder="Dojo Location"
+              placeholder={t('adminOps.grading.locationPlaceholder')}
               placeholderTextColor={colors.textMuted}
               style={[styles.input, { borderColor: colors.border, color: colors.textPrimary, marginBottom: 8 }]}
               testID="input-event-location"
@@ -333,14 +347,14 @@ export const AdminGradingScreen: React.FC<AdminGradingScreenProps> = ({
             <TextInput
               value={newFee}
               onChangeText={setNewFee}
-              placeholder="Fee in RM (e.g. 60)"
+              placeholder={t('adminOps.grading.feePlaceholder')}
               keyboardType="numeric"
               placeholderTextColor={colors.textMuted}
               style={[styles.input, { borderColor: colors.border, color: colors.textPrimary, marginBottom: 12 }]}
               testID="input-event-fee"
             />
             <Button
-              label="Publish Examination"
+              label={t('adminOps.grading.publish')}
               onPress={handleCreateEvent}
               loading={creatingEvent}
               variant="primary"
@@ -373,7 +387,7 @@ export const AdminGradingScreen: React.FC<AdminGradingScreenProps> = ({
                     { color: isSel ? colors.buttonPrimaryText : colors.textPrimary, fontWeight: '700' },
                   ]}
                 >
-                  {ev.title} ({ev.status})
+                  {t('adminOps.grading.eventPill', { title: ev.title, status: eventStatusLabel(ev.status) })}
                 </Text>
               </TouchableOpacity>
             );
@@ -387,22 +401,26 @@ export const AdminGradingScreen: React.FC<AdminGradingScreenProps> = ({
           <Card variant="elevated" style={[styles.eventDetailCard, { borderColor: colors.border }]}>
             <View style={styles.rowBetween}>
               <View style={{ flex: 1 }}>
-                <Text style={[typography.caption, { color: colors.textSecondary }]}>OFFICIAL EXAMINATION</Text>
+                <Text style={[typography.caption, { color: colors.textSecondary }]}>{t('adminOps.grading.officialExam')}</Text>
                 <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginTop: 2 }]}>
                   {activeEvent.title}
                 </Text>
                 <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 4 }]}>
-                  Date: {activeEvent.event_date} • {activeEvent.location || 'Dojo'} • Fee: RM {activeEvent.fee || 0}
+                  {t('adminOps.grading.eventMeta', {
+                    date: activeEvent.event_date,
+                    location: activeEvent.location || t('adminOps.grading.defaultLocation'),
+                    fee: activeEvent.fee || 0,
+                  })}
                 </Text>
               </View>
-              <StatusBadge status={activeEvent.status} label={activeEvent.status} variant={isFinalized ? 'success' : 'warning'} />
+              <StatusBadge status={activeEvent.status} label={eventStatusLabel(activeEvent.status)} variant={isFinalized ? 'success' : 'warning'} />
             </View>
 
             {isFinalized ? (
               <View style={[styles.finalizedNotice, { backgroundColor: colors.badgeSuccessBg, marginTop: spacing.md }]}>
                 <CheckCircle2 size={18} color={colors.badgeSuccessText} style={{ marginRight: 8 }} />
                 <Text style={[typography.caption, { color: colors.badgeSuccessText, fontWeight: '700' }]}>
-                  Results finalized and signed in PostgreSQL ledger.
+                  {t('adminOps.grading.finalizedNotice')}
                 </Text>
               </View>
             ) : null}
@@ -412,14 +430,14 @@ export const AdminGradingScreen: React.FC<AdminGradingScreenProps> = ({
           <Card variant="standard" style={styles.card}>
             <View style={styles.rowBetween}>
               <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
-                Registered Candidates ({candidates.length})
+                {t('adminOps.grading.registeredCandidates', { count: candidates.length })}
               </Text>
               <Award size={20} color={colors.buttonPrimaryBg} />
             </View>
 
             {candidates.length === 0 ? (
               <Text style={[typography.caption, { color: colors.textMuted, marginTop: spacing.sm }]}>
-                No candidates nominated for this examination yet.
+                {t('adminOps.grading.noCandidatesYet')}
               </Text>
             ) : (
               <View style={{ marginTop: spacing.sm, gap: spacing.sm }}>
@@ -439,11 +457,11 @@ export const AdminGradingScreen: React.FC<AdminGradingScreenProps> = ({
                           {cand.student_name}
                         </Text>
                         <Text style={[typography.caption, { color: colors.buttonPrimaryBg, marginTop: 2 }]}>
-                          Current: {cand.current_belt || 'White'} → Target: {cand.target_belt}
+                          {t('adminOps.grading.currentTarget', { current: cand.current_belt || 'White', target: cand.target_belt })}
                         </Text>
                         {cand.certificate_id ? (
                           <Text style={[typography.caption, { color: colors.badgeSuccessText, marginTop: 2 }]}>
-                            Cert ID: {cand.certificate_id}
+                            {t('adminOps.grading.certId', { id: cand.certificate_id })}
                           </Text>
                         ) : null}
                       </View>
@@ -477,7 +495,7 @@ export const AdminGradingScreen: React.FC<AdminGradingScreenProps> = ({
                                     { color: isChosen ? colors.buttonPrimaryText : colors.textPrimary, fontWeight: '700' },
                                   ]}
                                 >
-                                  {r === 'Double Promotion' ? '2x' : r}
+                                  {r === 'Double Promotion' ? t('adminOps.grading.resultDoubleShort') : resultLabel(r)}
                                 </Text>
                               </TouchableOpacity>
                             );
@@ -486,7 +504,7 @@ export const AdminGradingScreen: React.FC<AdminGradingScreenProps> = ({
                       ) : (
                         <StatusBadge
                           status={cand.result || 'Passed'}
-                          label={cand.result || 'Passed'}
+                          label={resultLabel(cand.result || 'Passed')}
                           variant={cand.result === 'Failed' ? 'danger' : 'success'}
                         />
                       )}
@@ -500,7 +518,7 @@ export const AdminGradingScreen: React.FC<AdminGradingScreenProps> = ({
             {!isFinalized && candidates.length > 0 ? (
               <View style={{ marginTop: spacing.lg }}>
                 <Button
-                  label="Finalize Official Grading Results"
+                  label={t('adminOps.grading.finalizeButton')}
                   onPress={handleFinalizeGrading}
                   loading={finalizing}
                   variant="primary"
@@ -514,8 +532,8 @@ export const AdminGradingScreen: React.FC<AdminGradingScreenProps> = ({
         </View>
       ) : (
         <EmptyState
-          title="No Event Selected"
-          description="Create or select a grading examination above."
+          title={t('adminOps.grading.noEventTitle')}
+          description={t('adminOps.grading.noEventDesc')}
         />
       )}
     </ScreenContainer>
