@@ -8,6 +8,7 @@ import { Input } from '../../../components/Input';
 import { Button } from '../../../components/Button';
 import { AuthUser } from '../../../types/auth';
 import { apiClient } from '../../../services/apiClient';
+import { useI18n } from '../../../i18n';
 
 export interface CreateClassScreenProps {
   user: AuthUser;
@@ -20,6 +21,7 @@ export const CreateClassScreen: React.FC<CreateClassScreenProps> = ({
   navigation,
   isOffline,
 }) => {
+  const { t } = useI18n();
   const { colors, typography, spacing, iconSize } = useTheme();
 
   const [name, setName] = useState('');
@@ -41,25 +43,25 @@ export const CreateClassScreen: React.FC<CreateClassScreenProps> = ({
 
   const validate = (): boolean => {
     if (!name.trim()) {
-      setValidationError('Class name is required.');
+      setValidationError(t('masterLifecycle.createClass.errorNameRequired'));
       return false;
     }
     if (!schedule.trim()) {
-      setValidationError('Schedule is required.');
+      setValidationError(t('masterLifecycle.createClass.errorScheduleRequired'));
       return false;
     }
     if (!location.trim()) {
-      setValidationError('Location is required.');
+      setValidationError(t('masterLifecycle.createClass.errorLocationRequired'));
       return false;
     }
     const feeNum = parseFloat(monthlyFee);
     if (isNaN(feeNum) || feeNum <= 0) {
-      setValidationError('Monthly fee must be greater than zero.');
+      setValidationError(t('masterLifecycle.createClass.errorFeePositive'));
       return false;
     }
     const capNum = parseInt(capacity, 10);
     if (isNaN(capNum) || capNum <= 0) {
-      setValidationError('Capacity must be a positive integer.');
+      setValidationError(t('masterLifecycle.createClass.errorCapacityPositive'));
       return false;
     }
     setValidationError(null);
@@ -68,7 +70,7 @@ export const CreateClassScreen: React.FC<CreateClassScreenProps> = ({
 
   const handleSaveDraft = async () => {
     if (isOffline) {
-      Alert.alert('Offline Mode', 'Creating class proposals requires an active internet connection.');
+      Alert.alert(t('masterLifecycle.createClass.offlineTitle'), t('masterLifecycle.createClass.offlineDraft'));
       return;
     }
     setSaving(true);
@@ -89,11 +91,11 @@ export const CreateClassScreen: React.FC<CreateClassScreenProps> = ({
         enrollmentAvailability,
       });
 
-      Alert.alert('Draft Saved', 'Class proposal draft saved successfully.', [
-        { text: 'OK', onPress: () => navigation?.goBack?.() },
+      Alert.alert(t('masterLifecycle.createClass.draftSavedTitle'), t('masterLifecycle.createClass.draftSavedBody'), [
+        { text: t('masterLifecycle.common.ok'), onPress: () => navigation?.goBack?.() },
       ]);
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to save class proposal draft.');
+      Alert.alert(t('masterLifecycle.common.error'), err?.message || t('masterLifecycle.createClass.draftSaveFailed'));
     } finally {
       setSaving(false);
     }
@@ -102,7 +104,7 @@ export const CreateClassScreen: React.FC<CreateClassScreenProps> = ({
   const handleSubmit = async () => {
     if (!validate()) return;
     if (isOffline) {
-      Alert.alert('Offline Mode', 'Submitting class proposals requires an active internet connection.');
+      Alert.alert(t('masterLifecycle.createClass.offlineTitle'), t('masterLifecycle.createClass.offlineSubmit'));
       return;
     }
 
@@ -126,18 +128,18 @@ export const CreateClassScreen: React.FC<CreateClassScreenProps> = ({
       });
 
       const appId = createRes?.application?.id;
-      if (!appId) throw new Error('Failed to create proposal.');
+      if (!appId) throw new Error(t('masterLifecycle.createClass.createFailed'));
 
       // 2. Submit for Persatuan review
       await apiClient.post(`/class-applications/${appId}/submit`, {});
 
       Alert.alert(
-        'Proposal Submitted',
-        'Your class proposal has been submitted for Persatuan Admin approval.',
-        [{ text: 'OK', onPress: () => navigation?.goBack?.() }]
+        t('masterLifecycle.createClass.submittedTitle'),
+        t('masterLifecycle.createClass.submittedBody'),
+        [{ text: t('masterLifecycle.common.ok'), onPress: () => navigation?.goBack?.() }]
       );
     } catch (err: any) {
-      Alert.alert('Submission Error', err?.message || 'Failed to submit proposal.');
+      Alert.alert(t('masterLifecycle.createClass.submitErrorTitle'), err?.message || t('masterLifecycle.createClass.submitFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -146,8 +148,8 @@ export const CreateClassScreen: React.FC<CreateClassScreenProps> = ({
   return (
     <ScreenContainer scrollable testID="create-class-screen">
       <ScreenHeader
-        title="Propose New Class"
-        subtitle="Submit a training class for Persatuan approval"
+        title={t('masterLifecycle.common.proposeNewClass')}
+        subtitle={t('masterLifecycle.createClass.subtitle')}
         onBack={navigation?.goBack ? () => navigation.goBack() : undefined}
       />
 
@@ -161,12 +163,12 @@ export const CreateClassScreen: React.FC<CreateClassScreenProps> = ({
 
       <Card variant="standard" style={{ marginBottom: spacing.lg }}>
         <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
-          Class Information
+          {t('masterLifecycle.createClass.sectionTitle')}
         </Text>
 
         <Input
-          label="Class Name *"
-          placeholder="e.g. Silambam Traditional Weapons"
+          label={t('masterLifecycle.createClass.nameLabel')}
+          placeholder={t('masterLifecycle.createClass.namePlaceholder')}
           value={name}
           onChangeText={(val) => {
             setName(val);
@@ -176,24 +178,24 @@ export const CreateClassScreen: React.FC<CreateClassScreenProps> = ({
         />
 
         <Input
-          label="Training Location / Facility *"
-          placeholder="e.g. Shah Alam Sports Complex"
+          label={t('masterLifecycle.createClass.locationLabel')}
+          placeholder={t('masterLifecycle.createClass.locationPlaceholder')}
           value={location}
           onChangeText={setLocation}
           testID="input-location"
         />
 
         <Input
-          label="Specific Venue / Room Details"
-          placeholder="e.g. Court 2, 2nd Floor"
+          label={t('masterLifecycle.createClass.venueLabel')}
+          placeholder={t('masterLifecycle.createClass.venuePlaceholder')}
           value={venueDetails}
           onChangeText={setVenueDetails}
           testID="input-venue-details"
         />
 
         <Input
-          label="Training Schedule *"
-          placeholder="e.g. Saturday & Sunday 9:00 AM - 10:30 AM"
+          label={t('masterLifecycle.createClass.scheduleLabel')}
+          placeholder={t('masterLifecycle.createClass.schedulePlaceholder')}
           value={schedule}
           onChangeText={(val) => {
             setSchedule(val);
@@ -203,32 +205,32 @@ export const CreateClassScreen: React.FC<CreateClassScreenProps> = ({
         />
 
         <Input
-          label="Age Eligibility"
-          placeholder="e.g. 7-18 years"
+          label={t('masterLifecycle.createClass.ageLabel')}
+          placeholder={t('masterLifecycle.createClass.agePlaceholder')}
           value={ageEligibility}
           onChangeText={setAgeEligibility}
           testID="input-age-eligibility"
         />
 
         <Input
-          label="Training Level Eligibility"
-          placeholder="e.g. Beginner, Intermediate, Advanced"
+          label={t('masterLifecycle.createClass.levelLabel')}
+          placeholder={t('masterLifecycle.createClass.levelPlaceholder')}
           value={trainingLevel}
           onChangeText={setTrainingLevel}
           testID="input-training-level"
         />
 
         <Input
-          label="Program / Syllabus Type"
-          placeholder="e.g. Traditional Forms, Weapons, Sparring"
+          label={t('masterLifecycle.createClass.programLabel')}
+          placeholder={t('masterLifecycle.createClass.programPlaceholder')}
           value={programType}
           onChangeText={setProgramType}
           testID="input-program-type"
         />
 
         <Input
-          label="Maximum Capacity *"
-          placeholder="e.g. 30"
+          label={t('masterLifecycle.createClass.capacityLabel')}
+          placeholder={t('masterLifecycle.createClass.capacityPlaceholder')}
           value={capacity}
           keyboardType="numeric"
           onChangeText={setCapacity}
@@ -236,8 +238,8 @@ export const CreateClassScreen: React.FC<CreateClassScreenProps> = ({
         />
 
         <Input
-          label="Monthly Tuition Fee (RM) *"
-          placeholder="e.g. 120.00"
+          label={t('masterLifecycle.createClass.feeLabel')}
+          placeholder={t('masterLifecycle.createClass.feePlaceholder')}
           value={monthlyFee}
           keyboardType="numeric"
           onChangeText={setMonthlyFee}
@@ -245,8 +247,8 @@ export const CreateClassScreen: React.FC<CreateClassScreenProps> = ({
         />
 
         <Input
-          label="Class Description"
-          placeholder="Provide an overview of training aims and techniques covered..."
+          label={t('masterLifecycle.createClass.descriptionLabel')}
+          placeholder={t('masterLifecycle.createClass.descriptionPlaceholder')}
           value={description}
           multiline
           numberOfLines={3}
@@ -255,8 +257,8 @@ export const CreateClassScreen: React.FC<CreateClassScreenProps> = ({
         />
 
         <Input
-          label="Approved Contact Channel"
-          placeholder="e.g. WhatsApp / Phone (+6012...)"
+          label={t('masterLifecycle.createClass.contactLabel')}
+          placeholder={t('masterLifecycle.createClass.contactPlaceholder')}
           value={contactChannel}
           onChangeText={setContactChannel}
           testID="input-contact"
@@ -265,7 +267,7 @@ export const CreateClassScreen: React.FC<CreateClassScreenProps> = ({
 
       <View style={styles.buttonRow}>
         <Button
-          label="Save Draft"
+          label={t('masterLifecycle.common.saveDraft')}
           onPress={handleSaveDraft}
           variant="outline"
           size="lg"
@@ -275,7 +277,7 @@ export const CreateClassScreen: React.FC<CreateClassScreenProps> = ({
           style={{ flex: 1, marginRight: spacing.sm }}
         />
         <Button
-          label="Submit Proposal"
+          label={t('masterLifecycle.createClass.submit')}
           onPress={handleSubmit}
           variant="primary"
           size="lg"

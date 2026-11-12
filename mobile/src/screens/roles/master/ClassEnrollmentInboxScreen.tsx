@@ -23,6 +23,7 @@ import { Input } from '../../../components/Input';
 import { LoadingState, EmptyState, ErrorState } from '../../../components/Feedback';
 import { AuthUser } from '../../../types/auth';
 import { apiClient } from '../../../services/apiClient';
+import { useI18n } from '../../../i18n';
 
 export interface EnrollmentApplicationItem {
   id: string;
@@ -66,9 +67,10 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
   route,
   navigation,
 }) => {
+  const { t } = useI18n();
   const { colors, typography, spacing, iconSize } = useTheme();
   const classId = route?.params?.classId || '';
-  const className = route?.params?.className || 'Class';
+  const className = route?.params?.className || t('masterLifecycle.inbox.defaultClassName');
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -98,7 +100,7 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
   const fetchInboxData = useCallback(async () => {
     if (!classId) {
       setLoading(false);
-      setError('No class selected for enrollment inbox.');
+      setError(t('masterLifecycle.inbox.errorNoClass'));
       return;
     }
     try {
@@ -107,13 +109,13 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
       setApplications(res?.applications || []);
       setError(null);
     } catch (err: any) {
-      const msg = err?.response?.data?.error || err?.message || 'Failed to load enrollment applications.';
+      const msg = err?.response?.data?.error || err?.message || t('masterLifecycle.inbox.errorLoad');
       setError(msg);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [classId]);
+  }, [classId, t]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -121,7 +123,7 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
       if (!classId) {
         if (!isCancelled) {
           setLoading(false);
-          setError('No class selected for enrollment inbox.');
+          setError(t('masterLifecycle.inbox.errorNoClass'));
         }
         return;
       }
@@ -134,7 +136,7 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
         }
       } catch (err: any) {
         if (!isCancelled) {
-          const msg = err?.response?.data?.error || err?.message || 'Failed to load enrollment applications.';
+          const msg = err?.response?.data?.error || err?.message || t('masterLifecycle.inbox.errorLoad');
           setError(msg);
         }
       } finally {
@@ -148,7 +150,7 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
     return () => {
       isCancelled = true;
     };
-  }, [classId]);
+  }, [classId, t]);
 
   const handleOpenAction = (app: EnrollmentApplicationItem, type: 'APPROVE' | 'REQUEST_INFO' | 'REJECT' | 'WAITLIST') => {
     setSelectedApp(app);
@@ -169,11 +171,11 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
     if (!selectedApp || !actionType) return;
 
     if (actionType === 'REJECT' && !actionText.trim()) {
-      setActionError('Please provide a reason for rejecting this application.');
+      setActionError(t('masterLifecycle.inbox.errorReasonRequired'));
       return;
     }
     if (actionType === 'REQUEST_INFO' && !actionText.trim()) {
-      setActionError('Please specify the information requested from the applicant.');
+      setActionError(t('masterLifecycle.inbox.errorInfoRequired'));
       return;
     }
 
@@ -194,11 +196,11 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
 
       await apiClient.post(`/enrollment-applications/${selectedApp.id}/review`, payload);
 
-      setActionSuccess(`Application successfully updated.`);
+      setActionSuccess(t('masterLifecycle.inbox.successUpdated'));
       handleCloseModal();
       await fetchInboxData();
     } catch (err: any) {
-      const errMsg = err?.response?.data?.error || err?.message || 'Failed to process application.';
+      const errMsg = err?.response?.data?.error || err?.message || t('masterLifecycle.inbox.errorProcess');
       setActionError(errMsg);
     } finally {
       setActionSubmitting(false);
@@ -227,11 +229,11 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
     return (
       <ScreenContainer scrollable testID="master-enrollment-inbox">
         <ScreenHeader
-          title="Class Applications"
-          subtitle={`Review enrollment applications for ${className}`}
+          title={t('masterLifecycle.inbox.title')}
+          subtitle={t('masterLifecycle.inbox.subtitle', { className })}
           onBack={navigation?.goBack ? () => navigation.goBack() : undefined}
         />
-        <LoadingState message="Loading applications..." />
+        <LoadingState message={t('masterLifecycle.inbox.loading')} />
       </ScreenContainer>
     );
   }
@@ -239,8 +241,8 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
   return (
     <ScreenContainer scrollable testID="master-enrollment-inbox">
       <ScreenHeader
-        title="Class Applications"
-        subtitle={`Review enrollment applications for ${className}`}
+        title={t('masterLifecycle.inbox.title')}
+        subtitle={t('masterLifecycle.inbox.subtitle', { className })}
         onBack={navigation?.goBack ? () => navigation.goBack() : undefined}
       />
 
@@ -267,12 +269,12 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
                 {classInfo.name}
               </Text>
               <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                Enrolled: {classInfo.enrolledCount} / {classInfo.capacity} students
+                {t('masterLifecycle.inbox.enrolledCount', { enrolled: classInfo.enrolledCount, capacity: classInfo.capacity })}
               </Text>
             </View>
             <StatusBadge
               status={classInfo.availableSpots > 0 ? 'ACTIVE' : 'WARNING'}
-              label={classInfo.availableSpots > 0 ? `${classInfo.availableSpots} Spots Open` : 'Class Full'}
+              label={classInfo.availableSpots > 0 ? t('masterLifecycle.inbox.spotsOpen', { count: classInfo.availableSpots }) : t('masterLifecycle.inbox.classFull')}
               variant={classInfo.availableSpots > 0 ? 'success' : 'danger'}
               testID="class-capacity-badge"
             />
@@ -281,7 +283,7 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
             <View style={[styles.fullWarningRow, { marginTop: spacing.xs }]}>
               <AlertTriangle size={iconSize.sm} color={colors.badgeDangerText} />
               <Text style={[typography.caption, { color: colors.badgeDangerText, marginLeft: spacing.xs, fontWeight: '600' }]}>
-                Capacity reached. Further approvals will be blocked unless waitlisted.
+                {t('masterLifecycle.inbox.capacityReached')}
               </Text>
             </View>
           ) : null}
@@ -291,7 +293,7 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
       {/* Filter Tabs */}
       <View style={[styles.tabBar, { marginBottom: spacing.md }]}>
         <Button
-          label={`Pending (${pendingApps.length})`}
+          label={t('masterLifecycle.inbox.tab.pending', { count: pendingApps.length })}
           onPress={() => setActiveTab('PENDING')}
           variant={activeTab === 'PENDING' ? 'primary' : 'outline'}
           size="sm"
@@ -299,7 +301,7 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
           testID="tab-inbox-pending"
         />
         <Button
-          label={`Waitlist (${waitlistedApps.length})`}
+          label={t('masterLifecycle.inbox.tab.waitlist', { count: waitlistedApps.length })}
           onPress={() => setActiveTab('WAITLISTED')}
           variant={activeTab === 'WAITLISTED' ? 'primary' : 'outline'}
           size="sm"
@@ -307,7 +309,7 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
           testID="tab-inbox-waitlist"
         />
         <Button
-          label={`Needs Info (${needsInfoApps.length})`}
+          label={t('masterLifecycle.inbox.tab.needsInfo', { count: needsInfoApps.length })}
           onPress={() => setActiveTab('NEEDS_INFO')}
           variant={activeTab === 'NEEDS_INFO' ? 'primary' : 'outline'}
           size="sm"
@@ -315,7 +317,7 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
           testID="tab-inbox-needs-info"
         />
         <Button
-          label={`Approved (${approvedApps.length})`}
+          label={t('masterLifecycle.inbox.tab.approved', { count: approvedApps.length })}
           onPress={() => setActiveTab('APPROVED')}
           variant={activeTab === 'APPROVED' ? 'primary' : 'outline'}
           size="sm"
@@ -331,8 +333,8 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
       >
         {currentList.length === 0 ? (
           <EmptyState
-            title="No Applications Found"
-            description={`No applications in ${activeTab.toLowerCase().replace('_', ' ')} state.`}
+            title={t('masterLifecycle.inbox.emptyTitle')}
+            description={t(`masterLifecycle.inbox.empty.${activeTab}`)}
             testID="empty-inbox-state"
           />
         ) : (
@@ -355,13 +357,16 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
                       {app.student_name}
                     </Text>
                     <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                      Applicant: {app.applicant_type} • Submitted: {app.submitted_at ? new Date(app.submitted_at).toLocaleDateString() : 'Draft'}
+                      {t('masterLifecycle.inbox.applicantLine', {
+                        type: t(`masterLifecycle.inbox.applicantType.${app.applicant_type}`),
+                        date: app.submitted_at ? new Date(app.submitted_at).toLocaleDateString() : t('status.draft'),
+                      })}
                     </Text>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
                     <StatusBadge
                       status={app.status === 'APPROVED' ? 'ACTIVE' : app.status === 'REJECTED' ? 'REJECTED' : 'PENDING'}
-                      label={app.status.replace('_', ' ')}
+                      label={t(`masterLifecycle.inbox.appStatus.${app.status}`)}
                       variant={
                         app.status === 'APPROVED'
                           ? 'success'
@@ -386,37 +391,37 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
                   <View style={styles.detailGrid}>
                     {app.ic_number ? (
                       <Text style={[typography.bodyMedium, { color: colors.textPrimary }]}>
-                        <Text style={{ fontWeight: '700' }}>IC / MyKid: </Text>{app.ic_number}
+                        <Text style={{ fontWeight: '700' }}>{t('masterLifecycle.inbox.icLabel')} </Text>{app.ic_number}
                       </Text>
                     ) : null}
                     {app.date_of_birth ? (
                       <Text style={[typography.bodyMedium, { color: colors.textPrimary }]}>
-                        <Text style={{ fontWeight: '700' }}>DOB: </Text>{app.date_of_birth} ({app.gender || 'N/A'})
+                        <Text style={{ fontWeight: '700' }}>{t('masterLifecycle.inbox.dobLabel')} </Text>{app.date_of_birth} ({app.gender || t('masterLifecycle.common.notAvailable')})
                       </Text>
                     ) : null}
                     {app.emergency_contact_name ? (
                       <Text style={[typography.bodyMedium, { color: colors.textPrimary }]}>
-                        <Text style={{ fontWeight: '700' }}>Emergency Contact: </Text>{app.emergency_contact_name} ({app.emergency_contact_phone || 'N/A'})
+                        <Text style={{ fontWeight: '700' }}>{t('masterLifecycle.inbox.emergencyLabel')} </Text>{app.emergency_contact_name} ({app.emergency_contact_phone || t('masterLifecycle.common.notAvailable')})
                       </Text>
                     ) : null}
                     {app.medical_notes ? (
                       <Text style={[typography.caption, { color: colors.badgeDangerText, marginTop: 2 }]}>
-                        <Text style={{ fontWeight: '700' }}>Medical: </Text>{app.medical_notes}
+                        <Text style={{ fontWeight: '700' }}>{t('masterLifecycle.inbox.medicalLabel')} </Text>{app.medical_notes}
                       </Text>
                     ) : null}
                     {app.notes ? (
                       <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                        <Text style={{ fontWeight: '700' }}>Notes: </Text>{app.notes}
+                        <Text style={{ fontWeight: '700' }}>{t('masterLifecycle.inbox.notesLabel')} </Text>{app.notes}
                       </Text>
                     ) : null}
                     {app.requested_information ? (
                       <Text style={[typography.caption, { color: colors.badgeWarningText, marginTop: 2 }]}>
-                        <Text style={{ fontWeight: '700' }}>Requested Info: </Text>{app.requested_information}
+                        <Text style={{ fontWeight: '700' }}>{t('masterLifecycle.inbox.requestedInfoLabel')} </Text>{app.requested_information}
                       </Text>
                     ) : null}
                     {app.rejection_reason ? (
                       <Text style={[typography.caption, { color: colors.badgeDangerText, marginTop: 2 }]}>
-                        <Text style={{ fontWeight: '700' }}>Rejection Reason: </Text>{app.rejection_reason}
+                        <Text style={{ fontWeight: '700' }}>{t('masterLifecycle.common.rejectionReason')} </Text>{app.rejection_reason}
                       </Text>
                     ) : null}
                   </View>
@@ -424,7 +429,7 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
                   <View style={[styles.consentRow, { marginTop: spacing.xs }]}>
                     <CheckCircle size={iconSize.xs} color={app.consent_accepted ? colors.badgeSuccessText : colors.badgeDangerText} />
                     <Text style={[typography.caption, { color: colors.textSecondary, marginLeft: 4 }]}>
-                      {app.consent_accepted ? 'Parent/Student Consent Verified' : 'Consent Pending'}
+                      {app.consent_accepted ? t('masterLifecycle.inbox.consentVerified') : t('masterLifecycle.inbox.consentPending')}
                     </Text>
                   </View>
 
@@ -432,7 +437,7 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
                   {['SUBMITTED', 'WAITLISTED', 'NEEDS_INFORMATION'].includes(app.status) ? (
                     <View style={[styles.actionButtonsRow, { marginTop: spacing.md, gap: spacing.xs }]}>
                       <Button
-                        label="Approve"
+                        label={t('masterLifecycle.inbox.approve')}
                         onPress={() => handleOpenAction(app, 'APPROVE')}
                         variant="primary"
                         size="sm"
@@ -440,7 +445,7 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
                         testID={`btn-approve-${app.id}`}
                       />
                       <Button
-                        label="Request Info"
+                        label={t('masterLifecycle.inbox.requestInfo')}
                         onPress={() => handleOpenAction(app, 'REQUEST_INFO')}
                         variant="outline"
                         size="sm"
@@ -449,7 +454,7 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
                       />
                       {app.status !== 'WAITLISTED' ? (
                         <Button
-                          label="Waitlist"
+                          label={t('masterLifecycle.inbox.waitlist')}
                           onPress={() => handleOpenAction(app, 'WAITLIST')}
                           variant="secondary"
                           size="sm"
@@ -458,7 +463,7 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
                         />
                       ) : null}
                       <Button
-                        label="Reject"
+                        label={t('masterLifecycle.inbox.reject')}
                         onPress={() => handleOpenAction(app, 'REJECT')}
                         variant="danger"
                         size="sm"
@@ -485,34 +490,34 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
           <Card variant="elevated" style={[styles.modalCard, { backgroundColor: colors.surface }]}>
             <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.xs }]}>
               {actionType === 'APPROVE'
-                ? 'Confirm Class Enrollment'
+                ? t('masterLifecycle.inbox.modal.approveTitle')
                 : actionType === 'REQUEST_INFO'
-                ? 'Request Information'
+                ? t('masterLifecycle.inbox.modal.requestInfoTitle')
                 : actionType === 'WAITLIST'
-                ? 'Place on Waitlist'
-                : 'Reject Application'}
+                ? t('masterLifecycle.inbox.modal.waitlistTitle')
+                : t('masterLifecycle.inbox.modal.rejectTitle')}
             </Text>
 
             <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginBottom: spacing.md }]}>
-              Student: <Text style={{ fontWeight: '700', color: colors.textPrimary }}>{selectedApp?.student_name}</Text>
+              {t('masterLifecycle.inbox.modal.studentLabel')} <Text style={{ fontWeight: '700', color: colors.textPrimary }}>{selectedApp?.student_name}</Text>
             </Text>
 
             {actionType === 'APPROVE' && (
               <Text style={[typography.bodyMedium, { color: colors.textPrimary, marginBottom: spacing.md }]}>
-                Are you sure you want to approve this enrollment? The student will immediately join the authorized active class roster.
+                {t('masterLifecycle.inbox.modal.approveBody')}
               </Text>
             )}
 
             {actionType === 'WAITLIST' && (
               <Text style={[typography.bodyMedium, { color: colors.textPrimary, marginBottom: spacing.md }]}>
-                Move this applicant to the waitlist? They will not be counted as an active class attendee.
+                {t('masterLifecycle.inbox.modal.waitlistBody')}
               </Text>
             )}
 
             {actionType === 'REQUEST_INFO' && (
               <Input
-                label="Information Required *"
-                placeholder="Specify what details or medical info are needed..."
+                label={t('masterLifecycle.inbox.modal.infoRequiredLabel')}
+                placeholder={t('masterLifecycle.inbox.modal.infoRequiredPlaceholder')}
                 value={actionText}
                 onChangeText={setActionText}
                 multiline
@@ -524,8 +529,8 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
 
             {actionType === 'REJECT' && (
               <Input
-                label="Rejection Reason *"
-                placeholder="Reason for declining this enrollment..."
+                label={t('masterLifecycle.inbox.modal.rejectionReasonLabel')}
+                placeholder={t('masterLifecycle.inbox.modal.rejectionReasonPlaceholder')}
                 value={actionText}
                 onChangeText={setActionText}
                 multiline
@@ -543,7 +548,7 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
 
             <View style={[styles.modalActionsRow, { gap: spacing.sm }]}>
               <Button
-                label="Cancel"
+                label={t('masterLifecycle.common.cancel')}
                 onPress={handleCloseModal}
                 variant="outline"
                 size="md"
@@ -553,14 +558,14 @@ export const ClassEnrollmentInboxScreen: React.FC<ClassEnrollmentInboxScreenProp
               <Button
                 label={
                   actionSubmitting
-                    ? 'Processing...'
+                    ? t('masterLifecycle.inbox.modal.processing')
                     : actionType === 'APPROVE'
-                    ? 'Confirm Approve'
+                    ? t('masterLifecycle.inbox.modal.confirmApprove')
                     : actionType === 'REQUEST_INFO'
-                    ? 'Send Request'
+                    ? t('masterLifecycle.inbox.modal.sendRequest')
                     : actionType === 'WAITLIST'
-                    ? 'Confirm Waitlist'
-                    : 'Confirm Reject'
+                    ? t('masterLifecycle.inbox.modal.confirmWaitlist')
+                    : t('masterLifecycle.inbox.modal.confirmReject')
                 }
                 onPress={handleConfirmDecision}
                 variant={actionType === 'REJECT' ? 'danger' : 'primary'}

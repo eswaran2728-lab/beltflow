@@ -82,20 +82,20 @@ export const ClassProposalStatusScreen: React.FC<ClassProposalStatusScreenProps>
 
   const handleWithdraw = async (appId: string) => {
     Alert.alert(
-      'Withdraw Proposal',
-      'Are you sure you want to withdraw this class proposal?',
+      t('masterLifecycle.proposals.withdrawTitle'),
+      t('masterLifecycle.proposals.withdrawConfirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('masterLifecycle.common.cancel'), style: 'cancel' },
         {
-          text: 'Withdraw',
+          text: t('masterLifecycle.common.withdraw'),
           style: 'destructive',
           onPress: async () => {
             try {
               await apiClient.post(`/class-applications/${appId}/withdraw`, {});
-              Alert.alert('Withdrawn', 'Class proposal has been withdrawn.');
+              Alert.alert(t('status.withdrawn'), t('masterLifecycle.proposals.withdrawnBody'));
               fetchProposals();
             } catch (err: any) {
-              Alert.alert('Error', err?.message || 'Failed to withdraw proposal.');
+              Alert.alert(t('masterLifecycle.common.error'), err?.message || t('masterLifecycle.proposals.withdrawFailed'));
             }
           },
         },
@@ -123,8 +123,8 @@ export const ClassProposalStatusScreen: React.FC<ClassProposalStatusScreenProps>
   if (loading && proposals.length === 0) {
     return (
       <ScreenContainer scrollable testID="class-proposal-status-screen">
-        <ScreenHeader title="Class Proposals" subtitle="Status of proposed training classes" />
-        <LoadingState message="Loading your class proposals..." />
+        <ScreenHeader title={t('masterLifecycle.proposals.title')} subtitle={t('masterLifecycle.proposals.subtitle')} />
+        <LoadingState message={t('masterLifecycle.proposals.loading')} />
       </ScreenContainer>
     );
   }
@@ -132,8 +132,8 @@ export const ClassProposalStatusScreen: React.FC<ClassProposalStatusScreenProps>
   return (
     <ScreenContainer scrollable testID="class-proposal-status-screen">
       <ScreenHeader
-        title="Class Proposals"
-        subtitle="Status of proposed training classes"
+        title={t('masterLifecycle.proposals.title')}
+        subtitle={t('masterLifecycle.proposals.subtitle')}
         onBack={navigation?.goBack ? () => navigation.goBack() : undefined}
       />
 
@@ -142,9 +142,9 @@ export const ClassProposalStatusScreen: React.FC<ClassProposalStatusScreenProps>
       >
         {proposals.length === 0 ? (
           <EmptyState
-            title="No Class Proposals"
-            description="You have not submitted any class proposals yet."
-            actionLabel="Propose New Class"
+            title={t('masterLifecycle.proposals.emptyTitle')}
+            description={t('masterLifecycle.proposals.emptyBody')}
+            actionLabel={t('masterLifecycle.common.proposeNewClass')}
             onAction={() => navigation?.navigate?.('CreateClass')}
             testID="empty-class-proposals"
           />
@@ -173,7 +173,7 @@ export const ClassProposalStatusScreen: React.FC<ClassProposalStatusScreenProps>
               {item.status === 'NEEDS_INFORMATION' && item.requested_information ? (
                 <View style={[styles.infoBox, { backgroundColor: colors.badgeWarningBg, borderColor: colors.badgeWarningText }]}>
                   <Text style={[typography.caption, { color: colors.badgeWarningText, fontWeight: '700', marginBottom: 2 }]}>
-                    Persatuan Admin Requested Information:
+                    {t('masterLifecycle.proposals.requestedInfo')}
                   </Text>
                   <Text style={[typography.bodyMedium, { color: colors.badgeWarningText }]}>
                     {item.requested_information}
@@ -184,7 +184,7 @@ export const ClassProposalStatusScreen: React.FC<ClassProposalStatusScreenProps>
               {item.status === 'REJECTED' && item.rejection_reason ? (
                 <View style={[styles.infoBox, { backgroundColor: colors.errorBg, borderColor: colors.errorText }]}>
                   <Text style={[typography.caption, { color: colors.errorText, fontWeight: '700', marginBottom: 2 }]}>
-                    Rejection Reason:
+                    {t('masterLifecycle.common.rejectionReason')}
                   </Text>
                   <Text style={[typography.bodyMedium, { color: colors.errorText }]}>
                     {item.rejection_reason}
@@ -197,7 +197,7 @@ export const ClassProposalStatusScreen: React.FC<ClassProposalStatusScreenProps>
               {['DRAFT', 'SUBMITTED'].includes(item.status) ? (
                 <View style={styles.cardActions}>
                   <Button
-                    label="Withdraw"
+                    label={t('masterLifecycle.common.withdraw')}
                     onPress={() => handleWithdraw(item.id)}
                     variant="outline"
                     size="sm"

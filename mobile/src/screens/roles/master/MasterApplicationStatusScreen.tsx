@@ -26,6 +26,7 @@ import { AuthUser } from '../../../types/auth';
 import { apiClient } from '../../../services/apiClient';
 import { PendingNextStep } from '../../../components/PendingNextStep';
 import { BrandColors } from '../../../theme/colors';
+import { useI18n } from '../../../i18n';
 
 export interface MasterApplicationStatusScreenProps {
   user: AuthUser;
@@ -62,6 +63,7 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
   isOffline,
   onVerified,
 }) => {
+  const { t } = useI18n();
   const { colors, typography, spacing, iconSize } = useTheme();
 
   const [loading, setLoading] = useState(true);
@@ -107,12 +109,12 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
         onVerified();
       }
     } catch (err: any) {
-      setError(err?.message || 'Failed to load application status.');
+      setError(err?.message || t('masterLifecycle.masterApp.loadFailed'));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [onVerified]);
+  }, [onVerified, t]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -152,7 +154,7 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
         }
       } catch (err: any) {
         if (!isCancelled) {
-          setError(err?.message || 'Failed to load application status.');
+          setError(err?.message || t('masterLifecycle.masterApp.loadFailed'));
         }
       } finally {
         if (!isCancelled) {
@@ -165,7 +167,7 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
     return () => {
       isCancelled = true;
     };
-  }, [onVerified]);
+  }, [onVerified, t]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -175,7 +177,7 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
 
   const handleSaveDraft = async () => {
     if (!selectedOrgId) {
-      Alert.alert('Required', 'Please select a Persatuan before saving.');
+      Alert.alert(t('masterLifecycle.masterApp.requiredTitle'), t('masterLifecycle.masterApp.selectPersatuanBeforeSave'));
       return;
     }
     setSubmitting(true);
@@ -198,9 +200,9 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
         });
         setApplication(res.application);
       }
-      Alert.alert('Saved', 'Application draft saved successfully.');
+      Alert.alert(t('masterLifecycle.masterApp.savedTitle'), t('masterLifecycle.masterApp.draftSaved'));
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to save draft.');
+      Alert.alert(t('masterLifecycle.common.error'), err?.message || t('masterLifecycle.masterApp.saveFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -208,11 +210,11 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
 
   const handleSubmitApplication = async () => {
     if (!selectedOrgId) {
-      Alert.alert('Required', 'Please select a Persatuan.');
+      Alert.alert(t('masterLifecycle.masterApp.requiredTitle'), t('masterLifecycle.masterApp.selectPersatuan'));
       return;
     }
     if (!qualifications.trim() || !experienceSummary.trim()) {
-      Alert.alert('Incomplete Application', 'Please provide both qualifications and experience summary.');
+      Alert.alert(t('masterLifecycle.masterApp.incompleteTitle'), t('masterLifecycle.masterApp.incompleteBody'));
       return;
     }
     setSubmitting(true);
@@ -238,9 +240,9 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
 
       const submitRes: any = await apiClient.post(`/master-applications/${appId}/submit`, {});
       setApplication(submitRes.application);
-      Alert.alert('Submitted', 'Your verification application has been submitted to the Persatuan for review.');
+      Alert.alert(t('masterLifecycle.masterApp.submittedTitle'), t('masterLifecycle.masterApp.submittedBody'));
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to submit application.');
+      Alert.alert(t('masterLifecycle.common.error'), err?.message || t('masterLifecycle.masterApp.submitFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -249,19 +251,19 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
   const handleWithdraw = async () => {
     if (!application) return;
     Alert.alert(
-      'Withdraw Application',
-      'Are you sure you want to withdraw your application?',
+      t('masterLifecycle.masterApp.withdrawTitle'),
+      t('masterLifecycle.masterApp.withdrawConfirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('masterLifecycle.common.cancel'), style: 'cancel' },
         {
-          text: 'Withdraw',
+          text: t('masterLifecycle.common.withdraw'),
           style: 'destructive',
           onPress: async () => {
             try {
               const res: any = await apiClient.post(`/master-applications/${application.id}/withdraw`, {});
               setApplication(res.application);
             } catch (err: any) {
-              Alert.alert('Error', err?.message || 'Failed to withdraw application.');
+              Alert.alert(t('masterLifecycle.common.error'), err?.message || t('masterLifecycle.masterApp.withdrawFailed'));
             }
           },
         },
@@ -271,7 +273,7 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
 
   const headerRight = onLogout ? (
     <Button
-      label="Sign Out"
+      label={t('masterLifecycle.masterApp.signOut')}
       onPress={onLogout}
       variant="outline"
       size="sm"
@@ -283,8 +285,8 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
   if (loading && !refreshing) {
     return (
       <ScreenContainer testID="master-app-status-screen">
-        <ScreenHeader title="Master Verification" subtitle="BeltFlow Instructor Registration" rightAction={headerRight} />
-        <LoadingState message="Checking verification status..." />
+        <ScreenHeader title={t('masterLifecycle.masterApp.title')} subtitle={t('masterLifecycle.masterApp.loadingSubtitle')} rightAction={headerRight} />
+        <LoadingState message={t('masterLifecycle.masterApp.loading')} />
       </ScreenContainer>
     );
   }
@@ -294,10 +296,10 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
       return (
         <Card variant="standard" style={[styles.statusCard, { borderColor: colors.border }]}>
           <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: 4 }]}>
-            Step 1: Choose Your Persatuan & Apply
+            {t('masterLifecycle.masterApp.noApp.title')}
           </Text>
           <Text style={[typography.bodyMedium, { color: colors.textSecondary }]}>
-            To operate classes and record attendance, your Master credentials must be verified and approved by an authorized Persatuan.
+            {t('masterLifecycle.masterApp.noApp.body')}
           </Text>
         </Card>
       );
@@ -309,13 +311,13 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
           <Card variant="standard" style={[styles.statusCard, { borderColor: colors.border }]}>
             <View style={styles.badgeRow}>
               <StatusBadge status="Draft" variant="neutral" testID="badge-app-draft" />
-              <Text style={[typography.caption, { color: colors.textSecondary }]}>Version {application.version}</Text>
+              <Text style={[typography.caption, { color: colors.textSecondary }]}>{t('masterLifecycle.masterApp.version', { version: application.version })}</Text>
             </View>
             <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginTop: 8 }]}>
-              Application in Progress
+              {t('masterLifecycle.masterApp.draft.title')}
             </Text>
             <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginTop: 4 }]}>
-              Please complete your instructor qualifications and submit your application for Persatuan verification.
+              {t('masterLifecycle.masterApp.draft.body')}
             </Text>
           </Card>
         );
@@ -324,16 +326,16 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
         return (
           <Card variant="standard" style={[styles.statusCard, { borderColor: BrandColors.warning }]}>
             <View style={styles.badgeRow}>
-              <StatusBadge status="Awaiting Review" variant="warning" testID="badge-app-submitted" />
+              <StatusBadge status="Awaiting Review" label={t('status.awaitingReview')} variant="warning" testID="badge-app-submitted" />
               <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                Submitted {application.submitted_at ? new Date(application.submitted_at).toLocaleDateString() : ''}
+                {t('masterLifecycle.masterApp.submitted.on', { date: application.submitted_at ? new Date(application.submitted_at).toLocaleDateString() : '' })}
               </Text>
             </View>
             <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginTop: 8 }]}>
-              Under Persatuan Review
+              {t('masterLifecycle.masterApp.submitted.title')}
             </Text>
             <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginTop: 4 }]}>
-              Your application has been received by the Persatuan Admin. Class proposal and roster management tools will become active once your credentials are formally approved.
+              {t('masterLifecycle.masterApp.submitted.body')}
             </Text>
           </Card>
         );
@@ -342,22 +344,22 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
         return (
           <Card variant="standard" style={[styles.statusCard, { borderColor: BrandColors.amber }]}>
             <View style={styles.badgeRow}>
-              <StatusBadge status="Information Required" variant="warning" testID="badge-app-needs-info" />
-              <Text style={[typography.caption, { color: colors.textSecondary }]}>Action Required</Text>
+              <StatusBadge status="Information Required" label={t('masterLifecycle.masterApp.needsInfo.badge')} variant="warning" testID="badge-app-needs-info" />
+              <Text style={[typography.caption, { color: colors.textSecondary }]}>{t('status.actionRequired')}</Text>
             </View>
             <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginTop: 8 }]}>
-              Corrections or Additional Details Requested
+              {t('masterLifecycle.masterApp.needsInfo.title')}
             </Text>
             <View style={[styles.noteBox, { backgroundColor: colors.surfaceHighlight, borderColor: colors.border }]}>
               <Text style={[typography.caption, { color: colors.textSecondary, fontWeight: '700' }]}>
-                PERSATUAN ADMIN NOTE:
+                {t('masterLifecycle.masterApp.needsInfo.adminNote')}
               </Text>
               <Text style={[typography.bodyMedium, { color: colors.textPrimary, marginTop: 4 }]}>
-                {application.requested_information || application.review_notes || 'Please provide additional instructor documents.'}
+                {application.requested_information || application.review_notes || t('masterLifecycle.masterApp.needsInfo.defaultNote')}
               </Text>
             </View>
             <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 8 }]}>
-              Please update the fields below and tap &quot;Resubmit Application&quot;.
+              {t('masterLifecycle.masterApp.needsInfo.hint')}
             </Text>
           </Card>
         );
@@ -366,17 +368,17 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
         return (
           <Card variant="standard" style={[styles.statusCard, { borderColor: BrandColors.success }]}>
             <View style={styles.badgeRow}>
-              <StatusBadge status="Verified Master" variant="success" testID="badge-app-approved" />
+              <StatusBadge status="Verified Master" label={t('masterLifecycle.masterApp.approved.badge')} variant="success" testID="badge-app-approved" />
               <CheckCircle size={iconSize.md} color={BrandColors.success} />
             </View>
             <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginTop: 8 }]}>
-              Credentials Verified & Approved!
+              {t('masterLifecycle.masterApp.approved.title')}
             </Text>
             <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginTop: 4 }]}>
-              You hold an ACTIVE verified affiliation with {application.organization_name || 'your Persatuan'}.
+              {t('masterLifecycle.masterApp.approved.body', { organization: application.organization_name || t('masterLifecycle.masterApp.approved.defaultOrg') })}
             </Text>
             <Text style={[typography.caption, { color: colors.buttonPrimaryBg, marginTop: 8, fontWeight: '600' }]}>
-              Next Step: Class proposal and mat operations will unlock in Task H04.
+              {t('masterLifecycle.masterApp.approved.nextStep')}
             </Text>
           </Card>
         );
@@ -389,18 +391,18 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
               <XCircle size={iconSize.md} color={BrandColors.danger} />
             </View>
             <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginTop: 8 }]}>
-              Application Declined
+              {t('masterLifecycle.masterApp.rejected.title')}
             </Text>
             <View style={[styles.noteBox, { backgroundColor: colors.surfaceHighlight, borderColor: colors.border }]}>
               <Text style={[typography.caption, { color: colors.textSecondary, fontWeight: '700' }]}>
-                REASON FOR DECISION:
+                {t('masterLifecycle.masterApp.rejected.reasonHeading')}
               </Text>
               <Text style={[typography.bodyMedium, { color: colors.textPrimary, marginTop: 4 }]}>
-                {application.rejection_reason || application.review_notes || 'Credentials do not meet criteria.'}
+                {application.rejection_reason || application.review_notes || t('masterLifecycle.masterApp.rejected.defaultReason')}
               </Text>
             </View>
             <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 8 }]}>
-              Your account remains intact. Please contact your Persatuan administration for further assistance.
+              {t('masterLifecycle.masterApp.rejected.body')}
             </Text>
           </Card>
         );
@@ -412,10 +414,10 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
               <StatusBadge status="Withdrawn" variant="neutral" testID="badge-app-withdrawn" />
             </View>
             <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginTop: 8 }]}>
-              Application Withdrawn
+              {t('masterLifecycle.masterApp.withdrawn.title')}
             </Text>
             <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginTop: 4 }]}>
-              This application has been cancelled. You may submit a new application below.
+              {t('masterLifecycle.masterApp.withdrawn.body')}
             </Text>
           </Card>
         );
@@ -432,8 +434,8 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <ScreenHeader
-          title="Master Verification"
-          subtitle={`Account: ${user.fullName} (${user.email})`}
+          title={t('masterLifecycle.masterApp.title')}
+          subtitle={t('masterLifecycle.masterApp.accountSubtitle', { name: user.fullName, email: user.email })}
           rightAction={headerRight}
         />
 
@@ -451,17 +453,17 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
         {application?.status === 'SUBMITTED' ? (
           <Card variant="standard" style={{ marginTop: spacing.md, borderColor: colors.border }}>
             <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
-              Submitted Details
+              {t('masterLifecycle.masterApp.submittedDetails')}
             </Text>
             <View style={{ marginBottom: spacing.sm }}>
-              <Text style={[typography.caption, { color: colors.textSecondary }]}>Qualifications / Dan Level:</Text>
+              <Text style={[typography.caption, { color: colors.textSecondary }]}>{t('masterLifecycle.masterApp.qualificationsHeading')}</Text>
               <Text style={[typography.bodyMedium, { color: colors.textPrimary, fontWeight: '600' }]}>
-                {application.qualifications || 'N/A'}
+                {application.qualifications || t('masterLifecycle.common.notAvailable')}
               </Text>
             </View>
             {application.experience_summary ? (
               <View style={{ marginBottom: spacing.sm }}>
-                <Text style={[typography.caption, { color: colors.textSecondary }]}>Experience Summary:</Text>
+                <Text style={[typography.caption, { color: colors.textSecondary }]}>{t('masterLifecycle.masterApp.experienceHeading')}</Text>
                 <Text style={[typography.bodyMedium, { color: colors.textPrimary }]}>
                   {application.experience_summary}
                 </Text>
@@ -469,7 +471,7 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
             ) : null}
             <TouchableOpacity style={styles.withdrawBtn} onPress={handleWithdraw} testID="btn-withdraw-app">
               <Text style={[typography.caption, { color: BrandColors.danger, textAlign: 'center', fontWeight: '600' }]}>
-                Withdraw this application
+                {t('masterLifecycle.masterApp.withdrawLink')}
               </Text>
             </TouchableOpacity>
           </Card>
@@ -478,12 +480,12 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
         {isEditable ? (
           <Card variant="standard" style={{ marginTop: spacing.md, borderColor: colors.border }}>
             <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
-              {application?.status === 'NEEDS_INFORMATION' ? 'Update & Resubmit' : 'Application Details'}
+              {application?.status === 'NEEDS_INFORMATION' ? t('masterLifecycle.masterApp.updateResubmit') : t('masterLifecycle.masterApp.applicationDetails')}
             </Text>
 
             {/* Select Persatuan */}
             <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: 4, fontWeight: '600' }]}>
-              Target Persatuan / Academy *
+              {t('masterLifecycle.masterApp.targetPersatuan')}
             </Text>
             {organizations.length > 0 ? (
               <View style={styles.orgList}>
@@ -508,7 +510,7 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
                           {org.name}
                         </Text>
                         <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                          State: {org.state}
+                          {t('masterLifecycle.masterApp.stateLabel', { state: org.state })}
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -517,52 +519,52 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
               </View>
             ) : (
               <Input
-                label="Organization ID"
+                label={t('masterLifecycle.masterApp.orgIdLabel')}
                 value={selectedOrgId}
                 onChangeText={setSelectedOrgId}
-                placeholder="org_..."
+                placeholder={t('masterLifecycle.masterApp.orgIdPlaceholder')}
                 testID="input-org-id"
               />
             )}
 
             <Input
-              label="Instructor Qualifications / Dan Level *"
+              label={t('masterLifecycle.masterApp.qualificationsLabel')}
               value={qualifications}
               onChangeText={setQualifications}
-              placeholder="e.g. 4th Dan Black Belt, Registered Master Instructor"
+              placeholder={t('masterLifecycle.masterApp.qualificationsPlaceholder')}
               testID="input-qualifications"
             />
 
             <Input
-              label="Teaching Experience Summary *"
+              label={t('masterLifecycle.masterApp.experienceLabel')}
               value={experienceSummary}
               onChangeText={setExperienceSummary}
-              placeholder="e.g. 10 years head instructor, national tournament coach"
+              placeholder={t('masterLifecycle.masterApp.experiencePlaceholder')}
               multiline
               numberOfLines={3}
               testID="input-experience"
             />
 
             <Input
-              label="Verification License / Certificate Number"
+              label={t('masterLifecycle.masterApp.verificationLabel')}
               value={verificationDetails}
               onChangeText={setVerificationDetails}
-              placeholder="e.g. National Certification ID or Registry No."
+              placeholder={t('masterLifecycle.masterApp.verificationPlaceholder')}
               testID="input-verification"
             />
 
             <Input
-              label="Document Vault URL (Optional)"
+              label={t('masterLifecycle.masterApp.documentsLabel')}
               value={documentsUrl}
               onChangeText={setDocumentsUrl}
-              placeholder="https://..."
+              placeholder={t('masterLifecycle.masterApp.documentsPlaceholder')}
               testID="input-documents-url"
             />
 
             <View style={styles.actionRow}>
               {application?.status === 'DRAFT' || !application ? (
                 <Button
-                  label={submitting ? 'Saving...' : 'Save Draft'}
+                  label={submitting ? t('masterLifecycle.masterApp.saving') : t('masterLifecycle.common.saveDraft')}
                   variant="outline"
                   onPress={handleSaveDraft}
                   disabled={submitting}
@@ -572,7 +574,7 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
               ) : null}
 
               <Button
-                label={submitting ? 'Submitting...' : application?.status === 'NEEDS_INFORMATION' ? 'Resubmit Application' : 'Submit for Review'}
+                label={submitting ? t('masterLifecycle.masterApp.submitting') : application?.status === 'NEEDS_INFORMATION' ? t('masterLifecycle.masterApp.resubmit') : t('masterLifecycle.masterApp.submitForReview')}
                 variant="primary"
                 onPress={handleSubmitApplication}
                 disabled={submitting}
@@ -585,7 +587,7 @@ export const MasterApplicationStatusScreen: React.FC<MasterApplicationStatusScre
             {application?.status === 'SUBMITTED' || application?.status === 'NEEDS_INFORMATION' ? (
               <TouchableOpacity style={styles.withdrawBtn} onPress={handleWithdraw} testID="btn-withdraw-app">
                 <Text style={[typography.caption, { color: BrandColors.danger, textAlign: 'center' }]}>
-                  Withdraw this application
+                  {t('masterLifecycle.masterApp.withdrawLink')}
                 </Text>
               </TouchableOpacity>
             ) : null}
