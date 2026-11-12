@@ -124,7 +124,7 @@ The assistant's privacy controls are in `09`.
 
 ## 5. Known gaps (not fixed in H27)
 
-1. **The notification outbox is never delivered.** Rows are written to `notification_outbox`, but nothing sends them. Families receive no push, SMS or email notifications yet.
+1. ~~**The notification outbox is never delivered.**~~ **Delivered in-app since 2026-11-12** (§9). Push/SMS/email still need a provider. Rows are written to `notification_outbox`, but nothing sends them. Families receive no push, SMS or email notifications yet.
 2. ~~**Worker trigger routes are callable by any signed-in user.**~~ **Fixed 2026-11-12:** only Super Admin or the scheduler key (`BELTFLOW_WORKER_TOKEN`) may call them, and an in-process scheduler (`server/src/workers/scheduler.ts`) runs them every 5 minutes. See §8.
    - Affected: `POST /bookings/waitlist/sweep-expired` and `POST /transfers/activate-scheduled`.
    - Each call processes every Persatuan; only counts are returned.
@@ -185,4 +185,13 @@ Suite `server/src/tests/ops_payment_safety_followups.test.ts` (in `npm test`, 43
 
 **Owner decision (not changed):** the official H13 test starts several overlapping payments for the same months and expects each to succeed. Blocking a new payment while one for the same months is still pending would prevent most double payments, but changes that H13 behaviour. F makes any double payment visible for refund in the meantime.
 
-Still open: the notification outbox has no sender (needs a push/SMS/email provider and credentials); `students.billing_status` is set to `Paid` on any settlement even if other months remain unpaid (existing behaviour).
+Still open: push/SMS/email delivery (needs a provider and credentials; in-app delivery done, §9); `students.billing_status` is set to `Paid` on any settlement even if other months remain unpaid (existing behaviour).
+
+## 9. In-app notifications (2026-11-12)
+
+The 22 outbox event types are now delivered to a per-person inbox.
+
+- **Server:** `services/notifications/deliver.ts` runs in the background scheduler. Recipients are resolved from database relationships (applicant, student and active linked parents, class leader, Persatuan admins, payer, thread participant); a user id in the payload is used only if the database confirms it. Super Admin never receives one; only active users do. Only display-safe params are copied (never free-text reasons, requested information, certificate tokens or message text). Idempotent per `(outbox_id, user_id)`; outbox rows become `PROCESSED`. Table `user_notifications`. API (own only): `GET /api/v1/notifications`, `POST /notifications/:id/read`, `POST /notifications/read-all`.
+- **Mobile:** the home bell for Admin Persatuan, Master, Parent and Student shows a dot only for real unread notifications and opens an inbox (EN/BM/Tamil text per event type). Previously the dot meant "notices exist" or "pending items", and never lit on Admin.
+- **Evidence:** `notification_inbox.test.ts` (server, 44 suites pass); `notificationInbox.test.tsx` (mobile, 52 suites / 609 tests). Real flows from 9 feature suites on PostgreSQL 16: all 22 event types delivered (33 events, 36 notifications), none to Super Admin, no private fields copied.
+- **Not done:** push notifications to the phone's lock screen (needs Expo push tokens on devices and, for production, an Expo access token), SMS or email. The message event is already lock-screen safe (no message text).
