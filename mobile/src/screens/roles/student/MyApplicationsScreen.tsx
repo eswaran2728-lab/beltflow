@@ -72,13 +72,13 @@ export const MyApplicationsScreen: React.FC<MyApplicationsScreenProps> = ({
       setApplications(res?.applications || []);
       setError(null);
     } catch (err: any) {
-      const msg = err?.response?.data?.error || err?.message || 'Failed to load applications.';
+      const msg = err?.response?.data?.error || err?.message || t('studentFlows.applications.loadFailed');
       setError(msg);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -91,7 +91,7 @@ export const MyApplicationsScreen: React.FC<MyApplicationsScreenProps> = ({
         }
       } catch (err: any) {
         if (!isCancelled) {
-          const msg = err?.response?.data?.error || err?.message || 'Failed to load applications.';
+          const msg = err?.response?.data?.error || err?.message || t('studentFlows.applications.loadFailed');
           setError(msg);
         }
       } finally {
@@ -105,14 +105,14 @@ export const MyApplicationsScreen: React.FC<MyApplicationsScreenProps> = ({
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [t]);
 
   const handleWithdraw = async (appId: string) => {
     try {
       await apiClient.post(`/enrollment-applications/${appId}/withdraw`, {});
       await fetchApplications();
     } catch (err: any) {
-      const msg = err?.response?.data?.error || err?.message || 'Failed to withdraw application.';
+      const msg = err?.response?.data?.error || err?.message || t('studentFlows.applications.withdrawFailed');
       setError(msg);
     }
   };
@@ -120,7 +120,7 @@ export const MyApplicationsScreen: React.FC<MyApplicationsScreenProps> = ({
   const handleResubmit = async () => {
     if (!respondingApp) return;
     if (!responseNotes.trim()) {
-      setResponseError('Please provide the requested information.');
+      setResponseError(t('studentFlows.applications.provideInfoRequired'));
       return;
     }
     setSubmittingResponse(true);
@@ -134,7 +134,7 @@ export const MyApplicationsScreen: React.FC<MyApplicationsScreenProps> = ({
       setResponseNotes('');
       await fetchApplications();
     } catch (err: any) {
-      const msg = err?.response?.data?.error || err?.message || 'Failed to resubmit application.';
+      const msg = err?.response?.data?.error || err?.message || t('studentFlows.applications.resubmitFailed');
       setResponseError(msg);
     } finally {
       setSubmittingResponse(false);
@@ -214,11 +214,11 @@ export const MyApplicationsScreen: React.FC<MyApplicationsScreenProps> = ({
     return (
       <ScreenContainer scrollable testID="my-applications-screen">
         <ScreenHeader
-          title="My Applications"
-          subtitle="Track class enrollment and Master approval status"
+          title={t('studentFlows.applications.title')}
+          subtitle={t('studentFlows.applications.subtitle')}
           onBack={navigation?.goBack ? () => navigation.goBack() : undefined}
         />
-        <LoadingState message="Loading your applications..." />
+        <LoadingState message={t('studentFlows.applications.loading')} />
       </ScreenContainer>
     );
   }
@@ -226,8 +226,8 @@ export const MyApplicationsScreen: React.FC<MyApplicationsScreenProps> = ({
   return (
     <ScreenContainer scrollable testID="my-applications-screen">
       <ScreenHeader
-        title="My Applications"
-        subtitle="Track class enrollment and Master approval status"
+        title={t('studentFlows.applications.title')}
+        subtitle={t('studentFlows.applications.subtitle')}
         onBack={navigation?.goBack ? () => navigation.goBack() : undefined}
       />
 
@@ -244,8 +244,8 @@ export const MyApplicationsScreen: React.FC<MyApplicationsScreenProps> = ({
       >
         {applications.length === 0 ? (
           <EmptyState
-            title="No Applications"
-            description="You have not submitted any class enrollment applications yet."
+            title={t('studentFlows.applications.emptyTitle')}
+            description={t('studentFlows.applications.emptyBody')}
             testID="empty-applications-state"
           />
         ) : (
@@ -262,7 +262,7 @@ export const MyApplicationsScreen: React.FC<MyApplicationsScreenProps> = ({
                     {app.student_name}
                   </Text>
                   <Text style={[typography.caption, { color: colors.buttonPrimaryBg, fontWeight: '600', marginTop: 2 }]}>
-                    {app.class_name ? `Class: ${app.class_name}` : `Class ID: ${app.class_id}`}
+                    {app.class_name ? t('studentFlows.applications.classLabel', { name: app.class_name }) : t('studentFlows.applications.classIdLabel', { id: app.class_id })}
                   </Text>
                   {app.persatuan_name ? (
                     <Text style={[typography.caption, { color: colors.textSecondary }]}>
@@ -278,30 +278,30 @@ export const MyApplicationsScreen: React.FC<MyApplicationsScreenProps> = ({
 
                 {app.status === 'SUBMITTED' ? (
                   <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                    Your application is currently under review by the class Master. You will join the active class roster once approved.
+                    {t('studentFlows.applications.submittedBody')}
                   </Text>
                 ) : null}
 
                 {app.status === 'WAITLISTED' ? (
                   <Text style={[typography.caption, { color: colors.badgeInfoText, fontWeight: '500' }]}>
-                    Notice: This class is currently full. Your application has been placed on the waitlist.
+                    {t('studentFlows.applications.waitlistedBody')}
                   </Text>
                 ) : null}
 
                 {app.status === 'APPROVED' ? (
                   <Text style={[typography.caption, { color: colors.badgeSuccessText, fontWeight: '600' }]}>
-                    Congratulations! Your application has been approved by the Master. You are now an active class member.
+                    {t('studentFlows.applications.approvedBody')}
                   </Text>
                 ) : null}
 
                 {app.status === 'REJECTED' ? (
                   <View style={{ marginTop: 2 }}>
                     <Text style={[typography.caption, { color: colors.badgeDangerText, fontWeight: '600' }]}>
-                      Application Rejected by Master.
+                      {t('studentFlows.applications.rejectedTitle')}
                     </Text>
                     {app.rejection_reason ? (
                       <Text style={[typography.caption, { color: colors.badgeDangerText }]}>
-                        Reason: {app.rejection_reason}
+                        {t('studentFlows.applications.rejectionReason', { reason: app.rejection_reason })}
                       </Text>
                     ) : null}
                   </View>
@@ -310,13 +310,13 @@ export const MyApplicationsScreen: React.FC<MyApplicationsScreenProps> = ({
                 {app.status === 'NEEDS_INFORMATION' ? (
                   <View style={[styles.needsInfoBox, { backgroundColor: colors.badgeWarningBg, borderColor: colors.badgeWarningText, marginTop: spacing.xs }]}>
                     <Text style={[typography.caption, { color: colors.badgeWarningText, fontWeight: '700' }]}>
-                      Master Requested Additional Information:
+                      {t('studentFlows.applications.needsInfoTitle')}
                     </Text>
                     <Text style={[typography.bodyMedium, { color: colors.textPrimary, marginTop: 2 }]}>
-                      {app.requested_information || 'Please clarify your enrollment details.'}
+                      {app.requested_information || t('studentFlows.applications.needsInfoFallback')}
                     </Text>
                     <Button
-                      label="Provide Information & Resubmit"
+                      label={t('studentFlows.applications.provideAndResubmit')}
                       onPress={() => {
                         setRespondingApp(app);
                         setResponseNotes('');
@@ -334,7 +334,7 @@ export const MyApplicationsScreen: React.FC<MyApplicationsScreenProps> = ({
                 {['SUBMITTED', 'DRAFT', 'NEEDS_INFORMATION', 'WAITLISTED'].includes(app.status) ? (
                   <View style={{ marginTop: spacing.md, alignItems: 'flex-end' }}>
                     <Button
-                      label="Withdraw Application"
+                      label={t('studentFlows.applications.withdraw')}
                       onPress={() => handleWithdraw(app.id)}
                       variant="outline"
                       size="sm"
@@ -358,15 +358,15 @@ export const MyApplicationsScreen: React.FC<MyApplicationsScreenProps> = ({
         <View style={styles.modalOverlay}>
           <Card variant="elevated" style={[styles.modalCard, { backgroundColor: colors.surface }]}>
             <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.xs }]}>
-              Respond to Master Request
+              {t('studentFlows.applications.respondTitle')}
             </Text>
             <Text style={[typography.caption, { color: colors.badgeWarningText, marginBottom: spacing.sm }]}>
-              Requested: {respondingApp?.requested_information}
+              {t('studentFlows.applications.requested', { info: respondingApp?.requested_information ?? '' })}
             </Text>
 
             <Input
-              label="Your Response / Updated Information *"
-              placeholder="Provide requested details..."
+              label={t('studentFlows.applications.responseLabel')}
+              placeholder={t('studentFlows.applications.responsePlaceholder')}
               value={responseNotes}
               onChangeText={setResponseNotes}
               multiline
@@ -383,7 +383,7 @@ export const MyApplicationsScreen: React.FC<MyApplicationsScreenProps> = ({
 
             <View style={[styles.modalActionsRow, { gap: spacing.sm }]}>
               <Button
-                label="Cancel"
+                label={t('studentFlows.applications.cancel')}
                 onPress={() => setRespondingApp(null)}
                 variant="outline"
                 size="md"
@@ -391,7 +391,7 @@ export const MyApplicationsScreen: React.FC<MyApplicationsScreenProps> = ({
                 testID="btn-cancel-resubmit"
               />
               <Button
-                label={submittingResponse ? 'Submitting...' : 'Submit Response'}
+                label={submittingResponse ? t('studentFlows.applications.submitting') : t('studentFlows.applications.submitResponse')}
                 onPress={handleResubmit}
                 variant="primary"
                 size="md"

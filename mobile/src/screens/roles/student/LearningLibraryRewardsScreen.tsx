@@ -30,6 +30,7 @@ import {
   StudentAchievement,
   StudentPerformanceSummary,
 } from '../../../services/learningService';
+import { useI18n } from '../../../i18n';
 
 export interface LearningLibraryRewardsScreenProps {
   studentId: string;
@@ -42,10 +43,12 @@ type TabType = 'LESSONS' | 'PERFORMANCE' | 'ACHIEVEMENTS';
 
 export const LearningLibraryRewardsScreen: React.FC<LearningLibraryRewardsScreenProps> = ({
   studentId,
-  studentName = 'Student',
+  studentName: studentNameProp,
   currentBeltRank = 'Putih',
   isOffline = false,
 }) => {
+  const { t } = useI18n();
+  const studentName = studentNameProp ?? t('studentFlows.learning.studentFallback');
   const { colors, typography, spacing, iconSize, borderRadius, belts } = useTheme();
 
   const [activeTab, setActiveTab] = useState<TabType>('LESSONS');
@@ -86,7 +89,7 @@ export const LearningLibraryRewardsScreen: React.FC<LearningLibraryRewardsScreen
       })
       .catch((err: any) => {
         if (isMounted) {
-          setErrorMsg(err.message || 'Failed to load learning lessons.');
+          setErrorMsg(err.message || t('studentFlows.learning.loadFailed'));
         }
       })
       .finally(() => {
@@ -96,7 +99,7 @@ export const LearningLibraryRewardsScreen: React.FC<LearningLibraryRewardsScreen
     return () => {
       isMounted = false;
     };
-  }, [categoryFilter]);
+  }, [categoryFilter, t]);
 
   // 2. Fetch Performance & Achievements on tab change
   useEffect(() => {
@@ -166,11 +169,11 @@ export const LearningLibraryRewardsScreen: React.FC<LearningLibraryRewardsScreen
 
       setQuizSubmitted(true);
       Alert.alert(
-        'Lesson Completed! 🥋',
-        `Your score: ${score}%. ${res.message || 'Progress saved successfully.'}`
+        t('studentFlows.learning.lessonCompletedTitle'),
+        t('studentFlows.learning.lessonCompletedMessage', { score, message: res.message || t('studentFlows.learning.progressSaved') })
       );
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to submit lesson progress.');
+      Alert.alert(t('studentFlows.learning.errorTitle'), err.message || t('studentFlows.learning.submitProgressFailed'));
     } finally {
       setSubmittingProgress(false);
     }
@@ -195,10 +198,10 @@ export const LearningLibraryRewardsScreen: React.FC<LearningLibraryRewardsScreen
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
             <Text style={[typography.sectionHeading, { color: '#FFFFFF' }]} testID="learning-hub-title">
-              Learning Library & Rewards
+              {t('studentFlows.learning.title')}
             </Text>
             <Text style={[typography.caption, { color: BrandColors.amber, marginTop: 2 }]}>
-              {studentName} • {currentBeltRank} Belt
+              {t('studentFlows.learning.headerSubtitle', { name: studentName, belt: currentBeltRank })}
             </Text>
           </View>
           <BeltBadge beltName={currentBeltRank} customBelts={belts} size="sm" />
@@ -227,7 +230,7 @@ export const LearningLibraryRewardsScreen: React.FC<LearningLibraryRewardsScreen
                 { color: activeTab === 'LESSONS' ? BrandColors.navyDark : '#FFFFFF' },
               ]}
             >
-              Lessons
+              {t('studentFlows.learning.tabLessons')}
             </Text>
           </TouchableOpacity>
 
@@ -252,7 +255,7 @@ export const LearningLibraryRewardsScreen: React.FC<LearningLibraryRewardsScreen
                 { color: activeTab === 'PERFORMANCE' ? BrandColors.navyDark : '#FFFFFF' },
               ]}
             >
-              Performance
+              {t('studentFlows.learning.tabPerformance')}
             </Text>
           </TouchableOpacity>
 
@@ -277,7 +280,7 @@ export const LearningLibraryRewardsScreen: React.FC<LearningLibraryRewardsScreen
                 { color: activeTab === 'ACHIEVEMENTS' ? BrandColors.navyDark : '#FFFFFF' },
               ]}
             >
-              Badges
+              {t('studentFlows.learning.tabBadges')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -327,7 +330,7 @@ export const LearningLibraryRewardsScreen: React.FC<LearningLibraryRewardsScreen
                         },
                       ]}
                     >
-                      {cat.replace('_', ' ')}
+                      {t(`studentFlows.learning.category.${cat}`)}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -340,10 +343,10 @@ export const LearningLibraryRewardsScreen: React.FC<LearningLibraryRewardsScreen
               <Card variant="standard" style={styles.emptyCard}>
                 <BookOpen size={40} color={colors.textSecondary} />
                 <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginTop: 12 }]}>
-                  No Lessons Found
+                  {t('studentFlows.learning.noLessonsTitle')}
                 </Text>
                 <Text style={[typography.caption, { color: colors.textSecondary, textAlign: 'center', marginTop: 4 }]}>
-                  No approved learning content is currently published for this category.
+                  {t('studentFlows.learning.noLessonsBody')}
                 </Text>
               </Card>
             ) : (
@@ -401,7 +404,7 @@ export const LearningLibraryRewardsScreen: React.FC<LearningLibraryRewardsScreen
                       {lesson.target_rank_name ? (
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                           <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                            Rank:
+                            {t('studentFlows.learning.rankLabel')}
                           </Text>
                           <BeltBadge
                             beltName={lesson.target_rank_name}
@@ -441,11 +444,11 @@ export const LearningLibraryRewardsScreen: React.FC<LearningLibraryRewardsScreen
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <ShieldCheck size={20} color={BrandColors.amber} />
                 <Text style={[typography.caption, { color: colors.textPrimary, flex: 1, fontWeight: '600' }]}>
-                  Private Personal Progression
+                  {t('studentFlows.learning.privacyTitle')}
                 </Text>
               </View>
               <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 4 }]}>
-                To protect student well-being and privacy, no public child ranking or leaderboard exists. Your martial arts growth is measured strictly against syllabus rubrics.
+                {t('studentFlows.learning.privacyBody')}
               </Text>
             </Card>
 
@@ -461,7 +464,7 @@ export const LearningLibraryRewardsScreen: React.FC<LearningLibraryRewardsScreen
                   <AlertTriangle size={20} color={BrandColors.warning} />
                   <View style={{ flex: 1 }}>
                     <Text style={[typography.bodyMedium, { color: '#92400E', fontWeight: '700' }]}>
-                      Rubric Version Isolation Enforced
+                      {t('studentFlows.learning.rubricIsolationTitle')}
                     </Text>
                     <Text style={[typography.caption, { color: '#92400E', marginTop: 2 }]}>
                       {performance.comparisonWarning}
@@ -475,7 +478,7 @@ export const LearningLibraryRewardsScreen: React.FC<LearningLibraryRewardsScreen
               Object.entries(performance.partitionedByRubric).map(([rubricKey, records]) => (
                 <View key={rubricKey} style={{ marginBottom: spacing.md }}>
                   <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: 8 }]}>
-                    Rubric: {rubricKey}
+                    {t('studentFlows.learning.rubricLabel', { rubric: rubricKey })}
                   </Text>
                   {records.map((rec) => {
                     const scoreNum = Number(rec.score);
@@ -497,7 +500,7 @@ export const LearningLibraryRewardsScreen: React.FC<LearningLibraryRewardsScreen
                               {rec.skill_category || rec.skillCategory}
                             </Text>
                             <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                              Evaluated by {rec.assessor_name || rec.assessorName || 'Master'}
+                              {t('studentFlows.learning.evaluatedBy', { name: rec.assessor_name || rec.assessorName || t('studentFlows.learning.masterFallback') })}
                             </Text>
                           </View>
                           <Text
@@ -534,10 +537,10 @@ export const LearningLibraryRewardsScreen: React.FC<LearningLibraryRewardsScreen
               <Card variant="standard" style={styles.emptyCard}>
                 <TrendingUp size={40} color={colors.textSecondary} />
                 <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginTop: 12 }]}>
-                  No Assessments Yet
+                  {t('studentFlows.learning.noAssessmentsTitle')}
                 </Text>
                 <Text style={[typography.caption, { color: colors.textSecondary, textAlign: 'center', marginTop: 4 }]}>
-                  Formal and formative rubric assessments will appear here once recorded by your instructor.
+                  {t('studentFlows.learning.noAssessmentsBody')}
                 </Text>
               </Card>
             )}
@@ -555,10 +558,10 @@ export const LearningLibraryRewardsScreen: React.FC<LearningLibraryRewardsScreen
               <Card variant="standard" style={styles.emptyCard}>
                 <Award size={40} color={colors.textSecondary} />
                 <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginTop: 12 }]}>
-                  No Badges Unlocked Yet
+                  {t('studentFlows.learning.noBadgesTitle')}
                 </Text>
                 <Text style={[typography.caption, { color: colors.textSecondary, textAlign: 'center', marginTop: 4 }]}>
-                  Train diligently, complete lessons, and participate in events to earn verified achievements.
+                  {t('studentFlows.learning.noBadgesBody')}
                 </Text>
               </Card>
             ) : (
@@ -638,7 +641,7 @@ export const LearningLibraryRewardsScreen: React.FC<LearningLibraryRewardsScreen
             >
               <View style={{ flex: 1 }}>
                 <Text style={[typography.caption, { color: BrandColors.amber, fontWeight: '700' }]}>
-                  {selectedLesson.category} LESSON
+                  {t('studentFlows.learning.lessonCategoryHeading', { category: selectedLesson.category })}
                 </Text>
                 <Text style={[typography.sectionHeading, { color: '#FFFFFF', marginTop: 2 }]} testID="modal-lesson-title">
                   {selectedLesson.title}
@@ -648,7 +651,7 @@ export const LearningLibraryRewardsScreen: React.FC<LearningLibraryRewardsScreen
                 onPress={() => setSelectedLesson(null)}
                 style={styles.closeBtn}
                 testID="btn-close-lesson-modal"
-                accessibilityLabel="Close Lesson"
+                accessibilityLabel={t('studentFlows.learning.closeLesson')}
               >
                 <X size={24} color="#FFFFFF" />
               </TouchableOpacity>
@@ -660,7 +663,7 @@ export const LearningLibraryRewardsScreen: React.FC<LearningLibraryRewardsScreen
               {selectedLesson.target_rank_name ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: spacing.md }}>
                   <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                    Target Belt Level:
+                    {t('studentFlows.learning.targetBelt')}
                   </Text>
                   <BeltBadge
                     beltName={selectedLesson.target_rank_name}
@@ -673,10 +676,10 @@ export const LearningLibraryRewardsScreen: React.FC<LearningLibraryRewardsScreen
               {/* Lesson Body */}
               <Card variant="standard" style={{ borderColor: colors.border, marginBottom: spacing.md }}>
                 <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: 8 }]}>
-                  Content & Techniques
+                  {t('studentFlows.learning.contentHeading')}
                 </Text>
                 <Text style={[typography.bodyMedium, { color: colors.textPrimary, lineHeight: 22 }]}>
-                  {selectedLesson.content_body || selectedLesson.contentBody || 'No text content available for this lesson.'}
+                  {selectedLesson.content_body || selectedLesson.contentBody || t('studentFlows.learning.noContent')}
                 </Text>
               </Card>
 
@@ -695,7 +698,7 @@ export const LearningLibraryRewardsScreen: React.FC<LearningLibraryRewardsScreen
                 return (
                   <View style={{ marginTop: spacing.sm, marginBottom: spacing.lg }}>
                     <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
-                      Knowledge Check Quiz
+                      {t('studentFlows.learning.quizHeading')}
                     </Text>
 
                     {quizList.map((q: any, qIdx: number) => (
@@ -769,19 +772,19 @@ export const LearningLibraryRewardsScreen: React.FC<LearningLibraryRewardsScreen
               >
                 <HelpCircle size={18} color={BrandColors.amber} />
                 <Text style={[typography.caption, { color: colors.textSecondary, flex: 1 }]}>
-                  Notice: Lesson completion and quiz scores are for skill development only and do NOT automatically award formal belt promotions or Dan certificates.
+                  {t('studentFlows.learning.gradingNotice')}
                 </Text>
               </View>
 
               {/* Submit / Complete Action Button */}
               <Button
-                label={submittingProgress ? 'Saving...' : 'Complete Lesson & Save Progress'}
+                label={submittingProgress ? t('studentFlows.learning.saving') : t('studentFlows.learning.completeLesson')}
                 onPress={handleCompleteLesson}
                 variant="primary"
                 size="lg"
                 disabled={submittingProgress || quizSubmitted}
                 testID="btn-complete-lesson"
-                accessibilityLabel="Complete lesson and record quiz progress"
+                accessibilityLabel={t('studentFlows.learning.completeLessonA11y')}
               />
             </ScrollView>
           </View>

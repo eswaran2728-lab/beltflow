@@ -36,6 +36,7 @@ import {
   VideoPlaybackResult,
   VideoAnnotation,
 } from '../../../services/mediaFeedbackService';
+import { useI18n } from '../../../i18n';
 
 export interface VideoFeedbackScreenProps {
   studentId: string;
@@ -49,10 +50,12 @@ const ALLOWED_MIME_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 
 export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
   studentId,
-  studentName = 'Student',
+  studentName: studentNameProp,
   userRole = 'STUDENT',
   isOffline = false,
 }) => {
+  const { t } = useI18n();
+  const studentName = studentNameProp ?? t('studentFlows.video.studentFallback');
   const { colors } = useTheme();
 
   // State
@@ -96,15 +99,15 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
       const data = await mediaFeedbackService.getStudentVideos(studentId);
       setVideos(data || []);
     } catch (err: any) {
-      const msg = err?.message || 'Failed to load video submissions.';
+      const msg = err?.message || t('studentFlows.video.loadFailed');
       setErrorMsg(msg);
       if (msg.includes('wrong_Master_or_guardian_denied')) {
-        setErrorMsg('Access denied: You are not authorized to view media for this student.');
+        setErrorMsg(t('studentFlows.video.accessDenied'));
       }
     } finally {
       setLoading(false);
     }
-  }, [studentId, userRole]);
+  }, [studentId, userRole, t]);
 
   // Initial load
   useEffect(() => {
@@ -120,10 +123,10 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
       })
       .catch((err: any) => {
         if (isMounted) {
-          const msg = err?.message || 'Failed to load video submissions.';
+          const msg = err?.message || t('studentFlows.video.loadFailed');
           setErrorMsg(msg);
           if (msg.includes('wrong_Master_or_guardian_denied')) {
-            setErrorMsg('Access denied: You are not authorized to view media for this student.');
+            setErrorMsg(t('studentFlows.video.accessDenied'));
           }
         }
       })
@@ -134,7 +137,7 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [studentId, userRole]);
+  }, [studentId, userRole, t]);
 
   // Handle Video Upload Request
   const handleUploadSubmit = async () => {
@@ -144,22 +147,22 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
 
     // Acceptance test: oversized_invalid_upload_rejected
     if (sizeInBytes > MAX_FILE_SIZE_BYTES) {
-      setUploadError(`oversized_invalid_upload_rejected: File size exceeds 50MB limit (selected: ${(sizeInBytes / (1024 * 1024)).toFixed(1)}MB).`);
+      setUploadError(t('studentFlows.video.oversized', { size: (sizeInBytes / (1024 * 1024)).toFixed(1) }));
       return;
     }
 
     if (!ALLOWED_MIME_TYPES.includes(uploadMimeType.toLowerCase())) {
-      setUploadError(`oversized_invalid_upload_rejected: Invalid format '${uploadMimeType}'. Allowed: MP4, WebM, QuickTime.`);
+      setUploadError(t('studentFlows.video.invalidFormat', { mime: uploadMimeType }));
       return;
     }
 
     if (isConsentRevoked) {
-      setUploadError('consent_revocation_blocks_new_access: Active media consent is revoked or absent for this student.');
+      setUploadError(t('studentFlows.video.consentBlocksUpload'));
       return;
     }
 
     if (!uploadTitle.trim()) {
-      setUploadError('Title is required for video submission.');
+      setUploadError(t('studentFlows.video.titleRequired'));
       return;
     }
 
@@ -183,9 +186,9 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
       setUploadTitle('');
       setUploadError(null);
       await loadVideos();
-      Alert.alert('Upload Complete', 'Your technique video has been uploaded for Master review.');
+      Alert.alert(t('studentFlows.video.uploadCompleteTitle'), t('studentFlows.video.uploadCompleteBody'));
     } catch (err: any) {
-      const msg = err?.message || 'Upload failed.';
+      const msg = err?.message || t('studentFlows.video.uploadFailed');
       setUploadError(msg);
     } finally {
       setUploading(false);
@@ -198,13 +201,13 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
       const res = await mediaFeedbackService.getPlayback(videoId);
       setSelectedVideo(res);
     } catch (err: any) {
-      const msg = err?.message || 'Failed to open video playback.';
+      const msg = err?.message || t('studentFlows.video.playbackFailed');
       if (msg.includes('expired_URL_denied')) {
-        Alert.alert('Expired URL', 'expired_URL_denied: Playback token expired. Refreshing.');
+        Alert.alert(t('studentFlows.video.expiredTitle'), t('studentFlows.video.expiredBody'));
       } else if (msg.includes('consent_revocation_blocks_new_access')) {
-        Alert.alert('Consent Revoked', 'consent_revocation_blocks_new_access: Guardian revoked media access.');
+        Alert.alert(t('studentFlows.video.consentRevokedTitle'), t('studentFlows.video.playbackConsentRevoked'));
       } else {
-        Alert.alert('Playback Error', msg);
+        Alert.alert(t('studentFlows.video.playbackErrorTitle'), msg);
       }
     }
   };
@@ -221,7 +224,7 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
   // Submit Feedback
   const handleSubmitFeedback = async () => {
     if (!activeFeedbackVideoId || !feedbackAnnotation.trim()) {
-      Alert.alert('Input Required', 'Please provide feedback annotation text.');
+      Alert.alert(t('studentFlows.video.inputRequiredTitle'), t('studentFlows.video.inputRequiredBody'));
       return;
     }
 
@@ -237,13 +240,13 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
       });
 
       setShowFeedbackModal(false);
-      Alert.alert('Feedback Added', 'Critique timestamp and score submitted successfully.');
+      Alert.alert(t('studentFlows.video.feedbackAddedTitle'), t('studentFlows.video.feedbackAddedBody'));
       if (selectedVideo && selectedVideo.id === activeFeedbackVideoId) {
         handleOpenPlayback(activeFeedbackVideoId);
       }
       await loadVideos();
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to submit feedback.');
+      Alert.alert(t('studentFlows.video.errorTitle'), err?.message || t('studentFlows.video.submitFeedbackFailed'));
     } finally {
       setSubmittingFeedback(false);
     }
@@ -252,21 +255,21 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
   // Revoke Consent
   const handleRevokeConsent = async () => {
     Alert.alert(
-      'Revoke Media Consent',
-      'Are you sure you want to revoke media consent? This will immediately block all future video uploads and playback for this student.',
+      t('studentFlows.video.revokeTitle'),
+      t('studentFlows.video.revokeConfirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('studentFlows.video.cancel'), style: 'cancel' },
         {
-          text: 'Revoke Consent',
+          text: t('studentFlows.video.revokeConsent'),
           style: 'destructive',
           onPress: async () => {
             try {
               setRevokingConsent(true);
               await mediaFeedbackService.revokeMediaConsent(studentId, 'Guardian opted out of video analysis.');
               setIsConsentRevoked(true);
-              Alert.alert('Consent Revoked', 'consent_revocation_blocks_new_access: Media consent has been revoked.');
+              Alert.alert(t('studentFlows.video.consentRevokedTitle'), t('studentFlows.video.consentRevokedBody'));
             } catch (err: any) {
-              Alert.alert('Error', err?.message || 'Failed to revoke consent.');
+              Alert.alert(t('studentFlows.video.errorTitle'), err?.message || t('studentFlows.video.revokeFailed'));
             } finally {
               setRevokingConsent(false);
             }
@@ -279,12 +282,12 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
   // Delete Video
   const handleDeleteVideo = async (videoId: string) => {
     Alert.alert(
-      'Delete Video',
-      'Permanently delete this video and associated critiques? (deleted_media_not_returned_by_API)',
+      t('studentFlows.video.deleteTitle'),
+      t('studentFlows.video.deleteConfirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('studentFlows.video.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('studentFlows.video.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -293,9 +296,9 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
                 setSelectedVideo(null);
               }
               await loadVideos();
-              Alert.alert('Deleted', 'Video has been deleted and purged from all views.');
+              Alert.alert(t('studentFlows.video.deletedTitle'), t('studentFlows.video.deletedBody'));
             } catch (err: any) {
-              Alert.alert('Delete Failed', err?.message || 'Failed to delete video.');
+              Alert.alert(t('studentFlows.video.deleteFailedTitle'), err?.message || t('studentFlows.video.deleteFailed'));
             }
           },
         },
@@ -307,9 +310,9 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
     return (
       <View style={[styles.centerContainer, { backgroundColor: colors.background }]} testID="superadmin-denial-view">
         <Lock size={48} color={BrandColors.DeepNavy} />
-        <Text style={[styles.denialTitle, { color: colors.text }]}>Zero Operational Access</Text>
+        <Text style={[styles.denialTitle, { color: colors.text }]}>{t('studentFlows.video.zeroAccessTitle')}</Text>
         <Text style={[styles.denialSubtitle, { color: colors.textSecondary }]}>
-          Super Admin has zero operational access to student video feedback submissions.
+          {t('studentFlows.video.zeroAccessBody')}
         </Text>
       </View>
     );
@@ -321,18 +324,18 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
       <View style={[styles.headerBanner, { backgroundColor: BrandColors.PrimaryNavy }]}>
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.headerTitle}>Private Video Feedback</Text>
-            <Text style={styles.headerSubtitle}>{studentName} • Form & Kata Critique</Text>
+            <Text style={styles.headerTitle}>{t('studentFlows.video.headerTitle')}</Text>
+            <Text style={styles.headerSubtitle}>{t('studentFlows.video.headerSubtitle', { name: studentName })}</Text>
           </View>
           {isConsentRevoked ? (
             <View style={styles.consentRevokedBadge} testID="consent-revoked-badge">
               <ShieldAlert size={14} color="#FFF" />
-              <Text style={styles.consentRevokedText}>Consent Revoked</Text>
+              <Text style={styles.consentRevokedText}>{t('studentFlows.video.consentRevokedTitle')}</Text>
             </View>
           ) : (
             <View style={styles.consentActiveBadge}>
               <CheckCircle2 size={14} color="#FFF" />
-              <Text style={styles.consentActiveText}>Consent Active</Text>
+              <Text style={styles.consentActiveText}>{t('studentFlows.video.consentActive')}</Text>
             </View>
           )}
         </View>
@@ -346,7 +349,7 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
             testID="upload-video-button"
           >
             <Plus size={16} color="#FFF" />
-            <Text style={styles.actionBtnText}>New Video</Text>
+            <Text style={styles.actionBtnText}>{t('studentFlows.video.newVideo')}</Text>
           </TouchableOpacity>
 
           {(userRole === 'PARENT' || userRole === 'STUDENT') && !isConsentRevoked && (
@@ -357,7 +360,7 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
               testID="revoke-consent-button"
             >
               <ShieldAlert size={16} color="#EF4444" />
-              <Text style={styles.revokeBtnText}>Revoke Consent</Text>
+              <Text style={styles.revokeBtnText}>{t('studentFlows.video.revokeConsent')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -376,7 +379,7 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
           <View style={styles.warningBanner} testID="revocation-warning-banner">
             <ShieldAlert size={20} color="#B45309" />
             <Text style={styles.warningBannerText}>
-              consent_revocation_blocks_new_access: Guardian has revoked video analysis consent. All uploads and playback are blocked.
+              {t('studentFlows.video.revocationBanner')}
             </Text>
           </View>
         )}
@@ -384,14 +387,14 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
         {loading ? (
           <View style={styles.loaderArea}>
             <ActivityIndicator size="large" color={BrandColors.Amber} />
-            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading submissions...</Text>
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>{t('studentFlows.video.loadingSubmissions')}</Text>
           </View>
         ) : videos.length === 0 ? (
           <View style={styles.emptyCard} testID="empty-videos-state">
             <VideoIcon size={44} color={BrandColors.SecondaryNavy} />
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>No Video Submissions</Text>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>{t('studentFlows.video.emptyTitle')}</Text>
             <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-              Record kata, sparring drills, or syllabus techniques for direct Master critique.
+              {t('studentFlows.video.emptyBody')}
             </Text>
           </View>
         ) : (
@@ -424,7 +427,7 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
                     <View style={styles.metaItem}>
                       <MessageSquare size={14} color={colors.textSecondary} />
                       <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-                        {vid.annotation_count} critiques
+                        {t('studentFlows.video.critiqueCount', { count: vid.annotation_count })}
                       </Text>
                     </View>
                   )}
@@ -439,7 +442,7 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
                     testID={`play-video-${vid.id}`}
                   >
                     <Play size={16} color="#FFF" />
-                    <Text style={styles.playButtonText}>Watch & Feedback</Text>
+                    <Text style={styles.playButtonText}>{t('studentFlows.video.watchFeedback')}</Text>
                   </TouchableOpacity>
 
                   {userRole === 'MASTER' && (
@@ -449,7 +452,7 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
                       testID={`add-critique-${vid.id}`}
                     >
                       <Star size={16} color={BrandColors.Amber} />
-                      <Text style={styles.critiqueBtnText}>Add Critique</Text>
+                      <Text style={styles.critiqueBtnText}>{t('studentFlows.video.addCritique')}</Text>
                     </TouchableOpacity>
                   )}
 
@@ -474,7 +477,7 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
         <View style={styles.modalOverlay}>
           <View style={[styles.modalCard, { backgroundColor: colors.surface }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Upload Technique Video</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{t('studentFlows.video.uploadModalTitle')}</Text>
               <TouchableOpacity onPress={() => setShowUploadModal(false)} testID="upload-close-btn">
                 <X size={20} color={colors.text} />
               </TouchableOpacity>
@@ -487,17 +490,17 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
               </View>
             )}
 
-            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Video Title</Text>
+            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>{t('studentFlows.video.videoTitleLabel')}</Text>
             <TextInput
               style={[styles.input, { borderColor: colors.border, color: colors.text }]}
               value={uploadTitle}
               onChangeText={setUploadTitle}
-              placeholder="e.g. Jurus 1 & 2 Execution"
+              placeholder={t('studentFlows.video.videoTitlePlaceholder')}
               placeholderTextColor="#94A3B8"
               testID="upload-title-input"
             />
 
-            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Category</Text>
+            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>{t('studentFlows.video.categoryLabel')}</Text>
             <View style={styles.categoryPickerRow}>
               {['POOMSAE', 'SPARRING', 'SELF_DEFENSE'].map((cat) => (
                 <TouchableOpacity
@@ -508,12 +511,12 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
                   ]}
                   onPress={() => setUploadCategory(cat)}
                 >
-                  <Text style={[styles.catOptionText, uploadCategory === cat && { color: '#FFF' }]}>{cat}</Text>
+                  <Text style={[styles.catOptionText, uploadCategory === cat && { color: '#FFF' }]}>{t(`studentFlows.video.category.${cat}`)}</Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Simulated File Size (MB, Max 50MB)</Text>
+            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>{t('studentFlows.video.fileSizeLabel')}</Text>
             <TextInput
               style={[styles.input, { borderColor: colors.border, color: colors.text }]}
               value={uploadFileSizeMB}
@@ -524,7 +527,7 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
               testID="upload-size-input"
             />
 
-            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>MIME Type</Text>
+            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>{t('studentFlows.video.mimeLabel')}</Text>
             <TextInput
               style={[styles.input, { borderColor: colors.border, color: colors.text }]}
               value={uploadMimeType}
@@ -540,7 +543,7 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
                 onPress={handleUploadSubmit}
                 testID="upload-submit-btn"
               >
-                <Text style={styles.actionBtnText}>{uploading ? 'Uploading...' : 'Submit Video'}</Text>
+                <Text style={styles.actionBtnText}>{uploading ? t('studentFlows.video.uploading') : t('studentFlows.video.submitVideo')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -569,15 +572,15 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
               <Text style={styles.playerUrlText} numberOfLines={1}>
                 {selectedVideo?.playbackUrl}
               </Text>
-              <Text style={styles.playerExpiryText}>Signed token expires: {selectedVideo?.expiresAt}</Text>
+              <Text style={styles.playerExpiryText}>{t('studentFlows.video.tokenExpires', { expiresAt: selectedVideo?.expiresAt ?? '' })}</Text>
             </View>
 
             {/* Critique Annotations List */}
-            <Text style={[styles.annotationsHeader, { color: colors.text }]}>Master Feedback Annotations</Text>
+            <Text style={[styles.annotationsHeader, { color: colors.text }]}>{t('studentFlows.video.annotationsHeader')}</Text>
             <ScrollView style={styles.annotationsList} testID="annotations-list">
               {selectedVideo?.annotations?.length === 0 ? (
                 <Text style={[styles.noFeedbackText, { color: colors.textSecondary }]}>
-                  No feedback annotated yet by the assigned Master.
+                  {t('studentFlows.video.noFeedback')}
                 </Text>
               ) : (
                 selectedVideo?.annotations?.map((ann: VideoAnnotation) => (
@@ -594,7 +597,7 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
                         </View>
                       )}
                       <Text style={[styles.annotatorName, { color: colors.textSecondary }]}>
-                        {ann.master_name || 'Master'}
+                        {ann.master_name || t('studentFlows.video.masterFallback')}
                       </Text>
                     </View>
                     <Text style={[styles.annotationBody, { color: colors.text }]}>{ann.annotation_text}</Text>
@@ -611,10 +614,10 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
                   onPress={() => handleOpenAddFeedback(selectedVideo!.id)}
                 >
                   <Plus size={16} color="#FFF" />
-                  <Text style={styles.addCritiqueModalBtnText}>Add Timestamped Critique</Text>
+                  <Text style={styles.addCritiqueModalBtnText}>{t('studentFlows.video.addTimestamped')}</Text>
                 </TouchableOpacity>
               )}
-              <Button title="Close" variant="secondary" onPress={() => setSelectedVideo(null)} />
+              <Button title={t('studentFlows.video.close')} variant="secondary" onPress={() => setSelectedVideo(null)} />
             </View>
           </View>
         </View>
@@ -625,13 +628,13 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
         <View style={styles.modalOverlay}>
           <View style={[styles.modalCard, { backgroundColor: colors.surface }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Add Instructor Critique</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{t('studentFlows.video.addInstructorCritique')}</Text>
               <TouchableOpacity onPress={() => setShowFeedbackModal(false)}>
                 <X size={20} color={colors.text} />
               </TouchableOpacity>
             </View>
 
-            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Video Timestamp (MM:SS)</Text>
+            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>{t('studentFlows.video.timestampLabel')}</Text>
             <TextInput
               style={[styles.input, { borderColor: colors.border, color: colors.text }]}
               value={feedbackTimestamp}
@@ -641,7 +644,7 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
               testID="feedback-timestamp-input"
             />
 
-            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Technique Rating (1 - 5)</Text>
+            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>{t('studentFlows.video.ratingLabel')}</Text>
             <View style={styles.ratingSelectorRow}>
               {[1, 2, 3, 4, 5].map((num) => (
                 <TouchableOpacity
@@ -659,21 +662,21 @@ export const VideoFeedbackScreen: React.FC<VideoFeedbackScreenProps> = ({
               ))}
             </View>
 
-            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Critique & Correction Notes</Text>
+            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>{t('studentFlows.video.notesLabel')}</Text>
             <TextInput
               style={[styles.textArea, { borderColor: colors.border, color: colors.text }]}
               value={feedbackAnnotation}
               onChangeText={setFeedbackAnnotation}
               multiline
               numberOfLines={4}
-              placeholder="e.g. Form error: Ensure pivot foot rotates 90 degrees before striking."
+              placeholder={t('studentFlows.video.notesPlaceholder')}
               placeholderTextColor="#94A3B8"
               testID="feedback-notes-input"
             />
 
             <View style={styles.modalBtnRow}>
               <Button
-                title={submittingFeedback ? 'Submitting...' : 'Save Critique'}
+                title={submittingFeedback ? t('studentFlows.video.submitting') : t('studentFlows.video.saveCritique')}
                 onPress={handleSubmitFeedback}
                 loading={submittingFeedback}
                 testID="feedback-submit-btn"
