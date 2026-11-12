@@ -32,6 +32,7 @@ import {
   MembershipPause,
   StudentHistoryRecord,
 } from '../../../services/membershipService';
+import { useI18n } from '../../../i18n';
 
 export interface ParentStudentLifecycleScreenProps {
   user: AuthUser;
@@ -55,6 +56,7 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
   route,
 }) => {
   useTheme();
+  const { t } = useI18n();
   const initialStudentId = route?.params?.studentId || '';
   const initialTargetClassId = route?.params?.targetClassId || '';
   const [studentId, setStudentId] = useState<string>(initialStudentId);
@@ -101,7 +103,7 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
     } catch (err: any) {
       if (isMountedRef.current) {
         console.warn('Failed to load student lifecycle history:', err);
-        setError(err?.message || 'Could not load student history.');
+        setError(err?.message || t('parentLifecycle.error.loadHistory'));
       }
     } finally {
       if (isMountedRef.current) {
@@ -109,7 +111,7 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
         setRefreshing(false);
       }
     }
-  }, [studentId]);
+  }, [studentId, t]);
 
   useEffect(() => {
     let isMounted = true;
@@ -133,19 +135,19 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
 
   const handlePauseSubmit = async () => {
     if (!studentId.trim()) {
-      Alert.alert('Required', 'Please enter or select a valid Student ID.');
+      Alert.alert(t('parentLifecycle.alert.requiredTitle'), t('parentLifecycle.alert.requiredStudentId'));
       return;
     }
     if (!pauseStartDate.trim()) {
-      Alert.alert('Required', 'Please specify a pause start date.');
+      Alert.alert(t('parentLifecycle.alert.requiredTitle'), t('parentLifecycle.alert.requiredStartDate'));
       return;
     }
     if (!pauseReason.trim()) {
-      Alert.alert('Required', 'Please provide a reason for the membership pause.');
+      Alert.alert(t('parentLifecycle.alert.requiredTitle'), t('parentLifecycle.alert.requiredPauseReason'));
       return;
     }
     if (isOffline) {
-      Alert.alert('Offline Mode', 'Pause requests must be submitted online to reach the assigned Master.');
+      Alert.alert(t('parentLifecycle.alert.offlineTitle'), t('parentLifecycle.alert.offlinePause'));
       return;
     }
 
@@ -159,9 +161,9 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
       });
       await loadStudentHistory();
       setCurrentView('OVERVIEW');
-      Alert.alert('Success', 'Membership pause requested successfully. Awaiting Master approval.');
+      Alert.alert(t('parentLifecycle.alert.successTitle'), t('parentLifecycle.alert.pauseSuccess'));
     } catch (err: any) {
-      Alert.alert('Request Failed', err?.message || 'Could not submit pause request.');
+      Alert.alert(t('parentLifecycle.alert.requestFailedTitle'), err?.message || t('parentLifecycle.alert.pauseFailed'));
     } finally {
       if (isMountedRef.current) {
         setSubmitting(false);
@@ -171,15 +173,15 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
 
   const handleTransferSubmit = async () => {
     if (!studentId.trim()) {
-      Alert.alert('Required', 'Please enter or select a valid Student ID.');
+      Alert.alert(t('parentLifecycle.alert.requiredTitle'), t('parentLifecycle.alert.requiredStudentId'));
       return;
     }
     if (!targetClassId.trim()) {
-      Alert.alert('Required', 'Please specify the Target Class ID.');
+      Alert.alert(t('parentLifecycle.alert.requiredTitle'), t('parentLifecycle.alert.requiredTargetClass'));
       return;
     }
     if (isOffline) {
-      Alert.alert('Offline Mode', 'Class transfer requests must be submitted online.');
+      Alert.alert(t('parentLifecycle.alert.offlineTitle'), t('parentLifecycle.alert.offlineTransfer'));
       return;
     }
 
@@ -194,9 +196,9 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
       });
       await loadStudentHistory();
       setCurrentView('OVERVIEW');
-      Alert.alert('Success', 'Class transfer requested successfully. Awaiting receiving Master review.');
+      Alert.alert(t('parentLifecycle.alert.successTitle'), t('parentLifecycle.alert.transferSuccess'));
     } catch (err: any) {
-      Alert.alert('Request Failed', err?.message || 'Could not submit transfer request.');
+      Alert.alert(t('parentLifecycle.alert.requestFailedTitle'), err?.message || t('parentLifecycle.alert.transferFailed'));
     } finally {
       if (isMountedRef.current) {
         setSubmitting(false);
@@ -206,26 +208,26 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
 
   const handleResumeMembership = (pause: MembershipPause) => {
     if (isOffline) {
-      Alert.alert('Offline Mode', 'Resuming membership requires online verification.');
+      Alert.alert(t('parentLifecycle.alert.offlineTitle'), t('parentLifecycle.alert.offlineResume'));
       return;
     }
 
     Alert.alert(
-      'Return to Training',
-      'Resume active membership and return to training immediately?\n\nBelt rank and historical attendance are fully restored.',
+      t('parentLifecycle.alert.returnTitle'),
+      t('parentLifecycle.alert.returnMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('parentLifecycle.alert.cancel'), style: 'cancel' },
         {
-          text: 'Confirm Return',
+          text: t('parentLifecycle.alert.confirmReturn'),
           style: 'default',
           onPress: async () => {
             try {
               setSubmitting(true);
               await membershipService.resumeMembership(pause.id);
-              Alert.alert('Welcome Back!', 'Membership restored to ACTIVE status.');
+              Alert.alert(t('parentLifecycle.alert.welcomeBackTitle'), t('parentLifecycle.alert.restored'));
               await loadStudentHistory();
             } catch (err: any) {
-              Alert.alert('Resume Failed', err?.message || 'Could not resume membership.');
+              Alert.alert(t('parentLifecycle.alert.resumeFailedTitle'), err?.message || t('parentLifecycle.alert.resumeFailed'));
             } finally {
               if (isMountedRef.current) {
                 setSubmitting(false);
@@ -241,26 +243,26 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
   const activePause = historyData?.pauses.find((p) => p.status === 'APPROVED');
   const pendingPause = historyData?.pauses.find((p) => p.status === 'REQUESTED');
   const pendingTransfer = historyData?.transfers.find(
-    (t) => t.status === 'PENDING_RECEIVING' || t.status === 'REQUESTED'
+    (tr) => tr.status === 'PENDING_RECEIVING' || tr.status === 'REQUESTED'
   );
   const primaryEnrollment = historyData?.enrollments.find((e) => e.is_primary && e.status === 'ACTIVE');
 
   return (
     <ScreenContainer scrollable={false}>
       <ScreenHeader
-        title="Student Lifecycle"
-        subtitle="Membership Pauses, Returns & Transfers"
+        title={t('parentLifecycle.title')}
+        subtitle={t('parentLifecycle.subtitle')}
       />
 
       {/* Student Selector Card */}
       <Card style={styles.selectorCard}>
-        <Text style={styles.inputLabel}>Student ID</Text>
+        <Text style={styles.inputLabel}>{t('parentLifecycle.studentIdLabel')}</Text>
         <View style={styles.selectorRow}>
           <TextInput
             style={styles.textInput}
             value={studentId}
             onChangeText={setStudentId}
-            placeholder="e.g. stu_danial_123"
+            placeholder={t('parentLifecycle.studentIdPlaceholder')}
             placeholderTextColor="#64748B"
             autoCapitalize="none"
           />
@@ -268,9 +270,9 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
             style={styles.loadButton}
             onPress={loadStudentHistory}
             accessibilityRole="button"
-            accessibilityLabel="Load Student History"
+            accessibilityLabel={t('parentLifecycle.loadHistoryA11y')}
           >
-            <Text style={styles.loadButtonText}>Load</Text>
+            <Text style={styles.loadButtonText}>{t('parentLifecycle.load')}</Text>
           </TouchableOpacity>
         </View>
       </Card>
@@ -282,28 +284,28 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
           style={[styles.navTab, currentView === 'OVERVIEW' && styles.activeNavTab]}
           onPress={() => setCurrentView('OVERVIEW')}
         >
-          <Text style={[styles.navTabText, currentView === 'OVERVIEW' && styles.activeNavTabText]}>Overview</Text>
+          <Text style={[styles.navTabText, currentView === 'OVERVIEW' && styles.activeNavTabText]}>{t('parentLifecycle.tab.overview')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           testID="tab-request-pause"
           style={[styles.navTab, currentView === 'REQUEST_PAUSE' && styles.activeNavTab]}
           onPress={() => setCurrentView('REQUEST_PAUSE')}
         >
-          <Text style={[styles.navTabText, currentView === 'REQUEST_PAUSE' && styles.activeNavTabText]}>Request Pause</Text>
+          <Text style={[styles.navTabText, currentView === 'REQUEST_PAUSE' && styles.activeNavTabText]}>{t('parentLifecycle.tab.requestPause')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           testID="tab-request-transfer"
           style={[styles.navTab, currentView === 'REQUEST_TRANSFER' && styles.activeNavTab]}
           onPress={() => setCurrentView('REQUEST_TRANSFER')}
         >
-          <Text style={[styles.navTabText, currentView === 'REQUEST_TRANSFER' && styles.activeNavTabText]}>Request Transfer</Text>
+          <Text style={[styles.navTabText, currentView === 'REQUEST_TRANSFER' && styles.activeNavTabText]}>{t('parentLifecycle.tab.requestTransfer')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           testID="tab-history"
           style={[styles.navTab, currentView === 'HISTORY' && styles.activeNavTab]}
           onPress={() => setCurrentView('HISTORY')}
         >
-          <Text style={[styles.navTabText, currentView === 'HISTORY' && styles.activeNavTabText]}>History</Text>
+          <Text style={[styles.navTabText, currentView === 'HISTORY' && styles.activeNavTabText]}>{t('parentLifecycle.tab.history')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -312,13 +314,13 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={BrandColors.amber} />}
       >
         {loading ? (
-          <LoadingState message="Loading student lifecycle status..." />
+          <LoadingState message={t('parentLifecycle.loading')} />
         ) : error ? (
           <ErrorState message={error} onRetry={loadStudentHistory} />
         ) : !studentId.trim() ? (
           <EmptyState
-            title="Enter Student ID"
-            description="Enter a linked child's student ID above to manage pauses, returns, and transfers."
+            title={t('parentLifecycle.emptyTitle')}
+            description={t('parentLifecycle.emptyDescription')}
             icon={<Users size={32} color="#64748B" />}
           />
         ) : currentView === 'OVERVIEW' ? (
@@ -327,9 +329,9 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
             <Card style={styles.statusCard}>
               <View style={styles.cardHeader}>
                 <View>
-                  <Text style={styles.cardTitle}>Current Membership</Text>
+                  <Text style={styles.cardTitle}>{t('parentLifecycle.currentMembership')}</Text>
                   <Text style={styles.cardSubtitle}>
-                    {primaryEnrollment ? primaryEnrollment.class_name : 'No active class'}
+                    {primaryEnrollment ? primaryEnrollment.class_name : t('parentLifecycle.noActiveClass')}
                   </Text>
                 </View>
                 <StatusBadge status={activePause ? 'PAUSED' : primaryEnrollment ? 'ACTIVE' : 'INACTIVE'} />
@@ -340,17 +342,17 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
                 <View style={styles.statBox}>
                   <Award size={18} color={BrandColors.amber} />
                   <Text style={styles.statValue}>{historyData?.attendanceCount || 0}</Text>
-                  <Text style={styles.statLabel}>Attended</Text>
+                  <Text style={styles.statLabel}>{t('parentLifecycle.stat.attended')}</Text>
                 </View>
                 <View style={styles.statBox}>
                   <DollarSign size={18} color={BrandColors.success} />
                   <Text style={styles.statValue}>{historyData?.paymentsCount || 0}</Text>
-                  <Text style={styles.statLabel}>Receipts</Text>
+                  <Text style={styles.statLabel}>{t('parentLifecycle.stat.receipts')}</Text>
                 </View>
                 <View style={styles.statBox}>
                   <ArrowRightLeft size={18} color="#38BDF8" />
                   <Text style={styles.statValue}>{historyData?.transfers.length || 0}</Text>
-                  <Text style={styles.statLabel}>Transfers</Text>
+                  <Text style={styles.statLabel}>{t('parentLifecycle.stat.transfers')}</Text>
                 </View>
               </View>
 
@@ -359,14 +361,16 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
                 <View style={styles.alertBanner}>
                   <PauseCircle size={18} color={BrandColors.amber} />
                   <View style={styles.alertTextGroup}>
-                    <Text style={styles.alertTitle}>Membership Currently Paused</Text>
+                    <Text style={styles.alertTitle}>{t('parentLifecycle.pausedTitle')}</Text>
                     <Text style={styles.alertBody}>
-                      Paused from {activePause.start_date}
-                      {activePause.expected_end_date ? ` (Expected return: ${activePause.expected_end_date})` : ''}
+                      {t('parentLifecycle.pausedFrom', { date: activePause.start_date })}
+                      {activePause.expected_end_date
+                        ? t('parentLifecycle.expectedReturnSuffix', { date: activePause.expected_end_date })
+                        : ''}
                     </Text>
                   </View>
                   <Button
-                    label="Return Now"
+                    label={t('parentLifecycle.returnNow')}
                     variant="primary"
                     onPress={() => handleResumeMembership(activePause)}
                     disabled={submitting}
@@ -377,7 +381,7 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
                 <View style={styles.noticeBanner}>
                   <Clock size={16} color="#38BDF8" />
                   <Text style={styles.noticeText}>
-                    Pause requested for {pendingPause.start_date}. Awaiting Master review.
+                    {t('parentLifecycle.pausePending', { date: pendingPause.start_date })}
                   </Text>
                 </View>
               ) : null}
@@ -387,7 +391,7 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
                 <View style={styles.noticeBanner}>
                   <ArrowRightLeft size={16} color={BrandColors.amber} />
                   <Text style={styles.noticeText}>
-                    Class transfer to target class pending Master review (Effective: {pendingTransfer.effective_date}).
+                    {t('parentLifecycle.transferPending', { date: pendingTransfer.effective_date })}
                   </Text>
                 </View>
               ) : null}
@@ -398,10 +402,9 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
               <View style={styles.guaranteeRow}>
                 <ShieldCheck size={20} color={BrandColors.success} />
                 <View style={styles.guaranteeTextGroup}>
-                  <Text style={styles.guaranteeTitle}>Protected Student History</Text>
+                  <Text style={styles.guaranteeTitle}>{t('parentLifecycle.protectedTitle')}</Text>
                   <Text style={styles.guaranteeBody}>
-                    Belt ranks, grading achievements, attendance counts, and financial receipts are permanently
-                    preserved. Pausing or transferring never resets student progress.
+                    {t('parentLifecycle.protectedBody')}
                   </Text>
                 </View>
               </View>
@@ -409,13 +412,13 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
           </View>
         ) : currentView === 'REQUEST_PAUSE' ? (
           <Card style={styles.formCard}>
-            <Text style={styles.formTitle}>Request Membership Pause</Text>
+            <Text style={styles.formTitle}>{t('parentLifecycle.pauseForm.title')}</Text>
             <Text style={styles.formSubtitle}>
-              Temporary leave for exams, medical reasons, or travel. Monthly dues remain unchanged.
+              {t('parentLifecycle.pauseForm.subtitle')}
             </Text>
 
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Start Date (YYYY-MM-DD)</Text>
+              <Text style={styles.formLabel}>{t('parentLifecycle.pauseForm.startDate')}</Text>
               <TextInput
                 style={styles.formInput}
                 value={pauseStartDate}
@@ -426,7 +429,7 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Expected Return Date (Optional)</Text>
+              <Text style={styles.formLabel}>{t('parentLifecycle.pauseForm.expectedReturn')}</Text>
               <TextInput
                 style={styles.formInput}
                 value={pauseEndDate}
@@ -437,12 +440,12 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Reason</Text>
+              <Text style={styles.formLabel}>{t('parentLifecycle.pauseForm.reason')}</Text>
               <TextInput
                 style={[styles.formInput, styles.textArea]}
                 value={pauseReason}
                 onChangeText={setPauseReason}
-                placeholder="Explain the reason for temporary leave..."
+                placeholder={t('parentLifecycle.pauseForm.reasonPlaceholder')}
                 placeholderTextColor="#64748B"
                 multiline
                 numberOfLines={3}
@@ -450,7 +453,7 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
             </View>
 
             <Button
-              label={submitting ? 'Submitting...' : 'Submit Pause Request'}
+              label={submitting ? t('parentLifecycle.submitting') : t('parentLifecycle.pauseForm.submit')}
               variant="primary"
               onPress={handlePauseSubmit}
               disabled={submitting}
@@ -460,18 +463,18 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
           </Card>
         ) : currentView === 'REQUEST_TRANSFER' ? (
           <Card style={styles.formCard}>
-            <Text style={styles.formTitle}>Request Class Transfer</Text>
+            <Text style={styles.formTitle}>{t('parentLifecycle.transferForm.title')}</Text>
             <Text style={styles.formSubtitle}>
-              Move to a different class, venue, or schedule. Canonical student identity is permanently preserved.
+              {t('parentLifecycle.transferForm.subtitle')}
             </Text>
 
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Target Class ID</Text>
+              <Text style={styles.formLabel}>{t('parentLifecycle.transferForm.targetClass')}</Text>
               <TextInput
                 style={styles.formInput}
                 value={targetClassId}
                 onChangeText={setTargetClassId}
-                placeholder="e.g. cls_advanced_01"
+                placeholder={t('parentLifecycle.transferForm.targetClassPlaceholder')}
                 placeholderTextColor="#64748B"
                 autoCapitalize="none"
                 testID="input-target-class"
@@ -479,7 +482,7 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Effective Date (YYYY-MM-DD)</Text>
+              <Text style={styles.formLabel}>{t('parentLifecycle.transferForm.effectiveDate')}</Text>
               <TextInput
                 style={styles.formInput}
                 value={transferEffectiveDate}
@@ -490,12 +493,12 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Reason for Transfer</Text>
+              <Text style={styles.formLabel}>{t('parentLifecycle.transferForm.reason')}</Text>
               <TextInput
                 style={[styles.formInput, styles.textArea]}
                 value={transferReason}
                 onChangeText={setTransferReason}
-                placeholder="Reason for changing class..."
+                placeholder={t('parentLifecycle.transferForm.reasonPlaceholder')}
                 placeholderTextColor="#64748B"
                 multiline
                 numberOfLines={2}
@@ -509,12 +512,12 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
                 trackColor={{ false: '#334155', true: BrandColors.amber }}
               />
               <Text style={styles.switchLabel}>
-                Guardian Consent: I authorize transfer of enrollment and acknowledge prospective fee schedule.
+                {t('parentLifecycle.transferForm.consent')}
               </Text>
             </View>
 
             <Button
-              label={submitting ? 'Submitting...' : 'Submit Transfer Request'}
+              label={submitting ? t('parentLifecycle.submitting') : t('parentLifecycle.transferForm.submit')}
               variant="primary"
               onPress={handleTransferSubmit}
               disabled={submitting}
@@ -525,7 +528,7 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
         ) : (
           <View style={styles.contentSection}>
             <Card style={styles.historyCard}>
-              <Text style={styles.historySectionTitle}>Enrollment Timeline</Text>
+              <Text style={styles.historySectionTitle}>{t('parentLifecycle.history.enrollmentTimeline')}</Text>
               {historyData?.enrollments.map((enr) => (
                 <View key={enr.id} style={styles.historyItem}>
                   <View style={styles.historyItemHeader}>
@@ -533,42 +536,52 @@ export const ParentStudentLifecycleScreen: React.FC<ParentStudentLifecycleScreen
                     <StatusBadge status={enr.status} />
                   </View>
                   <Text style={styles.historyItemDetail}>
-                    Provenance: {enr.provenance} • Effective: {enr.effective_from?.slice(0, 10)}
-                    {enr.effective_to ? ` to ${enr.effective_to.slice(0, 10)}` : ' (Current)'}
+                    {t('parentLifecycle.history.enrollmentDetail', {
+                      provenance: enr.provenance,
+                      date: enr.effective_from?.slice(0, 10) ?? '',
+                    })}
+                    {enr.effective_to
+                      ? t('parentLifecycle.history.enrollmentTo', { date: enr.effective_to.slice(0, 10) })
+                      : t('parentLifecycle.history.enrollmentCurrent')}
                   </Text>
                 </View>
               ))}
 
-              <Text style={[styles.historySectionTitle, { marginTop: 16 }]}>Transfer History</Text>
+              <Text style={[styles.historySectionTitle, { marginTop: 16 }]}>{t('parentLifecycle.history.transferHistory')}</Text>
               {historyData?.transfers.length === 0 ? (
-                <Text style={styles.emptyHistoryText}>No past class transfers recorded.</Text>
+                <Text style={styles.emptyHistoryText}>{t('parentLifecycle.history.noTransfers')}</Text>
               ) : (
-                historyData?.transfers.map((t) => (
-                  <View key={t.id} style={styles.historyItem}>
+                historyData?.transfers.map((tr) => (
+                  <View key={tr.id} style={styles.historyItem}>
                     <View style={styles.historyItemHeader}>
                       <Text style={styles.historyItemTitle}>
-                        {t.old_class_name} → {t.new_class_name}
+                        {tr.old_class_name} → {tr.new_class_name}
                       </Text>
-                      <StatusBadge status={t.status} />
+                      <StatusBadge status={tr.status} />
                     </View>
-                    <Text style={styles.historyItemDetail}>Effective: {t.effective_date} • Reason: {t.reason}</Text>
+                    <Text style={styles.historyItemDetail}>
+                      {t('parentLifecycle.history.transferDetail', { date: tr.effective_date, reason: tr.reason ?? '' })}
+                    </Text>
                   </View>
                 ))
               )}
 
-              <Text style={[styles.historySectionTitle, { marginTop: 16 }]}>Pause History</Text>
+              <Text style={[styles.historySectionTitle, { marginTop: 16 }]}>{t('parentLifecycle.history.pauseHistory')}</Text>
               {historyData?.pauses.length === 0 ? (
-                <Text style={styles.emptyHistoryText}>No membership pauses recorded.</Text>
+                <Text style={styles.emptyHistoryText}>{t('parentLifecycle.history.noPauses')}</Text>
               ) : (
                 historyData?.pauses.map((p) => (
                   <View key={p.id} style={styles.historyItem}>
                     <View style={styles.historyItemHeader}>
-                      <Text style={styles.historyItemTitle}>Pause ({p.start_date})</Text>
+                      <Text style={styles.historyItemTitle}>{t('parentLifecycle.history.pauseItem', { date: p.start_date })}</Text>
                       <StatusBadge status={p.status} />
                     </View>
                     <Text style={styles.historyItemDetail}>
-                      {p.expected_end_date ? `Expected: ${p.expected_end_date} • ` : ''}
-                      Actual Return: {p.actual_return_date || 'N/A'} • Reason: {p.reason}
+                      {p.expected_end_date ? t('parentLifecycle.history.pauseExpected', { date: p.expected_end_date }) : ''}
+                      {t('parentLifecycle.history.pauseActualReturn', {
+                        date: p.actual_return_date || t('parentLifecycle.history.notAvailable'),
+                        reason: p.reason,
+                      })}
                     </Text>
                   </View>
                 ))

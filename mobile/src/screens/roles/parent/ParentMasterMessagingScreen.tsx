@@ -32,6 +32,7 @@ import {
   MessageThread,
   ThreadMessage,
 } from '../../../services/messagingService';
+import { useI18n } from '../../../i18n';
 
 export interface ParentMasterMessagingScreenProps {
   userRole?: 'PARENT' | 'MASTER' | 'ADMIN_PERSATUAN' | 'SUPER_ADMIN' | 'STUDENT';
@@ -58,83 +59,15 @@ const BLOCKED_EXTENSIONS = [
 ];
 const MAX_ATTACHMENT_SIZE_MB = 10;
 
-// Multilingual labels for EN, BM, TA
-const I18N = {
-  en: {
-    title: 'Parent-Master Messaging',
-    subtitle: 'Direct, secure communication between verified guardians and class instructors',
-    newThread: 'New Thread',
-    noThreads: 'No active messaging threads found.',
-    selectThread: 'Select a conversation thread to view messages',
-    typeMessage: 'Type your message...',
-    send: 'Send',
-    retry: 'Retry',
-    attach: 'Attach',
-    report: 'Report',
-    reported: 'Reported',
-    lockScreenNotice: 'Lock-screen notifications are privacy-minimized for child safety.',
-    studentNotEnrolled: 'cross_class_thread_denied: Student is not actively enrolled in this class.',
-    blockedAttachment: 'blocked_attachment_rejected: File type or size is not permitted.',
-    minorNotice: 'Minor communication policy: Direct student-initiated threads are prohibited.',
-    superAdminNotice: 'Super Admin has zero operational access to private messaging threads.',
-    reportSuccess: 'Message reported successfully for Persatuan administrator review.',
-    instructorBadge: 'Instructor',
-    guardianBadge: 'Guardian',
-  },
-  ms: {
-    title: 'Mesej Ibu Bapa-Guru',
-    subtitle: 'Komunikasi langsung dan selamat antara penjaga sah dan guru kelas',
-    newThread: 'Perbualan Baharu',
-    noThreads: 'Tiada perbualan aktif dijumpai.',
-    selectThread: 'Pilih perbualan untuk membaca mesej',
-    typeMessage: 'Tulis mesej anda...',
-    send: 'Hantar',
-    retry: 'Cuba Semula',
-    attach: 'Lampir',
-    report: 'Lapor',
-    reported: 'Dilaporkan',
-    lockScreenNotice: 'Pemberitahuan skrin kunci diminimumkan untuk keselamatan kanak-kanak.',
-    studentNotEnrolled: 'cross_class_thread_denied: Murid tidak berdaftar dalam kelas ini.',
-    blockedAttachment: 'blocked_attachment_rejected: Jenis fail atau saiz tidak dibenarkan.',
-    minorNotice: 'Dasar komunikasi: Mesej terus murid tidak dibenarkan.',
-    superAdminNotice: 'Super Admin tiada akses kepada mesej peribadi.',
-    reportSuccess: 'Mesej berjaya dilaporkan untuk semakan pentadbir Persatuan.',
-    instructorBadge: 'Guru',
-    guardianBadge: 'Penjaga',
-  },
-  ta: {
-    title: 'பெற்றோர்-ஆசிரியர் செய்தி பரிமாற்றம்',
-    subtitle: 'உறுதிப்படுத்தப்பட்ட பாதுகாவலர்கள் மற்றும் ஆசிரியர்களுக்கு இடையிலான பாதுகாப்பான தகவல் தொடர்பு',
-    newThread: 'புதிய செய்தி',
-    noThreads: 'செயலில் உள்ள உரையாடல்கள் எதுவும் இல்லை.',
-    selectThread: 'செய்திகளைக் காண ஒரு உரையாடலைத் தேர்ந்தெடுக்கவும்',
-    typeMessage: 'உங்கள் செய்தியை உள்ளிடவும்...',
-    send: 'அனுப்புக',
-    retry: 'மீண்டும் முயற்சி',
-    attach: 'இணைக்க',
-    report: 'புகாரளி',
-    reported: 'புகாரளிக்கப்பட்டது',
-    lockScreenNotice: 'குழந்தை பாதுகாப்பிற்காக திரை அறிவிப்புகள் குறைக்கப்பட்டுள்ளன.',
-    studentNotEnrolled: 'cross_class_thread_denied: மாணவர் இந்த வகுப்பில் சேர்க்கப்படவில்லை.',
-    blockedAttachment: 'blocked_attachment_rejected: கோப்பு வகை அல்லது அளவு அனுமதிக்கப்படவில்லை.',
-    minorNotice: 'மாணவர் நேரடி செய்தி அனுப்புதல் கொள்கையின்படி தடைசெய்யப்பட்டுள்ளது.',
-    superAdminNotice: 'சூப்பர் நிர்வாகிக்கு தனிப்பட்ட செய்திகளுக்கு அனுமதி இல்லை.',
-    reportSuccess: 'நிர்வாகியின் மதிப்பாய்வுக்கு செய்தி வெற்றிகரமாகப் புகாரளிக்கப்பட்டது.',
-    instructorBadge: 'ஆசிரியர்',
-    guardianBadge: 'பாதுகாவலர்',
-  },
-};
-
 export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenProps> = ({
   userRole = 'PARENT',
   studentId,
-  studentName = 'Student',
+  studentName,
   classId,
   isOffline = false,
 }) => {
   const { colors } = useTheme();
-  const [lang] = useState<'en' | 'ms' | 'ta'>('en');
-  const t = I18N[lang];
+  const { t } = useI18n();
 
   // Threads State
   const [threads, setThreads] = useState<MessageThread[]>([]);
@@ -143,7 +76,7 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
   const [loading, setLoading] = useState<boolean>(true);
   const [loadingMessages, setLoadingMessages] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(
-    userRole === 'SUPER_ADMIN' ? t.superAdminNotice : userRole === 'STUDENT' ? t.minorNotice : null
+    userRole === 'SUPER_ADMIN' ? t('parentLifecycle.messaging.superAdminNotice') : userRole === 'STUDENT' ? t('parentLifecycle.messaging.minorNotice') : null
   );
 
   // New Message State
@@ -171,11 +104,11 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
       const res = await messagingService.getThreadMessages(threadId);
       setMessages(res.messages || []);
     } catch (err: any) {
-      setErrorMsg(err?.message || 'Failed to load messages.');
+      setErrorMsg(err?.message || t('parentLifecycle.messaging.error.loadMessages'));
     } finally {
       setLoadingMessages(false);
     }
-  }, []);
+  }, [t]);
 
   // Load Threads for pull-to-refresh
   const loadThreads = useCallback(async () => {
@@ -194,11 +127,11 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
         await loadMessages(list[0].id);
       }
     } catch (err: any) {
-      setErrorMsg(err?.message || 'Failed to load threads.');
+      setErrorMsg(err?.message || t('parentLifecycle.messaging.error.loadThreads'));
     } finally {
       setLoading(false);
     }
-  }, [userRole, loadMessages]);
+  }, [userRole, loadMessages, t]);
 
   useEffect(() => {
     let isMounted = true;
@@ -218,7 +151,7 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
         }
       })
       .catch((err: any) => {
-        if (isMounted) setErrorMsg(err?.message || 'Failed to load threads.');
+        if (isMounted) setErrorMsg(err?.message || t('parentLifecycle.messaging.error.loadThreads'));
       })
       .finally(() => {
         if (isMounted) setLoading(false);
@@ -227,7 +160,7 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
     return () => {
       isMounted = false;
     };
-  }, [userRole, loadMessages]);
+  }, [userRole, loadMessages, t]);
 
   // Handle Send Message
   const handleSendMessage = async (isRetry = false) => {
@@ -259,7 +192,7 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
         return [...prev, newMsg];
       });
     } catch (err: any) {
-      setErrorMsg(err?.message || 'Failed to send message.');
+      setErrorMsg(err?.message || t('parentLifecycle.messaging.error.send'));
     } finally {
       setSending(false);
     }
@@ -272,13 +205,13 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
 
     const isBlocked = BLOCKED_EXTENSIONS.some((ext) => lowerName.endsWith(ext));
     if (isBlocked) {
-      setAttachmentError(t.blockedAttachment);
+      setAttachmentError(t('parentLifecycle.messaging.blockedAttachment'));
       return;
     }
 
     const size = Number(attachedFileSizeMB);
     if (isNaN(size) || size > MAX_ATTACHMENT_SIZE_MB || size <= 0) {
-      setAttachmentError(`Attachment size must be between 1MB and ${MAX_ATTACHMENT_SIZE_MB}MB.`);
+      setAttachmentError(t('parentLifecycle.messaging.error.attachmentSize', { max: MAX_ATTACHMENT_SIZE_MB }));
       return;
     }
 
@@ -288,7 +221,10 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
   // Handle Thread Creation
   const handleCreateThread = async () => {
     if (!newThreadChildId || !newThreadClassId) {
-      Alert.alert('Validation Error', 'Student ID and Class ID are required.');
+      Alert.alert(
+        t('parentLifecycle.messaging.alert.validationTitle'),
+        t('parentLifecycle.messaging.alert.validationIds')
+      );
       return;
     }
 
@@ -303,7 +239,7 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
       setThreads((prev) => [thread, ...prev]);
       setSelectedThread(thread);
     } catch (err: any) {
-      Alert.alert('Thread Creation Denied', err?.message || t.studentNotEnrolled);
+      Alert.alert(t('parentLifecycle.messaging.alert.threadDeniedTitle'), err?.message || t('parentLifecycle.messaging.studentNotEnrolled'));
     } finally {
       setCreatingThread(false);
     }
@@ -314,13 +250,16 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
     try {
       const res = await messagingService.reportMessage(messageId, 'Inappropriate communication content');
       if (res.success) {
-        Alert.alert('Report Submitted', t.reportSuccess);
+        Alert.alert(t('parentLifecycle.messaging.alert.reportSubmittedTitle'), t('parentLifecycle.messaging.reportSuccess'));
         setMessages((prev) =>
           prev.map((m) => (m.id === messageId ? { ...m, is_reported: true } : m))
         );
       }
     } catch (err: any) {
-      Alert.alert('Report Error', err?.message || 'Failed to report message.');
+      Alert.alert(
+        t('parentLifecycle.messaging.alert.reportErrorTitle'),
+        err?.message || t('parentLifecycle.messaging.alert.reportFailed')
+      );
     }
   };
 
@@ -328,13 +267,13 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
     return (
       <View style={[styles.noThreadSelected, { backgroundColor: colors.background }]} testID="superadmin-denial-view">
         <Lock size={48} color={BrandColors.PrimaryNavy} />
-        <Text style={[styles.title, { color: colors.textPrimary, marginTop: 12 }]}>Zero Operational Access</Text>
+        <Text style={[styles.title, { color: colors.textPrimary, marginTop: 12 }]}>{t('parentLifecycle.messaging.zeroAccessTitle')}</Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary, marginTop: 4, textAlign: 'center' }]}>
-          {t.superAdminNotice}
+          {t('parentLifecycle.messaging.superAdminNotice')}
         </Text>
         <View style={styles.errorBanner} testID="messaging-error-banner">
           <AlertCircle size={16} color="#ef4444" />
-          <Text style={styles.errorBannerText}>{t.superAdminNotice}</Text>
+          <Text style={styles.errorBannerText}>{t('parentLifecycle.messaging.superAdminNotice')}</Text>
         </View>
       </View>
     );
@@ -344,13 +283,13 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
     return (
       <View style={[styles.noThreadSelected, { backgroundColor: colors.background }]} testID="student-denial-view">
         <Lock size={48} color={BrandColors.PrimaryNavy} />
-        <Text style={[styles.title, { color: colors.textPrimary, marginTop: 12 }]}>Minor Communication Policy</Text>
+        <Text style={[styles.title, { color: colors.textPrimary, marginTop: 12 }]}>{t('parentLifecycle.messaging.minorPolicyTitle')}</Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary, marginTop: 4, textAlign: 'center' }]}>
-          {t.minorNotice}
+          {t('parentLifecycle.messaging.minorNotice')}
         </Text>
         <View style={styles.errorBanner} testID="messaging-error-banner">
           <AlertCircle size={16} color="#ef4444" />
-          <Text style={styles.errorBannerText}>{t.minorNotice}</Text>
+          <Text style={styles.errorBannerText}>{t('parentLifecycle.messaging.minorNotice')}</Text>
         </View>
       </View>
     );
@@ -363,19 +302,19 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
         <View style={styles.headerTitleRow}>
           <MessageSquare size={22} color={BrandColors.Amber} style={styles.headerIcon} />
           <View>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>{t.title}</Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t.subtitle}</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>{t('parentLifecycle.messaging.title')}</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t('parentLifecycle.messaging.subtitle')}</Text>
           </View>
         </View>
 
         {userRole === 'PARENT' && (
           <Button
-            label={t.newThread}
+            label={t('parentLifecycle.messaging.newThread')}
             variant="primary"
             size="sm"
             onPress={() => setShowCreateModal(true)}
             testID="btn-new-thread"
-            accessibilityLabel={t.newThread}
+            accessibilityLabel={t('parentLifecycle.messaging.newThread')}
             leftIcon={<Plus size={16} color="#FFFFFF" />}
           />
         )}
@@ -384,7 +323,7 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
       {/* Child safety banner: lock-screen content minimized */}
       <View style={styles.lockScreenBanner} testID="lock-screen-privacy-banner">
         <Lock size={14} color="#0284c7" />
-        <Text style={styles.lockScreenText}>{t.lockScreenNotice}</Text>
+        <Text style={styles.lockScreenText}>{t('parentLifecycle.messaging.lockScreenNotice')}</Text>
       </View>
 
       {/* Error state */}
@@ -399,11 +338,11 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
       <View style={styles.contentRow}>
         {/* Thread List Sidebar / Selector */}
         <View style={[styles.threadListContainer, { borderRightColor: colors.border }]}>
-          <Text style={[styles.sidebarHeading, { color: colors.textSecondary }]}>Conversations</Text>
+          <Text style={[styles.sidebarHeading, { color: colors.textSecondary }]}>{t('parentLifecycle.messaging.conversations')}</Text>
           {loading ? (
             <ActivityIndicator size="small" color={BrandColors.Amber} style={{ marginTop: 20 }} />
           ) : threads.length === 0 ? (
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t.noThreads}</Text>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('parentLifecycle.messaging.noThreads')}</Text>
           ) : (
             <ScrollView showsVerticalScrollIndicator={false}>
               {threads.map((thr) => {
@@ -423,7 +362,10 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
                       loadMessages(thr.id);
                     }}
                     testID={`thread-item-${thr.id}`}
-                    accessibilityLabel={`Thread with ${thr.master_name || 'Master'} for ${thr.student_name || 'Student'}`}
+                    accessibilityLabel={t('parentLifecycle.messaging.threadA11y', {
+                      master: thr.master_name || t('parentLifecycle.messaging.fallbackMaster'),
+                      student: thr.student_name || t('parentLifecycle.messaging.fallbackStudent'),
+                    })}
                   >
                     <View style={styles.threadCardHeader}>
                       <Text style={[styles.threadSubject, { color: colors.textPrimary }]} numberOfLines={1}>
@@ -436,10 +378,14 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
                       ) : null}
                     </View>
                     <Text style={[styles.threadStudent, { color: colors.textSecondary }]}>
-                      Student: {thr.student_name || studentName}
+                      {t('parentLifecycle.messaging.threadStudent', {
+                        name: thr.student_name || studentName || t('parentLifecycle.messaging.fallbackStudent'),
+                      })}
                     </Text>
                     <Text style={[styles.threadMaster, { color: colors.textSecondary }]}>
-                      Instructor: {thr.master_name || 'Assigned Master'}
+                      {t('parentLifecycle.messaging.threadInstructor', {
+                        name: thr.master_name || t('parentLifecycle.messaging.fallbackAssignedMaster'),
+                      })}
                     </Text>
                     {thr.last_message_content && (
                       <Text style={[styles.threadSnippet, { color: colors.textSecondary }]} numberOfLines={1}>
@@ -461,12 +407,17 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
               <View style={[styles.threadInfoBar, { borderBottomColor: colors.border }]}>
                 <View>
                   <Text style={[styles.threadInfoTitle, { color: colors.textPrimary }]}>
-                    {selectedThread.subject} — {selectedThread.class_name || 'Class Session'}
+                    {selectedThread.subject} — {selectedThread.class_name || t('parentLifecycle.messaging.fallbackClassSession')}
                   </Text>
                   <Text style={[styles.threadInfoSubtitle, { color: colors.textSecondary }]}>
                     {userRole === 'PARENT'
-                      ? `Instructor: ${selectedThread.master_name || 'Master'}`
-                      : `Parent: ${selectedThread.parent_name || 'Guardian'} (${selectedThread.student_name || 'Child'})`}
+                      ? t('parentLifecycle.messaging.threadInstructor', {
+                          name: selectedThread.master_name || t('parentLifecycle.messaging.fallbackMaster'),
+                        })
+                      : t('parentLifecycle.messaging.threadParent', {
+                          name: selectedThread.parent_name || t('parentLifecycle.messaging.fallbackGuardian'),
+                          child: selectedThread.student_name || t('parentLifecycle.messaging.fallbackChild'),
+                        })}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -476,7 +427,7 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
                   }}
                   style={styles.refreshBtn}
                   testID="btn-refresh-threads"
-                  accessibilityLabel="Refresh conversation threads"
+                  accessibilityLabel={t('parentLifecycle.messaging.refreshA11y')}
                 >
                   <RefreshCw size={16} color={colors.textSecondary} />
                 </TouchableOpacity>
@@ -491,7 +442,7 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
                 {loadingMessages ? (
                   <ActivityIndicator size="small" color={BrandColors.Amber} style={{ marginTop: 20 }} />
                 ) : messages.length === 0 ? (
-                  <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No messages in this thread yet.</Text>
+                  <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('parentLifecycle.messaging.noMessages')}</Text>
                 ) : (
                   messages.map((msg) => {
                     const isOwnMessage =
@@ -523,24 +474,24 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
                                 { color: isOwnMessage ? '#fee2e2' : '#93c5fd' },
                               ]}
                             >
-                              {msg.sender_role === 'MASTER' ? t.instructorBadge : t.guardianBadge}
+                              {msg.sender_role === 'MASTER' ? t('parentLifecycle.messaging.instructorBadge') : t('parentLifecycle.messaging.guardianBadge')}
                             </Text>
 
                             {!isOwnMessage && !msg.is_reported && (
                               <TouchableOpacity
                                 onPress={() => handleReportMessage(msg.id)}
                                 testID={`btn-report-${msg.id}`}
-                                accessibilityLabel={`Report message ${msg.id}`}
+                                accessibilityLabel={t('parentLifecycle.messaging.reportA11y', { id: msg.id })}
                                 style={styles.reportBtn}
                               >
                                 <ShieldAlert size={12} color="#f87171" />
-                                <Text style={styles.reportText}>{t.report}</Text>
+                                <Text style={styles.reportText}>{t('parentLifecycle.messaging.report')}</Text>
                               </TouchableOpacity>
                             )}
 
                             {msg.is_reported && (
                               <View style={styles.reportedPill}>
-                                <Text style={styles.reportedPillText}>{t.reported}</Text>
+                                <Text style={styles.reportedPillText}>{t('parentLifecycle.messaging.reported')}</Text>
                               </View>
                             )}
                           </View>
@@ -598,20 +549,20 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
                     style={styles.attachBtn}
                     onPress={() => setShowAttachModal(true)}
                     testID="btn-open-attach"
-                    accessibilityLabel={t.attach}
+                    accessibilityLabel={t('parentLifecycle.messaging.attach')}
                   >
                     <Paperclip size={20} color={colors.textSecondary} />
                   </TouchableOpacity>
 
                   <TextInput
                     style={[styles.input, { color: colors.textPrimary, borderColor: colors.border }]}
-                    placeholder={t.typeMessage}
+                    placeholder={t('parentLifecycle.messaging.typeMessage')}
                     placeholderTextColor={colors.textSecondary}
                     value={inputText}
                     onChangeText={setInputText}
                     multiline
                     testID="input-message-content"
-                    accessibilityLabel={t.typeMessage}
+                    accessibilityLabel={t('parentLifecycle.messaging.typeMessage')}
                   />
 
                   <TouchableOpacity
@@ -622,7 +573,7 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
                     onPress={() => handleSendMessage(false)}
                     disabled={!inputText.trim() || sending}
                     testID="btn-send-message"
-                    accessibilityLabel={t.send}
+                    accessibilityLabel={t('parentLifecycle.messaging.send')}
                   >
                     {sending ? (
                       <ActivityIndicator size="small" color="#FFFFFF" />
@@ -636,7 +587,7 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
           ) : (
             <View style={styles.noThreadSelected}>
               <Text style={[styles.selectThreadNotice, { color: colors.textSecondary }]}>
-                {t.selectThread}
+                {t('parentLifecycle.messaging.selectThread')}
               </Text>
             </View>
           )}
@@ -647,14 +598,14 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
       <Modal visible={showAttachModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <Card style={styles.modalCard}>
-            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Attach File</Text>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{t('parentLifecycle.messaging.attachTitle')}</Text>
             <Text style={[styles.modalDesc, { color: colors.textSecondary }]}>
-              Executable files (.exe, .bat, .sh) and archives (.zip) are rejected. Max size 10MB.
+              {t('parentLifecycle.messaging.attachDesc')}
             </Text>
 
             <TextInput
               style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border }]}
-              placeholder="Filename (e.g., medical_note.jpg)"
+              placeholder={t('parentLifecycle.messaging.filenamePlaceholder')}
               placeholderTextColor={colors.textSecondary}
               value={attachedFileName}
               onChangeText={setAttachedFileName}
@@ -663,7 +614,7 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
 
             <TextInput
               style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border }]}
-              placeholder="Size in MB (max 10)"
+              placeholder={t('parentLifecycle.messaging.sizePlaceholder')}
               placeholderTextColor={colors.textSecondary}
               value={attachedFileSizeMB}
               onChangeText={setAttachedFileSizeMB}
@@ -678,9 +629,14 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
             )}
 
             <View style={styles.modalBtnRow}>
-              <Button label="Cancel" variant="outline" size="sm" onPress={() => setShowAttachModal(false)} />
               <Button
-                label="Attach"
+                label={t('parentLifecycle.messaging.cancel')}
+                variant="outline"
+                size="sm"
+                onPress={() => setShowAttachModal(false)}
+              />
+              <Button
+                label={t('parentLifecycle.messaging.attach')}
                 variant="primary"
                 size="sm"
                 onPress={handleConfirmAttachment}
@@ -695,14 +651,14 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
       <Modal visible={showCreateModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <Card style={styles.modalCard}>
-            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{t.newThread}</Text>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{t('parentLifecycle.messaging.newThread')}</Text>
             <Text style={[styles.modalDesc, { color: colors.textSecondary }]}>
-              Initiate communication with the active Master for an enrolled class.
+              {t('parentLifecycle.messaging.newThreadDesc')}
             </Text>
 
             <TextInput
               style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border }]}
-              placeholder="Student ID"
+              placeholder={t('parentLifecycle.messaging.studentIdPlaceholder')}
               placeholderTextColor={colors.textSecondary}
               value={newThreadChildId}
               onChangeText={setNewThreadChildId}
@@ -711,7 +667,7 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
 
             <TextInput
               style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border }]}
-              placeholder="Class ID"
+              placeholder={t('parentLifecycle.messaging.classIdPlaceholder')}
               placeholderTextColor={colors.textSecondary}
               value={newThreadClassId}
               onChangeText={setNewThreadClassId}
@@ -720,7 +676,7 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
 
             <TextInput
               style={[styles.modalInput, { color: colors.textPrimary, borderColor: colors.border }]}
-              placeholder="Subject (e.g. Schedule Clarification)"
+              placeholder={t('parentLifecycle.messaging.subjectPlaceholder')}
               placeholderTextColor={colors.textSecondary}
               value={newThreadSubject}
               onChangeText={setNewThreadSubject}
@@ -728,9 +684,14 @@ export const ParentMasterMessagingScreen: React.FC<ParentMasterMessagingScreenPr
             />
 
             <View style={styles.modalBtnRow}>
-              <Button label="Cancel" variant="outline" size="sm" onPress={() => setShowCreateModal(false)} />
               <Button
-                label={creatingThread ? 'Creating...' : 'Create Thread'}
+                label={t('parentLifecycle.messaging.cancel')}
+                variant="outline"
+                size="sm"
+                onPress={() => setShowCreateModal(false)}
+              />
+              <Button
+                label={creatingThread ? t('parentLifecycle.messaging.creating') : t('parentLifecycle.messaging.createThread')}
                 variant="primary"
                 size="sm"
                 onPress={handleCreateThread}
