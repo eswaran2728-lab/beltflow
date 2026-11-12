@@ -396,8 +396,23 @@ paymentGatewayRouter.get('/intents/:intentId', authenticateJWT, async (req: Requ
 
     const intent = intentRes.rows[0];
     const access = await studentAccess(req.user!, intent.student_id);
-    if (!access.allowed && req.user!.role !== UserRole.ADMIN_PERSATUAN) {
+    const ownPersatuanAdmin =
+      req.user!.role === UserRole.ADMIN_PERSATUAN && !!req.user!.organizationId && req.user!.organizationId === intent.organization_id;
+    if (!access.allowed && !ownPersatuanAdmin) {
       return res.status(403).json({ error: 'Access denied.' });
+    }
+
+    // Lazy expiry: an unpaid intent past its window is shown as EXPIRED even
+    // if the background worker has not run yet. A later genuine bank success
+    // webhook still settles it.
+    if (['REQUIRES_PAYMENT_METHOD', 'PENDING_PROCESSING'].includes(intent.status) && new Date(intent.expires_at).getTime() <= Date.now()) {
+      const expired = await dbClient.query(
+        `UPDATE payment_intents SET status = 'EXPIRED', updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1 AND status IN ('REQUIRES_PAYMENT_METHOD', 'PENDING_PROCESSING')
+         RETURNING id`,
+        [intent.id]
+      );
+      if (expired.rows.length > 0) intent.status = 'EXPIRED';
     }
 
     return res.json({
@@ -579,12 +594,19 @@ paymentGatewayRouter.post('/webhooks/:provider', async (req: Request, res: Respo
         // Update Student Billing Status
         await txClient.query(`UPDATE students SET billing_status = 'Paid' WHERE id = $1`, [intent.student_id]);
 
-        // Record Matched Reconciliation Record
+        // Record the reconciliation result. If part of the money could not be
+        // applied (the dues were already paid, e.g. by a second payment for the
+        // same months), flag it for the admin instead of marking it matched.
+        const unappliedSen = Math.round(leftAmount * 100);
+        const matchStatus = unappliedSen > 0 ? 'DISCREPANCY_AMOUNT' : 'MATCHED';
+        const matchNotes = unappliedSen > 0
+          ? `RM ${(unappliedSen / 100).toFixed(2)} received for dues that were already paid. Refund or credit the payer.`
+          : 'Automated online settlement verified and reconciled.';
         await txClient.query(
           `INSERT INTO payment_reconciliation_records (
              id, organization_id, payment_intent_id, payment_id, provider_tx_id,
              expected_amount_cents, settled_amount_cents, currency, match_status, notes
-           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'MATCHED', 'Automated online settlement verified and reconciled.')`,
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
           [
             newId('rec'),
             intent.organization_id,
@@ -594,6 +616,8 @@ paymentGatewayRouter.post('/webhooks/:provider', async (req: Request, res: Respo
             intent.amount_cents,
             parsedEvent.amountCents,
             'MYR',
+            matchStatus,
+            matchNotes,
           ]
         );
 
@@ -653,10 +677,12 @@ paymentGatewayRouter.post('/webhooks/:provider', async (req: Request, res: Respo
       });
     } else {
       // Payment Failed or Cancelled
+      // A failure (or a late, out-of-order failure event) never overwrites a
+      // settled intent: the ledger already holds the payment.
       await dbClient.query(
         `UPDATE payment_intents
          SET status = 'FAILED', updated_at = CURRENT_TIMESTAMP
-         WHERE id = $1`,
+         WHERE id = $1 AND status <> 'SUCCEEDED'`,
         [intent.id]
       );
 

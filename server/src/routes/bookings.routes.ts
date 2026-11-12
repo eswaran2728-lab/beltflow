@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { dbClient, SqlTransactionClient } from '../db/client';
 import { authenticateJWT } from '../middleware/auth';
+import { requireWorkerOrSuperAdmin } from '../middleware/workerAuth';
 import { UserRole } from '../security/rbac';
 import { safeErrorMessage } from '../security/errors';
 
@@ -663,7 +664,7 @@ export async function sweepExpiredWaitlistOffers(client?: any): Promise<number> 
   });
 }
 
-router.post('/waitlist/sweep-expired', authenticateJWT, async (req: Request, res: Response) => {
+router.post('/waitlist/sweep-expired', requireWorkerOrSuperAdmin, async (req: Request, res: Response) => {
   try {
     const expiredCount = await sweepExpiredWaitlistOffers();
     return res.json({ message: 'Expired waitlist offers processed.', expiredCount });

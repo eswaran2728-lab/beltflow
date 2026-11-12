@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { dbClient } from '../db/client';
 import { authenticateJWT } from '../middleware/auth';
+import { requireWorkerOrSuperAdmin } from '../middleware/workerAuth';
 import { UserRole } from '../security/rbac';
 import { assignedMasterAccess } from '../security/access';
 import { safeErrorMessage } from '../security/errors';
@@ -771,7 +772,7 @@ export async function activateEffectiveTransfers(tx?: any): Promise<number> {
   });
 }
 
-router.post('/activate-scheduled', authenticateJWT, async (req: Request, res: Response) => {
+router.post('/activate-scheduled', requireWorkerOrSuperAdmin, async (req: Request, res: Response) => {
   try {
     const activated = await activateEffectiveTransfers();
     return res.json({ message: 'Scheduled transfers processed.', activatedCount: activated });
