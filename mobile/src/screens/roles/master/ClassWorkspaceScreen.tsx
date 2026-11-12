@@ -29,6 +29,7 @@ import { LoadingState, ErrorState } from '../../../components/Feedback';
 import { StudentProfileModal } from '../../../components/StudentProfileModal';
 import { AuthUser } from '../../../types/auth';
 import { apiClient } from '../../../services/apiClient';
+import { useI18n } from '../../../i18n';
 
 export interface ClassWorkspaceScreenProps {
   user: AuthUser;
@@ -42,6 +43,12 @@ export interface ClassWorkspaceScreenProps {
   isOffline?: boolean;
 }
 
+const ENROLLMENT_LABEL_KEYS: Record<string, string> = {
+  OPEN: 'masterClasses.workspace.enrollmentOpen',
+  WAITLIST: 'masterClasses.workspace.enrollmentWaitlist',
+  CLOSED: 'masterClasses.workspace.enrollmentClosed',
+};
+
 type WorkspaceTab = 'OVERVIEW' | 'STUDENTS' | 'ATTENDANCE' | 'APPLICATIONS' | 'SCHEDULE' | 'NOTICES' | 'SETTINGS';
 
 export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
@@ -51,6 +58,7 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
   isOffline,
 }) => {
   const { colors, typography, spacing, iconSize } = useTheme();
+  const { t } = useI18n();
   const classId = route?.params?.classId || '';
 
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('OVERVIEW');
@@ -78,10 +86,11 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
   const [enrollmentAvailability, setEnrollmentAvailability] = useState('OPEN');
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsFeedback, setSettingsFeedback] = useState<string | null>(null);
+  const [settingsFeedbackIsError, setSettingsFeedbackIsError] = useState(false);
 
   const fetchWorkspace = useCallback(async () => {
     if (!classId) {
-      setError('No class ID provided.');
+      setError(t('masterClasses.workspace.errNoClassId'));
       setLoading(false);
       return;
     }
@@ -103,12 +112,12 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
       }
     } catch (err: any) {
       console.error('[ClassWorkspace fetch error]', err);
-      setError(err?.message || 'Failed to load class workspace.');
+      setError(err?.message || t('masterClasses.workspace.errLoad'));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [classId]);
+  }, [classId, t]);
 
   useEffect(() => {
     let isMounted = true;
@@ -133,7 +142,7 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
         setSelectedStudentForProfile((prev: any) => ({ ...prev, group_id: newGroupId }));
       }
     } catch (err: any) {
-      throw new Error(err?.message || 'Failed to assign group.');
+      throw new Error(err?.message || t('masterClasses.workspace.errAssignGroup'));
     }
   };
 
@@ -150,7 +159,7 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
       setNoticeMessage('');
       void fetchWorkspace();
     } catch (err: any) {
-      Alert.alert('Notice Error', err?.message || 'Failed to post notice.');
+      Alert.alert(t('masterClasses.workspace.noticeErrorTitle'), err?.message || t('masterClasses.workspace.noticeErrorMessage'));
     } finally {
       setPostingNotice(false);
     }
@@ -159,6 +168,7 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
   const handleSaveSettings = async () => {
     setSavingSettings(true);
     setSettingsFeedback(null);
+    setSettingsFeedbackIsError(false);
     try {
       await apiClient.patch(`/classes/${classId}/settings`, {
         venueDetails,
@@ -167,10 +177,11 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
         enrollmentAvailability,
         expectedVersion: workspaceData?.class?.version,
       });
-      setSettingsFeedback('Class settings updated successfully.');
+      setSettingsFeedback(t('masterClasses.workspace.settingsSaved'));
       void fetchWorkspace();
     } catch (err: any) {
-      setSettingsFeedback(`Error: ${err?.message || 'Failed to save settings'}`);
+      setSettingsFeedbackIsError(true);
+      setSettingsFeedback(t('masterClasses.workspace.settingsError', { message: err?.message || t('masterClasses.workspace.settingsErrorFallback') }));
     } finally {
       setSavingSettings(false);
     }
@@ -180,11 +191,11 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
     return (
       <ScreenContainer testID="class-workspace-screen">
         <ScreenHeader
-          title={route?.params?.className || 'Class Workspace'}
-          subtitle="Loading operational workspace..."
+          title={route?.params?.className || t('masterClasses.workspace.title')}
+          subtitle={t('masterClasses.workspace.loadingSubtitle')}
           onBack={() => navigation?.goBack?.()}
         />
-        <LoadingState message="Connecting to authorized class records..." />
+        <LoadingState message={t('masterClasses.workspace.loadingMessage')} />
       </ScreenContainer>
     );
   }
@@ -193,8 +204,8 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
     return (
       <ScreenContainer testID="class-workspace-screen">
         <ScreenHeader
-          title={route?.params?.className || 'Class Workspace'}
-          subtitle="Access Error"
+          title={route?.params?.className || t('masterClasses.workspace.title')}
+          subtitle={t('masterClasses.workspace.accessError')}
           onBack={() => navigation?.goBack?.()}
         />
         <ErrorState message={error} onRetry={fetchWorkspace} />
@@ -223,8 +234,8 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
   return (
     <ScreenContainer scrollable testID="class-workspace-screen">
       <ScreenHeader
-        title={cls.name || 'Class Workspace'}
-        subtitle={`${cls.organization_name || 'Persatuan'} • ${cls.location || ''}`}
+        title={cls.name || t('masterClasses.workspace.title')}
+        subtitle={`${cls.organization_name || t('masterClasses.workspace.defaultOrg')} • ${cls.location || ''}`}
         onBack={() => navigation?.goBack?.()}
         rightAction={
           <StatusBadge
@@ -240,49 +251,49 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
       <View style={[styles.tabBar, { borderBottomColor: colors.border }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.xs }}>
           <Button
-            label="Overview"
+            label={t('masterClasses.workspace.tabOverview')}
             onPress={() => setActiveTab('OVERVIEW')}
             variant={activeTab === 'OVERVIEW' ? 'primary' : 'outline'}
             size="sm"
             testID="tab-workspace-overview"
           />
           <Button
-            label={`Students (${activeStudentsCount})`}
+            label={t('masterClasses.workspace.tabStudents', { count: activeStudentsCount })}
             onPress={() => setActiveTab('STUDENTS')}
             variant={activeTab === 'STUDENTS' ? 'primary' : 'outline'}
             size="sm"
             testID="tab-workspace-students"
           />
           <Button
-            label={`Attendance (${todaySessions.length})`}
+            label={t('masterClasses.workspace.tabAttendance', { count: todaySessions.length })}
             onPress={() => setActiveTab('ATTENDANCE')}
             variant={activeTab === 'ATTENDANCE' ? 'primary' : 'outline'}
             size="sm"
             testID="tab-workspace-attendance"
           />
           <Button
-            label={`Apps (${pendingAppsCount})`}
+            label={t('masterClasses.workspace.tabApps', { count: pendingAppsCount })}
             onPress={() => setActiveTab('APPLICATIONS')}
             variant={activeTab === 'APPLICATIONS' ? 'primary' : 'outline'}
             size="sm"
             testID="tab-workspace-applications"
           />
           <Button
-            label="Schedule"
+            label={t('masterClasses.workspace.tabSchedule')}
             onPress={() => setActiveTab('SCHEDULE')}
             variant={activeTab === 'SCHEDULE' ? 'primary' : 'outline'}
             size="sm"
             testID="tab-workspace-schedule"
           />
           <Button
-            label={`Notices (${recentNotices.length})`}
+            label={t('masterClasses.workspace.tabNotices', { count: recentNotices.length })}
             onPress={() => setActiveTab('NOTICES')}
             variant={activeTab === 'NOTICES' ? 'primary' : 'outline'}
             size="sm"
             testID="tab-workspace-notices"
           />
           <Button
-            label="Settings"
+            label={t('masterClasses.workspace.tabSettings')}
             onPress={() => setActiveTab('SETTINGS')}
             variant={activeTab === 'SETTINGS' ? 'primary' : 'outline'}
             size="sm"
@@ -308,8 +319,8 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
             {/* Live Session Card for scheduled mat session */}
             {todaySessions.length > 0 ? (
               <LiveSessionCard
-                categoryLabel="ACTIVE MAT SESSION"
-                className={todaySessions[0].group_name ? `${todaySessions[0].group_name} Session` : 'Mat Session'}
+                categoryLabel={t('masterClasses.workspace.activeMatSession')}
+                className={todaySessions[0].group_name ? t('masterClasses.workspace.groupSession', { group: todaySessions[0].group_name }) : t('masterClasses.workspace.matSession')}
                 scheduleTime={`${todaySessions[0].start_time} - ${todaySessions[0].end_time}`}
                 enrolledCount={activeStudentsCount}
                 capacity={capacity}
@@ -321,14 +332,14 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
             {/* Stat Cards - Google Stitch Visual Hierarchy */}
             <View style={[styles.statsRow, { gap: spacing.sm }]}>
               <StitchStatCard
-                label="Active Enrolled"
+                label={t('masterClasses.workspace.statActiveEnrolled')}
                 value={`${activeStudentsCount} / ${capacity}`}
                 hasAccentBorder={true}
                 testID="stat-active-students"
                 style={{ flex: 1 }}
               />
               <StitchStatCard
-                label="Available Spots"
+                label={t('masterClasses.workspace.statAvailableSpots')}
                 value={availableSpots}
                 testID="stat-available-spots"
                 style={{ flex: 1 }}
@@ -337,13 +348,13 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
 
             <View style={[styles.statsRow, { gap: spacing.sm }]}>
               <StitchStatCard
-                label="Pending Apps"
+                label={t('masterClasses.workspace.statPendingApps')}
                 value={pendingAppsCount}
                 testID="stat-pending-applications"
                 style={{ flex: 1 }}
               />
               <StitchStatCard
-                label="Waitlisted"
+                label={t('masterClasses.workspace.statWaitlisted')}
                 value={waitlistedAppsCount}
                 testID="stat-waitlisted-applications"
                 style={{ flex: 1 }}
@@ -353,11 +364,11 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
             {/* Quick Actions */}
             <Card variant="standard" style={styles.card}>
               <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
-                Operational Quick Links
+                {t('masterClasses.workspace.quickLinks')}
               </Text>
               <View style={{ flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' }}>
                 <Button
-                  label="Roll Call"
+                  label={t('masterClasses.workspace.rollCall')}
                   onPress={() => navigation?.navigate?.('Attendance', { classId })}
                   variant="primary"
                   size="sm"
@@ -365,7 +376,7 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
                   testID="btn-quick-rollcall"
                 />
                 <Button
-                  label="Review Applications"
+                  label={t('masterClasses.workspace.reviewApplications')}
                   onPress={() => navigation?.navigate?.('ClassEnrollmentInbox', { classId, className: cls.name })}
                   variant="outline"
                   size="sm"
@@ -373,7 +384,7 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
                   testID="btn-quick-applications"
                 />
                 <Button
-                  label="Parent Messages"
+                  label={t('masterClasses.workspace.parentMessages')}
                   onPress={() => navigation?.navigate?.('ParentMasterMessaging', { classId })}
                   variant="outline"
                   size="sm"
@@ -386,18 +397,18 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
             {/* Today's Mat Sessions */}
             <Card variant="standard" style={styles.card}>
               <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
-                Today&apos;s Mat Sessions
+                {t('masterClasses.workspace.todaysMatSessions')}
               </Text>
               {todaySessions.length === 0 ? (
                 <Text style={[typography.caption, { color: colors.textMuted }]}>
-                  No training sessions scheduled for today.
+                  {t('masterClasses.workspace.noSessionsToday')}
                 </Text>
               ) : (
                 todaySessions.map((sess: any) => (
                   <View key={sess.id} style={[styles.sessionRow, { borderColor: colors.border }]}>
                     <View style={{ flex: 1 }}>
                       <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
-                        {sess.start_time} - {sess.end_time} • {sess.group_name || 'All Groups'}
+                        {sess.start_time} - {sess.end_time} • {sess.group_name || t('masterClasses.workspace.allGroups')}
                       </Text>
                       <Text style={[typography.caption, { color: colors.textSecondary }]}>
                         {sess.location}
@@ -417,18 +428,18 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
             {/* Recent Notices */}
             <Card variant="standard" style={styles.card}>
               <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
-                Recent Class Notices
+                {t('masterClasses.workspace.recentNotices')}
               </Text>
               {recentNotices.length === 0 ? (
                 <Text style={[typography.caption, { color: colors.textMuted }]}>
-                  No notices posted for this class yet.
+                  {t('masterClasses.workspace.noNoticesForClass')}
                 </Text>
               ) : (
                 recentNotices.slice(0, 3).map((not: any) => (
                   <View key={not.id} style={[styles.noticeItem, { borderColor: colors.border }]}>
                     <Text style={[typography.bodyMedium, { color: colors.textPrimary }]}>{not.message}</Text>
                     <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                      {not.sender_name || 'Master'}
+                      {not.sender_name || t('masterClasses.workspace.senderFallback')}
                     </Text>
                   </View>
                 ))
@@ -445,7 +456,7 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
               <View style={[styles.searchBox, { borderColor: colors.border, backgroundColor: colors.surfaceElevated }]}>
                 <Search size={iconSize.sm} color={colors.textSecondary} />
                 <TextInput
-                  placeholder="Search active students..."
+                  placeholder={t('masterClasses.workspace.searchPlaceholder')}
                   placeholderTextColor={colors.textMuted}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
@@ -473,7 +484,7 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
                         { color: selectedGroupFilter === '' ? colors.buttonPrimaryText : colors.textPrimary },
                       ]}
                     >
-                      All Groups
+                      {t('masterClasses.workspace.allGroups')}
                     </Text>
                   </TouchableOpacity>
                   {trainingGroups.map((grp: any) => (
@@ -507,7 +518,7 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
             {filteredStudents.length === 0 ? (
               <Card variant="standard" style={{ padding: 20, alignItems: 'center' }}>
                 <Text style={[typography.bodyMedium, { color: colors.textSecondary }]}>
-                  No active enrolled students match your filter.
+                  {t('masterClasses.workspace.noStudentsMatch')}
                 </Text>
               </Card>
             ) : (
@@ -559,20 +570,20 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
                                 }}
                               >
                                 <Text style={{ fontSize: 10, fontWeight: '700', color: belt.textColor || '#0F172A' }}>
-                                  {stu.belt_rank || 'White Belt'}
+                                  {stu.belt_rank || t('masterClasses.workspace.beltFallback')}
                                 </Text>
                               </View>
                             );
                           })()}
                           <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 3 }]}>
-                            Group: {stu.group_name || 'Unassigned'} • IC: {stu.ic_number}
+                            {t('masterClasses.workspace.studentMeta', { group: stu.group_name || t('masterClasses.workspace.unassigned'), ic: stu.ic_number })}
                           </Text>
                         </View>
                       </View>
                       <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                        <StatusBadge status="ACTIVE" label="Enrolled" variant="success" />
+                        <StatusBadge status="ACTIVE" label={t('masterClasses.workspace.enrolled')} variant="success" />
                         <Button
-                          label="Profile"
+                          label={t('masterClasses.workspace.profile')}
                           onPress={() => setSelectedStudentForProfile(stu)}
                           variant="outline"
                           size="sm"
@@ -592,10 +603,10 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
           <View style={{ gap: spacing.md, paddingVertical: spacing.sm }}>
             <Card variant="standard" style={styles.card}>
               <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.xs }]}>
-                Attendance Operations
+                {t('masterClasses.workspace.attendanceOps')}
               </Text>
               <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.md }]}>
-                Authorized Master roll-call and offline-synchronized check-in sessions.
+                {t('masterClasses.workspace.attendanceOpsDesc')}
               </Text>
 
               {/* SEC-QR-001 Resolved Security Badge */}
@@ -607,13 +618,13 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
               >
                 <ShieldCheck size={iconSize.sm} color={colors.badgeSuccessText} />
                 <Text style={[typography.caption, { color: colors.badgeSuccessText, flex: 1 }]}>
-                  SEC-QR-001 Resolved: Cryptographically signed passes with HMAC-SHA256 signature verification.
+                  {t('masterClasses.workspace.secQrResolved')}
                 </Text>
               </View>
 
               <View style={{ gap: spacing.sm, marginTop: spacing.md }}>
                 <Button
-                  label="Open Attendance Roll-Call Screen"
+                  label={t('masterClasses.workspace.openRollCall')}
                   onPress={() => navigation?.navigate?.('Attendance', { classId })}
                   variant="primary"
                   size="md"
@@ -625,11 +636,11 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
 
             <Card variant="standard" style={styles.card}>
               <Text style={[typography.titleMedium, { color: colors.textPrimary, fontWeight: '700', marginBottom: spacing.sm }]}>
-                Today&apos;s Sessions Roster
+                {t('masterClasses.workspace.todaysSessionsRoster')}
               </Text>
               {todaySessions.length === 0 ? (
                 <Text style={[typography.caption, { color: colors.textMuted }]}>
-                  No active session scheduled today.
+                  {t('masterClasses.workspace.noActiveSession')}
                 </Text>
               ) : (
                 todaySessions.map((s: any) => (
@@ -643,7 +654,7 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
                       </Text>
                     </View>
                     <Button
-                      label="Take Roll Call"
+                      label={t('masterClasses.workspace.takeRollCall')}
                       onPress={() => navigation?.navigate?.('Attendance', { classId, sessionId: s.id })}
                       variant="outline"
                       size="sm"
@@ -661,14 +672,14 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
           <View style={{ gap: spacing.md, paddingVertical: spacing.sm }}>
             <Card variant="standard" style={styles.card}>
               <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.xs }]}>
-                Student Enrollment Applications
+                {t('masterClasses.workspace.applicationsTitle')}
               </Text>
               <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.md }]}>
-                Review pending applications submitted by students and authorized parents for this class.
+                {t('masterClasses.workspace.applicationsDesc')}
               </Text>
 
               <Button
-                label={`Review Applications (${pendingAppsCount} Pending)`}
+                label={t('masterClasses.workspace.reviewApplicationsPending', { count: pendingAppsCount })}
                 onPress={() => navigation?.navigate?.('ClassEnrollmentInbox', { classId, className: cls.name })}
                 variant="primary"
                 size="md"
@@ -683,21 +694,21 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
           <View style={{ gap: spacing.md, paddingVertical: spacing.sm }}>
             <Card variant="standard" style={styles.card}>
               <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
-                Class Schedules
+                {t('masterClasses.workspace.classSchedules')}
               </Text>
               <View style={[styles.scheduleItem, { borderColor: colors.border }]}>
                 <Clock size={iconSize.sm} color={colors.buttonPrimaryBg} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>Regular Schedule</Text>
-                  <Text style={[typography.caption, { color: colors.textSecondary }]}>{cls.schedule || 'Standard Time'}</Text>
+                  <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>{t('masterClasses.workspace.regularSchedule')}</Text>
+                  <Text style={[typography.caption, { color: colors.textSecondary }]}>{cls.schedule || t('masterClasses.workspace.standardTime')}</Text>
                 </View>
               </View>
               <View style={[styles.scheduleItem, { borderColor: colors.border, marginTop: spacing.xs }]}>
                 <MapPin size={iconSize.sm} color={colors.buttonPrimaryBg} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>Venue Location</Text>
+                  <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>{t('masterClasses.workspace.venueLocation')}</Text>
                   <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                    {cls.venue_details || cls.location || 'Dojo Complex'}
+                    {cls.venue_details || cls.location || t('masterClasses.workspace.venueFallback')}
                   </Text>
                 </View>
               </View>
@@ -705,10 +716,10 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
 
             <Card variant="standard" style={styles.card}>
               <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
-                Upcoming Sessions
+                {t('masterClasses.workspace.upcomingSessions')}
               </Text>
               {upcomingSessions.length === 0 ? (
-                <Text style={[typography.caption, { color: colors.textMuted }]}>No upcoming sessions found.</Text>
+                <Text style={[typography.caption, { color: colors.textMuted }]}>{t('masterClasses.workspace.noUpcomingSessions')}</Text>
               ) : (
                 upcomingSessions.map((sess: any) => (
                   <View key={sess.id} style={[styles.sessionRow, { borderColor: colors.border }]}>
@@ -717,7 +728,7 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
                         {sess.session_date} • {sess.start_time} - {sess.end_time}
                       </Text>
                       <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                        {sess.location} • {sess.group_name || 'All Groups'}
+                        {sess.location} • {sess.group_name || t('masterClasses.workspace.allGroups')}
                       </Text>
                     </View>
                     <StatusBadge
@@ -737,10 +748,10 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
           <View style={{ gap: spacing.md, paddingVertical: spacing.sm }}>
             <Card variant="standard" style={styles.card}>
               <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.xs }]}>
-                Post Notice to Class
+                {t('masterClasses.workspace.postNoticeTitle')}
               </Text>
               <TextInput
-                placeholder="Enter announcement for enrolled students and parents..."
+                placeholder={t('masterClasses.workspace.noticePlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 value={noticeMessage}
                 onChangeText={setNoticeMessage}
@@ -754,7 +765,7 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
                 testID="input-notice-message"
               />
               <Button
-                label={postingNotice ? 'Posting...' : 'Post Class Notice'}
+                label={postingNotice ? t('masterClasses.workspace.posting') : t('masterClasses.workspace.postClassNotice')}
                 onPress={handlePostNotice}
                 variant="primary"
                 size="sm"
@@ -767,16 +778,16 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
 
             <Card variant="standard" style={styles.card}>
               <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
-                Notice History
+                {t('masterClasses.workspace.noticeHistory')}
               </Text>
               {recentNotices.length === 0 ? (
-                <Text style={[typography.caption, { color: colors.textMuted }]}>No notices posted yet.</Text>
+                <Text style={[typography.caption, { color: colors.textMuted }]}>{t('masterClasses.workspace.noNoticesYet')}</Text>
               ) : (
                 recentNotices.map((n: any) => (
                   <View key={n.id} style={[styles.noticeItem, { borderColor: colors.border }]}>
                     <Text style={[typography.bodyMedium, { color: colors.textPrimary }]}>{n.message}</Text>
                     <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 4 }]}>
-                      Posted: {n.created_at ? new Date(n.created_at).toLocaleDateString() : 'Recent'}
+                      {t('masterClasses.workspace.postedOn', { date: n.created_at ? new Date(n.created_at).toLocaleDateString() : t('masterClasses.workspace.postedRecent') })}
                     </Text>
                   </View>
                 ))
@@ -790,14 +801,14 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
           <View style={{ gap: spacing.md, paddingVertical: spacing.sm }}>
             <Card variant="standard" style={styles.card}>
               <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.xs }]}>
-                Class Operational Settings
+                {t('masterClasses.workspace.settingsTitle')}
               </Text>
               <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.md }]}>
-                Manage permitted parameters for this active class.
+                {t('masterClasses.workspace.settingsDesc')}
               </Text>
 
               <Text style={[typography.bodyMedium, { color: colors.textPrimary, marginBottom: 4, fontWeight: '600' }]}>
-                Venue Details
+                {t('masterClasses.workspace.venueDetails')}
               </Text>
               <TextInput
                 value={venueDetails}
@@ -807,13 +818,13 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
                   styles.input,
                   { borderColor: colors.border, color: colors.textPrimary, backgroundColor: colors.surfaceElevated },
                 ]}
-                placeholder="e.g. Court 3, Level 2"
+                placeholder={t('masterClasses.workspace.venuePlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 testID="input-settings-venue"
               />
 
               <Text style={[typography.bodyMedium, { color: colors.textPrimary, marginTop: spacing.sm, marginBottom: 4, fontWeight: '600' }]}>
-                Contact Channel
+                {t('masterClasses.workspace.contactChannel')}
               </Text>
               <TextInput
                 value={contactChannel}
@@ -823,24 +834,24 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
                   styles.input,
                   { borderColor: colors.border, color: colors.textPrimary, backgroundColor: colors.surfaceElevated },
                 ]}
-                placeholder="e.g. +60129998877"
+                placeholder={t('masterClasses.workspace.contactPlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 testID="input-settings-contact"
               />
 
               <Text style={[typography.bodyMedium, { color: colors.textPrimary, marginTop: spacing.sm, marginBottom: 4, fontWeight: '600' }]}>
-                Operational Status
+                {t('masterClasses.workspace.operationalStatus')}
               </Text>
               <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                 <Button
-                  label="ACTIVE"
+                  label={t('masterClasses.workspace.statusActive')}
                   onPress={() => setOperationalStatus('ACTIVE')}
                   variant={operationalStatus === 'ACTIVE' ? 'primary' : 'outline'}
                   size="sm"
                   testID="btn-status-active"
                 />
                 <Button
-                  label="PAUSED"
+                  label={t('masterClasses.workspace.statusPaused')}
                   onPress={() => setOperationalStatus('PAUSED')}
                   variant={operationalStatus === 'PAUSED' ? 'primary' : 'outline'}
                   size="sm"
@@ -849,13 +860,13 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
               </View>
 
               <Text style={[typography.bodyMedium, { color: colors.textPrimary, marginTop: spacing.sm, marginBottom: 4, fontWeight: '600' }]}>
-                Enrollment Availability
+                {t('masterClasses.workspace.enrollmentAvailability')}
               </Text>
               <View style={{ flexDirection: 'row', gap: spacing.xs }}>
                 {['OPEN', 'WAITLIST', 'CLOSED'].map((st) => (
                   <Button
                     key={st}
-                    label={st}
+                    label={t(ENROLLMENT_LABEL_KEYS[st])}
                     onPress={() => setEnrollmentAvailability(st)}
                     variant={enrollmentAvailability === st ? 'primary' : 'outline'}
                     size="sm"
@@ -870,7 +881,7 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
                     typography.caption,
                     {
                       marginTop: spacing.sm,
-                      color: settingsFeedback.startsWith('Error') ? colors.badgeDangerText : colors.badgeSuccessText,
+                      color: settingsFeedbackIsError ? colors.badgeDangerText : colors.badgeSuccessText,
                     },
                   ]}
                 >
@@ -879,7 +890,7 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
               ) : null}
 
               <Button
-                label={savingSettings ? 'Saving...' : 'Save Settings'}
+                label={savingSettings ? t('masterClasses.workspace.saving') : t('masterClasses.workspace.saveSettings')}
                 onPress={handleSaveSettings}
                 variant="primary"
                 size="md"
@@ -891,13 +902,13 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
 
             <Card style={styles.card}>
               <Text style={[typography.titleMedium, { color: colors.textPrimary, marginBottom: spacing.xs }]}>
-                Class Leadership & Governance
+                {t('masterClasses.workspace.leadershipTitle')}
               </Text>
               <Text style={[typography.caption, { color: colors.textMuted, marginBottom: spacing.sm }]}>
-                Initiate a permanent Master handover or appoint a temporary substitute with limited attendance delegation.
+                {t('masterClasses.workspace.leadershipDesc')}
               </Text>
               <Button
-                label="Manage Leadership & Handover"
+                label={t('masterClasses.workspace.manageLeadership')}
                 onPress={() => navigation?.navigate?.('ClassHandover', { classId, className: workspaceData?.class?.name })}
                 variant="outline"
                 size="md"

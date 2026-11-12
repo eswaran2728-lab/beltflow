@@ -26,6 +26,7 @@ import { useTheme } from '../../../theme/ThemeProvider';
 import { BrandColors } from '../../../theme/colors';
 import { Card } from '../../../components/Card';
 import { Button } from '../../../components/Button';
+import { useI18n } from '../../../i18n';
 import {
   teachingService,
   LessonDrill,
@@ -48,6 +49,7 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
   isSubstituteViewInitial = false,
 }) => {
   const { colors, typography, spacing, iconSize, borderRadius } = useTheme();
+  const { t } = useI18n();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -107,11 +109,11 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
         }
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to load lesson plan details.');
+      setError(err.message || t('masterClasses.lessonPlan.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [sessionId, mode, sessionTitle]);
+  }, [sessionId, mode, sessionTitle, t]);
 
   useEffect(() => {
     if (visible && sessionId) {
@@ -147,7 +149,7 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
 
   const handleSaveLessonPlan = async () => {
     if (!title.trim()) {
-      Alert.alert('Validation Error', 'Lesson plan title is required.');
+      Alert.alert(t('masterClasses.lessonPlan.validationTitle'), t('masterClasses.lessonPlan.titleRequired'));
       return;
     }
 
@@ -172,18 +174,18 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
       });
 
       setPlanVersion(res.lessonPlan.version);
-      Alert.alert('Success', `Lesson plan saved successfully (v${res.lessonPlan.version}).`);
+      Alert.alert(t('masterClasses.lessonPlan.successTitle'), t('masterClasses.lessonPlan.savedMessage', { version: res.lessonPlan.version }));
     } catch (err: any) {
       if (err.statusCode === 409 || err.message?.includes('conflict') || err.message?.includes('version')) {
         setVersionConflict(true);
         setCurrentVersionOnServer(err.currentVersion || planVersion + 1);
         Alert.alert(
-          'Edit Conflict',
-          'This lesson plan was modified by another master or concurrent session. Please reload to see the latest version before saving.'
+          t('masterClasses.lessonPlan.conflictTitle'),
+          t('masterClasses.lessonPlan.conflictMessage')
         );
       } else {
-        setError(err.message || 'Failed to save lesson plan.');
-        Alert.alert('Error', err.message || 'Failed to save lesson plan.');
+        setError(err.message || t('masterClasses.lessonPlan.saveError'));
+        Alert.alert(t('masterClasses.lessonPlan.errorTitle'), err.message || t('masterClasses.lessonPlan.saveError'));
       }
     } finally {
       setSaving(false);
@@ -203,16 +205,16 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <View style={{ flex: 1 }}>
             <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
-              {mode === 'SUBSTITUTE_BRIEF' ? 'Substitute Teacher Briefing' : 'Lesson Plan Editor'}
+              {mode === 'SUBSTITUTE_BRIEF' ? t('masterClasses.lessonPlan.substituteBriefingTitle') : t('masterClasses.lessonPlan.editorTitle')}
             </Text>
             <Text style={[typography.caption, { color: colors.textSecondary }]}>
-              {sessionTitle || `Session: ${sessionId}`}
+              {sessionTitle || t('masterClasses.lessonPlan.sessionFallback', { id: sessionId })}
             </Text>
           </View>
           <TouchableOpacity
             onPress={onClose}
             style={[styles.closeButton, { backgroundColor: colors.backgroundSecondary }]}
-            accessibilityLabel="Close lesson plan modal"
+            accessibilityLabel={t('masterClasses.lessonPlan.closeA11y')}
             testID="btn-close-lesson-modal"
           >
             <X size={iconSize.md} color={colors.textPrimary} />
@@ -242,7 +244,7 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
                 { color: mode === 'EDIT_PLAN' ? '#FFFFFF' : colors.textSecondary, marginLeft: 6 },
               ]}
             >
-              Master Lesson Plan
+              {t('masterClasses.lessonPlan.tabMasterPlan')}
             </Text>
           </TouchableOpacity>
 
@@ -267,7 +269,7 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
                 { color: mode === 'SUBSTITUTE_BRIEF' ? '#FFFFFF' : colors.textSecondary, marginLeft: 6 },
               ]}
             >
-              Substitute Brief
+              {t('masterClasses.lessonPlan.tabSubstituteBrief')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -276,20 +278,20 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.buttonPrimaryBg} />
             <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginTop: spacing.md }]}>
-              Loading lesson details...
+              {t('masterClasses.lessonPlan.loading')}
             </Text>
           </View>
         ) : error ? (
           <View style={[styles.errorContainer, { padding: spacing.lg }]}>
             <AlertTriangle size={iconSize.xl} color={BrandColors.danger} />
             <Text style={[typography.sectionHeading, { color: BrandColors.danger, marginTop: spacing.sm }]}>
-              Unable to Load
+              {t('masterClasses.lessonPlan.unableToLoad')}
             </Text>
             <Text style={[typography.bodyMedium, { color: colors.textSecondary, textAlign: 'center', marginTop: 4 }]}>
               {error}
             </Text>
             <Button
-              label="Retry"
+              label={t('masterClasses.lessonPlan.retry')}
               onPress={loadData}
               variant="outline"
               size="sm"
@@ -314,7 +316,7 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
                       { color: BrandColors.warning, marginLeft: spacing.sm, fontSize: 14 },
                     ]}
                   >
-                    CONFIDENTIAL SUBSTITUTE BRIEF
+                    {t('masterClasses.lessonPlan.confidentialHeading')}
                   </Text>
                 </View>
                 <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 4 }]}>
@@ -326,26 +328,30 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
             {/* Session Info */}
             <Card variant="standard" style={{ marginTop: spacing.md }}>
               <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
-                {substituteBrief?.session?.className || 'Class Session'}
+                {substituteBrief?.session?.className || t('masterClasses.lessonPlan.classSessionFallback')}
               </Text>
               <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                Date: {substituteBrief?.session?.sessionDate} ({substituteBrief?.session?.dayOfWeek}) |{' '}
-                {substituteBrief?.session?.startTime} - {substituteBrief?.session?.endTime}
+                {t('masterClasses.lessonPlan.dateLine', {
+                  date: substituteBrief?.session?.sessionDate ?? '',
+                  day: substituteBrief?.session?.dayOfWeek ?? '',
+                  start: substituteBrief?.session?.startTime ?? '',
+                  end: substituteBrief?.session?.endTime ?? '',
+                })}
               </Text>
               <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                Venue: {substituteBrief?.session?.location}
+                {t('masterClasses.lessonPlan.venueLine', { location: substituteBrief?.session?.location ?? '' })}
               </Text>
             </Card>
 
             {/* Lesson Drills & Objectives */}
             <Card variant="standard" style={{ marginTop: spacing.md }}>
               <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
-                Plan: {substituteBrief?.lessonPlan?.title || 'No Lesson Plan Registered'}
+                {t('masterClasses.lessonPlan.planLine', { title: substituteBrief?.lessonPlan?.title || t('masterClasses.lessonPlan.noPlan') })}
               </Text>
               {substituteBrief?.lessonPlan?.objectives ? (
                 <View style={{ marginBottom: spacing.sm }}>
                   <Text style={[typography.caption, { fontWeight: '700', color: colors.textPrimary }]}>
-                    Objectives:
+                    {t('masterClasses.lessonPlan.objectivesLabel')}
                   </Text>
                   <Text style={[typography.bodyMedium, { color: colors.textSecondary }]}>
                     {substituteBrief.lessonPlan.objectives}
@@ -356,7 +362,7 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
               {substituteBrief?.lessonPlan?.equipment && substituteBrief.lessonPlan.equipment.length > 0 && (
                 <View style={{ marginBottom: spacing.sm }}>
                   <Text style={[typography.caption, { fontWeight: '700', color: colors.textPrimary }]}>
-                    Required Equipment:
+                    {t('masterClasses.lessonPlan.requiredEquipment')}
                   </Text>
                   <Text style={[typography.bodyMedium, { color: colors.textSecondary }]}>
                     {substituteBrief.lessonPlan.equipment.join(', ')}
@@ -366,7 +372,7 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
 
               {/* Drills List */}
               <Text style={[typography.caption, { fontWeight: '700', color: colors.textPrimary, marginTop: spacing.xs }]}>
-                Scheduled Drills:
+                {t('masterClasses.lessonPlan.scheduledDrills')}
               </Text>
               <View testID="substitute-drills-list">
                 {(substituteBrief?.lessonPlan?.drills || []).map((drill, idx) => (
@@ -379,7 +385,7 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
                   >
                     <View style={{ flex: 1 }}>
                       <Text style={[typography.button, { color: colors.textPrimary }]}>
-                        {idx + 1}. {drill.name} ({drill.duration_minutes || 10}m)
+                        {t('masterClasses.lessonPlan.drillLine', { index: idx + 1, name: drill.name, minutes: drill.duration_minutes || 10 })}
                       </Text>
                       {drill.instructions ? (
                         <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
@@ -397,13 +403,13 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
                 <Shield size={iconSize.md} color={colors.buttonPrimaryBg} />
                 <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginLeft: spacing.xs }]}>
-                  Enrolled Students Safety Brief
+                  {t('masterClasses.lessonPlan.safetyBriefTitle')}
                 </Text>
               </View>
               <View testID="safety-brief-list">
                 {(substituteBrief?.studentSafetyBrief || []).length === 0 ? (
                   <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                    No enrolled students with flagged medical restrictions.
+                    {t('masterClasses.lessonPlan.noFlaggedStudents')}
                   </Text>
                 ) : (
                   substituteBrief?.studentSafetyBrief.map((student, idx) => (
@@ -425,17 +431,17 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
                       </View>
                       {student.allergies ? (
                         <Text style={[typography.caption, { color: BrandColors.danger, marginTop: 2 }]}>
-                          Allergies: {student.allergies}
+                          {t('masterClasses.lessonPlan.allergies', { value: student.allergies })}
                         </Text>
                       ) : null}
                       {student.medical_conditions ? (
                         <Text style={[typography.caption, { color: BrandColors.warning, marginTop: 2 }]}>
-                          Medical: {student.medical_conditions}
+                          {t('masterClasses.lessonPlan.medical', { value: student.medical_conditions })}
                         </Text>
                       ) : null}
                       {student.emergency_contact_phone ? (
                         <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                          Emergency Contact: {student.emergency_contact_phone}
+                          {t('masterClasses.lessonPlan.emergencyContact', { value: student.emergency_contact_phone })}
                         </Text>
                       ) : null}
                     </View>
@@ -462,15 +468,14 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
                       { color: BrandColors.danger, marginLeft: spacing.sm, fontSize: 15 },
                     ]}
                   >
-                    Edit Conflict (HTTP 409)
+                    {t('masterClasses.lessonPlan.conflictBannerTitle')}
                   </Text>
                 </View>
                 <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginTop: 4 }]}>
-                  This lesson plan has been updated by another master to v{currentVersionOnServer}. Your current
-                  changes cannot overwrite it without refreshing.
+                  {t('masterClasses.lessonPlan.conflictBannerBody', { version: currentVersionOnServer ?? '' })}
                 </Text>
                 <Button
-                  label="Reload Latest Version"
+                  label={t('masterClasses.lessonPlan.reloadLatest')}
                   onPress={loadData}
                   variant="primary"
                   size="sm"
@@ -484,14 +489,14 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
             {/* Version Info Header */}
             <View style={styles.versionRow}>
               <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                Lesson Plan Concurrency Control
+                {t('masterClasses.lessonPlan.concurrencyControl')}
               </Text>
               <View style={[styles.versionBadge, { backgroundColor: colors.backgroundSecondary }]}>
                 <Text
                   style={[typography.caption, { fontWeight: '700', color: colors.textPrimary }]}
                   testID="lesson-plan-version"
                 >
-                  Version {planVersion}
+                  {t('masterClasses.lessonPlan.version', { version: planVersion })}
                 </Text>
               </View>
             </View>
@@ -499,7 +504,7 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
             {/* Title */}
             <Card variant="standard" style={{ marginTop: spacing.sm }}>
               <Text style={[typography.caption, { fontWeight: '700', color: colors.textPrimary }]}>
-                Plan Title *
+                {t('masterClasses.lessonPlan.planTitleLabel')}
               </Text>
               <TextInput
                 style={[
@@ -508,13 +513,13 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
                 ]}
                 value={title}
                 onChangeText={setTitle}
-                placeholder="e.g. Advanced Sparring & Dynamic Footwork"
+                placeholder={t('masterClasses.lessonPlan.titlePlaceholder')}
                 placeholderTextColor={colors.textSecondary}
                 testID="input-lesson-title"
               />
 
               <Text style={[typography.caption, { fontWeight: '700', color: colors.textPrimary, marginTop: spacing.sm }]}>
-                Core Objectives
+                {t('masterClasses.lessonPlan.coreObjectives')}
               </Text>
               <TextInput
                 style={[
@@ -523,7 +528,7 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
                 ]}
                 value={objectives}
                 onChangeText={setObjectives}
-                placeholder="Key goals for this session..."
+                placeholder={t('masterClasses.lessonPlan.objectivesPlaceholder')}
                 placeholderTextColor={colors.textSecondary}
                 multiline
                 numberOfLines={3}
@@ -531,7 +536,7 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
               />
 
               <Text style={[typography.caption, { fontWeight: '700', color: colors.textPrimary, marginTop: spacing.sm }]}>
-                Equipment (comma separated)
+                {t('masterClasses.lessonPlan.equipmentLabel')}
               </Text>
               <TextInput
                 style={[
@@ -540,7 +545,7 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
                 ]}
                 value={equipmentInput}
                 onChangeText={setEquipmentInput}
-                placeholder="e.g. Kick Shields, Focus Mitts, Agility Ladder"
+                placeholder={t('masterClasses.lessonPlan.equipmentPlaceholder')}
                 placeholderTextColor={colors.textSecondary}
                 testID="input-lesson-equipment"
               />
@@ -550,7 +555,7 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
             <Card variant="standard" style={{ marginTop: spacing.md }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
-                  Training Drills
+                  {t('masterClasses.lessonPlan.trainingDrills')}
                 </Text>
                 <TouchableOpacity
                   onPress={handleAddDrill}
@@ -559,7 +564,7 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
                 >
                   <Plus size={iconSize.sm} color="#FFFFFF" />
                   <Text style={[typography.button, { color: '#FFFFFF', marginLeft: 4, fontSize: 12 }]}>
-                    Add Drill
+                    {t('masterClasses.lessonPlan.addDrill')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -581,7 +586,7 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
                         ]}
                         value={drill.name}
                         onChangeText={val => handleUpdateDrill(index, 'name', val)}
-                        placeholder="Drill name"
+                        placeholder={t('masterClasses.lessonPlan.drillNamePlaceholder')}
                         placeholderTextColor={colors.textSecondary}
                         testID={`input-drill-name-${index}`}
                       />
@@ -594,7 +599,7 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
                         onChangeText={val =>
                           handleUpdateDrill(index, 'duration_minutes', parseInt(val, 10) || 0)
                         }
-                        placeholder="Mins"
+                        placeholder={t('masterClasses.lessonPlan.minsPlaceholder')}
                         placeholderTextColor={colors.textSecondary}
                         keyboardType="numeric"
                         testID={`input-drill-duration-${index}`}
@@ -614,7 +619,7 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
                       ]}
                       value={drill.instructions || ''}
                       onChangeText={val => handleUpdateDrill(index, 'instructions', val)}
-                      placeholder="Coaching instructions / cues..."
+                      placeholder={t('masterClasses.lessonPlan.instructionsPlaceholder')}
                       placeholderTextColor={colors.textSecondary}
                       testID={`input-drill-instructions-${index}`}
                     />
@@ -636,7 +641,7 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
                     { fontWeight: '700', color: colors.textPrimary, marginLeft: spacing.xs },
                   ]}
                 >
-                  Private Master Notes (Hidden from Substitutes & Public)
+                  {t('masterClasses.lessonPlan.privateNotesLabel')}
                 </Text>
               </View>
               <TextInput
@@ -646,7 +651,7 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
                 ]}
                 value={privateMasterNotes}
                 onChangeText={setPrivateMasterNotes}
-                placeholder="Private reflections, student grading readiness observations..."
+                placeholder={t('masterClasses.lessonPlan.privateNotesPlaceholder')}
                 placeholderTextColor={colors.textSecondary}
                 multiline
                 numberOfLines={3}
@@ -657,7 +662,7 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
             {/* Save Action */}
             <View style={{ marginTop: spacing.lg, marginBottom: spacing.xl }}>
               <Button
-                label={saving ? 'Saving...' : `Save Lesson Plan (v${planVersion})`}
+                label={saving ? t('masterClasses.lessonPlan.saving') : t('masterClasses.lessonPlan.saveButton', { version: planVersion })}
                 onPress={handleSaveLessonPlan}
                 variant="primary"
                 size="lg"
