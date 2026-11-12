@@ -24,6 +24,7 @@ import { StatusBadge } from '../../../components/Badges';
 import { LoadingState, ErrorState } from '../../../components/Feedback';
 import { AuthUser } from '../../../types/auth';
 import { apiClient } from '../../../services/apiClient';
+import { useI18n } from '../../../i18n';
 
 export interface ClassHandoverScreenProps {
   user: AuthUser;
@@ -46,8 +47,9 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
   route,
 }) => {
   const { colors, typography, spacing, iconSize } = useTheme();
+  const { t } = useI18n();
   const classId = route?.params?.classId || '';
-  const className = route?.params?.className || 'Class Workspace';
+  const className = route?.params?.className || t('masterHandover.ch.defaultClassName');
 
   const [activeTab, setActiveTab] = useState<'HANDOVER' | 'SUBSTITUTE'>('HANDOVER');
   const [loading, setLoading] = useState(false);
@@ -65,6 +67,7 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
   const [effectiveDate, setEffectiveDate] = useState('');
   const [submittingHandover, setSubmittingHandover] = useState(false);
   const [handoverFeedback, setHandoverFeedback] = useState<string | null>(null);
+  const [handoverFeedbackOk, setHandoverFeedbackOk] = useState(false);
 
   // Substitute form state
   const [substituteMasterId, setSubstituteMasterId] = useState('');
@@ -72,6 +75,7 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
   const [substituteNotes, setSubstituteNotes] = useState('');
   const [assigningSubstitute, setAssigningSubstitute] = useState(false);
   const [substituteFeedback, setSubstituteFeedback] = useState<string | null>(null);
+  const [substituteFeedbackOk, setSubstituteFeedbackOk] = useState(false);
 
   const loadData = async () => {
     if (!classId) return;
@@ -91,7 +95,7 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
       setActiveHandover(handoversRes?.activeHandover || null);
       setError(null);
     } catch (err: any) {
-      setError(err?.message || 'Failed to load leadership & handover records.');
+      setError(err?.message || t('masterHandover.ch.loadError'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -120,14 +124,14 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
       })
       .catch((err: any) => {
         if (isMounted) {
-          setError(err?.message || 'Failed to load leadership & handover records.');
+          setError(err?.message || t('masterHandover.ch.loadError'));
         }
       });
 
     return () => {
       isMounted = false;
     };
-  }, [classId]);
+  }, [classId, t]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -136,11 +140,11 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
 
   const handleInitiateHandover = async () => {
     if (!incomingMasterId.trim()) {
-      Alert.alert('Required Field', 'Please enter the incoming Master ID.');
+      Alert.alert(t('masterHandover.common.requiredField'), t('masterHandover.ch.enterIncomingId'));
       return;
     }
     if (!handoverReason.trim()) {
-      Alert.alert('Required Field', 'Please provide a reason for the leadership handover.');
+      Alert.alert(t('masterHandover.common.requiredField'), t('masterHandover.ch.enterReason'));
       return;
     }
 
@@ -156,10 +160,12 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
       setIncomingMasterId('');
       setHandoverReason('');
       setEffectiveDate('');
-      setHandoverFeedback('Handover request submitted successfully! Awaiting incoming Master acceptance.');
+      setHandoverFeedbackOk(true);
+      setHandoverFeedback(t('masterHandover.ch.handoverSubmitted'));
       await loadData();
     } catch (err: any) {
-      setHandoverFeedback(err?.message || 'Failed to initiate handover request.');
+      setHandoverFeedbackOk(false);
+      setHandoverFeedback(err?.message || t('masterHandover.ch.handoverFailed'));
     } finally {
       setSubmittingHandover(false);
     }
@@ -167,7 +173,7 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
 
   const handleAssignSubstitute = async () => {
     if (!substituteMasterId.trim()) {
-      Alert.alert('Required Field', 'Please enter the substitute Master ID.');
+      Alert.alert(t('masterHandover.common.requiredField'), t('masterHandover.ch.enterSubstituteId'));
       return;
     }
 
@@ -188,10 +194,12 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
 
       setSubstituteMasterId('');
       setSubstituteNotes('');
-      setSubstituteFeedback('Temporary substitute delegated successfully.');
+      setSubstituteFeedbackOk(true);
+      setSubstituteFeedback(t('masterHandover.ch.substituteAssigned'));
       await loadData();
     } catch (err: any) {
-      setSubstituteFeedback(err?.message || 'Failed to assign temporary substitute.');
+      setSubstituteFeedbackOk(false);
+      setSubstituteFeedback(err?.message || t('masterHandover.ch.substituteFailed'));
     } finally {
       setAssigningSubstitute(false);
     }
@@ -199,19 +207,19 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
 
   const handleRevokeSubstitute = async (leadershipId: string) => {
     Alert.alert(
-      'Revoke Delegation',
-      'Are you sure you want to revoke this temporary substitute Master immediately?',
+      t('masterHandover.ch.revokeTitle'),
+      t('masterHandover.ch.revokeConfirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('masterHandover.common.cancel'), style: 'cancel' },
         {
-          text: 'Revoke',
+          text: t('masterHandover.ch.revoke'),
           style: 'destructive',
           onPress: async () => {
             try {
               await apiClient.delete(`/classes/${classId}/delegation/${leadershipId}`);
               await loadData();
             } catch (err: any) {
-              Alert.alert('Revocation Error', err?.message || 'Failed to revoke substitute.');
+              Alert.alert(t('masterHandover.ch.revokeErrorTitle'), err?.message || t('masterHandover.ch.revokeFailed'));
             }
           },
         },
@@ -222,8 +230,8 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
   if (loading) {
     return (
       <ScreenContainer>
-        <ScreenHeader title="Class Leadership" onBack={() => navigation?.goBack?.()} />
-        <LoadingState message="Loading leadership records..." />
+        <ScreenHeader title={t('masterHandover.ch.title')} onBack={() => navigation?.goBack?.()} />
+        <LoadingState message={t('masterHandover.ch.loading')} />
       </ScreenContainer>
     );
   }
@@ -231,7 +239,7 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
   if (error && !refreshing) {
     return (
       <ScreenContainer>
-        <ScreenHeader title="Class Leadership" onBack={() => navigation?.goBack?.()} />
+        <ScreenHeader title={t('masterHandover.ch.title')} onBack={() => navigation?.goBack?.()} />
         <ErrorState message={error} onRetry={loadData} />
       </ScreenContainer>
     );
@@ -243,7 +251,7 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
   return (
     <ScreenContainer>
       <ScreenHeader
-        title="Class Leadership"
+        title={t('masterHandover.ch.title')}
         subtitle={className}
         onBack={() => navigation?.goBack?.()}
       />
@@ -262,7 +270,7 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
               { color: activeTab === 'HANDOVER' ? colors.buttonSecondaryBg : colors.textMuted },
             ]}
           >
-            Permanent Handover
+            {t('masterHandover.ch.tabHandover')}
           </Text>
         </TouchableOpacity>
 
@@ -279,7 +287,7 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
               { color: activeTab === 'SUBSTITUTE' ? colors.buttonSecondaryBg : colors.textMuted },
             ]}
           >
-            Temporary Substitute
+            {t('masterHandover.ch.tabSubstitute')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -293,24 +301,24 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
           <View style={styles.cardHeaderRow}>
             <Shield size={iconSize.md} color={colors.buttonSecondaryBg} />
             <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginLeft: spacing.sm }]}>
-              Current Leadership
+              {t('masterHandover.ch.currentLeadership')}
             </Text>
           </View>
 
           <View style={styles.leaderInfoRow}>
-            <Text style={[typography.bodyMedium, { color: colors.textMuted }]}>Primary Leader:</Text>
+            <Text style={[typography.bodyMedium, { color: colors.textMuted }]}>{t('masterHandover.ch.primaryLeader')}</Text>
             <View style={styles.leaderValue}>
               <Text style={[typography.bodyMedium, { color: colors.textPrimary, fontWeight: '700' }]}>
-                {primaryLeader?.master_name || primaryLeader?.master_id || 'None Assigned'}
+                {primaryLeader?.master_name || primaryLeader?.master_id || t('masterHandover.ch.noneAssigned')}
               </Text>
-              <StatusBadge status="ACTIVE" label="PRIMARY" />
+              <StatusBadge status="ACTIVE" label={t('masterHandover.ch.primaryBadge')} />
             </View>
           </View>
 
           {activeSubstitutes.length > 0 && (
             <View style={{ marginTop: spacing.md }}>
               <Text style={[typography.caption, { color: colors.textMuted, marginBottom: spacing.xs }]}>
-                Active Temporary Substitutes ({activeSubstitutes.length}):
+                {t('masterHandover.ch.activeSubstitutes', { count: activeSubstitutes.length })}
               </Text>
               {activeSubstitutes.map((sub) => {
                 const isExpired = Boolean(sub.isExpired);
@@ -321,10 +329,10 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
                         {sub.master_name || sub.master_id}
                       </Text>
                       <Text style={[typography.caption, { color: colors.textMuted }]}>
-                        Capabilities: {sub.capabilities || 'ATTENDANCE_ONLY'}
+                        {t('masterHandover.ch.capabilities', { value: sub.capabilities || 'ATTENDANCE_ONLY' })}
                       </Text>
                       <Text style={[typography.caption, { color: isExpired ? colors.badgeDangerText : colors.badgeWarningText }]}>
-                        {isExpired ? 'EXPIRED' : `Valid until: ${new Date(sub.effective_to).toLocaleString()}`}
+                        {isExpired ? t('masterHandover.ch.expired') : t('masterHandover.ch.validUntil', { date: new Date(sub.effective_to).toLocaleString() })}
                       </Text>
                     </View>
                     <TouchableOpacity
@@ -350,20 +358,20 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
                 <View style={styles.cardHeaderRow}>
                   <AlertTriangle size={iconSize.md} color={colors.buttonSecondaryBg} />
                   <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginLeft: spacing.sm }]}>
-                    Active Handover In Progress
+                    {t('masterHandover.ch.activeHandover')}
                   </Text>
                 </View>
                 <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginTop: spacing.xs }]}>
-                  Status: <Text style={{ fontWeight: '700', color: colors.buttonSecondaryBg }}>{activeHandover.status}</Text>
+                  {t('masterHandover.ch.statusLabel')} <Text style={{ fontWeight: '700', color: colors.buttonSecondaryBg }}>{activeHandover.status}</Text>
                 </Text>
                 <Text style={[typography.caption, { color: colors.textMuted, marginTop: spacing.xs }]}>
-                  Incoming Master: {activeHandover.incoming_master_name || activeHandover.incoming_master_id}
+                  {t('masterHandover.ch.incomingMaster', { name: activeHandover.incoming_master_name || activeHandover.incoming_master_id })}
                 </Text>
                 <Text style={[typography.caption, { color: colors.textMuted }]}>
-                  Reason: {activeHandover.reason || 'None specified'}
+                  {t('masterHandover.common.reasonValue', { reason: activeHandover.reason || t('masterHandover.ch.noneSpecified') })}
                 </Text>
                 <Text style={[typography.caption, { color: colors.textMuted }]}>
-                  Initiated: {new Date(activeHandover.created_at).toLocaleDateString()}
+                  {t('masterHandover.ch.initiated', { date: new Date(activeHandover.created_at).toLocaleDateString() })}
                 </Text>
               </Card>
             )}
@@ -372,20 +380,20 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
             {!activeHandover && (
               <Card style={styles.sectionCard}>
                 <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.md }]}>
-                  Initiate Class Handover
+                  {t('masterHandover.ch.initiateTitle')}
                 </Text>
                 <Text style={[typography.caption, { color: colors.textMuted, marginBottom: spacing.md }]}>
-                  Permanently transfer primary leadership of this class to another verified Master affiliated with this Persatuan.
+                  {t('masterHandover.ch.initiateDesc')}
                 </Text>
 
                 <View style={styles.inputGroup}>
                   <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
-                    Incoming Master User ID *
+                    {t('masterHandover.ch.incomingIdLabel')}
                   </Text>
                   <TextInput
                     testID="input-incoming-master"
                     style={[styles.input, { borderColor: colors.border, color: colors.textPrimary }]}
-                    placeholder="e.g. usr_master_kumar"
+                    placeholder={t('masterHandover.ch.incomingIdPlaceholder')}
                     placeholderTextColor={colors.textMuted}
                     value={incomingMasterId}
                     onChangeText={setIncomingMasterId}
@@ -394,12 +402,12 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
 
                 <View style={styles.inputGroup}>
                   <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
-                    Handover Reason *
+                    {t('masterHandover.ch.reasonLabel')}
                   </Text>
                   <TextInput
                     testID="input-handover-reason"
                     style={[styles.input, styles.multilineInput, { borderColor: colors.border, color: colors.textPrimary }]}
-                    placeholder="Provide details on reason for transition..."
+                    placeholder={t('masterHandover.ch.reasonPlaceholder')}
                     placeholderTextColor={colors.textMuted}
                     value={handoverReason}
                     onChangeText={setHandoverReason}
@@ -414,7 +422,7 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
                     style={[
                       typography.caption,
                       {
-                        color: handoverFeedback.includes('successfully') ? colors.badgeSuccessText : colors.badgeDangerText,
+                        color: handoverFeedbackOk ? colors.badgeSuccessText : colors.badgeDangerText,
                         marginBottom: spacing.md,
                       },
                     ]}
@@ -425,7 +433,7 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
 
                 <Button
                   testID="btn-submit-handover"
-                  label="Submit Handover Request"
+                  label={t('masterHandover.ch.submitHandover')}
                   onPress={handleInitiateHandover}
                   loading={submittingHandover}
                 />
@@ -436,7 +444,7 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
             {handoverHistory.length > 0 && (
               <Card style={styles.sectionCard}>
                 <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.md }]}>
-                  Handover History
+                  {t('masterHandover.ch.history')}
                 </Text>
                 {handoverHistory.map((h) => (
                   <View key={h.id} style={[styles.historyItem, { borderBottomColor: colors.border }]}>
@@ -447,15 +455,15 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
                       <StatusBadge status={h.status} label={h.status} />
                     </View>
                     <Text style={[typography.caption, { color: colors.textMuted, marginTop: 2 }]}>
-                      Reason: {h.reason || 'N/A'}
+                      {t('masterHandover.common.reasonValue', { reason: h.reason || t('masterHandover.common.notApplicable') })}
                     </Text>
                     {h.rejection_reason && (
                       <Text style={[typography.caption, { color: colors.badgeDangerText, marginTop: 2 }]}>
-                        Rejected: {h.rejection_reason}
+                        {t('masterHandover.ch.rejected', { reason: h.rejection_reason })}
                       </Text>
                     )}
                     <Text style={[typography.caption, { color: colors.textMuted, marginTop: 2 }]}>
-                      Date: {new Date(h.created_at).toLocaleDateString()}
+                      {t('masterHandover.ch.date', { date: new Date(h.created_at).toLocaleDateString() })}
                     </Text>
                   </View>
                 ))}
@@ -468,20 +476,20 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
         {activeTab === 'SUBSTITUTE' && (
           <Card style={styles.sectionCard}>
             <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.md }]}>
-              Assign Temporary Substitute
+              {t('masterHandover.ch.assignTitle')}
             </Text>
             <Text style={[typography.caption, { color: colors.textMuted, marginBottom: spacing.md }]}>
-              Delegate limited, time-bounded attendance permissions to a verified Master. Substitutes cannot alter class ownership or curriculum.
+              {t('masterHandover.ch.assignDesc')}
             </Text>
 
             <View style={styles.inputGroup}>
               <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
-                Substitute Master User ID *
+                {t('masterHandover.ch.substituteIdLabel')}
               </Text>
               <TextInput
                 testID="input-substitute-master"
                 style={[styles.input, { borderColor: colors.border, color: colors.textPrimary }]}
-                placeholder="e.g. usr_master_sub"
+                placeholder={t('masterHandover.ch.substituteIdPlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 value={substituteMasterId}
                 onChangeText={setSubstituteMasterId}
@@ -490,7 +498,7 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
 
             <View style={styles.inputGroup}>
               <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
-                Duration (Hours)
+                {t('masterHandover.ch.durationLabel')}
               </Text>
               <TextInput
                 testID="input-substitute-hours"
@@ -505,12 +513,12 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
 
             <View style={styles.inputGroup}>
               <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
-                Coverage Notes (Optional)
+                {t('masterHandover.ch.notesLabel')}
               </Text>
               <TextInput
                 testID="input-substitute-notes"
                 style={[styles.input, { borderColor: colors.border, color: colors.textPrimary }]}
-                placeholder="e.g. Covering Saturday sparring session"
+                placeholder={t('masterHandover.ch.notesPlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 value={substituteNotes}
                 onChangeText={setSubstituteNotes}
@@ -523,7 +531,7 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
                 style={[
                   typography.caption,
                   {
-                    color: substituteFeedback.includes('successfully') ? colors.badgeSuccessText : colors.badgeDangerText,
+                    color: substituteFeedbackOk ? colors.badgeSuccessText : colors.badgeDangerText,
                     marginBottom: spacing.md,
                   },
                 ]}
@@ -534,7 +542,7 @@ export const ClassHandoverScreen: React.FC<ClassHandoverScreenProps> = ({
 
             <Button
               testID="btn-assign-substitute"
-              label="Assign Temporary Substitute"
+              label={t('masterHandover.ch.assignTitle')}
               onPress={handleAssignSubstitute}
               loading={assigningSubstitute}
             />

@@ -16,6 +16,7 @@ import { StatusBadge } from '../../../components/Badges';
 import { LoadingState, ErrorState, EmptyState } from '../../../components/Feedback';
 import { AuthUser } from '../../../types/auth';
 import { apiClient } from '../../../services/apiClient';
+import { useI18n } from '../../../i18n';
 
 export interface IncomingHandoversScreenProps {
   user: AuthUser;
@@ -26,6 +27,7 @@ export const IncomingHandoversScreen: React.FC<IncomingHandoversScreenProps> = (
   navigation,
 }) => {
   const { colors, typography, spacing } = useTheme();
+  const { t } = useI18n();
 
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -43,7 +45,7 @@ export const IncomingHandoversScreen: React.FC<IncomingHandoversScreenProps> = (
       setHandovers(res?.incomingHandovers || []);
       setError(null);
     } catch (err: any) {
-      setError(err?.message || 'Failed to load incoming handover requests.');
+      setError(err?.message || t('masterHandover.in.loadError'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -61,14 +63,14 @@ export const IncomingHandoversScreen: React.FC<IncomingHandoversScreenProps> = (
       })
       .catch((err: any) => {
         if (isMounted) {
-          setError(err?.message || 'Failed to load incoming handover requests.');
+          setError(err?.message || t('masterHandover.in.loadError'));
         }
       });
 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [t]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -77,21 +79,21 @@ export const IncomingHandoversScreen: React.FC<IncomingHandoversScreenProps> = (
 
   const handleAccept = async (handoverId: string) => {
     Alert.alert(
-      'Accept Responsibility',
-      'By accepting, you agree to become the primary Master for this class pending Persatuan Admin final approval.',
+      t('masterHandover.in.acceptTitle'),
+      t('masterHandover.in.acceptMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('masterHandover.common.cancel'), style: 'cancel' },
         {
-          text: 'Accept',
+          text: t('masterHandover.in.accept'),
           style: 'default',
           onPress: async () => {
             setProcessingId(handoverId);
             try {
               await apiClient.post(`/handovers/${handoverId}/accept`, {});
-              Alert.alert('Accepted', 'Handover accepted. Persatuan Admin has been notified for final approval.');
+              Alert.alert(t('masterHandover.in.acceptedTitle'), t('masterHandover.in.acceptedMessage'));
               await loadHandovers();
             } catch (err: any) {
-              Alert.alert('Error', err?.message || 'Failed to accept handover.');
+              Alert.alert(t('masterHandover.common.error'), err?.message || t('masterHandover.in.acceptFailed'));
             } finally {
               setProcessingId(null);
             }
@@ -103,7 +105,7 @@ export const IncomingHandoversScreen: React.FC<IncomingHandoversScreenProps> = (
 
   const handleReject = async (handoverId: string) => {
     if (!rejectionReason.trim()) {
-      Alert.alert('Required Field', 'Please provide a reason for declining this handover.');
+      Alert.alert(t('masterHandover.common.requiredField'), t('masterHandover.in.enterReason'));
       return;
     }
 
@@ -114,10 +116,10 @@ export const IncomingHandoversScreen: React.FC<IncomingHandoversScreenProps> = (
       });
       setRejectingId(null);
       setRejectionReason('');
-      Alert.alert('Declined', 'Handover request declined.');
+      Alert.alert(t('masterHandover.in.declinedTitle'), t('masterHandover.in.declinedMessage'));
       await loadHandovers();
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to decline handover.');
+      Alert.alert(t('masterHandover.common.error'), err?.message || t('masterHandover.in.declineFailed'));
     } finally {
       setProcessingId(null);
     }
@@ -126,8 +128,8 @@ export const IncomingHandoversScreen: React.FC<IncomingHandoversScreenProps> = (
   if (loading) {
     return (
       <ScreenContainer>
-        <ScreenHeader title="Incoming Handovers" onBack={() => navigation?.goBack?.()} />
-        <LoadingState message="Loading incoming handover requests..." />
+        <ScreenHeader title={t('masterHandover.in.title')} onBack={() => navigation?.goBack?.()} />
+        <LoadingState message={t('masterHandover.in.loading')} />
       </ScreenContainer>
     );
   }
@@ -135,7 +137,7 @@ export const IncomingHandoversScreen: React.FC<IncomingHandoversScreenProps> = (
   if (error && !refreshing) {
     return (
       <ScreenContainer>
-        <ScreenHeader title="Incoming Handovers" onBack={() => navigation?.goBack?.()} />
+        <ScreenHeader title={t('masterHandover.in.title')} onBack={() => navigation?.goBack?.()} />
         <ErrorState message={error} onRetry={loadHandovers} />
       </ScreenContainer>
     );
@@ -144,8 +146,8 @@ export const IncomingHandoversScreen: React.FC<IncomingHandoversScreenProps> = (
   return (
     <ScreenContainer>
       <ScreenHeader
-        title="Incoming Handovers"
-        subtitle="Review classes offered to you"
+        title={t('masterHandover.in.title')}
+        subtitle={t('masterHandover.in.subtitle')}
         onBack={() => navigation?.goBack?.()}
       />
 
@@ -155,8 +157,8 @@ export const IncomingHandoversScreen: React.FC<IncomingHandoversScreenProps> = (
       >
         {handovers.length === 0 ? (
           <EmptyState
-            title="No Pending Handovers"
-            description="You do not have any pending class leadership handover requests to review."
+            title={t('masterHandover.in.emptyTitle')}
+            description={t('masterHandover.in.emptyDesc')}
           />
         ) : (
           handovers.map((h) => {
@@ -169,7 +171,7 @@ export const IncomingHandoversScreen: React.FC<IncomingHandoversScreenProps> = (
                   <View style={{ flex: 1 }}>
                     <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>{h.class_name}</Text>
                     <Text style={[typography.caption, { color: colors.textMuted }]}>
-                      From Master: {h.outgoing_master_name || h.outgoing_master_id}
+                      {t('masterHandover.in.fromMaster', { name: h.outgoing_master_name || h.outgoing_master_id })}
                     </Text>
                   </View>
                   <StatusBadge status={h.status} label={h.status} />
@@ -177,25 +179,25 @@ export const IncomingHandoversScreen: React.FC<IncomingHandoversScreenProps> = (
 
                 <View style={styles.detailsBlock}>
                   <Text style={[typography.bodyMedium, { color: colors.textSecondary }]}>
-                    Reason: <Text style={{ color: colors.textPrimary }}>{h.reason || 'None provided'}</Text>
+                    {t('masterHandover.common.reasonLabel')} <Text style={{ color: colors.textPrimary }}>{h.reason || t('masterHandover.in.noneProvided')}</Text>
                   </Text>
                   <Text style={[typography.caption, { color: colors.textMuted, marginTop: 4 }]}>
-                    Location: {h.class_location || 'Main Dojo'}
+                    {t('masterHandover.in.location', { location: h.class_location || t('masterHandover.in.mainDojo') })}
                   </Text>
                   <Text style={[typography.caption, { color: colors.textMuted }]}>
-                    Proposed Effective: {new Date(h.effective_date).toLocaleDateString()}
+                    {t('masterHandover.in.proposedEffective', { date: new Date(h.effective_date).toLocaleDateString() })}
                   </Text>
                 </View>
 
                 {isRejectingThis ? (
                   <View style={styles.rejectForm}>
                     <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
-                      Reason for declining *
+                      {t('masterHandover.in.declineReasonLabel')}
                     </Text>
                     <TextInput
                       testID={`input-reject-reason-${h.id}`}
                       style={[styles.input, { borderColor: colors.border, color: colors.textPrimary }]}
-                      placeholder="e.g. Schedule conflict with existing classes"
+                      placeholder={t('masterHandover.in.declinePlaceholder')}
                       placeholderTextColor={colors.textMuted}
                       value={rejectionReason}
                       onChangeText={setRejectionReason}
@@ -203,14 +205,14 @@ export const IncomingHandoversScreen: React.FC<IncomingHandoversScreenProps> = (
                     <View style={styles.actionRow}>
                       <Button
                         testID={`btn-confirm-reject-${h.id}`}
-                        label="Confirm Decline"
+                        label={t('masterHandover.in.confirmDecline')}
                         variant="danger"
                         onPress={() => handleReject(h.id)}
                         loading={isProcessing}
                         style={{ flex: 1 }}
                       />
                       <Button
-                        label="Cancel"
+                        label={t('masterHandover.common.cancel')}
                         variant="secondary"
                         onPress={() => {
                           setRejectingId(null);
@@ -224,14 +226,14 @@ export const IncomingHandoversScreen: React.FC<IncomingHandoversScreenProps> = (
                   <View style={styles.actionRow}>
                     <Button
                       testID={`btn-accept-handover-${h.id}`}
-                      label="Accept Responsibility"
+                      label={t('masterHandover.in.acceptTitle')}
                       onPress={() => handleAccept(h.id)}
                       loading={isProcessing}
                       style={{ flex: 2 }}
                     />
                     <Button
                       testID={`btn-reject-handover-${h.id}`}
-                      label="Decline"
+                      label={t('masterHandover.common.decline')}
                       variant="danger"
                       onPress={() => setRejectingId(h.id)}
                       disabled={isProcessing}

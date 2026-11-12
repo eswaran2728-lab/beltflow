@@ -30,6 +30,7 @@ import {
   MembershipPause,
   ClassTransferRequest,
 } from '../../../services/membershipService';
+import { useI18n } from '../../../i18n';
 
 export interface MasterTransferManagementScreenProps {
   user: AuthUser;
@@ -50,6 +51,7 @@ export const MasterTransferManagementScreen: React.FC<MasterTransferManagementSc
   isOffline,
 }) => {
   const { colors } = useTheme();
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = useState<ManagementTab>('PAUSES');
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -83,7 +85,7 @@ export const MasterTransferManagementScreen: React.FC<MasterTransferManagementSc
     } catch (err: any) {
       if (isMountedRef.current) {
         console.warn('Failed to load pending pauses/transfers:', err);
-        setError(err?.message || 'Could not load pending requests.');
+        setError(err?.message || t('masterHandover.tr.loadError'));
       }
     } finally {
       if (isMountedRef.current) {
@@ -91,7 +93,7 @@ export const MasterTransferManagementScreen: React.FC<MasterTransferManagementSc
         setRefreshing(false);
       }
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     let isMounted = true;
@@ -113,28 +115,35 @@ export const MasterTransferManagementScreen: React.FC<MasterTransferManagementSc
 
   const handleApprovePause = (pause: MembershipPause) => {
     if (isOffline) {
-      Alert.alert('Offline Mode', 'Membership approvals require server-side authority validation.');
+      Alert.alert(t('masterHandover.common.offlineTitle'), t('masterHandover.tr.offlinePause'));
       return;
     }
 
     Alert.alert(
-      'Approve Membership Pause',
-      `Approve pause for ${pause.student_name || 'student'} from ${pause.start_date}${
-        pause.expected_end_date ? ` to ${pause.expected_end_date}` : ''
-      }?\n\nInvariant: Preserves student belt rank and past billing history. Future attendance will be restricted during the pause.`,
+      t('masterHandover.tr.approvePauseTitle'),
+      pause.expected_end_date
+        ? t('masterHandover.tr.approvePauseMessageWithEnd', {
+            name: pause.student_name || t('masterHandover.tr.studentFallbackLower'),
+            start: pause.start_date,
+            end: pause.expected_end_date,
+          })
+        : t('masterHandover.tr.approvePauseMessage', {
+            name: pause.student_name || t('masterHandover.tr.studentFallbackLower'),
+            start: pause.start_date,
+          }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('masterHandover.common.cancel'), style: 'cancel' },
         {
-          text: 'Approve Pause',
+          text: t('masterHandover.tr.approvePause'),
           style: 'default',
           onPress: async () => {
             try {
               setActionInProgress(pause.id);
               await membershipService.approvePause(pause.id, pause.version);
-              Alert.alert('Success', 'Membership pause approved successfully.');
+              Alert.alert(t('masterHandover.common.success'), t('masterHandover.tr.pauseApproved'));
               loadData();
             } catch (err: any) {
-              Alert.alert('Approval Failed', err?.message || 'Failed to approve pause request.');
+              Alert.alert(t('masterHandover.tr.approvalFailedTitle'), err?.message || t('masterHandover.tr.pauseApproveFailed'));
             } finally {
               setActionInProgress(null);
             }
@@ -146,28 +155,30 @@ export const MasterTransferManagementScreen: React.FC<MasterTransferManagementSc
 
   const handleApproveTransfer = (transfer: ClassTransferRequest) => {
     if (isOffline) {
-      Alert.alert('Offline Mode', 'Class transfer approval requires atomic capacity verification.');
+      Alert.alert(t('masterHandover.common.offlineTitle'), t('masterHandover.tr.offlineTransfer'));
       return;
     }
 
     Alert.alert(
-      'Approve Class Transfer',
-      `Approve transfer for ${transfer.student_name || 'student'} to ${
-        transfer.new_class_name || 'new class'
-      } effective ${transfer.effective_date}?\n\nInvariant: Preserves canonical student ID, belt history, and attendance records. Atomic capacity check will be enforced.`,
+      t('masterHandover.tr.approveTransferTitle'),
+      t('masterHandover.tr.approveTransferMessage', {
+        name: transfer.student_name || t('masterHandover.tr.studentFallbackLower'),
+        className: transfer.new_class_name || t('masterHandover.tr.newClassFallback'),
+        date: transfer.effective_date,
+      }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('masterHandover.common.cancel'), style: 'cancel' },
         {
-          text: 'Confirm Transfer',
+          text: t('masterHandover.tr.confirmTransfer'),
           style: 'default',
           onPress: async () => {
             try {
               setActionInProgress(transfer.id);
               await membershipService.approveTransfer(transfer.id, transfer.version);
-              Alert.alert('Success', 'Class transfer approved successfully.');
+              Alert.alert(t('masterHandover.common.success'), t('masterHandover.tr.transferApproved'));
               loadData();
             } catch (err: any) {
-              Alert.alert('Transfer Failed', err?.message || 'Failed to approve class transfer.');
+              Alert.alert(t('masterHandover.tr.transferFailedTitle'), err?.message || t('masterHandover.tr.transferApproveFailed'));
             } finally {
               setActionInProgress(null);
             }
@@ -180,19 +191,19 @@ export const MasterTransferManagementScreen: React.FC<MasterTransferManagementSc
   return (
     <ScreenContainer scrollable={false}>
       <ScreenHeader
-        title="Pauses & Transfers"
-        subtitle={`Master Review • ${user.fullName}`}
+        title={t('masterHandover.tr.title')}
+        subtitle={t('masterHandover.tr.subtitle', { name: user.fullName })}
       />
 
       {/* KPI Summary Cards */}
       <View style={styles.statsRow}>
         <StatCard
-          title="Pending Pauses"
+          title={t('masterHandover.tr.pendingPauses')}
           value={pendingPauses.length.toString()}
           icon={<PauseCircle size={18} color={BrandColors.amber} />}
         />
         <StatCard
-          title="Pending Transfers"
+          title={t('masterHandover.tr.pendingTransfers')}
           value={pendingTransfers.length.toString()}
           icon={<ArrowRightLeft size={18} color={BrandColors.amber} />}
         />
@@ -204,11 +215,11 @@ export const MasterTransferManagementScreen: React.FC<MasterTransferManagementSc
           style={[styles.tabButton, activeTab === 'PAUSES' && styles.activeTabButton]}
           onPress={() => setActiveTab('PAUSES')}
           accessibilityRole="button"
-          accessibilityLabel="Pending Pauses Tab"
+          accessibilityLabel={t('masterHandover.tr.pendingPausesTab')}
         >
           <PauseCircle size={16} color={activeTab === 'PAUSES' ? BrandColors.amber : colors.textMuted} />
           <Text style={[styles.tabText, activeTab === 'PAUSES' && styles.activeTabText]}>
-            Pending Pauses ({pendingPauses.length})
+            {t('masterHandover.tr.pendingPausesCount', { count: pendingPauses.length })}
           </Text>
         </TouchableOpacity>
 
@@ -216,11 +227,11 @@ export const MasterTransferManagementScreen: React.FC<MasterTransferManagementSc
           style={[styles.tabButton, activeTab === 'TRANSFERS' && styles.activeTabButton]}
           onPress={() => setActiveTab('TRANSFERS')}
           accessibilityRole="button"
-          accessibilityLabel="Pending Transfers Tab"
+          accessibilityLabel={t('masterHandover.tr.pendingTransfersTab')}
         >
           <ArrowRightLeft size={16} color={activeTab === 'TRANSFERS' ? BrandColors.amber : colors.textMuted} />
           <Text style={[styles.tabText, activeTab === 'TRANSFERS' && styles.activeTabText]}>
-            Pending Transfers ({pendingTransfers.length})
+            {t('masterHandover.tr.pendingTransfersCount', { count: pendingTransfers.length })}
           </Text>
         </TouchableOpacity>
       </View>
@@ -231,14 +242,14 @@ export const MasterTransferManagementScreen: React.FC<MasterTransferManagementSc
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={BrandColors.amber} />}
       >
         {loading ? (
-          <LoadingState message="Loading pending lifecycle requests..." />
+          <LoadingState message={t('masterHandover.tr.loading')} />
         ) : error ? (
           <ErrorState message={error} onRetry={loadData} />
         ) : activeTab === 'PAUSES' ? (
           pendingPauses.length === 0 ? (
             <EmptyState
-              title="No Pending Pauses"
-              description="All student pause requests have been reviewed."
+              title={t('masterHandover.tr.noPauses')}
+              description={t('masterHandover.tr.noPausesDesc')}
               icon={<CheckCircle2 size={32} color={BrandColors.success} />}
             />
           ) : (
@@ -248,8 +259,8 @@ export const MasterTransferManagementScreen: React.FC<MasterTransferManagementSc
                 <Card key={pause.id} style={styles.itemCard}>
                   <View style={styles.cardHeader}>
                     <View style={styles.studentInfo}>
-                      <Text style={styles.studentName}>{pause.student_name || 'Student'}</Text>
-                      <Text style={styles.studentClass}>{pause.class_name || 'Class'} • {pause.belt_rank || 'Belt'}</Text>
+                      <Text style={styles.studentName}>{pause.student_name || t('masterHandover.tr.studentFallback')}</Text>
+                      <Text style={styles.studentClass}>{pause.class_name || t('masterHandover.tr.classFallback')} • {pause.belt_rank || t('masterHandover.tr.beltFallback')}</Text>
                     </View>
                     <StatusBadge status={pause.status} />
                   </View>
@@ -258,19 +269,19 @@ export const MasterTransferManagementScreen: React.FC<MasterTransferManagementSc
                     <View style={styles.detailRow}>
                       <Calendar size={14} color={BrandColors.amber} />
                       <Text style={styles.detailText}>
-                        Start: <Text style={styles.detailHighlight}>{pause.start_date}</Text>
-                        {pause.expected_end_date ? ` • Expected Return: ${pause.expected_end_date}` : ''}
+                        {t('masterHandover.tr.start')} <Text style={styles.detailHighlight}>{pause.start_date}</Text>
+                        {pause.expected_end_date ? ` ${t('masterHandover.tr.expectedReturn', { date: pause.expected_end_date })}` : ''}
                       </Text>
                     </View>
                     <View style={styles.detailRow}>
                       <Clock size={14} color={colors.textMuted} />
-                      <Text style={styles.detailText}>Reason: {pause.reason}</Text>
+                      <Text style={styles.detailText}>{t('masterHandover.common.reasonValue', { reason: pause.reason })}</Text>
                     </View>
                   </View>
 
                   <View style={styles.cardActions}>
                     <Button
-                      label={isWorking ? 'Approving...' : 'Approve Pause'}
+                      label={isWorking ? t('masterHandover.tr.approving') : t('masterHandover.tr.approvePause')}
                       variant="primary"
                       onPress={() => handleApprovePause(pause)}
                       disabled={isWorking}
@@ -284,8 +295,8 @@ export const MasterTransferManagementScreen: React.FC<MasterTransferManagementSc
         ) : (
           pendingTransfers.length === 0 ? (
             <EmptyState
-              title="No Pending Transfers"
-              description="No class transfer requests awaiting Master approval."
+              title={t('masterHandover.tr.noTransfers')}
+              description={t('masterHandover.tr.noTransfersDesc')}
               icon={<CheckCircle2 size={32} color={BrandColors.success} />}
             />
           ) : (
@@ -295,10 +306,10 @@ export const MasterTransferManagementScreen: React.FC<MasterTransferManagementSc
                 <Card key={transfer.id} style={styles.itemCard}>
                   <View style={styles.cardHeader}>
                     <View style={styles.studentInfo}>
-                      <Text style={styles.studentName}>{transfer.student_name || 'Student'}</Text>
+                      <Text style={styles.studentName}>{transfer.student_name || t('masterHandover.tr.studentFallback')}</Text>
                       <Text style={styles.studentClass}>
-                        {transfer.old_class_name || 'Source Class'} →{' '}
-                        <Text style={styles.targetClassText}>{transfer.new_class_name || 'Target Class'}</Text>
+                        {transfer.old_class_name || t('masterHandover.tr.sourceClass')} →{' '}
+                        <Text style={styles.targetClassText}>{transfer.new_class_name || t('masterHandover.tr.targetClass')}</Text>
                       </Text>
                     </View>
                     <StatusBadge status={transfer.status} />
@@ -308,26 +319,26 @@ export const MasterTransferManagementScreen: React.FC<MasterTransferManagementSc
                     <View style={styles.detailRow}>
                       <Calendar size={14} color={BrandColors.amber} />
                       <Text style={styles.detailText}>
-                        Effective Date: <Text style={styles.detailHighlight}>{transfer.effective_date}</Text>
+                        {t('masterHandover.tr.effectiveDate')} <Text style={styles.detailHighlight}>{transfer.effective_date}</Text>
                       </Text>
                     </View>
                     {transfer.reason ? (
                       <View style={styles.detailRow}>
                         <Clock size={14} color={colors.textMuted} />
-                        <Text style={styles.detailText}>Reason: {transfer.reason}</Text>
+                        <Text style={styles.detailText}>{t('masterHandover.common.reasonValue', { reason: transfer.reason })}</Text>
                       </View>
                     ) : null}
                     <View style={styles.detailRow}>
                       <ShieldCheck size={14} color={BrandColors.success} />
                       <Text style={styles.detailText}>
-                        Atomic Capacity Guard: Target capacity verified at approval time.
+                        {t('masterHandover.tr.capacityGuard')}
                       </Text>
                     </View>
                   </View>
 
                   <View style={styles.cardActions}>
                     <Button
-                      label={isWorking ? 'Confirming...' : 'Approve Transfer'}
+                      label={isWorking ? t('masterHandover.tr.confirming') : t('masterHandover.tr.approveTransfer')}
                       variant="primary"
                       onPress={() => handleApproveTransfer(transfer)}
                       disabled={isWorking}

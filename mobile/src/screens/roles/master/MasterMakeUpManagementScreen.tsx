@@ -30,6 +30,7 @@ import {
   MakeUpBooking,
   SessionBookingsResponse,
 } from '../../../services/bookingsService';
+import { useI18n } from '../../../i18n';
 
 export interface MasterMakeUpManagementScreenProps {
   user: AuthUser;
@@ -52,6 +53,7 @@ export const MasterMakeUpManagementScreen: React.FC<MasterMakeUpManagementScreen
   route,
 }) => {
   const { colors } = useTheme();
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = useState<FilterTab>('ALL');
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -69,12 +71,12 @@ export const MasterMakeUpManagementScreen: React.FC<MasterMakeUpManagementScreen
       setSessionData(data);
     } catch (err: any) {
       console.warn('Failed to load session make-up bookings:', err);
-      setError(err?.message || 'Could not load make-up bookings for this session.');
+      setError(err?.message || t('masterHandover.mu.loadError'));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [sessionId]);
+  }, [sessionId, t]);
 
   useEffect(() => {
     let isMounted = true;
@@ -88,13 +90,13 @@ export const MasterMakeUpManagementScreen: React.FC<MasterMakeUpManagementScreen
       .catch((err: any) => {
         if (!isMounted) return;
         console.warn('Failed to load session make-up bookings:', err);
-        setError(err?.message || 'Could not load make-up bookings for this session.');
+        setError(err?.message || t('masterHandover.mu.loadError'));
         setLoading(false);
       });
     return () => {
       isMounted = false;
     };
-  }, [sessionId]);
+  }, [sessionId, t]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -105,10 +107,10 @@ export const MasterMakeUpManagementScreen: React.FC<MasterMakeUpManagementScreen
     try {
       setActionInProgress(booking.id);
       await bookingsService.approveMakeUp(booking.id, booking.version);
-      Alert.alert('Make-Up Approved', `Student ${booking.student_name || 'candidate'} is confirmed for this session.`);
+      Alert.alert(t('masterHandover.mu.approvedTitle'), t('masterHandover.mu.approvedMessage', { name: booking.student_name || t('masterHandover.mu.candidateFallback') }));
       loadSessionBookings();
     } catch (err: any) {
-      Alert.alert('Approval Error', err?.message || 'Failed to approve make-up booking.');
+      Alert.alert(t('masterHandover.mu.approvalErrorTitle'), err?.message || t('masterHandover.mu.approveFailed'));
     } finally {
       setActionInProgress(null);
     }
@@ -116,21 +118,21 @@ export const MasterMakeUpManagementScreen: React.FC<MasterMakeUpManagementScreen
 
   const handleCancel = async (booking: MakeUpBooking) => {
     Alert.alert(
-      'Decline / Cancel Booking',
-      `Are you sure you want to cancel the make-up booking for ${booking.student_name || 'student'}? Any waitlisted students will be eligible for promotion.`,
+      t('masterHandover.mu.cancelTitle'),
+      t('masterHandover.mu.cancelMessage', { name: booking.student_name || t('masterHandover.mu.studentFallback') }),
       [
-        { text: 'Back', style: 'cancel' },
+        { text: t('masterHandover.mu.back'), style: 'cancel' },
         {
-          text: 'Cancel Booking',
+          text: t('masterHandover.mu.cancelBooking'),
           style: 'destructive',
           onPress: async () => {
             try {
               setActionInProgress(booking.id);
               await bookingsService.cancelMakeUp(booking.id, 'Declined by Master');
-              Alert.alert('Cancelled', 'Make-up booking has been released.');
+              Alert.alert(t('masterHandover.mu.cancelledTitle'), t('masterHandover.mu.cancelledMessage'));
               loadSessionBookings();
             } catch (err: any) {
-              Alert.alert('Cancellation Error', err?.message || 'Failed to cancel booking.');
+              Alert.alert(t('masterHandover.mu.cancelErrorTitle'), err?.message || t('masterHandover.mu.cancelFailed'));
             } finally {
               setActionInProgress(null);
             }
@@ -145,13 +147,13 @@ export const MasterMakeUpManagementScreen: React.FC<MasterMakeUpManagementScreen
       setActionInProgress('PROMOTE_ALL');
       const res = await bookingsService.promoteWaitlist(sessionId);
       if (res.promotedCount > 0) {
-        Alert.alert('Waitlist Promoted', `Promoted ${res.promotedCount} student(s) to Offered/Confirmed seats.`);
+        Alert.alert(t('masterHandover.mu.promotedTitle'), t('masterHandover.mu.promotedMessage', { count: res.promotedCount }));
       } else {
-        Alert.alert('No Promotion', res.message || 'No available places or no eligible students in the waitlist.');
+        Alert.alert(t('masterHandover.mu.noPromotionTitle'), res.message || t('masterHandover.mu.noPromotionMessage'));
       }
       loadSessionBookings();
     } catch (err: any) {
-      Alert.alert('Promotion Error', err?.message || 'Failed to promote waitlist.');
+      Alert.alert(t('masterHandover.mu.promotionErrorTitle'), err?.message || t('masterHandover.mu.promoteFailed'));
     } finally {
       setActionInProgress(null);
     }
@@ -171,11 +173,11 @@ export const MasterMakeUpManagementScreen: React.FC<MasterMakeUpManagementScreen
   return (
     <ScreenContainer testID="master-makeup-screen">
       <ScreenHeader
-        title="Make-Up & Waitlist"
+        title={t('masterHandover.mu.title')}
         subtitle={
           sessionData?.session
             ? `${sessionData.session.class_name} • ${sessionData.session.session_date} (${sessionData.session.start_time})`
-            : 'Session Attendance Entitlements'
+            : t('masterHandover.mu.defaultSubtitle')
         }
       />
 
@@ -183,13 +185,13 @@ export const MasterMakeUpManagementScreen: React.FC<MasterMakeUpManagementScreen
         <Card style={[styles.offlineBanner, { backgroundColor: BrandColors.amber + '20', borderColor: BrandColors.amber }]}>
           <AlertCircle size={18} color={BrandColors.amber} />
           <Text style={[styles.offlineText, { color: BrandColors.amber }]}>
-            Offline Mode: Make-up approvals require real-time capacity locking and are disabled offline.
+            {t('masterHandover.mu.offline')}
           </Text>
         </Card>
       )}
 
       {loading ? (
-        <LoadingState message="Loading session bookings..." />
+        <LoadingState message={t('masterHandover.mu.loading')} />
       ) : error ? (
         <ErrorState message={error} onRetry={loadSessionBookings} />
       ) : (
@@ -202,16 +204,16 @@ export const MasterMakeUpManagementScreen: React.FC<MasterMakeUpManagementScreen
           {/* Capacity Stats */}
           <View style={styles.statsRow}>
             <StatCard
-              title="Capacity"
+              title={t('masterHandover.mu.capacity')}
               value={`${confirmedCount}/${maxCapacity}`}
-              subtitle={`${remainingPlaces} places left`}
+              subtitle={t('masterHandover.mu.placesLeft', { count: remainingPlaces })}
               icon={<Users size={20} color={BrandColors.navy} />}
               style={styles.statBox}
             />
             <StatCard
-              title="Waitlist"
+              title={t('masterHandover.mu.waitlist')}
               value={waitlistCount}
-              subtitle="FIFO Queue"
+              subtitle={t('masterHandover.mu.fifoQueue')}
               icon={<Clock size={20} color={BrandColors.amber} />}
               style={styles.statBox}
             />
@@ -222,13 +224,13 @@ export const MasterMakeUpManagementScreen: React.FC<MasterMakeUpManagementScreen
             <Card style={styles.promoteBanner} testID="waitlist-promote-banner">
               <View style={styles.promoteBannerHeader}>
                 <AlertCircle size={20} color={BrandColors.amber} />
-                <Text style={styles.promoteBannerTitle}>Available Places ({remainingPlaces})</Text>
+                <Text style={styles.promoteBannerTitle}>{t('masterHandover.mu.availablePlaces', { count: remainingPlaces })}</Text>
               </View>
               <Text style={styles.promoteBannerText}>
-                There are open places in this session and {waitlistCount} student(s) waiting in the queue.
+                {t('masterHandover.mu.openPlaces', { count: waitlistCount })}
               </Text>
               <Button
-                label={actionInProgress === 'PROMOTE_ALL' ? 'Promoting...' : 'Promote Next in Waitlist'}
+                label={actionInProgress === 'PROMOTE_ALL' ? t('masterHandover.mu.promoting') : t('masterHandover.mu.promoteNext')}
                 onPress={handlePromoteWaitlist}
                 disabled={isOffline || !!actionInProgress}
                 testID="promote-waitlist-btn"
@@ -255,12 +257,12 @@ export const MasterMakeUpManagementScreen: React.FC<MasterMakeUpManagementScreen
                 >
                   <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
                     {tab === 'ALL'
-                      ? `All (${allBookings.length})`
+                      ? t('masterHandover.mu.tabAll', { count: allBookings.length })
                       : tab === 'REQUESTED'
-                      ? 'Requested'
+                      ? t('masterHandover.mu.tabRequested')
                       : tab === 'WAITLISTED'
-                      ? `Waitlist (${waitlistCount})`
-                      : `Confirmed (${confirmedCount})`}
+                      ? t('masterHandover.mu.tabWaitlist', { count: waitlistCount })
+                      : t('masterHandover.mu.tabConfirmed', { count: confirmedCount })}
                   </Text>
                 </TouchableOpacity>
               );
@@ -270,8 +272,8 @@ export const MasterMakeUpManagementScreen: React.FC<MasterMakeUpManagementScreen
           {/* List of Bookings */}
           {filteredBookings.length === 0 ? (
             <EmptyState
-              title="No Bookings"
-              description={`No make-up bookings found under ${activeTab.toLowerCase()}.`}
+              title={t('masterHandover.mu.noBookings')}
+              description={t('masterHandover.mu.noBookingsDesc', { tab: t(`masterHandover.mu.filter.${activeTab}`) })}
             />
           ) : (
             filteredBookings.map((booking) => {
@@ -290,10 +292,13 @@ export const MasterMakeUpManagementScreen: React.FC<MasterMakeUpManagementScreen
                   <View style={styles.cardHeader}>
                     <View style={styles.studentInfo}>
                       <Text style={styles.studentName}>
-                        {booking.student_name || 'Student Candidate'}
+                        {booking.student_name || t('masterHandover.common.studentCandidate')}
                       </Text>
                       <Text style={styles.studentRank}>
-                        {booking.belt_rank || 'White Belt'} • From {booking.original_class_name || 'Home Class'}
+                        {t('masterHandover.mu.fromClass', {
+                          belt: booking.belt_rank || t('masterHandover.common.whiteBelt'),
+                          className: booking.original_class_name || t('masterHandover.mu.homeClass'),
+                        })}
                       </Text>
                     </View>
                     <StatusBadge
@@ -308,7 +313,7 @@ export const MasterMakeUpManagementScreen: React.FC<MasterMakeUpManagementScreen
                       }
                       label={
                         isWaitlisted
-                          ? `Waitlist #${booking.waitlist_position || 1}`
+                          ? t('masterHandover.mu.waitlistPosition', { position: booking.waitlist_position || 1 })
                           : booking.status
                       }
                     />
@@ -318,13 +323,17 @@ export const MasterMakeUpManagementScreen: React.FC<MasterMakeUpManagementScreen
                     <View style={styles.detailRow}>
                       <Calendar size={14} color={colors.textSecondary} />
                       <Text style={[styles.detailText, { color: colors.textSecondary }]}>
-                        Session: {booking.session_date} ({booking.day_of_week || 'Day'})
+                        {t('masterHandover.mu.session', { date: booking.session_date, day: booking.day_of_week || t('masterHandover.mu.dayFallback') })}
                       </Text>
                     </View>
                     <View style={styles.detailRow}>
                       <Clock size={14} color={colors.textSecondary} />
                       <Text style={[styles.detailText, { color: colors.textSecondary }]}>
-                        Time: {booking.start_time} - {booking.end_time} • {booking.location || 'Gelanggang'}
+                        {t('masterHandover.mu.time', {
+                          start: booking.start_time,
+                          end: booking.end_time,
+                          location: booking.location || t('masterHandover.mu.locationFallback'),
+                        })}
                       </Text>
                     </View>
                   </View>
@@ -344,7 +353,7 @@ export const MasterMakeUpManagementScreen: React.FC<MasterMakeUpManagementScreen
                       >
                         <UserCheck size={16} color="#FFFFFF" />
                         <Text style={styles.actionBtnText}>
-                          {isBusy ? 'Saving...' : 'Approve Seat'}
+                          {isBusy ? t('masterHandover.common.saving') : t('masterHandover.mu.approveSeat')}
                         </Text>
                       </TouchableOpacity>
                     )}
@@ -353,7 +362,7 @@ export const MasterMakeUpManagementScreen: React.FC<MasterMakeUpManagementScreen
                       <View style={styles.waitlistInfoBox}>
                         <Clock size={14} color={BrandColors.amber} />
                         <Text style={styles.waitlistInfoText}>
-                          Position #{booking.waitlist_position} • Auto-promotes on cancellation
+                          {t('masterHandover.mu.positionInfo', { position: booking.waitlist_position ?? '' })}
                         </Text>
                       </View>
                     )}
@@ -371,7 +380,7 @@ export const MasterMakeUpManagementScreen: React.FC<MasterMakeUpManagementScreen
                       >
                         <XCircle size={16} color={BrandColors.danger} />
                         <Text style={[styles.actionBtnText, { color: BrandColors.danger }]}>
-                          Decline
+                          {t('masterHandover.common.decline')}
                         </Text>
                       </TouchableOpacity>
                     )}

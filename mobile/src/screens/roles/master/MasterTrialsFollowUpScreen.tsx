@@ -28,6 +28,7 @@ import { StatCard } from '../../../components/StatCard';
 import { StatusBadge } from '../../../components/Badges';
 import { LoadingState, ErrorState, EmptyState } from '../../../components/Feedback';
 import { trialsService, FollowUpItem, TrialBooking } from '../../../services/trialsService';
+import { useI18n } from '../../../i18n';
 
 export interface MasterTrialsFollowUpScreenProps {
   user: AuthUser;
@@ -39,11 +40,11 @@ export interface MasterTrialsFollowUpScreenProps {
 type ScreenTab = 'FOLLOW_UPS' | 'TRIALS';
 
 const FOLLOW_UP_OUTCOMES = [
-  { key: 'CONTACTED_PHONE', label: 'Contacted via Phone Call' },
-  { key: 'CONTACTED_MESSAGE', label: 'Contacted via Message / WhatsApp' },
-  { key: 'RESOLVED_RETURNING', label: 'Resolved: Student Returning' },
-  { key: 'DISMISSED_NOT_INTERESTED', label: 'Dismissed: Not Interested' },
-  { key: 'DROPPED_OUT', label: 'Student Dropped Out' },
+  { key: 'CONTACTED_PHONE', labelKey: 'masterHandover.tf.outcome.CONTACTED_PHONE' },
+  { key: 'CONTACTED_MESSAGE', labelKey: 'masterHandover.tf.outcome.CONTACTED_MESSAGE' },
+  { key: 'RESOLVED_RETURNING', labelKey: 'masterHandover.tf.outcome.RESOLVED_RETURNING' },
+  { key: 'DISMISSED_NOT_INTERESTED', labelKey: 'masterHandover.tf.outcome.DISMISSED_NOT_INTERESTED' },
+  { key: 'DROPPED_OUT', labelKey: 'masterHandover.tf.outcome.DROPPED_OUT' },
 ];
 
 export const MasterTrialsFollowUpScreen: React.FC<MasterTrialsFollowUpScreenProps> = ({
@@ -51,6 +52,7 @@ export const MasterTrialsFollowUpScreen: React.FC<MasterTrialsFollowUpScreenProp
   isOffline,
 }) => {
   const { colors } = useTheme();
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = useState<ScreenTab>('FOLLOW_UPS');
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -90,12 +92,12 @@ export const MasterTrialsFollowUpScreen: React.FC<MasterTrialsFollowUpScreenProp
       setFollowUps(fupList);
       setTrials(trlList);
     } catch (err: any) {
-      setError(err?.message || 'Failed to load class trials and follow-up queue.');
+      setError(err?.message || t('masterHandover.tf.loadError'));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedClassId]);
+  }, [selectedClassId, t]);
 
   useEffect(() => {
     let isMounted = true;
@@ -121,9 +123,9 @@ export const MasterTrialsFollowUpScreen: React.FC<MasterTrialsFollowUpScreenProp
     try {
       await trialsService.evaluateFollowUpRules(selectedClassId);
       await loadData();
-      Alert.alert('Scan Complete', 'Retention follow-up rules evaluated for this class.');
+      Alert.alert(t('masterHandover.tf.scanCompleteTitle'), t('masterHandover.tf.scanCompleteMessage'));
     } catch (err: any) {
-      Alert.alert('Evaluation Failed', err?.message || 'Could not evaluate follow-up rules.');
+      Alert.alert(t('masterHandover.tf.evaluationFailedTitle'), err?.message || t('masterHandover.tf.evaluationFailed'));
     } finally {
       setEvaluating(false);
     }
@@ -144,9 +146,9 @@ export const MasterTrialsFollowUpScreen: React.FC<MasterTrialsFollowUpScreenProp
       setActionModalVisible(false);
       setSelectedFollowUp(null);
       await loadData();
-      Alert.alert('Action Recorded', 'Follow-up resolution recorded in audit trail.');
+      Alert.alert(t('masterHandover.tf.actionRecordedTitle'), t('masterHandover.tf.actionRecordedMessage'));
     } catch (err: any) {
-      Alert.alert('Action Failed', err?.message || 'Could not record follow-up action.');
+      Alert.alert(t('masterHandover.tf.actionFailedTitle'), err?.message || t('masterHandover.tf.actionFailed'));
     } finally {
       setSubmittingAction(false);
     }
@@ -160,11 +162,11 @@ export const MasterTrialsFollowUpScreen: React.FC<MasterTrialsFollowUpScreenProp
       setConvertingTrial(null);
       await loadData();
       Alert.alert(
-        'Trial Converted',
-        `${result.trial.candidate_name} has been enrolled as active student (ID: ${result.student.id}).`
+        t('masterHandover.tf.trialConvertedTitle'),
+        t('masterHandover.tf.trialConvertedMessage', { name: result.trial.candidate_name, id: result.student.id })
       );
     } catch (err: any) {
-      Alert.alert('Conversion Failed', err?.message || 'Could not convert trial to student.');
+      Alert.alert(t('masterHandover.tf.conversionFailedTitle'), err?.message || t('masterHandover.tf.conversionFailed'));
     } finally {
       setSubmittingConvert(false);
     }
@@ -174,23 +176,23 @@ export const MasterTrialsFollowUpScreen: React.FC<MasterTrialsFollowUpScreenProp
     try {
       await trialsService.markTrialAttendance(trialId, status);
       await loadData();
-      Alert.alert('Updated', `Trial marked as ${status}.`);
+      Alert.alert(t('masterHandover.tf.updatedTitle'), t('masterHandover.tf.trialMarked', { status }));
     } catch (err: any) {
-      Alert.alert('Update Failed', err?.message || 'Could not update trial attendance.');
+      Alert.alert(t('masterHandover.tf.updateFailedTitle'), err?.message || t('masterHandover.tf.updateFailed'));
     }
   };
 
   return (
     <ScreenContainer>
       <ScreenHeader
-        title="Trials & Retention"
-        subtitle="Trial conversion & proactive student follow-up queue"
+        title={t('masterHandover.tf.title')}
+        subtitle={t('masterHandover.tf.subtitle')}
       />
 
       {/* Class Selector Bar */}
       {assignedClasses.length > 1 && (
         <View style={styles.classSelectorRow}>
-          <Text style={[styles.selectorLabel, { color: colors.textSecondary }]}>Class:</Text>
+          <Text style={[styles.selectorLabel, { color: colors.textSecondary }]}>{t('masterHandover.tf.classLabel')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.classChips}>
             {assignedClasses.map((clsId) => (
               <TouchableOpacity
@@ -207,7 +209,7 @@ export const MasterTrialsFollowUpScreen: React.FC<MasterTrialsFollowUpScreenProp
                     selectedClassId === clsId ? { color: '#FFF' } : { color: colors.textSecondary },
                   ]}
                 >
-                  Class {clsId.slice(-4).toUpperCase()}
+                  {t('masterHandover.tf.classChip', { code: clsId.slice(-4).toUpperCase() })}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -231,7 +233,7 @@ export const MasterTrialsFollowUpScreen: React.FC<MasterTrialsFollowUpScreenProp
               { color: activeTab === 'FOLLOW_UPS' ? colors.buttonPrimaryBg : colors.textSecondary },
             ]}
           >
-            Follow-Up Queue ({followUps.length})
+            {t('masterHandover.tf.followUpTab', { count: followUps.length })}
           </Text>
         </TouchableOpacity>
 
@@ -249,7 +251,7 @@ export const MasterTrialsFollowUpScreen: React.FC<MasterTrialsFollowUpScreenProp
               { color: activeTab === 'TRIALS' ? colors.buttonPrimaryBg : colors.textSecondary },
             ]}
           >
-            Trial Bookings ({trials.length})
+            {t('masterHandover.tf.trialsTab', { count: trials.length })}
           </Text>
         </TouchableOpacity>
       </View>
@@ -259,7 +261,7 @@ export const MasterTrialsFollowUpScreen: React.FC<MasterTrialsFollowUpScreenProp
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       >
         {loading && !refreshing ? (
-          <LoadingState message="Loading trials and retention queue..." />
+          <LoadingState message={t('masterHandover.tf.loading')} />
         ) : error ? (
           <ErrorState message={error} onRetry={loadData} />
         ) : activeTab === 'FOLLOW_UPS' ? (
@@ -267,13 +269,13 @@ export const MasterTrialsFollowUpScreen: React.FC<MasterTrialsFollowUpScreenProp
           <View style={styles.tabSection}>
             <View style={styles.actionHeaderRow}>
               <View>
-                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Actionable Follow-Up Queue</Text>
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{t('masterHandover.tf.queueTitle')}</Text>
                 <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-                  Identified attendance risks, missed trials & overdue tuition
+                  {t('masterHandover.tf.queueSubtitle')}
                 </Text>
               </View>
               <Button
-                label={evaluating ? 'Scanning...' : 'Scan Risks'}
+                label={evaluating ? t('masterHandover.tf.scanning') : t('masterHandover.tf.scanRisks')}
                 onPress={handleEvaluateRules}
                 disabled={evaluating || isOffline}
                 variant="secondary"
@@ -285,22 +287,22 @@ export const MasterTrialsFollowUpScreen: React.FC<MasterTrialsFollowUpScreenProp
             {/* Quick Metrics */}
             <View style={styles.statsRow}>
               <StatCard
-                title="Pending Risks"
+                title={t('masterHandover.tf.pendingRisks')}
                 value={followUps.length.toString()}
-                subtitle="Needs Contact"
+                subtitle={t('masterHandover.tf.needsContact')}
               />
               <StatCard
-                title="High Severity"
+                title={t('masterHandover.tf.highSeverity')}
                 value={followUps.filter((f) => f.severity === 'HIGH').length.toString()}
-                subtitle="Consecutive Absences"
+                subtitle={t('masterHandover.tf.consecutiveAbsences')}
               />
             </View>
 
             {followUps.length === 0 ? (
               <EmptyState
-                title="All Clear"
-                description="No retention risks or follow-up items flagged for this class."
-                actionLabel="Scan Retention Rules"
+                title={t('masterHandover.tf.allClear')}
+                description={t('masterHandover.tf.allClearDesc')}
+                actionLabel={t('masterHandover.tf.scanRules')}
                 onAction={handleEvaluateRules}
               />
             ) : (
@@ -327,7 +329,7 @@ export const MasterTrialsFollowUpScreen: React.FC<MasterTrialsFollowUpScreenProp
                   </View>
 
                   <Text style={[styles.candidateName, { color: colors.textPrimary }]}>
-                    {item.student_name || item.candidate_name || 'Student Candidate'}
+                    {item.student_name || item.candidate_name || t('masterHandover.common.studentCandidate')}
                   </Text>
 
                   {/* Prominent Human-Visible Reason Card (Acceptance Test: reason_visible) */}
@@ -339,13 +341,13 @@ export const MasterTrialsFollowUpScreen: React.FC<MasterTrialsFollowUpScreenProp
                   <View style={styles.contactRow}>
                     <PhoneCall size={14} color={colors.textSecondary} />
                     <Text style={[styles.contactText, { color: colors.textSecondary }]}>
-                      {item.student_phone || item.guardian_phone || 'No phone provided'}
+                      {item.student_phone || item.guardian_phone || t('masterHandover.tf.noPhone')}
                     </Text>
                   </View>
 
                   <View style={styles.cardFooterRow}>
                     <Button
-                      label="Record Action & Outcome"
+                      label={t('masterHandover.tf.recordAction')}
                       onPress={() => handleOpenActionModal(item)}
                       variant="primary"
                       size="sm"
@@ -361,17 +363,17 @@ export const MasterTrialsFollowUpScreen: React.FC<MasterTrialsFollowUpScreenProp
           <View style={styles.tabSection}>
             <View style={styles.actionHeaderRow}>
               <View>
-                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Trial Sessions</Text>
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{t('masterHandover.tf.trialSessions')}</Text>
                 <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-                  Prospective martial arts students booked for trial
+                  {t('masterHandover.tf.trialSessionsSubtitle')}
                 </Text>
               </View>
             </View>
 
             {trials.length === 0 ? (
               <EmptyState
-                title="No Trial Bookings"
-                description="No prospective trials booked yet for this class."
+                title={t('masterHandover.tf.noTrials')}
+                description={t('masterHandover.tf.noTrialsDesc')}
               />
             ) : (
               trials.map((trl) => (
@@ -389,21 +391,24 @@ export const MasterTrialsFollowUpScreen: React.FC<MasterTrialsFollowUpScreenProp
                       }
                     />
                     <Text style={[styles.timeText, { color: colors.textSecondary }]}>
-                      Trial Date: {trl.scheduled_date}
+                      {t('masterHandover.tf.trialDate', { date: trl.scheduled_date })}
                     </Text>
                   </View>
 
                   <Text style={[styles.candidateName, { color: colors.textPrimary }]}>
-                    {trl.candidate_name} {trl.candidate_age ? `(${trl.candidate_age} y/o)` : ''}
+                    {trl.candidate_name} {trl.candidate_age ? t('masterHandover.tf.age', { age: trl.candidate_age }) : ''}
                   </Text>
 
                   <Text style={[styles.guardianInfo, { color: colors.textSecondary }]}>
-                    Guardian: {trl.guardian_name || 'N/A'} • {trl.guardian_phone}
+                    {t('masterHandover.tf.guardian', {
+                      name: trl.guardian_name || t('masterHandover.common.notApplicable'),
+                      phone: trl.guardian_phone,
+                    })}
                   </Text>
 
                   {trl.medical_notes && (
                     <Text style={[styles.medicalText, { color: BrandColors.warning }]}>
-                      Medical / Notes: {trl.medical_notes}
+                      {t('masterHandover.tf.medical', { notes: trl.medical_notes })}
                     </Text>
                   )}
 
@@ -413,19 +418,19 @@ export const MasterTrialsFollowUpScreen: React.FC<MasterTrialsFollowUpScreenProp
                         style={[styles.smallBtn, { backgroundColor: '#10B981' }]}
                         onPress={() => handleMarkTrialAttendance(trl.id, 'ATTENDED')}
                       >
-                        <Text style={styles.smallBtnText}>Attended</Text>
+                        <Text style={styles.smallBtnText}>{t('masterHandover.tf.attended')}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[styles.smallBtn, { backgroundColor: '#EF4444' }]}
                         onPress={() => handleMarkTrialAttendance(trl.id, 'MISSED')}
                       >
-                        <Text style={styles.smallBtnText}>Missed</Text>
+                        <Text style={styles.smallBtnText}>{t('masterHandover.tf.missed')}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[styles.smallBtn, { backgroundColor: colors.buttonPrimaryBg }]}
                         onPress={() => setConvertingTrial(trl)}
                       >
-                        <Text style={styles.smallBtnText}>Convert to Student</Text>
+                        <Text style={styles.smallBtnText}>{t('masterHandover.tf.convertToStudent')}</Text>
                       </TouchableOpacity>
                     </View>
                   )}
@@ -433,7 +438,7 @@ export const MasterTrialsFollowUpScreen: React.FC<MasterTrialsFollowUpScreenProp
                   {trl.status === 'ATTENDED' && (
                     <View style={styles.trialActionsRow}>
                       <Button
-                        label="Enroll as Canonical Student"
+                        label={t('masterHandover.tf.enrollCanonical')}
                         onPress={() => setConvertingTrial(trl)}
                         variant="primary"
                         size="sm"
@@ -446,7 +451,7 @@ export const MasterTrialsFollowUpScreen: React.FC<MasterTrialsFollowUpScreenProp
                     <View style={styles.convertedInfoBox}>
                       <CheckCircle2 size={16} color="#10B981" />
                       <Text style={styles.convertedInfoText}>
-                        Enrolled student ID: {trl.converted_student_id}
+                        {t('masterHandover.tf.enrolledId', { id: trl.converted_student_id })}
                       </Text>
                     </View>
                   )}
@@ -461,12 +466,12 @@ export const MasterTrialsFollowUpScreen: React.FC<MasterTrialsFollowUpScreenProp
       <Modal visible={actionModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <Card style={styles.modalContent}>
-            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Record Follow-Up Outcome</Text>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{t('masterHandover.tf.recordOutcomeTitle')}</Text>
             <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
               {selectedFollowUp?.student_name || selectedFollowUp?.candidate_name}
             </Text>
 
-            <Text style={[styles.inputLabel, { color: colors.textPrimary }]}>Action Outcome</Text>
+            <Text style={[styles.inputLabel, { color: colors.textPrimary }]}>{t('masterHandover.tf.actionOutcome')}</Text>
             {FOLLOW_UP_OUTCOMES.map((oc) => (
               <TouchableOpacity
                 key={oc.key}
@@ -482,15 +487,15 @@ export const MasterTrialsFollowUpScreen: React.FC<MasterTrialsFollowUpScreenProp
                     actionOutcome === oc.key ? { color: '#FFF' } : { color: colors.textSecondary },
                   ]}
                 >
-                  {oc.label}
+                  {t(oc.labelKey)}
                 </Text>
               </TouchableOpacity>
             ))}
 
-            <Text style={[styles.inputLabel, { color: colors.textPrimary }]}>Staff / Master Notes</Text>
+            <Text style={[styles.inputLabel, { color: colors.textPrimary }]}>{t('masterHandover.tf.notesLabel')}</Text>
             <TextInput
               style={[styles.notesInput, { borderColor: colors.border, color: colors.textPrimary }]}
-              placeholder="e.g. Spoke with parent, confirmed student had flu."
+              placeholder={t('masterHandover.tf.notesPlaceholder')}
               placeholderTextColor={colors.textSecondary}
               value={actionNotes}
               onChangeText={setActionNotes}
@@ -500,13 +505,13 @@ export const MasterTrialsFollowUpScreen: React.FC<MasterTrialsFollowUpScreenProp
 
             <View style={styles.modalButtonsRow}>
               <Button
-                label="Cancel"
+                label={t('masterHandover.common.cancel')}
                 onPress={() => setActionModalVisible(false)}
                 variant="outline"
                 size="sm"
               />
               <Button
-                label={submittingAction ? 'Saving...' : 'Save Outcome'}
+                label={submittingAction ? t('masterHandover.common.saving') : t('masterHandover.tf.saveOutcome')}
                 onPress={handleSubmitAction}
                 variant="primary"
                 size="sm"
@@ -521,29 +526,29 @@ export const MasterTrialsFollowUpScreen: React.FC<MasterTrialsFollowUpScreenProp
       <Modal visible={!!convertingTrial} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <Card style={styles.modalContent}>
-            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Convert to Canonical Student</Text>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{t('masterHandover.tf.convertTitle')}</Text>
             <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
-              Candidate: {convertingTrial?.candidate_name}
+              {t('masterHandover.tf.candidate', { name: convertingTrial?.candidate_name ?? '' })}
             </Text>
 
-            <Text style={[styles.inputLabel, { color: colors.textPrimary }]}>Initial Belt Rank</Text>
+            <Text style={[styles.inputLabel, { color: colors.textPrimary }]}>{t('masterHandover.tf.initialBelt')}</Text>
             <TextInput
               style={[styles.textInput, { borderColor: colors.border, color: colors.textPrimary }]}
               value={convertBeltRank}
               onChangeText={setConvertBeltRank}
-              placeholder="White Belt"
+              placeholder={t('masterHandover.common.whiteBelt')}
               placeholderTextColor={colors.textSecondary}
             />
 
             <View style={styles.modalButtonsRow}>
               <Button
-                label="Cancel"
+                label={t('masterHandover.common.cancel')}
                 onPress={() => setConvertingTrial(null)}
                 variant="outline"
                 size="sm"
               />
               <Button
-                label={submittingConvert ? 'Converting...' : 'Confirm Enrollment'}
+                label={submittingConvert ? t('masterHandover.tf.converting') : t('masterHandover.tf.confirmEnrollment')}
                 onPress={handleConvertTrial}
                 variant="primary"
                 size="sm"
