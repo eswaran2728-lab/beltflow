@@ -9,6 +9,15 @@ import { masterHomeEn } from './modules/masterHome';
 import { masterOpsEn } from './modules/masterOps';
 import { parentHomeEn } from './modules/parentHome';
 import { studentHomeEn } from './modules/studentHome';
+import { adminOpsEn } from './modules/adminOps';
+import { adminApprovalsEn } from './modules/adminApprovals';
+import { masterClassesEn } from './modules/masterClasses';
+import { masterLifecycleEn } from './modules/masterLifecycle';
+import { masterHandoverEn } from './modules/masterHandover';
+import { parentFlowsEn } from './modules/parentFlows';
+import { parentLifecycleEn } from './modules/parentLifecycle';
+import { studentFlowsEn } from './modules/studentFlows';
+import { componentsEn } from './modules/components';
 
 export const en = {
   'app.name': 'BeltFlow',
@@ -108,6 +117,15 @@ export const en = {
   ...masterOpsEn,
   ...parentHomeEn,
   ...studentHomeEn,
+  ...adminOpsEn,
+  ...adminApprovalsEn,
+  ...masterClassesEn,
+  ...masterLifecycleEn,
+  ...masterHandoverEn,
+  ...parentFlowsEn,
+  ...parentLifecycleEn,
+  ...studentFlowsEn,
+  ...componentsEn,
 };
 
 export type TranslationKey = keyof typeof en;

@@ -10,6 +10,15 @@ import { masterHomeTa } from './modules/masterHome';
 import { masterOpsTa } from './modules/masterOps';
 import { parentHomeTa } from './modules/parentHome';
 import { studentHomeTa } from './modules/studentHome';
+import { adminOpsTa } from './modules/adminOps';
+import { adminApprovalsTa } from './modules/adminApprovals';
+import { masterClassesTa } from './modules/masterClasses';
+import { masterLifecycleTa } from './modules/masterLifecycle';
+import { masterHandoverTa } from './modules/masterHandover';
+import { parentFlowsTa } from './modules/parentFlows';
+import { parentLifecycleTa } from './modules/parentLifecycle';
+import { studentFlowsTa } from './modules/studentFlows';
+import { componentsTa } from './modules/components';
 
 
 export const ta: Dictionary = {
@@ -110,4 +119,13 @@ export const ta: Dictionary = {
   ...masterOpsTa,
   ...parentHomeTa,
   ...studentHomeTa,
+  ...adminOpsTa,
+  ...adminApprovalsTa,
+  ...masterClassesTa,
+  ...masterLifecycleTa,
+  ...masterHandoverTa,
+  ...parentFlowsTa,
+  ...parentLifecycleTa,
+  ...studentFlowsTa,
+  ...componentsTa,
 };

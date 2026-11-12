@@ -9,6 +9,15 @@ import { masterHomeMs } from './modules/masterHome';
 import { masterOpsMs } from './modules/masterOps';
 import { parentHomeMs } from './modules/parentHome';
 import { studentHomeMs } from './modules/studentHome';
+import { adminOpsMs } from './modules/adminOps';
+import { adminApprovalsMs } from './modules/adminApprovals';
+import { masterClassesMs } from './modules/masterClasses';
+import { masterLifecycleMs } from './modules/masterLifecycle';
+import { masterHandoverMs } from './modules/masterHandover';
+import { parentFlowsMs } from './modules/parentFlows';
+import { parentLifecycleMs } from './modules/parentLifecycle';
+import { studentFlowsMs } from './modules/studentFlows';
+import { componentsMs } from './modules/components';
 
 
 export const ms: Dictionary = {
@@ -109,4 +118,13 @@ export const ms: Dictionary = {
   ...masterOpsMs,
   ...parentHomeMs,
   ...studentHomeMs,
+  ...adminOpsMs,
+  ...adminApprovalsMs,
+  ...masterClassesMs,
+  ...masterLifecycleMs,
+  ...masterHandoverMs,
+  ...parentFlowsMs,
+  ...parentLifecycleMs,
+  ...studentFlowsMs,
+  ...componentsMs,
 };
