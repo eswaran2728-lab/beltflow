@@ -31,6 +31,7 @@ import { Button } from '../../../components/Button';
 import { StatusBadge } from '../../../components/Badges';
 import { OfflineBanner, LoadingState, ErrorState } from '../../../components/Feedback';
 import { useDashboardData } from '../../../hooks/useDashboardData';
+import { useReleaseModules } from '../../../hooks/useReleaseModules';
 import { dashboardService, AdminPersatuanDashboardData } from '../../../services/dashboardService';
 import { MasterApprovalsScreen } from './MasterApprovalsScreen';
 import { AdminAcademySetupScreen } from './AdminAcademySetupScreen';
@@ -55,6 +56,8 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
   const { colors, typography, spacing, iconSize } = useTheme();
   // H28: follow the app-wide language; the header switch changes it for the whole app.
   const app = useI18n();
+  // Optional R3 modules: hide their shortcuts when the server switches them off.
+  const release = useReleaseModules();
   const [lang, setLangLocal] = useState<AdminLanguage>(app.locale);
   const [seenLocale, setSeenLocale] = useState(app.locale);
   if (seenLocale !== app.locale) {
@@ -428,26 +431,30 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
               rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonPrimaryText} />}
               testID="shortcut-ap-onboarding"
             />
-            <Button
-              label={t('adminHome.btnInventory')}
-              onPress={() => navigation?.navigate('Inventory')}
-              variant="secondary"
-              size="md"
-              fullWidth
-              leftIcon={<ShoppingBag size={iconSize.md} color={colors.buttonSecondaryText} />}
-              rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
-              testID="shortcut-ap-inventory"
-            />
-            <Button
-              label={t('adminHome.btnTournaments')}
-              onPress={() => navigation?.navigate('Tournaments')}
-              variant="secondary"
-              size="md"
-              fullWidth
-              leftIcon={<Trophy size={iconSize.md} color={colors.buttonSecondaryText} />}
-              rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
-              testID="shortcut-ap-tournaments"
-            />
+            {release.isEnabled('commerce') && (
+              <Button
+                label={t('adminHome.btnInventory')}
+                onPress={() => navigation?.navigate('Inventory')}
+                variant="secondary"
+                size="md"
+                fullWidth
+                leftIcon={<ShoppingBag size={iconSize.md} color={colors.buttonSecondaryText} />}
+                rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
+                testID="shortcut-ap-inventory"
+              />
+            )}
+            {release.isEnabled('tournaments') && (
+              <Button
+                label={t('adminHome.btnTournaments')}
+                onPress={() => navigation?.navigate('Tournaments')}
+                variant="secondary"
+                size="md"
+                fullWidth
+                leftIcon={<Trophy size={iconSize.md} color={colors.buttonSecondaryText} />}
+                rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
+                testID="shortcut-ap-tournaments"
+              />
+            )}
             <Button
               label={t('adminHome.btnLocations')}
               onPress={() => navigation?.navigate('Locations')}
@@ -465,6 +472,33 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
               fullWidth
               rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
               testID="shortcut-ap-masters"
+            />
+            <Button
+              label={t('adminHome.btnClassApprovals')}
+              onPress={() => navigation?.navigate('ClassApprovals')}
+              variant="secondary"
+              size="md"
+              fullWidth
+              rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
+              testID="shortcut-ap-class-approvals"
+            />
+            <Button
+              label={t('adminHome.btnHandoverApprovals')}
+              onPress={() => navigation?.navigate('HandoverApprovals')}
+              variant="secondary"
+              size="md"
+              fullWidth
+              rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
+              testID="shortcut-ap-handover-approvals"
+            />
+            <Button
+              label={t('adminHome.btnGrading')}
+              onPress={() => navigation?.navigate('AdminGrading')}
+              variant="secondary"
+              size="md"
+              fullWidth
+              rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
+              testID="shortcut-ap-grading"
             />
             <Button
               label={t('adminHome.btnCurriculum')}
@@ -659,3 +693,4 @@ export * from './ClassApprovalsScreen';
 export * from './HandoverApprovalsScreen';
 export * from './CurriculumManagementScreen';
 export * from './AdminFinanceScreen';
+export * from './AdminGradingScreen';

@@ -1,5 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Home, MapPin, Users, BarChart3, User, Sparkles } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import { RoleNavigationContainer } from '../RoleNavigationContainer';
@@ -13,10 +14,53 @@ import {
   ReportsScreen,
   AdminPersatuanProfileScreen,
   AdminAcademySetupScreen,
+  ClassApprovalsScreen,
+  HandoverApprovalsScreen,
+  AdminGradingScreen,
+  CurriculumManagementScreen,
+  AdminFinanceScreen,
 } from '../../screens/roles/adminPersatuan';
-import { RoleNavigatorProps, AdminPersatuanTabParamList } from '../types';
+import {
+  RoleNavigatorProps,
+  AdminPersatuanTabParamList,
+  AdminPersatuanHomeStackParamList,
+} from '../types';
 
 const Tab = createBottomTabNavigator<AdminPersatuanTabParamList>();
+const HomeStack = createNativeStackNavigator<AdminPersatuanHomeStackParamList>();
+
+// Home tab: the dashboard plus the screens its quick actions open. Navigating
+// to a tab name (Locations, Masters, AcademySetup...) from here bubbles up to the tabs.
+function AdminPersatuanHomeStackNavigator(props: RoleNavigatorProps) {
+  return (
+    <HomeStack.Navigator screenOptions={{ headerShown: false }}>
+      <HomeStack.Screen name="Dashboard">
+        {navProps => <AdminPersatuanHomeScreen {...props} {...navProps} />}
+      </HomeStack.Screen>
+      <HomeStack.Screen name="ClassApprovals">
+        {navProps => <ClassApprovalsScreen {...props} {...navProps} />}
+      </HomeStack.Screen>
+      <HomeStack.Screen name="HandoverApprovals">
+        {navProps => <HandoverApprovalsScreen {...props} {...navProps} />}
+      </HomeStack.Screen>
+      <HomeStack.Screen name="AdminGrading">
+        {navProps => <AdminGradingScreen {...props} {...navProps} />}
+      </HomeStack.Screen>
+      <HomeStack.Screen name="Curriculum">
+        {navProps => (
+          <CurriculumManagementScreen
+            user={props.user}
+            isOffline={props.isOffline}
+            onBack={() => navProps.navigation.goBack()}
+          />
+        )}
+      </HomeStack.Screen>
+      <HomeStack.Screen name="Finance">
+        {navProps => <AdminFinanceScreen {...props} {...navProps} />}
+      </HomeStack.Screen>
+    </HomeStack.Navigator>
+  );
+}
 
 export const AdminPersatuanNavigator: React.FC<RoleNavigatorProps> = ({
   user,
@@ -55,7 +99,7 @@ export const AdminPersatuanNavigator: React.FC<RoleNavigatorProps> = ({
         }}
       >
         {() => (
-          <AdminPersatuanHomeScreen
+          <AdminPersatuanHomeStackNavigator
             user={user}
             onLogout={onLogout}
             isOffline={isOffline}

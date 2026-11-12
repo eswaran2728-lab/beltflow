@@ -13,9 +13,6 @@ import path from 'path';
 const SRC = path.join(__dirname, '..');
 
 const KNOWN_UNREGISTERED: Record<string, string> = {
-  Messaging: 'Parent home: Messaging buttons (H22)',
-  Curriculum: 'Admin Persatuan dashboard (H09)',
-  Finance: 'Admin Persatuan dashboard (H13)',
   Tournaments: 'Admin Persatuan dashboard (H24)',
   Inventory: 'Admin Persatuan dashboard (H25)',
 };

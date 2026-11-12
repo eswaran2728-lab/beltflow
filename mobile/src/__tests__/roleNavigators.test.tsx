@@ -60,6 +60,12 @@ const renderWithTheme = async (ui: React.ReactElement, isDark = true) => {
   );
 };
 
+// Name of the selected bottom tab (the deepest route can be a screen inside a tab's stack).
+const activeTabName = () => {
+  const state = roleNavigationRef.getRootState();
+  return state?.routes[state.index ?? 0]?.name;
+};
+
 describe('BeltFlow Role-Based Navigation Architecture — Task 1.6 (TDD)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -549,7 +555,9 @@ describe('BeltFlow Role-Based Navigation Architecture — Task 1.6 (TDD)', () =>
       expect(getByText('Parent Home')).toBeTruthy();
       expect(queryByText('Platform Audit')).toBeNull();
       expect(queryByText('Belt Grading')).toBeNull();
-      expect(roleNavigationRef.getCurrentRoute()?.name).toBe('Home');
+      // Home tab is a stack whose first screen is the dashboard.
+      expect(activeTabName()).toBe('Home');
+      expect(roleNavigationRef.getCurrentRoute()?.name).toBe('Dashboard');
       errorSpy.mockRestore();
     });
 
@@ -610,7 +618,8 @@ describe('BeltFlow Role-Based Navigation Architecture — Task 1.6 (TDD)', () =>
 
       expect(await findByText(/org_tenant_two/)).toBeTruthy();
       expect(queryByText(/org_tenant_one/)).toBeNull();
-      expect(roleNavigationRef.getCurrentRoute()?.name).toBe('Home');
+      expect(activeTabName()).toBe('Home');
+      expect(roleNavigationRef.getCurrentRoute()?.name).toBe('Dashboard');
     });
 
     test('role resolution rejects unknown, mis-cased and missing roles', () => {
