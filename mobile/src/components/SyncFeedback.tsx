@@ -6,6 +6,7 @@ import { Card } from './Card';
 import { Button } from './Button';
 import { StatusBadge } from './Badges';
 import { SyncState } from '../types/sync';
+import { useI18n } from '../i18n';
 
 export interface SyncFeedbackCardProps {
   state: SyncState;
@@ -21,57 +22,58 @@ export const SyncFeedbackCard: React.FC<SyncFeedbackCardProps> = ({
   testID,
 }) => {
   const { colors, typography, iconSize, spacing } = useTheme();
+  const { t } = useI18n();
 
   const getStatusContent = () => {
     switch (state.status) {
       case 'synced':
         return {
           icon: <CheckCircle size={iconSize.md} color={colors.badgeSuccessText} />,
-          title: 'All changes synchronized',
+          title: t('components.sync.synced.title'),
           description: state.lastSyncedAt
-            ? `Last synced at ${new Date(state.lastSyncedAt).toLocaleTimeString()}`
-            : 'All records are up to date with BeltFlow servers.',
+            ? t('components.sync.synced.lastSynced', { time: new Date(state.lastSyncedAt).toLocaleTimeString() })
+            : t('components.sync.synced.description'),
           badgeVariant: 'success' as const,
-          badgeLabel: 'SYNCED',
+          badgeLabel: t('components.sync.synced.badge'),
           resolvedTestId: testID || 'sync-feedback-synced',
         };
       case 'pending':
         return {
           icon: <Clock size={iconSize.md} color={colors.badgeWarningText} />,
           title: state.pendingCount && state.pendingCount > 0
-            ? `${state.pendingCount} changes waiting to sync`
-            : 'Changes waiting to sync',
-          description: 'Updates will upload automatically once online connectivity is restored.',
+            ? t('components.sync.pending.titleCount', { count: state.pendingCount })
+            : t('components.sync.pending.title'),
+          description: t('components.sync.pending.description'),
           badgeVariant: 'warning' as const,
-          badgeLabel: 'PENDING',
+          badgeLabel: t('components.sync.pending.badge'),
           resolvedTestId: testID || 'sync-feedback-pending',
         };
       case 'syncing':
         return {
           icon: <ActivityIndicator size="small" color={colors.buttonPrimaryBg} />,
-          title: 'Synchronizing with BeltFlow...',
-          description: 'Uploading changes to the central academy server.',
+          title: t('components.sync.syncing.title'),
+          description: t('components.sync.syncing.description'),
           badgeVariant: 'info' as const,
-          badgeLabel: 'SYNCING',
+          badgeLabel: t('components.sync.syncing.badge'),
           resolvedTestId: testID || 'sync-feedback-syncing',
         };
       case 'failed':
         return {
           icon: <AlertTriangle size={iconSize.md} color={colors.badgeDangerText} />,
-          title: 'Synchronization failed',
-          description: state.errorMessage || 'Unable to complete sync. Please verify connection and retry.',
+          title: t('components.sync.failed.title'),
+          description: state.errorMessage || t('components.sync.failed.description'),
           badgeVariant: 'danger' as const,
-          badgeLabel: 'FAILED',
+          badgeLabel: t('components.sync.failed.badge'),
           resolvedTestId: testID || 'sync-feedback-failed',
         };
       case 'unavailable':
       default:
         return {
           icon: <Database size={iconSize.md} color={colors.textMuted} />,
-          title: 'Offline sync not configured',
-          description: 'Offline queue is not configured for this device. Operations require verified online access.',
+          title: t('components.sync.unavailable.title'),
+          description: t('components.sync.unavailable.description'),
           badgeVariant: 'info' as const,
-          badgeLabel: 'NOT CONFIGURED',
+          badgeLabel: t('components.sync.unavailable.badge'),
           resolvedTestId: testID || 'sync-feedback-unavailable',
         };
     }
@@ -105,12 +107,12 @@ export const SyncFeedbackCard: React.FC<SyncFeedbackCardProps> = ({
       {state.status === 'failed' && onRetry ? (
         <View style={[styles.actionRow, { marginTop: spacing.md }]}>
           <Button
-            label="Retry Sync"
+            label={t('components.sync.retry')}
             onPress={onRetry}
             variant="secondary"
             size="sm"
             testID="btn-sync-retry"
-            accessibilityLabel="Retry synchronization"
+            accessibilityLabel={t('components.sync.retryA11y')}
           />
         </View>
       ) : null}

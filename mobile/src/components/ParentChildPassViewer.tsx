@@ -4,6 +4,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { StudentDigitalPass } from './StudentDigitalPass';
 import { Card } from './Card';
 import { Users } from 'lucide-react-native';
+import { useI18n } from '../i18n';
 
 export interface LinkedChildPassData {
   id: string;
@@ -26,6 +27,7 @@ export const ParentChildPassViewer: React.FC<ParentChildPassViewerProps> = ({
   testID = 'parent-child-pass-viewer',
 }) => {
   const { colors, typography } = useTheme();
+  const { t } = useI18n();
   const [selectedChildId, setSelectedChildId] = useState<string>(
     childrenList.length > 0 ? childrenList[0].id : ''
   );
@@ -41,10 +43,10 @@ export const ParentChildPassViewer: React.FC<ParentChildPassViewerProps> = ({
       >
         <Users size={32} color={colors.textMuted} />
         <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginTop: 12 }]}>
-          No Approved Student Passes
+          {t('components.passViewer.emptyTitle')}
         </Text>
         <Text style={[typography.caption, { color: colors.textSecondary, textAlign: 'center', marginTop: 4 }]}>
-          Parent-student link requests must be fully approved by student, Master, and academy administrator before digital passes can be accessed.
+          {t('components.passViewer.emptyBody')}
         </Text>
       </Card>
     );
@@ -77,7 +79,7 @@ export const ParentChildPassViewer: React.FC<ParentChildPassViewerProps> = ({
                 ]}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: isSelected }}
-                accessibilityLabel={`View digital pass for ${child.fullName}`}
+                accessibilityLabel={t('components.passViewer.viewPassA11y', { name: child.fullName })}
               >
                 <Text
                   style={[

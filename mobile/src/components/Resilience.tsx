@@ -18,6 +18,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { Button } from './Button';
 import { Card } from './Card';
 import { ConnectivityState } from '../types/connectivity';
+import { useI18n } from '../i18n';
 
 // ----------------------------------------------------------------------------
 // 1. ConnectivityBanner Component
@@ -36,6 +37,7 @@ export const ConnectivityBanner: React.FC<ConnectivityBannerProps> = ({
   testID,
 }) => {
   const { colors, typography, iconSize, spacing } = useTheme();
+  const { t } = useI18n();
 
   if (!state || state.status === 'online') {
     return null;
@@ -52,9 +54,9 @@ export const ConnectivityBanner: React.FC<ConnectivityBannerProps> = ({
         bg: colors.offlineBg,
         borderColor: colors.badgeWarningText,
         textColor: colors.offlineText,
-        message: 'Offline Mode: Locally Cached Identity — Sensitive server operations are locked until online.',
+        message: t('components.connectivity.offline.message'),
         defaultTestId: 'connectivity-banner-offline',
-        accessibilityLabel: 'Offline mode alert. You are disconnected from the internet.',
+        accessibilityLabel: t('components.connectivity.offline.a11y'),
       };
     }
     if (isBackendDown) {
@@ -63,9 +65,9 @@ export const ConnectivityBanner: React.FC<ConnectivityBannerProps> = ({
         bg: colors.badgeDangerBg,
         borderColor: colors.badgeDangerText,
         textColor: colors.badgeDangerText,
-        message: 'Backend Unavailable — Unable to reach BeltFlow servers. Please try again shortly.',
+        message: t('components.connectivity.backendDown.message'),
         defaultTestId: 'connectivity-banner-backend-unavailable',
-        accessibilityLabel: 'Backend unavailable alert. BeltFlow servers cannot be reached.',
+        accessibilityLabel: t('components.connectivity.backendDown.a11y'),
       };
     }
     if (isRecovering) {
@@ -74,9 +76,9 @@ export const ConnectivityBanner: React.FC<ConnectivityBannerProps> = ({
         bg: colors.surfaceElevated,
         borderColor: colors.buttonPrimaryBg,
         textColor: colors.textPrimary,
-        message: 'Reconnecting to BeltFlow servers...',
+        message: t('components.connectivity.recovering.message'),
         defaultTestId: 'connectivity-banner-recovering',
-        accessibilityLabel: 'Reconnecting to BeltFlow servers.',
+        accessibilityLabel: t('components.connectivity.recovering.a11y'),
       };
     }
     // Checking
@@ -85,9 +87,9 @@ export const ConnectivityBanner: React.FC<ConnectivityBannerProps> = ({
       bg: colors.surfaceElevated,
       borderColor: colors.border,
       textColor: colors.textSecondary,
-      message: 'Checking connection...',
+      message: t('components.connectivity.checking.message'),
       defaultTestId: 'connectivity-banner-checking',
-      accessibilityLabel: 'Checking network connection.',
+      accessibilityLabel: t('components.connectivity.checking.a11y'),
     };
   };
 
@@ -116,12 +118,12 @@ export const ConnectivityBanner: React.FC<ConnectivityBannerProps> = ({
       {isBackendDown && onRetry ? (
         <View style={{ marginLeft: 8 }}>
           <Button
-            label="Retry"
+            label={t('components.common.retry')}
             size="sm"
             variant="outline"
             onPress={onRetry}
             testID="btn-connectivity-retry"
-            accessibilityLabel="Retry connecting to BeltFlow servers"
+            accessibilityLabel={t('components.connectivity.retryA11y')}
           />
         </View>
       ) : null}
@@ -142,21 +144,24 @@ export interface PermissionDeniedStateProps {
 }
 
 export const PermissionDeniedState: React.FC<PermissionDeniedStateProps> = ({
-  title = 'Access Restricted',
-  message = 'You do not have permission to view or manage these records. Please contact your Persatuan Administrator or Master.',
+  title: titleProp,
+  message: messageProp,
   actionLabel,
   onAction,
   style,
   testID = 'permission-denied-state',
 }) => {
   const { colors, typography, iconSize, spacing } = useTheme();
+  const { t } = useI18n();
+  const title = titleProp ?? t('components.permissionDenied.title');
+  const message = messageProp ?? t('components.permissionDenied.message');
 
   return (
     <View
       style={[styles.centerContainer, style]}
       testID={testID}
       accessibilityRole="alert"
-      accessibilityLabel="Access restricted notice"
+      accessibilityLabel={t('components.permissionDenied.a11y')}
     >
       <View style={[styles.iconWrapper, { backgroundColor: colors.badgeDangerBg, borderRadius: 999, padding: 14 }]}>
         <ShieldAlert size={iconSize.xl} color={colors.badgeDangerText} />
@@ -188,20 +193,23 @@ export interface SessionExpiredStateProps {
 }
 
 export const SessionExpiredState: React.FC<SessionExpiredStateProps> = ({
-  title = 'Session Expired',
-  message = 'Your security session has expired. Please sign in again to continue.',
+  title: titleProp,
+  message: messageProp,
   onLoginRedirect,
   style,
   testID = 'session-expired-state',
 }) => {
   const { colors, typography, iconSize, spacing } = useTheme();
+  const { t } = useI18n();
+  const title = titleProp ?? t('components.sessionExpired.title');
+  const message = messageProp ?? t('components.sessionExpired.message');
 
   return (
     <View
       style={[styles.centerContainer, style]}
       testID={testID}
       accessibilityRole="alert"
-      accessibilityLabel="Security session expired alert"
+      accessibilityLabel={t('components.sessionExpired.a11y')}
     >
       <View style={[styles.iconWrapper, { backgroundColor: colors.badgeWarningBg, borderRadius: 999, padding: 14 }]}>
         <Clock size={iconSize.xl} color={colors.badgeWarningText} />
@@ -215,12 +223,12 @@ export const SessionExpiredState: React.FC<SessionExpiredStateProps> = ({
       {onLoginRedirect ? (
         <View style={{ marginTop: spacing.lg }}>
           <Button
-            label="Return to Sign In"
+            label={t('components.sessionExpired.button')}
             onPress={onLoginRedirect}
             variant="primary"
             size="md"
             testID="btn-session-expired-login"
-            accessibilityLabel="Return to sign in screen"
+            accessibilityLabel={t('components.sessionExpired.buttonA11y')}
           />
         </View>
       ) : null}
@@ -240,20 +248,23 @@ export interface ServiceUnavailableStateProps {
 }
 
 export const ServiceUnavailableState: React.FC<ServiceUnavailableStateProps> = ({
-  title = 'Service Temporarily Unavailable',
-  message = 'BeltFlow backend services are currently undergoing maintenance or experiencing an outage. Please try again in a few moments.',
+  title: titleProp,
+  message: messageProp,
   onRetry,
   style,
   testID = 'service-unavailable-state',
 }) => {
   const { colors, typography, iconSize, spacing } = useTheme();
+  const { t } = useI18n();
+  const title = titleProp ?? t('components.serviceUnavailable.title');
+  const message = messageProp ?? t('components.serviceUnavailable.message');
 
   return (
     <View
       style={[styles.centerContainer, style]}
       testID={testID}
       accessibilityRole="alert"
-      accessibilityLabel="Service temporarily unavailable alert"
+      accessibilityLabel={t('components.serviceUnavailable.a11y')}
     >
       <View style={[styles.iconWrapper, { backgroundColor: colors.badgeWarningBg, borderRadius: 999, padding: 14 }]}>
         <ServerOff size={iconSize.xl} color={colors.badgeWarningText} />
@@ -267,12 +278,12 @@ export const ServiceUnavailableState: React.FC<ServiceUnavailableStateProps> = (
       {onRetry ? (
         <View style={{ marginTop: spacing.lg }}>
           <Button
-            label="Try Again"
+            label={t('components.common.tryAgain')}
             onPress={onRetry}
             variant="secondary"
             size="md"
             testID="btn-service-unavailable-retry"
-            accessibilityLabel="Retry connecting to BeltFlow service"
+            accessibilityLabel={t('components.serviceUnavailable.buttonA11y')}
           />
         </View>
       ) : null}
@@ -290,11 +301,13 @@ export interface InlineLoadingStateProps {
 }
 
 export const InlineLoadingState: React.FC<InlineLoadingStateProps> = ({
-  message = 'Loading...',
+  message: messageProp,
   style,
   testID = 'inline-loading-state',
 }) => {
   const { colors, typography, spacing } = useTheme();
+  const { t } = useI18n();
+  const message = messageProp ?? t('components.common.loading');
 
   return (
     <View
@@ -326,6 +339,7 @@ export const SkeletonCard: React.FC<SkeletonCardProps> = ({
   testID = 'skeleton-card',
 }) => {
   const { colors, borderRadius, spacing } = useTheme();
+  const { t } = useI18n();
 
   return (
     <Card
@@ -342,7 +356,7 @@ export const SkeletonCard: React.FC<SkeletonCardProps> = ({
       ]}
       testID={testID}
       accessibilityRole="progressbar"
-      accessibilityLabel="Loading placeholder card"
+      accessibilityLabel={t('components.skeleton.a11y')}
     >
       <View
         style={[

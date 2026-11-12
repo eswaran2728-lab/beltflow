@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Eye, EyeOff, Search, X } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeProvider';
+import { useI18n } from '../i18n';
 
 export interface InputProps extends Omit<TextInputProps, 'style'> {
   label?: string;
@@ -114,6 +115,7 @@ export type PasswordInputProps = Omit<InputProps, 'secureTextEntry'>;
 export const PasswordInput: React.FC<PasswordInputProps> = props => {
   const [isSecure, setIsSecure] = useState(true);
   const { colors, iconSize } = useTheme();
+  const { t } = useI18n();
 
   return (
     <Input
@@ -125,7 +127,7 @@ export const PasswordInput: React.FC<PasswordInputProps> = props => {
           activeOpacity={0.7}
           testID={`${props.testID || 'input-password'}-toggle`}
           accessibilityRole="button"
-          accessibilityLabel={isSecure ? 'Show password' : 'Hide password'}
+          accessibilityLabel={isSecure ? t('components.input.showPassword') : t('components.input.hidePassword')}
         >
           {isSecure ? (
             <EyeOff size={iconSize.md} color={colors.textSecondary} />
@@ -148,6 +150,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
   ...props
 }) => {
   const { colors, iconSize } = useTheme();
+  const { t } = useI18n();
 
   return (
     <Input
@@ -161,7 +164,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
             activeOpacity={0.7}
             testID="search-clear-btn"
             accessibilityRole="button"
-            accessibilityLabel="Clear search"
+            accessibilityLabel={t('components.input.clearSearch')}
           >
             <X size={iconSize.sm} color={colors.textSecondary} />
           </TouchableOpacity>

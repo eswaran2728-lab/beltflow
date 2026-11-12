@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
 import { Bell, Shield } from 'lucide-react-native';
 import { StitchTokens } from '../../theme/tokens';
+import { useI18n } from '../../i18n';
 
 export interface StitchAppHeaderProps {
   dojangName?: string;
@@ -12,12 +13,14 @@ export interface StitchAppHeaderProps {
 }
 
 export const StitchAppHeader: React.FC<StitchAppHeaderProps> = ({
-  dojangName = 'PERSATUAN DOJANG (SAMPLE)',
+  dojangName: dojangNameProp,
   roleBadgeText,
   hasUnreadNotifications = true,
   onNotificationPress,
   style,
 }) => {
+  const { t } = useI18n();
+  const dojangName = dojangNameProp ?? t('components.header.defaultDojang');
   return (
     <View style={[styles.headerContainer, style]} testID="stitch-app-header">
       {/* Brand & Logo Area */}
@@ -43,7 +46,7 @@ export const StitchAppHeader: React.FC<StitchAppHeaderProps> = ({
         <TouchableOpacity
           style={styles.bellButton}
           onPress={onNotificationPress}
-          accessibilityLabel="Notifications"
+          accessibilityLabel={t('components.header.notificationsA11y')}
           testID="header-bell-btn"
         >
           <Bell size={18} color="#FFFFFF" />

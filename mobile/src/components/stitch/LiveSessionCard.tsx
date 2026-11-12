@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
 import { Users, Clock, CheckCircle } from 'lucide-react-native';
 import { StitchTokens } from '../../theme/tokens';
+import { useI18n } from '../../i18n';
 
 export interface LiveSessionCardProps {
   categoryLabel?: string;
@@ -15,7 +16,7 @@ export interface LiveSessionCardProps {
 }
 
 export const LiveSessionCard: React.FC<LiveSessionCardProps> = ({
-  categoryLabel = 'ACTIVE MAT SESSION',
+  categoryLabel: categoryLabelProp,
   className,
   scheduleTime,
   enrolledCount,
@@ -24,6 +25,8 @@ export const LiveSessionCard: React.FC<LiveSessionCardProps> = ({
   onManagePress,
   style,
 }) => {
+  const { t } = useI18n();
+  const categoryLabel = categoryLabelProp ?? t('components.liveSession.defaultCategory');
   return (
     <View style={[styles.cardContainer, style]} testID="live-session-card">
       <Text style={styles.categoryLabel}>{categoryLabel}</Text>
@@ -38,7 +41,9 @@ export const LiveSessionCard: React.FC<LiveSessionCardProps> = ({
         <View style={styles.metaItem}>
           <Users size={12} color="#94A3B8" />
           <Text style={styles.metaText}>
-            {enrolledCount} {capacity ? `/ ${capacity}` : ''} Enrolled
+            {capacity
+              ? t('components.liveSession.enrolledCapacity', { count: enrolledCount, capacity })
+              : t('components.liveSession.enrolled', { count: enrolledCount })}
           </Text>
         </View>
       </View>
@@ -51,7 +56,7 @@ export const LiveSessionCard: React.FC<LiveSessionCardProps> = ({
           testID="btn-roster-check"
         >
           <CheckCircle size={14} color="#FFFFFF" />
-          <Text style={styles.primaryBtnText}>1-Tap Roster Check</Text>
+          <Text style={styles.primaryBtnText}>{t('components.liveSession.rosterCheck')}</Text>
         </TouchableOpacity>
 
         {onManagePress && (
@@ -61,7 +66,7 @@ export const LiveSessionCard: React.FC<LiveSessionCardProps> = ({
             activeOpacity={0.8}
             testID="btn-session-manage"
           >
-            <Text style={styles.secondaryBtnText}>Manage</Text>
+            <Text style={styles.secondaryBtnText}>{t('components.liveSession.manage')}</Text>
           </TouchableOpacity>
         )}
       </View>

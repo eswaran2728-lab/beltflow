@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ViewStyle } from 'react-nativ
 import { CreditCard, Building2, Receipt, ArrowRight, ShieldCheck } from 'lucide-react-native';
 import { StitchTokens } from '../../theme/tokens';
 import { SiblingDiscountBanner } from './SiblingDiscountBanner';
+import { useI18n } from '../../i18n';
 
 export interface MerchantBillingItem {
   organizationId: string;
@@ -34,13 +35,16 @@ export const FamilyBillingCard: React.FC<FamilyBillingCardProps> = ({
   totalFamilyOutstanding,
   currency = 'MYR',
   hasSiblingDiscount = false,
-  siblingDiscountLabel = '10% Sibling Discount Applied',
-  siblingDiscountDetails = 'Multi-child enrollment saving',
+  siblingDiscountLabel: siblingDiscountLabelProp,
+  siblingDiscountDetails: siblingDiscountDetailsProp,
   siblingDiscountSavings,
   onPayNow,
   onViewHistory,
   style,
 }) => {
+  const { t } = useI18n();
+  const siblingDiscountLabel = siblingDiscountLabelProp ?? t('components.billing.siblingDefaultLabel');
+  const siblingDiscountDetails = siblingDiscountDetailsProp ?? t('components.billing.siblingDefaultDetails');
   const isAllPaid = totalFamilyOutstanding <= 0;
 
   return (
@@ -52,14 +56,14 @@ export const FamilyBillingCard: React.FC<FamilyBillingCardProps> = ({
             <CreditCard size={18} color="#FFFFFF" />
           </View>
           <View>
-            <Text style={styles.titleText}>Family Dues & Billing</Text>
-            <Text style={styles.subtitleText}>Direct Persatuan Settlement</Text>
+            <Text style={styles.titleText}>{t('components.billing.title')}</Text>
+            <Text style={styles.subtitleText}>{t('components.billing.subtitle')}</Text>
           </View>
         </View>
 
         <View style={[styles.statusBadge, isAllPaid ? styles.statusBadgePaid : styles.statusBadgePending]}>
           <Text style={[styles.statusBadgeText, isAllPaid ? styles.statusTextPaid : styles.statusTextPending]}>
-            {isAllPaid ? 'ALL SETTLED' : 'DUE'}
+            {isAllPaid ? t('components.billing.allSettled') : t('components.billing.due')}
           </Text>
         </View>
       </View>
@@ -70,14 +74,14 @@ export const FamilyBillingCard: React.FC<FamilyBillingCardProps> = ({
           <SiblingDiscountBanner
             discountLabel={siblingDiscountLabel}
             siblingDetails={siblingDiscountDetails}
-            discountAmountText={siblingDiscountSavings ? `-RM ${siblingDiscountSavings.toFixed(2)}` : 'ACTIVE'}
+            discountAmountText={siblingDiscountSavings ? `-RM ${siblingDiscountSavings.toFixed(2)}` : t('components.billing.siblingActive')}
           />
         </View>
       )}
 
       {/* Total Outstanding Amount Display */}
       <View style={styles.amountDisplayContainer}>
-        <Text style={styles.amountLabel}>Total Outstanding</Text>
+        <Text style={styles.amountLabel}>{t('components.billing.totalOutstanding')}</Text>
         <Text style={styles.amountNumber}>
           {currency} {totalFamilyOutstanding.toFixed(2)}
         </Text>
@@ -85,9 +89,9 @@ export const FamilyBillingCard: React.FC<FamilyBillingCardProps> = ({
 
       {/* Merchant Separation Partition List */}
       <View style={styles.merchantListContainer}>
-        <Text style={styles.merchantSectionTitle}>ACADEMY MERCHANT BREAKDOWN</Text>
+        <Text style={styles.merchantSectionTitle}>{t('components.billing.breakdown')}</Text>
         {merchants.length === 0 ? (
-          <Text style={styles.emptyMerchantText}>No active billing records found.</Text>
+          <Text style={styles.emptyMerchantText}>{t('components.billing.empty')}</Text>
         ) : (
           merchants.map((m) => (
             <View key={m.organizationId} style={styles.merchantRow} testID={`merchant-billing-${m.organizationId}`}>
@@ -98,7 +102,7 @@ export const FamilyBillingCard: React.FC<FamilyBillingCardProps> = ({
                     {m.merchantName}
                   </Text>
                   <Text style={styles.merchantSub}>
-                    Paid: RM {m.totalAmountPaid.toFixed(2)} • Total: RM {m.totalFeeAmount.toFixed(2)}
+                    {t('components.billing.paidTotal', { paid: m.totalAmountPaid.toFixed(2), total: m.totalFeeAmount.toFixed(2) })}
                   </Text>
                 </View>
               </View>
@@ -112,7 +116,7 @@ export const FamilyBillingCard: React.FC<FamilyBillingCardProps> = ({
                 >
                   {m.totalOutstandingAmount > 0
                     ? `RM ${m.totalOutstandingAmount.toFixed(2)}`
-                    : 'Settled'}
+                    : t('components.billing.settled')}
                 </Text>
               </View>
             </View>
@@ -128,10 +132,10 @@ export const FamilyBillingCard: React.FC<FamilyBillingCardProps> = ({
             onPress={() => onPayNow()}
             testID="btn-family-pay-now"
             accessibilityRole="button"
-            accessibilityLabel="Pay outstanding dues online"
+            accessibilityLabel={t('components.billing.payA11y')}
           >
             <ShieldCheck size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-            <Text style={styles.payButtonText}>Pay via FPX / DuitNow</Text>
+            <Text style={styles.payButtonText}>{t('components.billing.pay')}</Text>
           </TouchableOpacity>
         )}
 
@@ -141,10 +145,10 @@ export const FamilyBillingCard: React.FC<FamilyBillingCardProps> = ({
             onPress={onViewHistory}
             testID="btn-family-view-history"
             accessibilityRole="button"
-            accessibilityLabel="View payment history and receipts"
+            accessibilityLabel={t('components.billing.historyA11y')}
           >
             <Receipt size={14} color={StitchTokens.colors.brandNavy} style={{ marginRight: 4 }} />
-            <Text style={styles.historyButtonText}>Receipts</Text>
+            <Text style={styles.historyButtonText}>{t('components.billing.receipts')}</Text>
             <ArrowRight size={14} color={StitchTokens.colors.brandNavy} />
           </TouchableOpacity>
         )}

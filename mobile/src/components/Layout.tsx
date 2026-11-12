@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeProvider';
+import { useI18n } from '../i18n';
 
 // ----------------------------------------------------------------------------
 // 1. ScreenContainer Component
@@ -142,6 +143,7 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   testID,
 }) => {
   const { colors, typography, iconSize, layout } = useTheme();
+  const { t } = useI18n();
 
   return (
     <View
@@ -165,7 +167,7 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
             style={styles.backButton}
             testID="header-back-btn"
             accessibilityRole="button"
-            accessibilityLabel="Go back"
+            accessibilityLabel={t('components.layout.goBack')}
           >
             <ChevronLeft size={iconSize.lg} color={colors.textPrimary} />
           </TouchableOpacity>

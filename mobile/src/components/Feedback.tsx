@@ -11,6 +11,7 @@ import {
 import { AlertTriangle, WifiOff, Inbox } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import { Button } from './Button';
+import { useI18n } from '../i18n';
 
 // ----------------------------------------------------------------------------
 // 1. LoadingState Component
@@ -23,12 +24,14 @@ export interface LoadingStateProps {
 }
 
 export const LoadingState: React.FC<LoadingStateProps> = ({
-  message = 'Loading...',
+  message: messageProp,
   fullScreen = false,
   style,
   testID,
 }) => {
   const { colors, typography } = useTheme();
+  const { t } = useI18n();
+  const message = messageProp ?? t('components.common.loading');
 
   return (
     <View
@@ -123,13 +126,15 @@ export interface ErrorStateProps {
 }
 
 export const ErrorState: React.FC<ErrorStateProps> = ({
-  title = 'Something went wrong',
+  title: titleProp,
   message,
   onRetry,
   style,
   testID,
 }) => {
   const { colors, typography, iconSize, spacing } = useTheme();
+  const { t } = useI18n();
+  const title = titleProp ?? t('components.feedback.errorTitle');
 
   return (
     <View style={[styles.centerContainer, style]} testID={testID}>
@@ -154,12 +159,12 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
       {onRetry ? (
         <View style={{ marginTop: spacing.lg }}>
           <Button
-            label="Try Again"
+            label={t('components.common.tryAgain')}
             onPress={onRetry}
             variant="secondary"
             size="md"
             testID={testID ? `${testID}-retry` : 'btn-error-retry'}
-            accessibilityLabel="Retry failed operation"
+            accessibilityLabel={t('components.feedback.retryA11y')}
           />
         </View>
       ) : null}
@@ -177,11 +182,13 @@ export interface OfflineBannerProps {
 }
 
 export const OfflineBanner: React.FC<OfflineBannerProps> = ({
-  message = 'Offline Mode — Changes will sync when connected',
+  message: messageProp,
   style,
   testID,
 }) => {
   const { colors, typography, iconSize, spacing } = useTheme();
+  const { t } = useI18n();
+  const message = messageProp ?? t('components.feedback.offline');
 
   return (
     <View
@@ -224,14 +231,17 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   visible,
   title,
   message,
-  confirmLabel = 'Confirm',
-  cancelLabel = 'Cancel',
+  confirmLabel: confirmLabelProp,
+  cancelLabel: cancelLabelProp,
   isDestructive = false,
   onConfirm,
   onCancel,
   testID,
 }) => {
   const { colors, typography, borderRadius, spacing } = useTheme();
+  const { t } = useI18n();
+  const confirmLabel = confirmLabelProp ?? t('components.common.confirm');
+  const cancelLabel = cancelLabelProp ?? t('components.common.cancel');
 
   return (
     <Modal

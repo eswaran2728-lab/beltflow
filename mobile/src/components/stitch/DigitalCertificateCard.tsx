@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
 import { Download, QrCode } from 'lucide-react-native';
 import { StitchTokens } from '../../theme/tokens';
+import { useI18n } from '../../i18n';
 
 export interface DigitalCertificateCardProps {
   title: string;
@@ -22,14 +23,15 @@ export const DigitalCertificateCard: React.FC<DigitalCertificateCardProps> = ({
   onViewQrPress,
   style,
 }) => {
+  const { t } = useI18n();
   return (
     <View style={[styles.card, style]} testID="digital-certificate-card">
       {/* Header Row */}
       <View style={styles.headerRow}>
-        <Text style={styles.headerLabel}>Digital Certificate</Text>
+        <Text style={styles.headerLabel}>{t('components.certificate.label')}</Text>
         {isVerified && (
           <View style={styles.verifiedBadge} testID="qr-verified-badge">
-            <Text style={styles.verifiedBadgeText}>QR VERIFIED</Text>
+            <Text style={styles.verifiedBadgeText}>{t('components.certificate.verified')}</Text>
           </View>
         )}
       </View>
@@ -37,7 +39,7 @@ export const DigitalCertificateCard: React.FC<DigitalCertificateCardProps> = ({
       {/* Certificate Details */}
       <Text style={styles.titleText}>{title}</Text>
       <Text style={styles.subText}>
-        Issued {issuedDate} · {certificateNumber}
+        {t('components.certificate.issued', { date: issuedDate, number: certificateNumber })}
       </Text>
 
       {/* Action Buttons */}
@@ -50,7 +52,7 @@ export const DigitalCertificateCard: React.FC<DigitalCertificateCardProps> = ({
             testID="btn-download-cert"
           >
             <Download size={14} color="#FFFFFF" />
-            <Text style={styles.downloadBtnText}>Download PDF Certificate</Text>
+            <Text style={styles.downloadBtnText}>{t('components.certificate.download')}</Text>
           </TouchableOpacity>
         ) : (
           <View
@@ -59,7 +61,7 @@ export const DigitalCertificateCard: React.FC<DigitalCertificateCardProps> = ({
             accessibilityState={{ disabled: true }}
           >
             <Download size={14} color="#E2E8F0" />
-            <Text style={styles.downloadBtnText}>Certificate Pending</Text>
+            <Text style={styles.downloadBtnText}>{t('components.certificate.pending')}</Text>
           </View>
         )}
 
@@ -69,7 +71,7 @@ export const DigitalCertificateCard: React.FC<DigitalCertificateCardProps> = ({
             onPress={onViewQrPress}
             activeOpacity={0.8}
             testID="btn-view-cert-qr"
-            accessibilityLabel="View Certificate QR"
+            accessibilityLabel={t('components.certificate.viewQrA11y')}
           >
             <QrCode size={16} color={StitchTokens.colors.brandNavy} />
           </TouchableOpacity>

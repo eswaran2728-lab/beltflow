@@ -6,6 +6,7 @@ import { BeltBadge, StatusBadge } from './Badges';
 import { Card } from './Card';
 import { qrPassService, StudentQRPayload } from '../services/qrPassService';
 import { ShieldCheck, Calendar, Clock, AlertTriangle } from 'lucide-react-native';
+import { useI18n } from '../i18n';
 
 export interface StudentDigitalPassProps {
   student: {
@@ -28,6 +29,7 @@ export const StudentDigitalPass: React.FC<StudentDigitalPassProps> = ({
   testID = 'student-digital-pass',
 }) => {
   const { colors, typography } = useTheme();
+  const { t } = useI18n();
 
   const payload: StudentQRPayload = qrPassService.createStudentPassPayload(student, {
     expiresInDays,
@@ -43,13 +45,13 @@ export const StudentDigitalPass: React.FC<StudentDigitalPassProps> = ({
       testID={testID}
       style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}
       accessibilityRole="summary"
-      accessibilityLabel={`Digital attendance pass for ${student.fullName}, ${student.beltRank}`}
+      accessibilityLabel={t('components.pass.a11y', { name: student.fullName, belt: student.beltRank })}
     >
       {/* Header with Academy & Shield */}
       <View style={styles.headerRow}>
         <View style={styles.academyInfo}>
           <Text style={[typography.caption, { color: colors.buttonPrimaryBg, fontWeight: '700', textTransform: 'uppercase' }]}>
-            {student.persatuanName || 'Official Martial Arts Academy'}
+            {student.persatuanName || t('components.pass.defaultAcademy')}
           </Text>
           <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginTop: 2 }]} testID="pass-student-name">
             {student.fullName}
@@ -63,7 +65,7 @@ export const StudentDigitalPass: React.FC<StudentDigitalPassProps> = ({
         <BeltBadge beltName={student.beltRank} size="md" testID="pass-belt-badge" />
         <StatusBadge
           status={student.status}
-          label={student.status === 'ACTIVE' ? 'Active Student' : 'Inactive'}
+          label={student.status === 'ACTIVE' ? t('components.pass.activeStudent') : t('status.inactive')}
           variant={student.status === 'ACTIVE' ? 'success' : 'danger'}
           testID="pass-status-badge"
         />
@@ -73,7 +75,7 @@ export const StudentDigitalPass: React.FC<StudentDigitalPassProps> = ({
       <View
         style={[styles.qrContainer, { backgroundColor: '#FFFFFF', borderColor: colors.border }]}
         testID="pass-qr-container"
-        accessibilityLabel="Attendance QR Code"
+        accessibilityLabel={t('components.pass.qrA11y')}
       >
         <QRCode
           value={qrData}
@@ -89,26 +91,26 @@ export const StudentDigitalPass: React.FC<StudentDigitalPassProps> = ({
           <View style={styles.metaItem}>
             <Calendar size={13} color={colors.textSecondary} />
             <Text style={[typography.caption, { color: colors.textSecondary, marginLeft: 4 }]}>
-              Issued: {issuedDate}
+              {t('components.pass.issued', { date: issuedDate })}
             </Text>
           </View>
           <View style={styles.metaItem}>
             <Clock size={13} color={colors.textSecondary} />
             <Text style={[typography.caption, { color: colors.textSecondary, marginLeft: 4 }]}>
-              Valid until: {expiryDate}
+              {t('components.pass.validUntil', { date: expiryDate })}
             </Text>
           </View>
         </View>
 
         <Text style={[styles.watermarkText, { color: colors.textMuted }]}>
-          Present this pass at roll-call • Tamper-evident digital token
+          {t('components.pass.watermark')}
         </Text>
 
         {isOffline && (
           <View style={[styles.offlineBanner, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}>
             <AlertTriangle size={14} color="#B45309" />
             <Text style={[styles.offlineBannerText, { color: '#B45309' }]}>
-              Locally cached pass. Valid for roll-call scanning.
+              {t('components.pass.offline')}
             </Text>
           </View>
         )}

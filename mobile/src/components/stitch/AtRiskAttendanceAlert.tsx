@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Linking, ViewStyle, Alert } from 'react-native';
 import { AlertCircle, MessageCircle } from 'lucide-react-native';
 import { StitchTokens } from '../../theme/tokens';
+import { useI18n } from '../../i18n';
 
 export interface AtRiskStudentItem {
   id: string;
@@ -21,6 +22,7 @@ export const AtRiskAttendanceAlert: React.FC<AtRiskAttendanceAlertProps> = ({
   onPingParent,
   style,
 }) => {
+  const { t } = useI18n();
   if (!students || students.length === 0) return null;
 
   const handlePing = (student: AtRiskStudentItem) => {
@@ -29,17 +31,17 @@ export const AtRiskAttendanceAlert: React.FC<AtRiskAttendanceAlertProps> = ({
       return;
     }
     if (!student.parentPhone) {
-      Alert.alert('Contact Unavailable', `No guardian phone number is registered for ${student.name}.`);
+      Alert.alert(t('components.atRisk.contactUnavailableTitle'), t('components.atRisk.contactUnavailableBody', { name: student.name }));
       return;
     }
 
     Alert.alert(
-      'Authorized Guardian Contact',
-      `Open WhatsApp to send an authorized attendance follow-up message to ${student.name}'s guardian?`,
+      t('components.atRisk.guardianTitle'),
+      t('components.atRisk.guardianBody', { name: student.name }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('components.common.cancel'), style: 'cancel' },
         {
-          text: 'Open WhatsApp',
+          text: t('components.atRisk.openWhatsApp'),
           onPress: () => {
             const cleanPhone = (student.parentPhone || '').replace(/[^0-9]/g, '');
             const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(
@@ -57,7 +59,7 @@ export const AtRiskAttendanceAlert: React.FC<AtRiskAttendanceAlertProps> = ({
       <View style={styles.headerRow}>
         <AlertCircle size={16} color={StitchTokens.colors.bfRed} />
         <Text style={styles.headerTitle}>
-          {students.length} At-Risk Student{students.length > 1 ? 's' : ''} (3+ missed)
+          {t(students.length > 1 ? 'components.atRisk.headerMany' : 'components.atRisk.headerOne', { count: students.length })}
         </Text>
       </View>
 
@@ -69,17 +71,17 @@ export const AtRiskAttendanceAlert: React.FC<AtRiskAttendanceAlertProps> = ({
         >
           <View style={styles.studentInfo}>
             <Text style={styles.studentName}>{student.name}</Text>
-            <Text style={styles.absentCountText}>{student.missedCount} classes absent</Text>
+            <Text style={styles.absentCountText}>{t('components.atRisk.absentCount', { count: student.missedCount })}</Text>
           </View>
 
           <TouchableOpacity
             style={styles.pingBtn}
             onPress={() => handlePing(student)}
             testID={`btn-ping-parent-${student.id}`}
-            accessibilityLabel={`Ping parent for ${student.name}`}
+            accessibilityLabel={t('components.atRisk.pingA11y', { name: student.name })}
           >
             <MessageCircle size={12} color="#FFFFFF" />
-            <Text style={styles.pingBtnText}>Ping Parent</Text>
+            <Text style={styles.pingBtnText}>{t('components.atRisk.ping')}</Text>
           </TouchableOpacity>
         </View>
       ))}

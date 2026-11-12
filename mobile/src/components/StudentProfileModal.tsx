@@ -12,6 +12,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { Card } from './Card';
 import { Button } from './Button';
 import { StatusBadge } from './Badges';
+import { useI18n } from '../i18n';
 
 export interface StudentProfileModalProps {
   visible: boolean;
@@ -38,6 +39,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   onUpdateGroup,
 }) => {
   const { colors, typography, spacing, iconSize } = useTheme();
+  const { t } = useI18n();
   const [selectedGroupOverride, setSelectedGroupOverride] = useState<{ studentId: string; groupId: string | null } | null>(null);
   const selectedGroup = (selectedGroupOverride && selectedGroupOverride.studentId === student?.id)
     ? selectedGroupOverride.groupId
@@ -58,9 +60,9 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
     setStatusMsg(null);
     try {
       await onUpdateGroup(student.id, selectedGroup);
-      setStatusMsg({ type: 'success', text: 'Training group assigned successfully.' });
+      setStatusMsg({ type: 'success', text: t('components.profile.groupSaved') });
     } catch (err: any) {
-      setStatusMsg({ type: 'error', text: err?.message || 'Failed to update group.' });
+      setStatusMsg({ type: 'error', text: err?.message || t('components.profile.groupFailed') });
     } finally {
       setSaving(false);
     }
@@ -74,17 +76,17 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           <View style={[styles.header, { borderBottomColor: colors.border }]}>
             <View style={{ flex: 1 }}>
               <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
-                Student Teaching Profile
+                {t('components.profile.title')}
               </Text>
               <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                Authorized instructional view for active class
+                {t('components.profile.subtitle')}
               </Text>
             </View>
             <TouchableOpacity
               onPress={onClose}
               style={styles.closeBtn}
               testID="btn-close-student-profile"
-              accessibilityLabel="Close Student Profile"
+              accessibilityLabel={t('components.profile.closeA11y')}
             >
               <X size={iconSize.md} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -99,11 +101,11 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                     {student.full_name}
                   </Text>
                   <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                    ID: {student.id}
+                    {t('components.profile.id', { id: student.id })}
                   </Text>
                   {student.ic_number ? (
                     <Text style={[typography.caption, { color: colors.textMuted, marginTop: 2 }]}>
-                      National ID: {student.ic_number}
+                      {t('components.profile.nationalId', { id: student.ic_number })}
                     </Text>
                   ) : null}
                 </View>
@@ -119,10 +121,10 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 <Award size={iconSize.md} color={colors.buttonPrimaryBg} />
                 <View style={{ flex: 1 }}>
                   <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                    Current Belt Level
+                    {t('components.profile.currentBelt')}
                   </Text>
                   <Text style={[typography.titleMedium, { color: colors.buttonPrimaryBg, fontWeight: '700' }]}>
-                    {student.belt_rank || 'White Belt'}
+                    {student.belt_rank || t('components.profile.defaultBelt')}
                   </Text>
                 </View>
               </View>
@@ -140,11 +142,10 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                 <ShieldAlert size={iconSize.md} color={colors.badgeWarningText} />
                 <View style={{ flex: 1 }}>
                   <Text style={[typography.bodyMedium, { color: colors.badgeWarningText, fontWeight: '700' }]}>
-                    Protected Safety & Medical Data
+                    {t('components.profile.safetyTitle')}
                   </Text>
                   <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                    Full medical records, allergies, and emergency contacts are restricted under child privacy laws.
-                    Accessible only in authorized emergency protocols (Task H11).
+                    {t('components.profile.safetyBody')}
                   </Text>
                 </View>
               </View>
@@ -155,18 +156,18 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.sm }}>
                 <Users size={iconSize.sm} color={colors.buttonPrimaryBg} />
                 <Text style={[typography.titleMedium, { color: colors.textPrimary, fontWeight: '700' }]}>
-                  Class Training Group
+                  {t('components.profile.groupTitle')}
                 </Text>
               </View>
 
               <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.sm }]}>
-                Assign or move this student to a designated subgroup within the same class:
+                {t('components.profile.groupHelp')}
               </Text>
 
               <View style={[styles.groupsList, { gap: spacing.xs }]}>
                 {trainingGroups.length === 0 ? (
                   <Text style={[typography.caption, { color: colors.textMuted }]}>
-                    No training groups configured for this class.
+                    {t('components.profile.noGroups')}
                   </Text>
                 ) : (
                   trainingGroups.map((grp) => {
@@ -229,7 +230,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
               {selectedGroup !== student.group_id && onUpdateGroup ? (
                 <Button
-                  label={saving ? 'Saving...' : 'Update Training Group'}
+                  label={saving ? t('components.common.saving') : t('components.profile.updateGroup')}
                   onPress={handleSaveGroup}
                   variant="primary"
                   size="sm"
@@ -243,15 +244,15 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             {/* Attendance & Performance Summary */}
             <Card variant="standard" style={styles.card}>
               <Text style={[typography.titleMedium, { color: colors.textPrimary, fontWeight: '700', marginBottom: 4 }]}>
-                Attendance Overview
+                {t('components.profile.attendanceTitle')}
               </Text>
               <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                Canonical attendance record for active term:
+                {t('components.profile.attendanceHelp')}
               </Text>
               <View style={[styles.statRow, { marginTop: spacing.sm }]}>
-                <Text style={[typography.bodyMedium, { color: colors.textPrimary }]}>Attendance Rate:</Text>
+                <Text style={[typography.bodyMedium, { color: colors.textPrimary }]}>{t('components.profile.attendanceRate')}</Text>
                 <Text style={[typography.titleMedium, { color: colors.badgeSuccessText, fontWeight: '700' }]}>
-                  {student.attendance_rate ? `${student.attendance_rate}%` : '95% (Good Standing)'}
+                  {student.attendance_rate ? `${student.attendance_rate}%` : t('components.profile.attendanceDefault')}
                 </Text>
               </View>
             </Card>

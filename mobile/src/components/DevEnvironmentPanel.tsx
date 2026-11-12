@@ -11,6 +11,7 @@ import { Server, CheckCircle2, AlertTriangle } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import { getApiBaseUrl, setApiBaseUrl } from '../config/env';
 import { setStoredApiBaseUrl } from '../services/storage';
+import { useI18n } from '../i18n';
 
 export interface DevEnvironmentPanelProps {
   onSelectTestAccount?: (email: string, pass: string) => void;
@@ -20,6 +21,7 @@ export const DevEnvironmentPanel: React.FC<DevEnvironmentPanelProps> = ({
   onSelectTestAccount,
 }) => {
   const { colors, typography, spacing, iconSize, borderRadius } = useTheme();
+  const { t } = useI18n();
 
   const [expanded, setExpanded] = useState(false);
   const [apiUrl, setApiUrlState] = useState(() => getApiBaseUrl());
@@ -28,7 +30,7 @@ export const DevEnvironmentPanel: React.FC<DevEnvironmentPanelProps> = ({
 
   const handleTestConnection = async () => {
     setTestingStatus('testing');
-    setStatusMessage('Pinging BeltFlow Backend...');
+    setStatusMessage(t('components.devPanel.pinging'));
     try {
       const cleanUrl = apiUrl.trim().replace(/\/+$/, '');
       const controller = new AbortController();
@@ -42,16 +44,16 @@ export const DevEnvironmentPanel: React.FC<DevEnvironmentPanelProps> = ({
       if (res.ok) {
         const data = await res.json();
         setTestingStatus('success');
-        setStatusMessage(`Connected! (${data.service || 'BeltFlow API'})`);
+        setStatusMessage(t('components.devPanel.connected', { service: data.service || 'BeltFlow API' }));
         setApiBaseUrl(cleanUrl);
         await setStoredApiBaseUrl(cleanUrl);
       } else {
         setTestingStatus('failed');
-        setStatusMessage(`Server replied HTTP ${res.status}`);
+        setStatusMessage(t('components.devPanel.httpError', { status: res.status }));
       }
     } catch (err: any) {
       setTestingStatus('failed');
-      setStatusMessage(err?.name === 'AbortError' ? 'Connection timed out (Check IP & Wi-Fi)' : 'Unreachable: Network request failed');
+      setStatusMessage(err?.name === 'AbortError' ? t('components.devPanel.timeout') : t('components.devPanel.unreachable'));
     }
   };
 
@@ -79,23 +81,23 @@ export const DevEnvironmentPanel: React.FC<DevEnvironmentPanelProps> = ({
         style={styles.toggleHeader}
         onPress={() => setExpanded(!expanded)}
         accessibilityRole="button"
-        accessibilityLabel="Toggle Test Environment Configuration"
+        accessibilityLabel={t('components.devPanel.toggleA11y')}
       >
         <View style={styles.headerLeft}>
           <Server size={iconSize.sm} color={colors.buttonPrimaryBg} />
           <Text style={[typography.caption, { color: colors.textPrimary, fontWeight: '700', marginLeft: spacing.xs }]}>
-            Test Environment & Quick Logins
+            {t('components.devPanel.title')}
           </Text>
         </View>
         <Text style={[typography.caption, { color: colors.buttonPrimaryBg }]}>
-          {expanded ? 'Hide ▲' : 'Configure ▼'}
+          {expanded ? t('components.devPanel.hide') : t('components.devPanel.configure')}
         </Text>
       </TouchableOpacity>
 
       {expanded && (
         <View style={styles.expandedContent}>
           <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
-            Target API URL (Must be host LAN IP, not localhost):
+            {t('components.devPanel.apiUrlLabel')}
           </Text>
 
           <View style={styles.urlInputRow}>
@@ -110,7 +112,7 @@ export const DevEnvironmentPanel: React.FC<DevEnvironmentPanelProps> = ({
               ]}
               value={apiUrl}
               onChangeText={setApiUrlState}
-              placeholder="http://192.168.x.x:4000"
+              placeholder={t('components.devPanel.apiUrlPlaceholder')}
               placeholderTextColor={colors.textSecondary}
               autoCapitalize="none"
               autoCorrect={false}
@@ -124,7 +126,7 @@ export const DevEnvironmentPanel: React.FC<DevEnvironmentPanelProps> = ({
               {testingStatus === 'testing' ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.pingButtonText}>Ping</Text>
+                <Text style={styles.pingButtonText}>{t('components.devPanel.ping')}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -158,7 +160,7 @@ export const DevEnvironmentPanel: React.FC<DevEnvironmentPanelProps> = ({
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
           <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
-            One-Tap Fictional Test Account Fill:
+            {t('components.devPanel.testAccountsLabel')}
           </Text>
 
           <View style={styles.rolesRow}>
@@ -174,7 +176,7 @@ export const DevEnvironmentPanel: React.FC<DevEnvironmentPanelProps> = ({
                 ]}
                 onPress={() => onSelectTestAccount && onSelectTestAccount(acc.email, acc.pass)}
                 accessibilityRole="button"
-                accessibilityLabel={`Select ${acc.label}`}
+                accessibilityLabel={t('components.devPanel.selectAccountA11y', { label: acc.label })}
               >
                 <Text style={[typography.caption, { color: colors.textPrimary, fontSize: 11 }]}>
                   {acc.label}

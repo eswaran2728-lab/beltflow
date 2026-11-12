@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
 import { StitchTokens } from '../../theme/tokens';
+import { useI18n } from '../../i18n';
 
 export interface TraineeAttendanceRowProps {
   studentId: string;
@@ -25,6 +26,7 @@ export const TraineeAttendanceRow: React.FC<TraineeAttendanceRowProps> = ({
   onMarkAbsent,
   style,
 }) => {
+  const { t } = useI18n();
   const isPresent = currentStatus === 'PRESENT';
   const isLate = currentStatus === 'LATE';
   const isAbsent = currentStatus === 'ABSENT';
@@ -58,7 +60,7 @@ export const TraineeAttendanceRow: React.FC<TraineeAttendanceRowProps> = ({
           ]}
           onPress={() => onMarkPresent(studentId)}
           testID={`btn-present-${studentId}`}
-          accessibilityLabel={`Mark ${name} present`}
+          accessibilityLabel={t('components.trainee.markPresentA11y', { name })}
         >
           <Text
             style={[
@@ -66,7 +68,7 @@ export const TraineeAttendanceRow: React.FC<TraineeAttendanceRowProps> = ({
               isPresent && styles.presentActiveBtnText,
             ]}
           >
-            Present
+            {t('status.present')}
           </Text>
         </TouchableOpacity>
 
@@ -78,7 +80,7 @@ export const TraineeAttendanceRow: React.FC<TraineeAttendanceRowProps> = ({
           ]}
           onPress={() => onMarkLate(studentId)}
           testID={`btn-late-${studentId}`}
-          accessibilityLabel={`Mark ${name} late`}
+          accessibilityLabel={t('components.trainee.markLateA11y', { name })}
         >
           <Text
             style={[
@@ -86,7 +88,7 @@ export const TraineeAttendanceRow: React.FC<TraineeAttendanceRowProps> = ({
               isLate && styles.lateActiveBtnText,
             ]}
           >
-            Late
+            {t('status.late')}
           </Text>
         </TouchableOpacity>
 
@@ -99,7 +101,7 @@ export const TraineeAttendanceRow: React.FC<TraineeAttendanceRowProps> = ({
             ]}
             onPress={() => onMarkAbsent(studentId)}
             testID={`btn-absent-${studentId}`}
-            accessibilityLabel={`Mark ${name} absent`}
+            accessibilityLabel={t('components.trainee.markAbsentA11y', { name })}
           >
             <Text
               style={[
@@ -107,7 +109,7 @@ export const TraineeAttendanceRow: React.FC<TraineeAttendanceRowProps> = ({
                 isAbsent && styles.absentActiveBtnText,
               ]}
             >
-              Absent
+              {t('status.absent')}
             </Text>
           </TouchableOpacity>
         )}
