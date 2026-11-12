@@ -143,11 +143,30 @@ Still needed before release: native-speaker review of all BM and Tamil text (now
 
 **Review sheet:** `docs/translation-review/beltflow-translations.csv` (2,244 strings, 463 HIGH), regenerate with `node mobile/scripts/export-translations.js`.
 
-**Navigation (found while doing this):**
-- Fixed: the Master class workspace handover button opened an unregistered screen and did nothing; `ClassHandover` is now in the Master classes stack.
-- `navigationTargets.test.ts` fails on any `navigate()` target that no navigator registers.
-- Still unreachable, needs an owner decision (optional R2/R3 modules, need release gating and a place in the menus): Parent make-up booking and student lifecycle (pause/transfer) screens, Master incoming handovers, Admin dashboard buttons Curriculum / Finance / Tournaments / Inventory, Parent Messaging buttons. The cards above work on the unreachable screens once they are wired in.
+**Navigation:** see §8 — every role screen is now reachable.
 
 Server facts noted for later (not changed): payment intent `expires_at` (30 min) is never enforced; pause requests and H18 transfers have no reject endpoint; waitlist offer expiry only runs when a session is read or the sweep endpoint is called (no scheduler).
 
 Evidence: Jest 46 suites / 565 tests; `tsc` 0; ESLint 0 errors; Android export OK.
+
+## 8. Unreachable screens wired into navigation (2026-11-12)
+
+Many finished screens were exported but never registered in a navigator, and several dashboard buttons called routes that did not exist. Also, the Master and Admin Persatuan Home tabs never passed `navigation` to their dashboards, so **every quick-action button on those two dashboards did nothing**. All fixed. Optional-module entries are hidden when the server switches that module off (`useReleaseModules`); the server still blocks them itself.
+
+| Role | Now reachable (entry point) | Module gate |
+|---|---|---|
+| Admin Persatuan | Class approvals, Handover approvals, Grading (new dashboard buttons); Curriculum, Finance (existing buttons now work). Home tab is a stack | core |
+| Admin Persatuan | Inventory, Tournaments buttons: no app screens exist, so shown only when `commerce` / `tournaments` is on (still dead then; `adminDashboardStitch` pins them — owner decision) | commerce, tournaments |
+| Master | Incoming handovers (home + Classes list); Class handover (workspace button) | core |
+| Master | Workspace: trial follow-up, transfers; per upcoming session: lesson plan, make-up/waitlist | trials, transfers, teaching, bookings |
+| Master | Messaging entries | messaging |
+| Parent | Find a class, My applications (Children tab) | core |
+| Parent | Per child: Pause or transfer, Book a make-up class; per class: Book a Trial; Home: Family timeline, Messaging (two buttons that did nothing) | transfers, bookings, trials, family, messaging |
+| Student | My Class Applications | core |
+| Student | Video feedback; Progress tab | media, learning |
+
+Also fixed: the Student Progress tab passed the login id (`users.id`) to the learning API, which expects the student record id (`students.id`), so performance and achievements failed for real students (`studentProgressRecordId.test.tsx`).
+
+Guards: `navigationTargets.test.ts` fails if any `navigate()` target is unregistered (only Inventory/Tournaments listed as known gaps) or if any `screens/roles/*Screen|Modal.tsx` is rendered nowhere. Per-role wiring tests: `navigation{Admin,Master,Parent,Student}Wiring.test.tsx` press each entry point, check the target opens with real ids, and check module gating.
+
+Evidence: Jest 51 suites / 599 tests; `tsc` 0; ESLint 0 errors; Expo Android and iOS export OK. Not tested on a real device.
