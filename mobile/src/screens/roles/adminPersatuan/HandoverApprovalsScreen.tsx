@@ -19,6 +19,7 @@ import { StatusBadge } from '../../../components/Badges';
 import { LoadingState, ErrorState, EmptyState } from '../../../components/Feedback';
 import { AuthUser } from '../../../types/auth';
 import { apiClient } from '../../../services/apiClient';
+import { useI18n } from '../../../i18n';
 
 export interface HandoverApprovalsScreenProps {
   user: AuthUser;
@@ -29,6 +30,13 @@ export const HandoverApprovalsScreen: React.FC<HandoverApprovalsScreenProps> = (
   navigation,
 }) => {
   const { colors, typography, spacing, iconSize } = useTheme();
+  const { t } = useI18n();
+
+  const statusLabel = (status: string) => {
+    const key = `adminApprovals.handoverStatus.${status}`;
+    const label = t(key);
+    return label === key ? status : label;
+  };
 
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -45,7 +53,7 @@ export const HandoverApprovalsScreen: React.FC<HandoverApprovalsScreenProps> = (
       setPendingHandovers(res?.pendingHandovers || []);
       setError(null);
     } catch (err: any) {
-      setError(err?.message || 'Failed to load pending handovers.');
+      setError(err?.message || t('adminApprovals.handover.loadFailed'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -63,14 +71,14 @@ export const HandoverApprovalsScreen: React.FC<HandoverApprovalsScreenProps> = (
       })
       .catch((err: any) => {
         if (isSubscribed) {
-          setError(err?.message || 'Failed to load pending handovers.');
+          setError(err?.message || t('adminApprovals.handover.loadFailed'));
         }
       });
 
     return () => {
       isSubscribed = false;
     };
-  }, []);
+  }, [t]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -79,21 +87,21 @@ export const HandoverApprovalsScreen: React.FC<HandoverApprovalsScreenProps> = (
 
   const handleApprove = async (handoverId: string) => {
     Alert.alert(
-      'Approve Leadership Handover',
-      'This will atomically deactivate the outgoing Master and make the incoming Master the Primary Leader of the class.',
+      t('adminApprovals.handover.approveTitle'),
+      t('adminApprovals.handover.approveMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('adminApprovals.cancel'), style: 'cancel' },
         {
-          text: 'Approve & Transfer',
+          text: t('adminApprovals.handover.approveTransfer'),
           style: 'default',
           onPress: async () => {
             setProcessingId(handoverId);
             try {
               await apiClient.post(`/handovers/${handoverId}/approve`, {});
-              Alert.alert('Transfer Complete', 'Class primary leadership has been atomically transferred.');
+              Alert.alert(t('adminApprovals.handover.completeTitle'), t('adminApprovals.handover.completeMessage'));
               await loadHandovers();
             } catch (err: any) {
-              Alert.alert('Approval Error', err?.message || 'Failed to approve handover.');
+              Alert.alert(t('adminApprovals.approvalError'), err?.message || t('adminApprovals.handover.approveFailed'));
             } finally {
               setProcessingId(null);
             }
@@ -105,7 +113,7 @@ export const HandoverApprovalsScreen: React.FC<HandoverApprovalsScreenProps> = (
 
   const handleReject = async (handoverId: string) => {
     if (!rejectionReason.trim()) {
-      Alert.alert('Required Field', 'Please provide a rejection reason.');
+      Alert.alert(t('adminApprovals.handover.requiredTitle'), t('adminApprovals.handover.reasonMissing'));
       return;
     }
 
@@ -116,10 +124,10 @@ export const HandoverApprovalsScreen: React.FC<HandoverApprovalsScreenProps> = (
       });
       setRejectingId(null);
       setRejectionReason('');
-      Alert.alert('Rejected', 'Handover proposal rejected.');
+      Alert.alert(t('adminApprovals.handover.rejectedTitle'), t('adminApprovals.handover.rejectedMessage'));
       await loadHandovers();
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to reject handover.');
+      Alert.alert(t('adminApprovals.error'), err?.message || t('adminApprovals.handover.rejectFailed'));
     } finally {
       setProcessingId(null);
     }
@@ -128,8 +136,8 @@ export const HandoverApprovalsScreen: React.FC<HandoverApprovalsScreenProps> = (
   if (loading) {
     return (
       <ScreenContainer>
-        <ScreenHeader title="Handover Approvals" onBack={() => navigation?.goBack?.()} />
-        <LoadingState message="Loading handover approval inbox..." />
+        <ScreenHeader title={t('adminApprovals.handover.title')} onBack={() => navigation?.goBack?.()} />
+        <LoadingState message={t('adminApprovals.handover.loading')} />
       </ScreenContainer>
     );
   }
@@ -137,7 +145,7 @@ export const HandoverApprovalsScreen: React.FC<HandoverApprovalsScreenProps> = (
   if (error && !refreshing) {
     return (
       <ScreenContainer>
-        <ScreenHeader title="Handover Approvals" onBack={() => navigation?.goBack?.()} />
+        <ScreenHeader title={t('adminApprovals.handover.title')} onBack={() => navigation?.goBack?.()} />
         <ErrorState message={error} onRetry={loadHandovers} />
       </ScreenContainer>
     );
@@ -146,8 +154,8 @@ export const HandoverApprovalsScreen: React.FC<HandoverApprovalsScreenProps> = (
   return (
     <ScreenContainer>
       <ScreenHeader
-        title="Handover Approvals"
-        subtitle="Persatuan Governance Review"
+        title={t('adminApprovals.handover.title')}
+        subtitle={t('adminApprovals.handover.subtitle')}
         onBack={() => navigation?.goBack?.()}
       />
 
@@ -157,8 +165,8 @@ export const HandoverApprovalsScreen: React.FC<HandoverApprovalsScreenProps> = (
       >
         {pendingHandovers.length === 0 ? (
           <EmptyState
-            title="All Handovers Reviewed"
-            description="There are no class leadership handovers awaiting Persatuan approval."
+            title={t('adminApprovals.handover.emptyTitle')}
+            description={t('adminApprovals.handover.emptyDescription')}
           />
         ) : (
           pendingHandovers.map((h) => {
@@ -171,15 +179,15 @@ export const HandoverApprovalsScreen: React.FC<HandoverApprovalsScreenProps> = (
                   <View style={{ flex: 1 }}>
                     <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>{h.class_name}</Text>
                     <Text style={[typography.caption, { color: colors.textMuted }]}>
-                      Location: {h.class_location || 'Main Dojo'}
+                      {t('adminApprovals.handover.location', { location: h.class_location || t('adminApprovals.handover.mainDojo') })}
                     </Text>
                   </View>
-                  <StatusBadge status={h.status} label={h.status} />
+                  <StatusBadge status={h.status} label={statusLabel(h.status)} />
                 </View>
 
                 <View style={styles.transferFlowBox}>
                   <View style={styles.masterItem}>
-                    <Text style={[typography.caption, { color: colors.textMuted }]}>Outgoing Master</Text>
+                    <Text style={[typography.caption, { color: colors.textMuted }]}>{t('adminApprovals.handover.outgoingMaster')}</Text>
                     <Text style={[typography.bodyMedium, { color: colors.textPrimary, fontWeight: '600' }]}>
                       {h.outgoing_master_name || h.outgoing_master_id}
                     </Text>
@@ -188,7 +196,7 @@ export const HandoverApprovalsScreen: React.FC<HandoverApprovalsScreenProps> = (
                   <ArrowRightLeft size={iconSize.sm} color={colors.buttonSecondaryBg} style={{ alignSelf: 'center' }} />
 
                   <View style={styles.masterItem}>
-                    <Text style={[typography.caption, { color: colors.textMuted }]}>Incoming Master</Text>
+                    <Text style={[typography.caption, { color: colors.textMuted }]}>{t('adminApprovals.handover.incomingMaster')}</Text>
                     <Text style={[typography.bodyMedium, { color: colors.textPrimary, fontWeight: '600' }]}>
                       {h.incoming_master_name || h.incoming_master_id}
                     </Text>
@@ -197,22 +205,22 @@ export const HandoverApprovalsScreen: React.FC<HandoverApprovalsScreenProps> = (
 
                 <View style={styles.infoRow}>
                   <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                    Reason: <Text style={{ color: colors.textPrimary }}>{h.reason || 'None provided'}</Text>
+                    {t('adminApprovals.handover.reasonLabel')} <Text style={{ color: colors.textPrimary }}>{h.reason || t('adminApprovals.handover.noneProvided')}</Text>
                   </Text>
                   <Text style={[typography.caption, { color: colors.textMuted, marginTop: 4 }]}>
-                    Incoming Accepted: {h.incoming_accepted_at ? new Date(h.incoming_accepted_at).toLocaleString() : 'PENDING'}
+                    {t('adminApprovals.handover.incomingAccepted', { value: h.incoming_accepted_at ? new Date(h.incoming_accepted_at).toLocaleString() : t('adminApprovals.pendingUpper') })}
                   </Text>
                 </View>
 
                 {isRejectingThis ? (
                   <View style={styles.rejectBox}>
                     <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
-                      Rejection Reason *
+                      {t('adminApprovals.rejectionReasonRequired')}
                     </Text>
                     <TextInput
                       testID={`input-admin-reject-reason-${h.id}`}
                       style={[styles.input, { borderColor: colors.border, color: colors.textPrimary }]}
-                      placeholder="e.g. Incoming Master not eligible for this academy tier"
+                      placeholder={t('adminApprovals.handover.rejectPlaceholder')}
                       placeholderTextColor={colors.textMuted}
                       value={rejectionReason}
                       onChangeText={setRejectionReason}
@@ -220,14 +228,14 @@ export const HandoverApprovalsScreen: React.FC<HandoverApprovalsScreenProps> = (
                     <View style={styles.actionRow}>
                       <Button
                         testID={`btn-confirm-admin-reject-${h.id}`}
-                        label="Confirm Reject"
+                        label={t('adminApprovals.handover.confirmReject')}
                         variant="danger"
                         onPress={() => handleReject(h.id)}
                         loading={isProcessing}
                         style={{ flex: 1 }}
                       />
                       <Button
-                        label="Cancel"
+                        label={t('adminApprovals.cancel')}
                         variant="secondary"
                         onPress={() => {
                           setRejectingId(null);
@@ -241,14 +249,14 @@ export const HandoverApprovalsScreen: React.FC<HandoverApprovalsScreenProps> = (
                   <View style={styles.actionRow}>
                     <Button
                       testID={`btn-admin-approve-${h.id}`}
-                      label="Approve & Transfer"
+                      label={t('adminApprovals.handover.approveTransfer')}
                       onPress={() => handleApprove(h.id)}
                       loading={isProcessing}
                       style={{ flex: 2 }}
                     />
                     <Button
                       testID={`btn-admin-reject-${h.id}`}
-                      label="Reject"
+                      label={t('adminApprovals.reject')}
                       variant="danger"
                       onPress={() => setRejectingId(h.id)}
                       disabled={isProcessing}

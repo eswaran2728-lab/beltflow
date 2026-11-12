@@ -27,6 +27,7 @@ import { StatusBadge } from '../../../components/Badges';
 import { OfflineBanner, LoadingState, ErrorState } from '../../../components/Feedback';
 import { AuthUser } from '../../../types/auth';
 import { apiClient } from '../../../services/apiClient';
+import { useI18n } from '../../../i18n';
 
 export interface MasterApprovalsScreenProps {
   user: AuthUser;
@@ -60,6 +61,13 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
   isOffline,
 }) => {
   const { colors, typography, spacing, iconSize } = useTheme();
+  const { t } = useI18n();
+
+  const statusLabel = (status: string) => {
+    const key = `adminApprovals.masterStatus.${status}`;
+    const label = t(key);
+    return label === key ? status.replace('_', ' ') : label;
+  };
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -81,12 +89,12 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
       setApplications(res?.applications || []);
       setError(null);
     } catch (err: any) {
-      setError(err?.message || 'Failed to load master applications inbox.');
+      setError(err?.message || t('adminApprovals.master.loadFailed'));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -99,7 +107,7 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
         }
       } catch (err: any) {
         if (!isCancelled) {
-          setError(err?.message || 'Failed to load master applications inbox.');
+          setError(err?.message || t('adminApprovals.master.loadFailed'));
         }
       } finally {
         if (!isCancelled) {
@@ -112,7 +120,7 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [t]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -142,12 +150,12 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
     if (!selectedApp) return;
 
     if (actionType === 'REJECT' && !reviewReason.trim()) {
-      Alert.alert('Reason Required', 'Please provide a clear rejection reason for the applicant.');
+      Alert.alert(t('adminApprovals.master.reasonRequiredTitle'), t('adminApprovals.master.reasonRequiredMessage'));
       return;
     }
 
     if (actionType === 'REQUEST_INFO' && !reviewReason.trim()) {
-      Alert.alert('Information Details Required', 'Please specify what additional information is required.');
+      Alert.alert(t('adminApprovals.master.infoRequiredTitle'), t('adminApprovals.master.infoRequiredMessage'));
       return;
     }
 
@@ -172,8 +180,8 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
 
       const res: any = await apiClient.post(`/master-applications/${selectedApp.id}/review`, body);
       Alert.alert(
-        'Review Completed',
-        res?.message || 'Application status updated successfully.'
+        t('adminApprovals.master.completedTitle'),
+        res?.message || t('adminApprovals.master.completedFallback')
       );
       setDetailModalVisible(false);
       setSelectedApp(null);
@@ -182,13 +190,13 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
     } catch (err: any) {
       if (err?.status === 409) {
         Alert.alert(
-          'Concurrent Update Conflict',
-          'This application was updated by another administrator. Reloading latest details.'
+          t('adminApprovals.master.conflictTitle'),
+          t('adminApprovals.master.conflictMessage')
         );
         fetchInbox();
         setDetailModalVisible(false);
       } else {
-        Alert.alert('Review Failed', err?.message || 'Unable to complete review action.');
+        Alert.alert(t('adminApprovals.master.failedTitle'), err?.message || t('adminApprovals.master.failedFallback'));
       }
     } finally {
       setSubmittingAction(false);
@@ -225,33 +233,33 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
 
       <View style={styles.headerSection}>
         <Text style={[typography.pageTitle, styles.screenTitle]}>
-          Master Verifications
+          {t('adminApprovals.master.title')}
         </Text>
         <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
-          Review & approve instructor credentials
+          {t('adminApprovals.master.subtitle')}
         </Text>
 
         <View style={{ flexDirection: 'row', gap: spacing.sm, marginVertical: spacing.sm }}>
           <StitchStatCard
-            label="Pending Review"
+            label={t('adminApprovals.master.kpiPending')}
             value={applications.filter(a => a.status === 'SUBMITTED').length}
-            subtext="Needs Approval"
+            subtext={t('adminApprovals.master.kpiPendingSub')}
             hasAccentBorder
             accentColor={StitchTokens.colors.colorAccent}
             style={{ flex: 1 }}
           />
           <StitchStatCard
-            label="Active Masters"
+            label={t('adminApprovals.master.kpiActive')}
             value={applications.filter(a => a.status === 'APPROVED').length}
-            subtext="Verified Coaches"
+            subtext={t('adminApprovals.master.kpiActiveSub')}
             hasAccentBorder
             accentColor={StitchTokens.colors.bfGreen}
             style={{ flex: 1 }}
           />
           <StitchStatCard
-            label="Needs Info"
+            label={t('adminApprovals.master.kpiNeedsInfo')}
             value={applications.filter(a => a.status === 'NEEDS_INFORMATION').length}
-            subtext="Follow-up Required"
+            subtext={t('adminApprovals.master.kpiNeedsInfoSub')}
             hasAccentBorder
             accentColor={StitchTokens.colors.brandNavy}
             style={{ flex: 1 }}
@@ -262,7 +270,7 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
       {isOffline ? (
         <View style={{ marginBottom: spacing.sm, paddingHorizontal: spacing.md }}>
           <OfflineBanner
-            message="Offline Mode: Verification decisions require online connectivity."
+            message={t('adminApprovals.master.offline')}
             testID="approvals-offline-banner"
           />
         </View>
@@ -295,7 +303,7 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
                   },
                 ]}
               >
-                {tab === 'SUBMITTED' ? 'Pending' : tab === 'NEEDS_INFORMATION' ? 'Needs Info' : tab} ({count})
+                {t(`adminApprovals.master.tab.${tab}`)} ({count})
               </Text>
             </TouchableOpacity>
           );
@@ -308,17 +316,17 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {loading && !refreshing ? (
-          <LoadingState message="Loading applications..." />
+          <LoadingState message={t('adminApprovals.master.loading')} />
         ) : error ? (
           <ErrorState message={error} onRetry={fetchInbox} />
         ) : filteredApplications.length === 0 ? (
           <Card variant="standard" style={[styles.emptyCard, { borderColor: colors.border }]}>
             <Users size={40} color={colors.textSecondary} />
             <Text style={[typography.titleMedium, { color: colors.textPrimary, marginTop: spacing.sm }]}>
-              No Applications Found
+              {t('adminApprovals.master.emptyTitle')}
             </Text>
             <Text style={[typography.caption, { color: colors.textSecondary, textAlign: 'center', marginTop: 4 }]}>
-              There are no master applications matching the &apos;{selectedFilter}&apos; filter.
+              {t('adminApprovals.master.emptyDescription', { filter: selectedFilter })}
             </Text>
           </Card>
         ) : (
@@ -336,15 +344,15 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
                 <View style={styles.cardHeaderRow}>
                   <View style={{ flex: 1 }}>
                     <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
-                      {app.applicant_name || 'Prospective Master'}
+                      {app.applicant_name || t('adminApprovals.master.prospectiveMaster')}
                     </Text>
                     <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                      Applicant ID: {app.user_id}
+                      {t('adminApprovals.master.applicantId', { id: app.user_id })}
                     </Text>
                   </View>
                   <StatusBadge
                     status={app.status}
-                    label={app.status.replace('_', ' ')}
+                    label={statusLabel(app.status)}
                     variant={getStatusBadgeVariant(app.status)}
                     testID={`status-badge-${app.id}`}
                   />
@@ -353,7 +361,7 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
                 {app.qualifications ? (
                   <View style={{ marginTop: spacing.xs }}>
                     <Text style={[typography.caption, { color: colors.textPrimary, fontWeight: '600' }]}>
-                      Qualifications:
+                      {t('adminApprovals.master.qualificationsLabel')}
                     </Text>
                     <Text
                       style={[typography.caption, { color: colors.textSecondary, marginTop: 1 }]}
@@ -367,7 +375,7 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
                 {app.experience_summary ? (
                   <View style={{ marginTop: spacing.xs }}>
                     <Text style={[typography.caption, { color: colors.textPrimary, fontWeight: '600' }]}>
-                      Experience:
+                      {t('adminApprovals.master.experienceLabel')}
                     </Text>
                     <Text
                       style={[typography.caption, { color: colors.textSecondary, marginTop: 1 }]}
@@ -380,11 +388,11 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
 
                 <View style={[styles.cardFooter, { borderTopColor: colors.border }]}>
                   <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                    Submitted: {app.submitted_at ? new Date(app.submitted_at).toLocaleDateString() : 'N/A'}
+                    {t('adminApprovals.master.submitted', { date: app.submitted_at ? new Date(app.submitted_at).toLocaleDateString() : t('adminApprovals.master.notAvailable') })}
                   </Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Text style={[typography.caption, { color: colors.buttonPrimaryBg, fontWeight: '600' }]}>
-                      Review
+                      {t('adminApprovals.master.review')}
                     </Text>
                     <ChevronRight size={16} color={colors.buttonPrimaryBg} />
                   </View>
@@ -404,8 +412,8 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
       >
         <ScreenContainer scrollable testID="master-approval-detail-modal">
           <ScreenHeader
-            title="Application Review"
-            subtitle={selectedApp?.applicant_name || 'Master Applicant'}
+            title={t('adminApprovals.master.modalTitle')}
+            subtitle={selectedApp?.applicant_name || t('adminApprovals.master.applicantFallback')}
           />
 
           {selectedApp ? (
@@ -414,23 +422,23 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
               <Card variant="standard" style={[styles.modalCard, { borderColor: colors.border, marginBottom: spacing.md }]}>
                 <View style={styles.cardHeaderRow}>
                   <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
-                    Status & Version
+                    {t('adminApprovals.master.statusVersion')}
                   </Text>
                   <StatusBadge
                     status={selectedApp.status}
-                    label={selectedApp.status.replace('_', ' ')}
+                    label={statusLabel(selectedApp.status)}
                     variant={getStatusBadgeVariant(selectedApp.status)}
                   />
                 </View>
                 <Text style={[typography.caption, { color: colors.textSecondary, marginTop: spacing.xs }]}>
-                  Application ID: {selectedApp.id}
+                  {t('adminApprovals.master.applicationId', { id: selectedApp.id })}
                 </Text>
                 <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                  Document Version: v{selectedApp.version}
+                  {t('adminApprovals.master.documentVersion', { version: selectedApp.version })}
                 </Text>
                 {selectedApp.submitted_at ? (
                   <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                    Submitted At: {new Date(selectedApp.submitted_at).toLocaleString()}
+                    {t('adminApprovals.master.submittedAt', { date: new Date(selectedApp.submitted_at).toLocaleString() })}
                   </Text>
                 ) : null}
               </Card>
@@ -438,30 +446,30 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
               {/* Applicant Credentials */}
               <Card variant="standard" style={[styles.modalCard, { borderColor: colors.border, marginBottom: spacing.md }]}>
                 <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
-                  Qualifications & Experience
+                  {t('adminApprovals.master.qualificationsExperience')}
                 </Text>
                 <View style={{ marginBottom: spacing.sm }}>
                   <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
-                    Qualifications & Belts
+                    {t('adminApprovals.master.qualificationsBelts')}
                   </Text>
                   <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginTop: 2 }]}>
-                    {selectedApp.qualifications || 'No qualifications specified.'}
+                    {selectedApp.qualifications || t('adminApprovals.master.noQualifications')}
                   </Text>
                 </View>
 
                 <View style={{ marginBottom: spacing.sm }}>
                   <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
-                    Experience Summary
+                    {t('adminApprovals.master.experienceSummary')}
                   </Text>
                   <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginTop: 2 }]}>
-                    {selectedApp.experience_summary || 'No experience summary specified.'}
+                    {selectedApp.experience_summary || t('adminApprovals.master.noExperience')}
                   </Text>
                 </View>
 
                 {selectedApp.verification_details ? (
                   <View style={{ marginBottom: spacing.sm }}>
                     <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
-                      Verification Details & Certifications
+                      {t('adminApprovals.master.verificationDetails')}
                     </Text>
                     <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginTop: 2 }]}>
                       {selectedApp.verification_details}
@@ -472,7 +480,7 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
                 {selectedApp.documents_url ? (
                   <View style={{ marginBottom: spacing.sm }}>
                     <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
-                      Document URL
+                      {t('adminApprovals.master.documentUrl')}
                     </Text>
                     <Text style={[typography.bodyMedium, { color: colors.buttonPrimaryBg, marginTop: 2 }]}>
                       {selectedApp.documents_url}
@@ -485,7 +493,7 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
               {selectedApp.requested_information ? (
                 <Card variant="standard" style={[styles.modalCard, { borderColor: colors.badgeWarningText, marginBottom: spacing.md }]}>
                   <Text style={[typography.titleMedium, { color: colors.badgeWarningText }]}>
-                    Currently Requested Information:
+                    {t('adminApprovals.master.currentlyRequested')}
                   </Text>
                   <Text style={[typography.bodyMedium, { color: colors.textPrimary, marginTop: 4 }]}>
                     {selectedApp.requested_information}
@@ -496,7 +504,7 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
               {selectedApp.rejection_reason ? (
                 <Card variant="standard" style={[styles.modalCard, { borderColor: colors.badgeDangerText, marginBottom: spacing.md }]}>
                   <Text style={[typography.titleMedium, { color: colors.badgeDangerText }]}>
-                    Rejection Reason on Record:
+                    {t('adminApprovals.master.rejectionOnRecord')}
                   </Text>
                   <Text style={[typography.bodyMedium, { color: colors.textPrimary, marginTop: 4 }]}>
                     {selectedApp.rejection_reason}
@@ -508,27 +516,27 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
               {(selectedApp.status === 'SUBMITTED' || selectedApp.status === 'NEEDS_INFORMATION') ? (
                 <Card variant="elevated" style={[styles.modalCard, { borderColor: colors.border, marginBottom: spacing.lg }]}>
                   <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
-                    Review Decision
+                    {t('adminApprovals.master.reviewDecision')}
                   </Text>
 
                   {!actionType ? (
                     <View style={{ gap: spacing.sm }}>
                       <Button
-                        label="Approve Master Application"
+                        label={t('adminApprovals.master.approveApplication')}
                         onPress={() => setActionType('APPROVE')}
                         variant="primary"
                         leftIcon={<CheckCircle size={iconSize.sm} color="#ffffff" />}
                         testID="btn-decision-approve"
                       />
                       <Button
-                        label="Request Additional Information"
+                        label={t('adminApprovals.master.requestAdditional')}
                         onPress={() => setActionType('REQUEST_INFO')}
                         variant="secondary"
                         leftIcon={<HelpCircle size={iconSize.sm} color={colors.buttonSecondaryText} />}
                         testID="btn-decision-request-info"
                       />
                       <Button
-                        label="Reject Application"
+                        label={t('adminApprovals.master.rejectApplication')}
                         onPress={() => setActionType('REJECT')}
                         variant="outline"
                         leftIcon={<XCircle size={iconSize.sm} color={colors.badgeDangerText} />}
@@ -539,24 +547,24 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
                     <View style={{ gap: spacing.sm }}>
                       <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
                         {actionType === 'APPROVE'
-                          ? 'Confirm Approval'
+                          ? t('adminApprovals.master.confirmApproval')
                           : actionType === 'REQUEST_INFO'
-                          ? 'Request More Information'
-                          : 'Confirm Rejection'}
+                          ? t('adminApprovals.master.requestMore')
+                          : t('adminApprovals.confirmRejection')}
                       </Text>
 
                       {actionType === 'APPROVE' ? (
                         <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                          Approving this application will immediately activate the Master&apos;s affiliation with your Persatuan. An audit event and notification will be published.
+                          {t('adminApprovals.master.approveNotice')}
                         </Text>
                       ) : null}
 
                       {actionType === 'REQUEST_INFO' ? (
                         <Input
-                          label="Information Required *"
+                          label={t('adminApprovals.informationRequired')}
                           value={reviewReason}
                           onChangeText={setReviewReason}
-                          placeholder="e.g. Please provide your Silambam black belt certificate ID..."
+                          placeholder={t('adminApprovals.master.infoPlaceholder')}
                           multiline
                           numberOfLines={3}
                           testID="input-requested-info"
@@ -565,10 +573,10 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
 
                       {actionType === 'REJECT' ? (
                         <Input
-                          label="Reason for Rejection *"
+                          label={t('adminApprovals.master.rejectReasonLabel')}
                           value={reviewReason}
                           onChangeText={setReviewReason}
-                          placeholder="e.g. Qualifications do not meet state persatuan standards..."
+                          placeholder={t('adminApprovals.master.rejectPlaceholder')}
                           multiline
                           numberOfLines={3}
                           testID="input-rejection-reason"
@@ -576,17 +584,17 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
                       ) : null}
 
                       <Input
-                        label="Internal Review Notes (Optional)"
+                        label={t('adminApprovals.master.notesLabel')}
                         value={reviewNotes}
                         onChangeText={setReviewNotes}
-                        placeholder="Internal administrator log notes..."
+                        placeholder={t('adminApprovals.master.notesPlaceholder')}
                         testID="input-review-notes"
                       />
 
                       <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs }}>
                         <View style={{ flex: 1 }}>
                           <Button
-                            label="Cancel"
+                            label={t('adminApprovals.cancel')}
                             onPress={() => setActionType(null)}
                             variant="outline"
                             disabled={submittingAction}
@@ -596,10 +604,10 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
                           <Button
                             label={
                               actionType === 'APPROVE'
-                                ? 'Approve'
+                                ? t('adminApprovals.approve')
                                 : actionType === 'REQUEST_INFO'
-                                ? 'Send Request'
-                                : 'Reject'
+                                ? t('adminApprovals.sendRequest')
+                                : t('adminApprovals.reject')
                             }
                             onPress={handleExecuteReview}
                             variant={actionType === 'REJECT' ? 'danger' : 'primary'}
@@ -614,7 +622,7 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
               ) : null}
 
               <Button
-                label="Close Window"
+                label={t('adminApprovals.master.closeWindow')}
                 onPress={() => setDetailModalVisible(false)}
                 variant="outline"
                 testID="btn-close-detail-modal"

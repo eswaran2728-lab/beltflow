@@ -33,6 +33,7 @@ import { AuthUser } from '../../../types/auth';
 import { apiClient } from '../../../services/apiClient';
 import { StitchAppHeader, StitchStatCard } from '../../../components/stitch';
 import { StitchTokens } from '../../../theme/tokens';
+import { useI18n } from '../../../i18n';
 
 export interface ClassApprovalsScreenProps {
   user: AuthUser;
@@ -72,6 +73,7 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
   isOffline,
 }) => {
   const { colors, typography, spacing, iconSize } = useTheme();
+  const { t } = useI18n();
 
   const [refreshing, setRefreshing] = useState(false);
   const [applications, setApplications] = useState<ClassProposalItem[]>([]);
@@ -120,12 +122,12 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
     if (!selectedApp) return;
 
     Alert.alert(
-      'Confirm Class Approval',
-      `Are you sure you want to approve "${selectedApp.name}"? This will create an active operational class and establish primary Master leadership.`,
+      t('adminApprovals.class.confirmTitle'),
+      t('adminApprovals.class.confirmMessage', { name: selectedApp.name }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('adminApprovals.cancel'), style: 'cancel' },
         {
-          text: 'Approve & Activate',
+          text: t('adminApprovals.class.approveActivate'),
           style: 'default',
           onPress: async () => {
             setSubmittingDecision(true);
@@ -135,18 +137,18 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
                 expectedVersion: selectedApp.version,
               });
 
-              Alert.alert('Approved', res?.message || 'Class approved and activated.');
+              Alert.alert(t('status.approved'), res?.message || t('adminApprovals.class.approvedFallback'));
               setReviewModalVisible(false);
               setSelectedApp(null);
               fetchInbox();
             } catch (err: any) {
               if (err?.code === 'STALE_VERSION' || err?.status === 409) {
                 Alert.alert(
-                  'Conflict: Stale Proposal Version',
-                  'This proposal was modified since you opened it. Please refresh and review the updated version.'
+                  t('adminApprovals.class.staleTitle'),
+                  t('adminApprovals.class.staleMessage')
                 );
               } else {
-                Alert.alert('Approval Error', err?.message || 'Failed to approve proposal.');
+                Alert.alert(t('adminApprovals.approvalError'), err?.message || t('adminApprovals.class.approveFailed'));
               }
             } finally {
               setSubmittingDecision(false);
@@ -160,7 +162,7 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
   const handleRequestInfo = async () => {
     if (!selectedApp) return;
     if (!reviewText.trim()) {
-      Alert.alert('Required', 'Please enter the specific information requested from the Master.');
+      Alert.alert(t('adminApprovals.class.requiredTitle'), t('adminApprovals.class.requestInfoMissing'));
       return;
     }
 
@@ -172,14 +174,14 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
         requestedInformation: reviewText.trim(),
       });
 
-      Alert.alert('Information Requested', 'The Master has been notified to provide additional information.');
+      Alert.alert(t('adminApprovals.class.infoRequestedTitle'), t('adminApprovals.class.infoRequestedMessage'));
       setReviewModalVisible(false);
       setSelectedApp(null);
       setDecisionMode('IDLE');
       setReviewText('');
       fetchInbox();
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to request information.');
+      Alert.alert(t('adminApprovals.error'), err?.message || t('adminApprovals.class.requestInfoFailed'));
     } finally {
       setSubmittingDecision(false);
     }
@@ -188,7 +190,7 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
   const handleReject = async () => {
     if (!selectedApp) return;
     if (!reviewText.trim()) {
-      Alert.alert('Required', 'Please enter the reason for rejecting this class proposal.');
+      Alert.alert(t('adminApprovals.class.requiredTitle'), t('adminApprovals.class.rejectReasonMissing'));
       return;
     }
 
@@ -200,14 +202,14 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
         reason: reviewText.trim(),
       });
 
-      Alert.alert('Proposal Rejected', 'The class proposal has been marked as rejected.');
+      Alert.alert(t('adminApprovals.class.rejectedTitle'), t('adminApprovals.class.rejectedMessage'));
       setReviewModalVisible(false);
       setSelectedApp(null);
       setDecisionMode('IDLE');
       setReviewText('');
       fetchInbox();
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to reject proposal.');
+      Alert.alert(t('adminApprovals.error'), err?.message || t('adminApprovals.class.rejectFailed'));
     } finally {
       setSubmittingDecision(false);
     }
@@ -216,6 +218,11 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
   const pendingCount = applications.filter((a) => a.status === 'SUBMITTED').length;
   const approvedCount = applications.filter((a) => a.status === 'APPROVED').length;
   const needsInfoCount = applications.filter((a) => a.status === 'NEEDS_INFORMATION').length;
+  const statusLabel = (status: string) => {
+    const key = `adminApprovals.classStatus.${status}`;
+    const label = t(key);
+    return label === key ? status : label;
+  };
 
   return (
     <ScreenContainer scrollable testID="admin-class-approvals-screen" style={{ backgroundColor: colors.background }}>
@@ -229,13 +236,13 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
       {/* Screen Title & Subtitle banner */}
       <View style={[styles.titleBanner, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.screenHeading, { color: colors.textPrimary }]}>Class Proposals</Text>
-          <Text style={[styles.screenSubheading, { color: colors.textSecondary }]}>{pendingCount} pending Persatuan review</Text>
+          <Text style={[styles.screenHeading, { color: colors.textPrimary }]}>{t('adminApprovals.class.title')}</Text>
+          <Text style={[styles.screenSubheading, { color: colors.textSecondary }]}>{t('adminApprovals.class.pendingSubtitle', { count: pendingCount })}</Text>
         </View>
         <View style={styles.badgeContainer}>
           <StatusBadge
             status={pendingCount > 0 ? 'PENDING' : 'ACTIVE'}
-            label={pendingCount > 0 ? `${pendingCount} PENDING` : 'ALL CLEAR'}
+            label={pendingCount > 0 ? t('adminApprovals.class.pendingBadge', { count: pendingCount }) : t('adminApprovals.class.allClear')}
             variant={pendingCount > 0 ? 'warning' : 'success'}
           />
         </View>
@@ -245,7 +252,7 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
       <View style={styles.kpiGrid}>
         <View style={styles.kpiCol}>
           <StitchStatCard
-            label="PENDING"
+            label={t('adminApprovals.pendingUpper')}
             value={pendingCount}
             hasAccentBorder
             accentColor={StitchTokens.colors.colorAccent}
@@ -253,7 +260,7 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
         </View>
         <View style={styles.kpiCol}>
           <StitchStatCard
-            label="APPROVED"
+            label={t('adminApprovals.class.kpiApproved')}
             value={approvedCount}
             hasAccentBorder
             accentColor={StitchTokens.colors.bfGreen}
@@ -261,7 +268,7 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
         </View>
         <View style={styles.kpiCol}>
           <StitchStatCard
-            label="REVISIONS"
+            label={t('adminApprovals.class.kpiRevisions')}
             value={needsInfoCount}
             hasAccentBorder
             accentColor={StitchTokens.colors.brandNavy}
@@ -275,8 +282,8 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
       >
         {applications.length === 0 ? (
           <EmptyState
-            title="Inbox Zero"
-            description="No class proposals awaiting review for your Persatuan."
+            title={t('adminApprovals.class.emptyTitle')}
+            description={t('adminApprovals.class.emptyDescription')}
             testID="empty-class-inbox"
           />
         ) : (
@@ -301,13 +308,13 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
                   </View>
 
                   <Text style={styles.masterAuthor}>
-                    Proposed by: {item.proposing_master_name || 'Master'}
+                    {t('adminApprovals.class.proposedBy', { name: item.proposing_master_name || t('adminApprovals.class.masterFallback') })}
                   </Text>
 
                   {item.schedule ? (
                     <View style={styles.metaRow}>
                       <Calendar size={13} color={colors.textSecondary} />
-                      <Text style={[styles.metaText, { color: colors.textSecondary }]}>Schedule: {item.schedule}</Text>
+                      <Text style={[styles.metaText, { color: colors.textSecondary }]}>{t('adminApprovals.class.scheduleLine', { schedule: item.schedule })}</Text>
                     </View>
                   ) : null}
 
@@ -315,7 +322,7 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
                     <View style={styles.metaRow}>
                       <MapPin size={13} color={colors.textSecondary} />
                       <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-                        Venue: {item.location} {item.venue_details ? `(${item.venue_details})` : ''}
+                        {t('adminApprovals.class.venueLine', { location: item.location, details: item.venue_details ? `(${item.venue_details})` : '' })}
                       </Text>
                     </View>
                   ) : null}
@@ -324,7 +331,7 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
                     <View style={styles.metaRow}>
                       <DollarSign size={13} color={StitchTokens.colors.colorAccent} />
                       <Text style={[styles.metaText, { color: colors.textPrimary, fontWeight: '700' }]}>
-                        Fee: RM {Number(item.monthly_fee).toFixed(2)} / month | Capacity: {item.capacity || 30}
+                        {t('adminApprovals.class.feeLine', { fee: Number(item.monthly_fee).toFixed(2), capacity: item.capacity || 30 })}
                       </Text>
                     </View>
                   ) : null}
@@ -332,14 +339,14 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
 
                 <StatusBadge
                   status={item.status === 'APPROVED' ? 'ACTIVE' : item.status === 'REJECTED' ? 'EXPIRED' : 'PENDING'}
-                  label={item.status}
+                  label={statusLabel(item.status)}
                   variant={item.status === 'APPROVED' ? 'success' : item.status === 'REJECTED' ? 'danger' : 'warning'}
                 />
               </View>
 
               <View style={[styles.cardActions, { borderTopColor: colors.border }]}>
                 <Button
-                  label="Review Proposal"
+                  label={t('adminApprovals.class.reviewProposal')}
                   onPress={() => {
                     setSelectedApp(item);
                     setDecisionMode('IDLE');
@@ -370,47 +377,47 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
             <View style={[styles.modalContent, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
                 <View>
-                  <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Review Class Proposal</Text>
+                  <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{t('adminApprovals.class.modalTitle')}</Text>
                   <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
                     {selectedApp.name} (v{selectedApp.version})
                   </Text>
                 </View>
                 <StatusBadge
                   status={selectedApp.status === 'APPROVED' ? 'ACTIVE' : selectedApp.status === 'REJECTED' ? 'EXPIRED' : 'PENDING'}
-                  label={selectedApp.status}
+                  label={statusLabel(selectedApp.status)}
                   variant={selectedApp.status === 'APPROVED' ? 'success' : selectedApp.status === 'REJECTED' ? 'danger' : 'warning'}
                 />
               </View>
 
               <ScrollView style={{ maxHeight: 300, marginBottom: spacing.md }}>
-                <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Proposing Master</Text>
+                <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>{t('adminApprovals.class.fieldProposingMaster')}</Text>
                 <Text style={[styles.fieldValue, { color: colors.textPrimary }]}>
                   {selectedApp.proposing_master_name} ({selectedApp.proposing_master_email})
                 </Text>
 
-                <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Location & Venue</Text>
+                <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>{t('adminApprovals.class.fieldLocationVenue')}</Text>
                 <Text style={[styles.fieldValue, { color: colors.textPrimary }]}>
                   {selectedApp.location} {selectedApp.venue_details ? `— ${selectedApp.venue_details}` : ''}
                 </Text>
 
-                <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Schedule</Text>
+                <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>{t('adminApprovals.class.fieldSchedule')}</Text>
                 <Text style={[styles.fieldValue, { color: colors.textPrimary }]}>
                   {selectedApp.schedule}
                 </Text>
 
-                <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Eligibility & Program</Text>
+                <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>{t('adminApprovals.class.fieldEligibility')}</Text>
                 <Text style={[styles.fieldValue, { color: colors.textPrimary }]}>
-                  {selectedApp.age_eligibility || 'All ages'} | {selectedApp.training_level || 'All levels'} | {selectedApp.program_type || 'General'}
+                  {selectedApp.age_eligibility || t('adminApprovals.class.allAges')} | {selectedApp.training_level || t('adminApprovals.class.allLevels')} | {selectedApp.program_type || t('adminApprovals.class.general')}
                 </Text>
 
-                <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Tuition Fee & Capacity</Text>
+                <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>{t('adminApprovals.class.fieldTuition')}</Text>
                 <Text style={[styles.fieldValue, { color: colors.textPrimary }]}>
-                  RM {Number(selectedApp.monthly_fee || 120).toFixed(2)} / month | Capacity: {selectedApp.capacity || 30}
+                  {t('adminApprovals.class.tuitionValue', { fee: Number(selectedApp.monthly_fee || 120).toFixed(2), capacity: selectedApp.capacity || 30 })}
                 </Text>
 
                 {selectedApp.description ? (
                   <>
-                    <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Description</Text>
+                    <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>{t('adminApprovals.class.fieldDescription')}</Text>
                     <Text style={[styles.fieldValue, { color: colors.textPrimary }]}>
                       {selectedApp.description}
                     </Text>
@@ -421,8 +428,8 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
               {decisionMode === 'REQUEST_INFO' && (
                 <View style={{ marginBottom: spacing.md }}>
                   <Input
-                    label="Information Required *"
-                    placeholder="Describe what documentation or clarification is needed..."
+                    label={t('adminApprovals.informationRequired')}
+                    placeholder={t('adminApprovals.class.requestInfoPlaceholder')}
                     value={reviewText}
                     multiline
                     numberOfLines={3}
@@ -431,14 +438,14 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
                   />
                   <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs }}>
                     <Button
-                      label="Cancel"
+                      label={t('adminApprovals.cancel')}
                       onPress={() => setDecisionMode('IDLE')}
                       variant="outline"
                       size="sm"
                       style={{ flex: 1 }}
                     />
                     <Button
-                      label="Send Request"
+                      label={t('adminApprovals.sendRequest')}
                       onPress={handleRequestInfo}
                       variant="primary"
                       size="sm"
@@ -453,8 +460,8 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
               {decisionMode === 'REJECT' && (
                 <View style={{ marginBottom: spacing.md }}>
                   <Input
-                    label="Rejection Reason *"
-                    placeholder="State reason for rejecting proposal..."
+                    label={t('adminApprovals.rejectionReasonRequired')}
+                    placeholder={t('adminApprovals.class.rejectPlaceholder')}
                     value={reviewText}
                     multiline
                     numberOfLines={3}
@@ -463,14 +470,14 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
                   />
                   <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs }}>
                     <Button
-                      label="Cancel"
+                      label={t('adminApprovals.cancel')}
                       onPress={() => setDecisionMode('IDLE')}
                       variant="outline"
                       size="sm"
                       style={{ flex: 1 }}
                     />
                     <Button
-                      label="Confirm Rejection"
+                      label={t('adminApprovals.confirmRejection')}
                       onPress={handleReject}
                       variant="primary"
                       size="sm"
@@ -485,7 +492,7 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
               {decisionMode === 'IDLE' && (
                 <View style={styles.decisionActions}>
                   <Button
-                    label="Approve"
+                    label={t('adminApprovals.approve')}
                     onPress={handleApprove}
                     variant="primary"
                     size="md"
@@ -495,7 +502,7 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
                     style={{ marginBottom: spacing.sm }}
                   />
                   <Button
-                    label="Request Information"
+                    label={t('adminApprovals.class.requestInformation')}
                     onPress={() => setDecisionMode('REQUEST_INFO')}
                     variant="outline"
                     size="md"
@@ -504,7 +511,7 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
                     style={{ marginBottom: spacing.sm }}
                   />
                   <Button
-                    label="Reject Proposal"
+                    label={t('adminApprovals.class.rejectProposal')}
                     onPress={() => setDecisionMode('REJECT')}
                     variant="outline"
                     size="md"
@@ -513,7 +520,7 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
                     style={{ marginBottom: spacing.sm }}
                   />
                   <Button
-                    label="Close"
+                    label={t('adminApprovals.class.close')}
                     onPress={() => setReviewModalVisible(false)}
                     variant="outline"
                     size="sm"
