@@ -1,51 +1,25 @@
 /**
- * H28 localisation ratchet.
+ * H28 localisation guard.
  *
- * "Implement keys throughout" is ongoing (PDF: continuous, final pass before
- * each release). This test makes coverage only go up:
- *  - files already moved to translation keys must contain no hard-coded
- *    English UI text;
- *  - the total number of hard-coded UI strings in the app may not grow.
- * Lower HARDCODED_BASELINE whenever a screen is translated.
+ * Every screen and component (all .tsx under src/, tests excluded) must take
+ * its UI text from translation keys (useI18n().t). This test fails if any
+ * file contains hard-coded English UI text, including files added later.
+ *
+ * The pattern match is simple, so a few pieces of code look like text. They
+ * are listed exactly below; anything else is treated as untranslated text.
  */
 import fs from 'fs';
 import path from 'path';
 
 const SRC = path.join(__dirname, '..');
-// Measured 2026-11-11 after the core role journeys pass (was 978 after the
-// first H28 pass). Only ever decrease this.
-const HARDCODED_BASELINE = 644;
 
-const FULLY_LOCALISED = [
-  'components/PendingNextStep.tsx',
-  'components/LanguageSelector.tsx',
-  'components/Badges.tsx',
-  'screens/shared/AssistantScreen.tsx',
-  'navigation/roleNavigators/SuperAdminNavigator.tsx',
-  'navigation/roleNavigators/AdminPersatuanNavigator.tsx',
-  'navigation/roleNavigators/MasterNavigator.tsx',
-  'navigation/roleNavigators/ParentNavigator.tsx',
-  'navigation/roleNavigators/StudentNavigator.tsx',
-  'screens/auth/WelcomeScreen.tsx',
-  'screens/auth/LoginScreen.tsx',
-  'screens/auth/ForgotPasswordScreen.tsx',
-  'screens/auth/SplashScreen.tsx',
-  'screens/auth/VerifyCertificateScreen.tsx',
-  'screens/auth/AuthenticatedPlaceholderScreen.tsx',
-  'screens/roles/UnauthorizedRoleScreen.tsx',
-  'screens/roles/RolePlaceholderBase.tsx',
-  'screens/roles/superAdmin/index.tsx',
-  'screens/roles/adminPersatuan/index.tsx',
-  'screens/roles/adminPersatuan/AdminFinanceScreen.tsx',
-  'screens/roles/master/index.tsx',
-  'screens/roles/master/ClassesScreen.tsx',
-  'screens/roles/master/AttendanceScreen.tsx',
-  'screens/roles/master/MasterGradingScreen.tsx',
-  'screens/roles/master/QRScannerModal.tsx',
-  'screens/roles/parent/index.tsx',
-  'screens/roles/parent/ParentFeesPaymentScreen.tsx',
-  'screens/roles/student/index.tsx',
-];
+// Matches that are code, not UI text (checked by hand 2026-11-12).
+const KNOWN_NON_TEXT: Record<string, string[]> = {
+  'components/StudentProfileModal.tsx': ['Promise'], // Promise<void> type
+  'theme/ThemeProvider.tsx': ['ReturnType'], // ReturnType<...> type
+  'screens/roles/parent/ParentMasterMessagingScreen.tsx': ['MAX_ATTACHMENT_SIZE_MB || size'], // size check
+  'screens/roles/student/VideoFeedbackScreen.tsx': ['video/mp4'], // file type
+};
 
 function hardcodedStrings(source: string): string[] {
   const jsxText = Array.from(source.matchAll(/>\s*([A-Za-z][^<>{}\n]{2,}?)\s*</g)).map(m => m[1]);
@@ -61,13 +35,16 @@ function tsxFiles(dir: string): string[] {
   });
 }
 
-describe('H28 localisation ratchet', () => {
-  test.each(FULLY_LOCALISED)('%s has no hard-coded English UI text', file => {
-    expect(hardcodedStrings(fs.readFileSync(path.join(SRC, file), 'utf8'))).toEqual([]);
+describe('H28 localisation guard', () => {
+  const files = tsxFiles(SRC).map(f => path.relative(SRC, f).split(path.sep).join('/')).sort();
+
+  test('finds the app source files', () => {
+    expect(files.length).toBeGreaterThan(80);
+    expect(files).toContain('screens/auth/LoginScreen.tsx');
   });
 
-  test(`hard-coded UI strings across the app do not exceed the baseline (${HARDCODED_BASELINE})`, () => {
-    const total = tsxFiles(SRC).reduce((n, f) => n + hardcodedStrings(fs.readFileSync(f, 'utf8')).length, 0);
-    expect(total).toBeLessThanOrEqual(HARDCODED_BASELINE);
+  test.each(files)('%s has no hard-coded English UI text', file => {
+    const found = hardcodedStrings(fs.readFileSync(path.join(SRC, file), 'utf8'));
+    expect(found).toEqual(KNOWN_NON_TEXT[file] ?? []);
   });
 });
