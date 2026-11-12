@@ -30,6 +30,8 @@ import { StudentProfileModal } from '../../../components/StudentProfileModal';
 import { AuthUser } from '../../../types/auth';
 import { apiClient } from '../../../services/apiClient';
 import { useI18n } from '../../../i18n';
+import { useReleaseModules } from '../../../hooks/useReleaseModules';
+import { LessonPlanModal } from './LessonPlanModal';
 
 export interface ClassWorkspaceScreenProps {
   user: AuthUser;
@@ -60,6 +62,9 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
   const { colors, typography, spacing, iconSize } = useTheme();
   const { t } = useI18n();
   const classId = route?.params?.classId || '';
+
+  // Lesson plan modal (teaching module): the session whose plan is open.
+  const [lessonPlanSession, setLessonPlanSession] = useState<{ id: string; title: string } | null>(null);
 
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('OVERVIEW');
   const [loading, setLoading] = useState(true);
@@ -131,6 +136,9 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
       isMounted = false;
     };
   }, [fetchWorkspace]);
+
+  // Declared after the workspace fetch so the class data request goes out first.
+  const release = useReleaseModules();
 
   const handleUpdateStudentGroup = async (studentId: string, newGroupId: string) => {
     try {
@@ -383,14 +391,36 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
                   leftIcon={<FileText size={iconSize.sm} color={colors.textPrimary} />}
                   testID="btn-quick-applications"
                 />
-                <Button
-                  label={t('masterClasses.workspace.parentMessages')}
-                  onPress={() => navigation?.navigate?.('ParentMasterMessaging', { classId })}
-                  variant="outline"
-                  size="sm"
-                  leftIcon={<Send size={iconSize.sm} color={colors.buttonPrimaryBg} />}
-                  testID="btn-quick-messages"
-                />
+                {release.isEnabled('messaging') ? (
+                  <Button
+                    label={t('masterClasses.workspace.parentMessages')}
+                    onPress={() => navigation?.navigate?.('ParentMasterMessaging', { classId })}
+                    variant="outline"
+                    size="sm"
+                    leftIcon={<Send size={iconSize.sm} color={colors.buttonPrimaryBg} />}
+                    testID="btn-quick-messages"
+                  />
+                ) : null}
+                {release.isEnabled('trials') ? (
+                  <Button
+                    label={t('masterClasses.workspace.trialsFollowUp')}
+                    onPress={() => navigation?.navigate?.('TrialsFollowUp', { classId })}
+                    variant="outline"
+                    size="md"
+                    testID="btn-quick-trials"
+                    accessibilityLabel={t('masterClasses.workspace.trialsFollowUp')}
+                  />
+                ) : null}
+                {release.isEnabled('transfers') ? (
+                  <Button
+                    label={t('masterClasses.workspace.transfers')}
+                    onPress={() => navigation?.navigate?.('TransfersManagement', { classId })}
+                    variant="outline"
+                    size="md"
+                    testID="btn-quick-transfers"
+                    accessibilityLabel={t('masterClasses.workspace.transfers')}
+                  />
+                ) : null}
               </View>
             </Card>
 
@@ -731,11 +761,38 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
                         {sess.location} • {sess.group_name || t('masterClasses.workspace.allGroups')}
                       </Text>
                     </View>
-                    <StatusBadge
-                      status={sess.status}
-                      label={sess.status}
-                      variant={sess.status === 'Cancelled' ? 'danger' : 'info'}
-                    />
+                    <View style={{ alignItems: 'flex-end', gap: spacing.xs }}>
+                      <StatusBadge
+                        status={sess.status}
+                        label={sess.status}
+                        variant={sess.status === 'Cancelled' ? 'danger' : 'info'}
+                      />
+                      {release.isEnabled('teaching') ? (
+                        <Button
+                          label={t('masterClasses.workspace.lessonPlanBtn')}
+                          onPress={() =>
+                            setLessonPlanSession({
+                              id: sess.id,
+                              title: `${sess.session_date} • ${sess.start_time} - ${sess.end_time}`,
+                            })
+                          }
+                          variant="outline"
+                          size="md"
+                          testID={`btn-lesson-plan-${sess.id}`}
+                          accessibilityLabel={t('masterClasses.workspace.lessonPlanA11y', { date: sess.session_date, time: sess.start_time })}
+                        />
+                      ) : null}
+                      {release.isEnabled('bookings') ? (
+                        <Button
+                          label={t('masterClasses.workspace.makeUpBtn')}
+                          onPress={() => navigation?.navigate?.('MakeUpWaitlist', { sessionId: sess.id, classId })}
+                          variant="outline"
+                          size="md"
+                          testID={`btn-makeup-${sess.id}`}
+                          accessibilityLabel={t('masterClasses.workspace.makeUpA11y', { date: sess.session_date, time: sess.start_time })}
+                        />
+                      ) : null}
+                    </View>
                   </View>
                 ))
               )}
@@ -927,6 +984,16 @@ export const ClassWorkspaceScreen: React.FC<ClassWorkspaceScreenProps> = ({
         trainingGroups={trainingGroups}
         onUpdateGroup={handleUpdateStudentGroup}
       />
+
+      {/* Lesson plan for one session (teaching module) */}
+      {lessonPlanSession && release.isEnabled('teaching') ? (
+        <LessonPlanModal
+          visible
+          onClose={() => setLessonPlanSession(null)}
+          sessionId={lessonPlanSession.id}
+          sessionTitle={lessonPlanSession.title}
+        />
+      ) : null}
     </ScreenContainer>
   );
 };

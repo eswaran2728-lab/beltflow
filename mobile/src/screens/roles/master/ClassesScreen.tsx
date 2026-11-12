@@ -104,6 +104,16 @@ export const ClassesScreen: React.FC<ClassesScreenProps> = ({
           testID="btn-view-class-students"
           accessibilityLabel={t('masterHome.classes.viewStudentsA11y')}
         />
+        <Button
+          label={t('masterHome.classes.incomingHandovers')}
+          onPress={() => navigation?.navigate?.('IncomingHandovers')}
+          variant="outline"
+          size="md"
+          rightIcon={<ArrowRight size={iconSize.sm} color={colors.buttonSecondaryText} />}
+          testID="btn-incoming-handovers"
+          accessibilityLabel={t('masterHome.classes.incomingHandoversA11y')}
+          style={{ marginTop: spacing.xs }}
+        />
       </View>
 
       {/* Tabs */}

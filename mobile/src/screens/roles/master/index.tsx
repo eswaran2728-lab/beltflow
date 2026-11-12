@@ -25,6 +25,7 @@ import { OfflineBanner, LoadingState, ErrorState } from '../../../components/Fee
 import { useDashboardData } from '../../../hooks/useDashboardData';
 import { dashboardService, MasterDashboardData } from '../../../services/dashboardService';
 import { useI18n } from '../../../i18n';
+import { useReleaseModules } from '../../../hooks/useReleaseModules';
 
 export interface RoleScreenProps {
   user: AuthUser;
@@ -41,6 +42,7 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
 }) => {
   const { colors, typography, spacing, iconSize } = useTheme();
   const { t } = useI18n();
+  const release = useReleaseModules();
 
   const fetcher = useCallback(() => {
     return dashboardService.getMasterDashboard(user);
@@ -443,14 +445,26 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
             testID="shortcut-master-grading"
           />
           <Button
-            label={t('masterHome.navMessages')}
-            onPress={() => navigation?.navigate('Classes', { screen: 'ParentMasterMessaging' })}
+            label={t('masterHome.navIncomingHandovers')}
+            onPress={() => navigation?.navigate('Classes', { screen: 'IncomingHandovers' })}
             variant="secondary"
             size="md"
             fullWidth
             rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
-            testID="shortcut-master-messaging"
+            testID="shortcut-master-incoming-handovers"
+            accessibilityLabel={t('masterHome.navIncomingHandoversA11y')}
           />
+          {release.isEnabled('messaging') ? (
+            <Button
+              label={t('masterHome.navMessages')}
+              onPress={() => navigation?.navigate('Classes', { screen: 'ParentMasterMessaging' })}
+              variant="secondary"
+              size="md"
+              fullWidth
+              rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
+              testID="shortcut-master-messaging"
+            />
+          ) : null}
           <Button
             label={t('masterHome.navProfile')}
             onPress={() => navigation?.navigate('Profile')}

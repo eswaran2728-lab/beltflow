@@ -24,6 +24,7 @@ import {
   MasterTransferManagementScreen,
   ParentMasterMessagingScreen,
   ClassHandoverScreen,
+  IncomingHandoversScreen,
 } from '../../screens/roles/master';
 import {
   RoleNavigatorProps,
@@ -45,6 +46,9 @@ function MasterClassesStackNavigator(props: RoleNavigatorProps) {
       </ClassesStack.Screen>
       <ClassesStack.Screen name="ClassHandover">
         {navProps => <ClassHandoverScreen {...props} {...navProps} />}
+      </ClassesStack.Screen>
+      <ClassesStack.Screen name="IncomingHandovers">
+        {navProps => <IncomingHandoversScreen {...props} {...navProps} />}
       </ClassesStack.Screen>
       <ClassesStack.Screen name="Students">
         {navProps => <StudentsScreen {...props} {...navProps} />}
@@ -132,11 +136,12 @@ export const MasterNavigator: React.FC<RoleNavigatorProps> = ({
           tabBarIcon: ({ color }) => <Home size={iconSize.md} color={color} />,
         }}
       >
-        {() => (
+        {navProps => (
           <MasterHomeScreen
             user={user}
             onLogout={onLogout}
             isOffline={isOffline}
+            navigation={navProps.navigation}
           />
         )}
       </Tab.Screen>
