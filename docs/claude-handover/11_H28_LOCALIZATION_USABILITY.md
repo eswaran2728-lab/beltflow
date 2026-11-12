@@ -66,7 +66,7 @@ Backend unchanged by H28 (42/42 suites, see `10`).
 ## 4. Remaining H28 work (backlog, in suggested order)
 
 1. ~~Translate the remaining screens~~ — done 2026-11-12 (§6). New screens must use `t()`; the guard test enforces it.
-2. **Native-speaker review** of all BM and Tamil strings, including the assistant's.
+2. **Native-speaker review** of all BM and Tamil strings, including the assistant's. Use `docs/translation-review/beltflow-translations.csv` (HIGH rows first; see its README).
 3. **Device checks:**
    - Android at the largest text size plus TalkBack, and iPhone at the largest Dynamic Type plus VoiceOver, for each role's core journey.
    - Screenshots of Tamil text to confirm glyphs.
@@ -75,7 +75,7 @@ Backend unchanged by H28 (42/42 suites, see `10`).
 4. **Real-user sessions** with Persatuan admins, Masters, parents and students (PDF "Pilot acceptance").
 5. **Server-side text:** notices, notification templates and API error messages are still English; the notification outbox has no sender yet (`10` §5).
 6. **Stitch migration** of the remaining 31 screens (`04`, `07`). Keep the system-font decision, or bundle Space Grotesk/Inter for Latin text only with a Tamil fallback.
-7. **Next-step cards** for other waiting states: parent-link approval, transfer requests, payment verification, make-up and waitlist offers, Master handover.
+7. ~~Next-step cards~~ for payments, make-ups/waitlist offers, pauses, transfers and handovers — done 2026-11-12 (§7). Parent-link approval has no parent-facing screen yet (pending links are not returned by `GET /family/children`).
 
 ## 5. Core role journeys translated (2026-11-11)
 
@@ -128,3 +128,26 @@ Left in English on purpose: values sent to the server (default reasons, lesson-p
 Evidence (2026-11-12): guard test 84/84 (all 83 files clean, and a deliberately added English string makes it fail); key scan finds no key used in code that is missing from the dictionary; `tsc` 0 errors; ESLint 0 errors (59 old warnings, unchanged); Jest 44 suites / 551 tests pass; `expo export` for Android and iOS succeeds.
 
 Still needed before release: native-speaker review of all BM and Tamil text (now ~2,150 strings), and on-device checks that longer BM/Tamil labels fit on small screens and at large text sizes.
+
+## 7. More next-step cards, review sheet, navigation fix (2026-11-12)
+
+**Next-step cards** (`PendingNextStep`, `mobile/src/__tests__/nextStepCardsH28.test.tsx`, 10 tests). Who decides is taken from the server routes:
+
+| Kind | Waiting statuses | Who decides (server) | Screen |
+|---|---|---|---|
+| `PAYMENT` | REQUIRES_PAYMENT_METHOD, PENDING_PROCESSING | Bank / provider webhook; no academy approval. Card says the fee is not marked paid until confirmed | `ParentFeesPaymentScreen` |
+| `MAKE_UP_BOOKING` | REQUESTED, WAITLISTED, OFFERED | Target-class Master; offers held 24 h. New **Accept Seat** button calls the existing accept endpoint | `ParentMakeUpBookingScreen` |
+| `PAUSE_REQUEST` | REQUESTED | Class Master or Persatuan admin | `ParentStudentLifecycleScreen` |
+| `TRANSFER_REQUEST` | PENDING_RECEIVING, REQUESTED, PENDING_OLD_MASTER, PENDING_NEW_MASTER | Receiving Master (legacy flow: current Master first). Legacy statuses now also count as pending | `ParentStudentLifecycleScreen` |
+| `HANDOVER` | REQUESTED, INCOMING_ACCEPTED | Incoming Master, then Persatuan admin | `ClassHandoverScreen` |
+
+**Review sheet:** `docs/translation-review/beltflow-translations.csv` (2,244 strings, 463 HIGH), regenerate with `node mobile/scripts/export-translations.js`.
+
+**Navigation (found while doing this):**
+- Fixed: the Master class workspace handover button opened an unregistered screen and did nothing; `ClassHandover` is now in the Master classes stack.
+- `navigationTargets.test.ts` fails on any `navigate()` target that no navigator registers.
+- Still unreachable, needs an owner decision (optional R2/R3 modules, need release gating and a place in the menus): Parent make-up booking and student lifecycle (pause/transfer) screens, Master incoming handovers, Admin dashboard buttons Curriculum / Finance / Tournaments / Inventory, Parent Messaging buttons. The cards above work on the unreachable screens once they are wired in.
+
+Server facts noted for later (not changed): payment intent `expires_at` (30 min) is never enforced; pause requests and H18 transfers have no reject endpoint; waitlist offer expiry only runs when a session is read or the sweep endpoint is called (no scheduler).
+
+Evidence: Jest 46 suites / 565 tests; `tsc` 0; ESLint 0 errors; Android export OK.

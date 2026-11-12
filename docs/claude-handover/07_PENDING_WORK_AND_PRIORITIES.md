@@ -1,6 +1,6 @@
 # 07 — Pending Work & Development Priorities
 
-> Current Milestone: H26 PASS, H27 CONDITIONAL PASS, H28 PARTIAL (2026-11-12; all screens translated, native review and device/user tests remain). H28 backlog is in `11` §4; H27 device steps in `10` §6.
+> Current Milestone: H26 PASS, H27 CONDITIONAL PASS, H28 PARTIAL (2026-11-12; all screens translated, native review and device/user tests remain). H28 backlog is in `11` §4. Several screens and dashboard buttons are not wired into navigation (`11` §7); H27 device steps in `10` §6.
 >
 > H27 follow-ups (see `10` §5–6): rebuild the APK and run native E2E on a real Android phone (`NATIVE-001`); notification outbox has no sender; restrict worker trigger routes; per-tenant feature flags; hide other disabled R2/R3 entry points in the app; repeat PostgreSQL checks on the managed production database.
 >
