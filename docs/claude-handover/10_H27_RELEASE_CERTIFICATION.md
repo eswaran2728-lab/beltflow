@@ -125,14 +125,14 @@ The assistant's privacy controls are in `09`.
 ## 5. Known gaps (not fixed in H27)
 
 1. **The notification outbox is never delivered.** Rows are written to `notification_outbox`, but nothing sends them. Families receive no push, SMS or email notifications yet.
-2. **Worker trigger routes are callable by any signed-in user.**
+2. ~~**Worker trigger routes are callable by any signed-in user.**~~ **Fixed 2026-11-12:** only Super Admin or the scheduler key (`BELTFLOW_WORKER_TOKEN`) may call them, and an in-process scheduler (`server/src/workers/scheduler.ts`) runs them every 5 minutes. See §8.
    - Affected: `POST /bookings/waitlist/sweep-expired` and `POST /transfers/activate-scheduled`.
    - Each call processes every Persatuan; only counts are returned.
    - Recommendation: run these on a scheduler, and restrict the routes to Super Admin or an internal token.
 3. **27 older backend test files still end with `process.exit(0)`.** The H24, H26 and H27 suites close the database instead.
 4. **The R1 web client (`index.html`) still calls `/tournaments`,** which is R3. In an R1-only deployment that tab would show "not enabled".
 5. **Feature flags are global, not per tenant.** The PDF says "enable feature by tenant"; per-Persatuan flags are a follow-up.
-6. **Mobile hides only the Ask tab.** Other R2/R3 entry points still show and get "not enabled" from the server. Hiding them is H28 UI work.
+6. ~~**Mobile hides only the Ask tab.**~~ Fixed in H28 (`11` §8): optional-module entry points follow the release modules. Other R2/R3 entry points still show and get "not enabled" from the server. Hiding them is H28 UI work.
 7. **`attendance_sync` and `server_rbac` need an empty database** (one-time setup); this is a test-isolation limitation.
 
 ## 6. Open release gates after H27
@@ -169,3 +169,20 @@ The assistant's privacy controls are in `09`.
 5. Record the device and OS, build, commit, screenshots (synthetic data only) and results in this file.
 
 **Rebuild-impact check:** the existing `release-testing/beltflow-v2.0-testing.apk` was built before defect #3 was fixed, so its H16–H26 screens would fail against a real server. Rebuild before device testing.
+
+## 8. Follow-up fixes (2026-11-12)
+
+Suite `server/src/tests/ops_payment_safety_followups.test.ts` (in `npm test`, 43 suites). Passes on PGlite and on PostgreSQL 16 (together with H13, H15, H17, H18, H27 release and worker-replay suites).
+
+| Check | Problem before | Now |
+|---|---|---|
+| A | `POST /bookings/waitlist/sweep-expired` and `POST /transfers/activate-scheduled` process every Persatuan but any signed-in user could call them | Super Admin or header `x-beltflow-worker-token` = `BELTFLOW_WORKER_TOKEN` (16+ chars, timing-safe compare); everyone else 403 |
+| B | Nothing ran the jobs on a schedule | `startBackgroundWorkers()` in `index.ts`: transfers, waitlist expiry, payment expiry every `BELTFLOW_WORKER_INTERVAL_MINUTES` (default 5); skips disabled modules; `BELTFLOW_WORKERS=off` to disable |
+| C | Payment intent `expires_at` (30 min) never enforced; parent saw "pending" forever | Unpaid intents past the window become `EXPIRED` (worker, and on `GET /payments/intents/:id`). A genuine bank success webhook still settles an expired intent. Mobile shows "Payment link expired", warns that a bank payment already made will still produce a receipt, offers Start Again |
+| D | A failure webhook after a success set the intent to `FAILED` while the receipt existed | Failure never overwrites `SUCCEEDED` |
+| F | Money for dues already paid (second payment for the same months) was dropped silently and recorded `MATCHED` | Recorded `DISCREPANCY_AMOUNT` with "Refund or credit the payer"; dues never over-applied; visible in admin reconciliation |
+| G | Any Admin Persatuan could read any Persatuan's payment intent (`GET /payments/intents/:id`) — tenant leak | Only the owning Persatuan's admin (plus the payer / linked parent / student access as before) |
+
+**Owner decision (not changed):** the official H13 test starts several overlapping payments for the same months and expects each to succeed. Blocking a new payment while one for the same months is still pending would prevent most double payments, but changes that H13 behaviour. F makes any double payment visible for refund in the meantime.
+
+Still open: the notification outbox has no sender (needs a push/SMS/email provider and credentials); `students.billing_status` is set to `Paid` on any settlement even if other months remain unpaid (existing behaviour).
