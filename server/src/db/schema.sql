@@ -1673,3 +1673,17 @@ CREATE INDEX IF NOT EXISTS idx_device_push_tokens_user ON device_push_tokens (us
 -- Push state per in-app notification: PENDING -> SENDING -> SENT | SKIPPED | FAILED.
 ALTER TABLE user_notifications ADD COLUMN IF NOT EXISTS push_status VARCHAR(20) NOT NULL DEFAULT 'PENDING';
 ALTER TABLE user_notifications ADD COLUMN IF NOT EXISTS push_sent_at TIMESTAMPTZ;
+
+-- Per-tenant module enablement (PDF: "enable feature by tenant"). One row per
+-- Persatuan and optional module that differs from the platform default.
+-- setting ON enables a module within the platform release (needed for
+-- BELTFLOW_TENANT_OPT_IN_MODULES); OFF disables it for that Persatuan only.
+-- No row = follow the platform. Edited by Super Admin only, audited.
+CREATE TABLE IF NOT EXISTS organization_module_settings (
+    organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    module_key VARCHAR(50) NOT NULL,
+    setting VARCHAR(10) NOT NULL CHECK (setting IN ('ON', 'OFF')),
+    updated_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (organization_id, module_key)
+);

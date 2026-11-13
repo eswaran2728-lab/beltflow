@@ -36,7 +36,8 @@ import messagingRoutes from './routes/messaging.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import commerceRoutes from './routes/commerce.routes';
 import assistantRoutes from './routes/assistant.routes';
-import { moduleGate, releaseInfo } from './release/modules';
+import { moduleGate } from './release/modules';
+import releaseRoutes from './routes/release.routes';
 
 const app = express();
 
@@ -127,10 +128,9 @@ app.get('/api/health/ready', async (req: Request, res: Response) => {
   }
 });
 
-// H27: public, tenant-free list of enabled release modules (for the mobile app).
-app.get('/api/v1/release/modules', (_req: Request, res: Response) => {
-  res.json(releaseInfo());
-});
+// H27: enabled release modules (public; per Persatuan for a signed-in caller)
+// and Super Admin per-Persatuan rollout settings.
+app.use('/api/v1/release', releaseRoutes);
 
 // Route Mounting
 // Optional R2-R4 modules sit behind moduleGate() (see release/modules.ts);
