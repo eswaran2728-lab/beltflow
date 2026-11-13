@@ -89,10 +89,10 @@ async function runTests() {
     await request(server, 'POST', '/notifications/devices', tPar, { token: 'ExponentPushToken[shared-phone]', platform: 'android', locale: 'en' });
     assert.equal((await dbClient.query(`SELECT user_id FROM device_push_tokens WHERE token = 'ExponentPushToken[shared-phone]'`)).rows[0].user_id, 'push_par');
     // Unregister (logout) removes only the caller's own token.
-    const steal = await request(server, 'DELETE', '/notifications/devices', tPar2, { token: 'ExponentPushToken[shared-phone]' });
+    const steal = await request(server, 'POST', '/notifications/devices/unregister', tPar2, { token: 'ExponentPushToken[shared-phone]' });
     assert.equal(steal.status, 200);
     assert.equal((await dbClient.query(`SELECT disabled_at FROM device_push_tokens WHERE token = 'ExponentPushToken[shared-phone]'`)).rows[0].disabled_at, null, 'another user cannot remove my device');
-    const logout = await request(server, 'DELETE', '/notifications/devices', tPar, { token: 'ExponentPushToken[shared-phone]' });
+    const logout = await request(server, 'POST', '/notifications/devices/unregister', tPar, { token: 'ExponentPushToken[shared-phone]' });
     assert.equal(logout.status, 200);
     assert.notEqual((await dbClient.query(`SELECT disabled_at FROM device_push_tokens WHERE token = 'ExponentPushToken[shared-phone]'`)).rows[0].disabled_at, null, 'logout disables my device');
     console.log('✅ Devices: validated, owner-only, no duplicates, logout disables, token never echoed.');

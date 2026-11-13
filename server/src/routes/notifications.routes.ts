@@ -56,7 +56,7 @@ router.post('/devices', authenticateJWT, async (req: Request, res: Response) => 
 });
 
 // Stop push to this phone (logout). Only the caller's own device is affected.
-router.delete('/devices', authenticateJWT, async (req: Request, res: Response) => {
+router.post('/devices/unregister', authenticateJWT, async (req: Request, res: Response) => {
   const { token } = req.body || {};
   if (typeof token !== 'string' || !PUSH_TOKEN_PATTERN.test(token)) {
     return res.status(400).json({ error: 'A valid push token is required.' });
