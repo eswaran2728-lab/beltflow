@@ -500,10 +500,34 @@ async function runTests() {
     }
     console.log('✅ Requirement 18 & 21 Passed: Outstanding monthly dues marked Paid with exact applied amounts.');
 
-    // 19. Verify Student Billing Status
+    // 19. Verify Student Billing Status. It follows the monthly-dues ledger
+    // (2026-11-13 fix): December (whose payment failed above) is still owed,
+    // so the student is not Paid until December is settled too.
     const studentCheck = await dbClient.query(`SELECT billing_status FROM students WHERE id = $1`, [studentA1Id]);
-    assert.equal(studentCheck.rows[0].billing_status, 'Paid');
-    console.log('✅ Requirement 23 Passed: Student billing status updated to Paid.');
+    assert.equal(studentCheck.rows[0].billing_status, 'Unpaid', 'December is still owed');
+    const decIntentRes = await makeRequest(
+      server,
+      'POST',
+      '/payments/intents',
+      { studentId: studentA1Id, billingMonthIds: [failDueId], paymentMethod: 'FPX' },
+      tokenParentA
+    );
+    assert.equal(decIntentRes.status, 201);
+    const decPayload = {
+      eventId: 'evt_settle_december_001',
+      eventType: 'payment.succeeded' as const,
+      intentId: decIntentRes.data.intent.id,
+      providerTxId: decIntentRes.data.intent.providerTxId,
+      merchantAccountId: 'MERCH_GAYONG_SEL_01',
+      amountCents: decIntentRes.data.intent.amountCents,
+      currency: 'MYR',
+    };
+    const decSig = SandboxGatewayAdapter.generateTestWebhook(decPayload, webhookSecretA).signature;
+    const decSettle = await makeRequest(server, 'POST', '/payments/webhooks/SANDBOX', decPayload, undefined, { 'x-beltflow-signature': decSig });
+    assert.equal(decSettle.status, 200);
+    const studentCheckAfter = await dbClient.query(`SELECT billing_status FROM students WHERE id = $1`, [studentA1Id]);
+    assert.equal(studentCheckAfter.rows[0].billing_status, 'Paid', 'every billed month settled');
+    console.log('✅ Requirement 23 Passed: Student billing status updated to Paid once every billed month is settled.');
 
     // 20. Idempotency: Duplicate Webhook Delivery
     const dupWebhookRes = await makeRequest(
@@ -556,9 +580,9 @@ async function runTests() {
     const recRes = await makeRequest(server, 'GET', '/payments/reconciliation', undefined, tokenAdminA);
     assert.equal(recRes.status, 200);
     assert.ok(recRes.data.reconciliationRecords.length >= 2, 'Must have matched and discrepancy records');
-    const matched = recRes.data.reconciliationRecords.find((r: any) => r.match_status === 'MATCHED');
-    assert.ok(matched, 'Should find MATCHED reconciliation record');
-    assert.equal(matched.receipt_no, officialReceiptNo);
+    // Look up this settlement's record by receipt (other settlements, e.g. December above, may be newer).
+    const matched = recRes.data.reconciliationRecords.find((r: any) => r.match_status === 'MATCHED' && r.receipt_no === officialReceiptNo);
+    assert.ok(matched, 'Should find MATCHED reconciliation record for the official receipt');
 
     const discrepant = recRes.data.reconciliationRecords.find((r: any) => r.match_status.startsWith('DISCREPANCY'));
     assert.ok(discrepant, 'Should find recorded DISCREPANCY record for audit');

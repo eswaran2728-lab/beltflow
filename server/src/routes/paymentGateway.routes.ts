@@ -5,6 +5,7 @@ import { UserRole, Permission } from '../security/rbac';
 import { authenticateJWT, requirePermission } from '../middleware/auth';
 import { studentAccess } from '../security/access';
 import { safeErrorMessage } from '../security/errors';
+import { syncStudentBillingStatus } from '../services/billingStatus';
 import { getPaymentGatewayAdapter } from '../services/payment/gatewayRegistry';
 import { SupportedPaymentMethod } from '../services/payment/types';
 
@@ -592,7 +593,7 @@ paymentGatewayRouter.post('/webhooks/:provider', async (req: Request, res: Respo
         }
 
         // Update Student Billing Status
-        await txClient.query(`UPDATE students SET billing_status = 'Paid' WHERE id = $1`, [intent.student_id]);
+        await syncStudentBillingStatus(intent.student_id, 'Paid', txClient);
 
         // Record the reconciliation result. If part of the money could not be
         // applied (the dues were already paid, e.g. by a second payment for the
