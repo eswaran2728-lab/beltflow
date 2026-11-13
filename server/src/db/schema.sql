@@ -1654,3 +1654,22 @@ CREATE TABLE IF NOT EXISTS user_notifications (
     UNIQUE (outbox_id, user_id)
 );
 CREATE INDEX IF NOT EXISTS idx_user_notifications_user ON user_notifications (user_id, created_at DESC);
+
+-- Push notifications: one row per phone/tablet, registered by the signed-in
+-- user. disabled_at is set on logout or when the push service reports the
+-- app was uninstalled. Tokens are never returned by the API.
+CREATE TABLE IF NOT EXISTS device_push_tokens (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token TEXT NOT NULL UNIQUE,
+    platform VARCHAR(20) NOT NULL,
+    locale VARCHAR(5) NOT NULL DEFAULT 'en',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    disabled_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_device_push_tokens_user ON device_push_tokens (user_id) WHERE disabled_at IS NULL;
+
+-- Push state per in-app notification: PENDING -> SENDING -> SENT | SKIPPED | FAILED.
+ALTER TABLE user_notifications ADD COLUMN IF NOT EXISTS push_status VARCHAR(20) NOT NULL DEFAULT 'PENDING';
+ALTER TABLE user_notifications ADD COLUMN IF NOT EXISTS push_sent_at TIMESTAMPTZ;

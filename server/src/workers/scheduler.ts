@@ -7,6 +7,7 @@
  *  - sweepExpiredWaitlistOffers  (bookings module, H17)
  *  - expireStalePaymentIntents   (core payments, H13)
  *  - deliverNotificationOutbox   (in-app notifications, core)
+ *  - sendPendingPushes           (phone push, only when PUSH_PROVIDER is set)
  * Jobs of a disabled release module are skipped.
  *
  * BELTFLOW_WORKERS=off                  do not start the timer (e.g. when an
@@ -18,6 +19,7 @@ import { isModuleEnabled } from '../release/modules';
 import { activateEffectiveTransfers } from '../routes/transfers.routes';
 import { sweepExpiredWaitlistOffers } from '../routes/bookings.routes';
 import { deliverNotificationOutbox } from '../services/notifications/deliver';
+import { getPushProvider, sendPendingPushes } from '../services/notifications/push';
 
 /**
  * Marks unpaid intents past their window as EXPIRED. This only stops the
@@ -42,11 +44,13 @@ export interface WorkerCycleResult {
   waitlistOffersExpired: number | null;
   paymentIntentsExpired: number | null;
   notificationsDelivered: number | null;
+  /** null when PUSH_PROVIDER is not set */
+  pushesSent: number | null;
   errors: string[];
 }
 
 export async function runWorkerCycle(env: NodeJS.ProcessEnv = process.env): Promise<WorkerCycleResult> {
-  const result: WorkerCycleResult = { transfersActivated: null, waitlistOffersExpired: null, paymentIntentsExpired: null, notificationsDelivered: null, errors: [] };
+  const result: WorkerCycleResult = { transfersActivated: null, waitlistOffersExpired: null, paymentIntentsExpired: null, notificationsDelivered: null, pushesSent: null, errors: [] };
   const run = async (name: string, fn: () => Promise<number>, assign: (n: number) => void) => {
     try {
       assign(await fn());
@@ -68,6 +72,10 @@ export async function runWorkerCycle(env: NodeJS.ProcessEnv = process.env): Prom
     if (d.errors.length) result.errors.push(...d.errors.map(e => `notifications ${e}`));
     return d.delivered;
   }, n => (result.notificationsDelivered = n));
+  const pushProvider = getPushProvider(env);
+  if (pushProvider) {
+    await run('push', async () => (await sendPendingPushes(pushProvider)).sent, n => (result.pushesSent = n));
+  }
   return result;
 }
 
@@ -84,9 +92,9 @@ export function startBackgroundWorkers(env: NodeJS.ProcessEnv = process.env): ()
     running = true;
     try {
       const r = await runWorkerCycle(env);
-      const changed = [r.transfersActivated, r.waitlistOffersExpired, r.paymentIntentsExpired, r.notificationsDelivered].some(n => (n ?? 0) > 0);
+      const changed = [r.transfersActivated, r.waitlistOffersExpired, r.paymentIntentsExpired, r.notificationsDelivered, r.pushesSent].some(n => (n ?? 0) > 0);
       if (changed || r.errors.length) {
-        console.log(`[Workers] transfers=${r.transfersActivated ?? 'off'} waitlist=${r.waitlistOffersExpired ?? 'off'} payments=${r.paymentIntentsExpired} notifications=${r.notificationsDelivered}${r.errors.length ? ` errors=${r.errors.join('; ')}` : ''}`);
+        console.log(`[Workers] transfers=${r.transfersActivated ?? 'off'} waitlist=${r.waitlistOffersExpired ?? 'off'} payments=${r.paymentIntentsExpired} notifications=${r.notificationsDelivered} push=${r.pushesSent ?? 'off'}${r.errors.length ? ` errors=${r.errors.join('; ')}` : ''}`);
       }
     } finally {
       running = false;

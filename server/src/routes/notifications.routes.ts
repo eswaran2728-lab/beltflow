@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { dbClient } from '../db/client';
 import { authenticateJWT } from '../middleware/auth';
 import { safeErrorMessage } from '../security/errors';
+import { PUSH_TOKEN_PATTERN, registerDevice, unregisterDevice } from '../services/notifications/push';
 
 /**
  * The caller's own in-app notifications. Every query is scoped to
@@ -32,6 +33,40 @@ router.get('/', authenticateJWT, async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error('[Notifications list error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'Failed to load notifications.') });
+  }
+});
+
+// Register this phone for push notifications (the token is never returned).
+router.post('/devices', authenticateJWT, async (req: Request, res: Response) => {
+  const { token, platform, locale } = req.body || {};
+  if (typeof token !== 'string' || !PUSH_TOKEN_PATTERN.test(token)) {
+    return res.status(400).json({ error: 'A valid push token is required.' });
+  }
+  if (!['android', 'ios'].includes(platform)) {
+    return res.status(400).json({ error: 'platform must be android or ios.' });
+  }
+  const lang = ['en', 'ms', 'ta'].includes(locale) ? locale : 'en';
+  try {
+    await registerDevice(req.user!.id, token, platform, lang);
+    return res.json({ registered: true });
+  } catch (err: any) {
+    console.error('[Push device register error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'Failed to register device.') });
+  }
+});
+
+// Stop push to this phone (logout). Only the caller's own device is affected.
+router.delete('/devices', authenticateJWT, async (req: Request, res: Response) => {
+  const { token } = req.body || {};
+  if (typeof token !== 'string' || !PUSH_TOKEN_PATTERN.test(token)) {
+    return res.status(400).json({ error: 'A valid push token is required.' });
+  }
+  try {
+    await unregisterDevice(req.user!.id, token);
+    return res.json({ unregistered: true });
+  } catch (err: any) {
+    console.error('[Push device unregister error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'Failed to unregister device.') });
   }
 });
 
