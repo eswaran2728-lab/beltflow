@@ -131,7 +131,7 @@ The assistant's privacy controls are in `09`.
    - Recommendation: run these on a scheduler, and restrict the routes to Super Admin or an internal token.
 3. **27 older backend test files still end with `process.exit(0)`.** The H24, H26 and H27 suites close the database instead.
 4. **The R1 web client (`index.html`) still calls `/tournaments`,** which is R3. In an R1-only deployment that tab would show "not enabled".
-5. **Feature flags are global, not per tenant.** The PDF says "enable feature by tenant"; per-Persatuan flags are a follow-up.
+5. ~~**Feature flags are global, not per tenant.**~~ **Per-Persatuan since 2026-11-13** (§12). The PDF says "enable feature by tenant"; per-Persatuan flags are a follow-up.
 6. ~~**Mobile hides only the Ask tab.**~~ Fixed in H28 (`11` §8): optional-module entry points follow the release modules. Other R2/R3 entry points still show and get "not enabled" from the server. Hiding them is H28 UI work.
 7. **`attendance_sync` and `server_rbac` need an empty database** (one-time setup); this is a test-isolation limitation.
 
@@ -219,3 +219,14 @@ The 22 outbox event types are now delivered to a per-person inbox.
 **Tests:** new `billing_status_sync.test.ts`. The official H13 test's Requirement 23 asserted `Paid` while December (whose payment failed earlier in that test) was still owed — it pinned the bug. It now asserts `Unpaid` while December is owed, pays December through the real gateway path and asserts `Paid`; its reconciliation check now finds the original settlement by receipt number (a second settlement exists). Both pass on PGlite and PostgreSQL 16.
 
 **Test-environment note:** the older backend suites share one default database, and public certificate verification is rate-limited per address over 5 minutes in that database. Running `npm test` several times within 5 minutes can make H15 fail with 429; wait 5 minutes or use a fresh database.
+
+## 12. Features by Persatuan (2026-11-13)
+
+PDF: "enable feature by tenant", backed by "tenant-specific PostgreSQL records and authorized admin editing".
+
+- **Data:** `organization_module_settings` (Persatuan, module, `ON`/`OFF`; no row = follow the platform).
+- **Rule:** effective = platform enabled (release + kill switches, the ceiling) AND not `OFF` for the Persatuan AND (not an opt-in module OR `ON`). `BELTFLOW_TENANT_OPT_IN_MODULES=a,b` keeps those modules off everywhere until switched ON per Persatuan (pilots / staged rollout).
+- **Enforcement:** `moduleGate` refuses a signed-in caller whose Persatuan has the module off (404 `MODULE_DISABLED`). The Persatuan comes from the database, not the token claim. 30 s cache, cleared on change. `GET /release/modules` returns the caller's Persatuan's modules when signed in; the app sends the token, so menus follow.
+- **Editing:** Super Admin only (`GET /release/tenants/:orgId/modules`, `PUT .../modules/:key` `{setting: ON|OFF|INHERIT}`), audited as "Tenant Module Setting Changed". Core R1 features cannot be switched off. App: Persatuans tab > Features by Persatuan.
+- **Evidence:** `tenant_feature_flags.test.ts` (PGlite and PostgreSQL 16), `tenantFeaturesPanel.test.tsx`; H27 `disabled_module_inaccessible` still passes. Backend 47/47; mobile 54 suites / 619 tests.
+- **Note:** background jobs (waitlist expiry, scheduled transfers) still run for every Persatuan while the module is on for the platform; they only process existing records.
