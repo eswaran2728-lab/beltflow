@@ -23,6 +23,11 @@ jest.mock('../services/apiClient', () => ({
 }));
 jest.mock('../services/releaseService', () => ({ releaseService: { getReleaseModules: jest.fn() } }));
 jest.mock('../services/authService', () => ({ authService: { onSessionEnded: jest.fn(() => () => undefined) } }));
+const pushListeners: { received?: () => void; tapped?: () => void } = {};
+jest.mock('expo-notifications', () => ({
+  addNotificationReceivedListener: jest.fn((cb: () => void) => { pushListeners.received = cb; return { remove: jest.fn() }; }),
+  addNotificationResponseReceivedListener: jest.fn((cb: () => void) => { pushListeners.tapped = cb; return { remove: jest.fn() }; }),
+}));
 
 // Every event type the server writes to notification_outbox (server/src/services/notifications/deliver.ts).
 const SERVER_EVENT_TYPES = [
@@ -128,6 +133,21 @@ describe('parent home bell and inbox', () => {
     // Re-fetch after opening returned the same mock; mark-all cleared the count locally.
     mockApi({ unreadCount: 0, notifications: NOTIFICATIONS.map(n => ({ ...n, read: true })) });
     await waitFor(() => expect(r.queryByTestId('bell-unread-dot')).toBeNull());
+    await act(async () => { await r.unmount(); });
+  });
+
+  test('a push arriving refreshes the bell, and tapping a push opens the inbox', async () => {
+    mockApi({ unreadCount: 0, notifications: [] });
+    const r = await renderParent();
+    await waitFor(() => expect(r.getByTestId('parent-home-screen')).toBeTruthy());
+    await waitFor(() => expect(pushListeners.received).toBeDefined());
+    expect(r.queryByTestId('bell-unread-dot')).toBeNull();
+    mockApi({ unreadCount: 1, notifications: [NOTIFICATIONS[0]] });
+    await act(async () => { pushListeners.received!(); });
+    await waitFor(() => expect(r.getByTestId('bell-unread-dot')).toBeTruthy());
+    await act(async () => { pushListeners.tapped!(); });
+    expect(await r.findByTestId('notifications-inbox')).toBeTruthy();
+    expect(r.getByText('Test Child was promoted to Yellow Belt.')).toBeTruthy();
     await act(async () => { await r.unmount(); });
   });
 

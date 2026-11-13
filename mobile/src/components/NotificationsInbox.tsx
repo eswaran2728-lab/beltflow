@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Bell } from 'lucide-react-native';
+import * as Notifications from 'expo-notifications';
 import { StitchTokens } from '../theme/tokens';
 import { useI18n } from '../i18n';
 import { Button } from './Button';
@@ -87,10 +88,27 @@ export function useNotificationInbox(enabled: boolean) {
     }
   };
 
-  const openInbox = () => {
+  const openInbox = useCallback(() => {
     setVisible(true);
     refresh();
-  };
+  }, [refresh]);
+
+  // A push arriving while the app is open updates the bell; tapping a push opens the inbox.
+  useEffect(() => {
+    if (!enabled) return;
+    let received: { remove: () => void } | undefined;
+    let tapped: { remove: () => void } | undefined;
+    try {
+      received = Notifications.addNotificationReceivedListener(() => refresh());
+      tapped = Notifications.addNotificationResponseReceivedListener(() => openInbox());
+    } catch {
+      // Push not available on this platform/build: the inbox still works.
+    }
+    return () => {
+      received?.remove();
+      tapped?.remove();
+    };
+  }, [enabled, refresh, openInbox]);
 
   const element = (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={() => setVisible(false)}>

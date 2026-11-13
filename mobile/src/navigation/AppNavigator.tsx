@@ -18,6 +18,8 @@ import {
 import { SplashScreen } from '../screens/auth/SplashScreen';
 import { UnauthorizedRoleScreen } from '../screens/roles/UnauthorizedRoleScreen';
 import { authService, SessionValidationResult } from '../services/authService';
+import { registerForPushNotifications, unregisterPushNotifications } from '../services/pushRegistration';
+import { useI18n } from '../i18n';
 import { initializeApiBaseUrl } from '../config/env';
 import { AuthUser, UserRole } from '../types/auth';
 import { RoleNavigatorProps } from './types';
@@ -179,12 +181,24 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
   const handleLogout = useCallback(async () => {
     // Remove privileged UI first so nothing remains visible if storage cleanup is slow.
     resetToSignedOut('login');
+    // Stop push to this phone while the sign-in token is still valid (never blocks logout).
+    await Promise.race([unregisterPushNotifications(), new Promise(resolve => setTimeout(resolve, 3000))]);
     try {
       await authService.logout();
     } catch {
       // Credentials purge failure must not keep the user signed in visually.
     }
   }, [resetToSignedOut]);
+
+  // 4. Push notifications: register this phone after a server-verified sign-in,
+  // and again when the app language changes (push text follows it).
+  const { locale } = useI18n();
+  const userId = user?.id;
+  const verifiedOnline = authority.isVerifiedOnline;
+  useEffect(() => {
+    if (phase !== 'authenticated' || !userId || !verifiedOnline || hasInjectedUser) return;
+    registerForPushNotifications(locale).catch(() => undefined);
+  }, [phase, userId, verifiedOnline, locale, hasInjectedUser]);
 
   if (phase === 'bootstrapping') {
     return <SplashScreen autoRestore={false} />;

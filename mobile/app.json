@@ -49,6 +49,12 @@
         {
           "cameraPermission": "Allow BeltFlow to scan student QR attendance passes."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#0D2B47"
+        }
       ]
     ]
   }
