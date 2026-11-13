@@ -9,15 +9,15 @@
 
 ### Backend Integration Suites (`server/`):
 * **Command**: `npm test` inside `server/`
-* **Test Suites**: 44 test suites covering H00 to H27 plus follow-ups (35 before H26; H26 added 2, H27 added 5; ops/payment safety and notification inbox follow-ups added 2, see `10` §8–9)
+* **Test Suites**: 45 test suites covering H00 to H27 plus follow-ups (35 before H26; H26 added 2, H27 added 5; ops/payment safety and notification inbox and push follow-ups added 3, see `10` §8–10)
 * **Execution Engine**: Express routes with embedded PostgreSQL (`@electric-sql/pglite`) in isolated temporary directories
-* **Pass Rate**: **44 / 44 passed (100%)** on PGlite (2026-11-12; 42 / 42 earlier), and **42 / 42 on real PostgreSQL 16.15** (each suite on a fresh database) — 2026-11-10 — ~73 s. H26 and H24-preflight suites close the DB and exit naturally; 27 older suites still end with `process.exit(0)` (follow-up).
+* **Pass Rate**: **45 / 45 passed (100%)** on PGlite (2026-11-13; 42 / 42 earlier), and **42 / 42 on real PostgreSQL 16.15** (each suite on a fresh database) — 2026-11-10 — ~73 s. H26 and H24-preflight suites close the DB and exit naturally; 27 older suites still end with `process.exit(0)` (follow-up).
 * **Duration**: ~40 seconds
 
 ### Mobile Unit & Component Suites (`mobile/`):
 * **Command**: `npm test` inside `mobile/`
-* **Test Suites**: 52 test suites, 609 total tests (600 before the inbox; 565 before navigation wiring; 40 / 400 before H26; 42 / 444 after H27; 477 after H28 first pass; 496 after core journeys; 551 after all screens)
-* **Pass Rate**: **52 / 52 passed (100%)** — 2026-11-12
+* **Test Suites**: 53 test suites, 615 total tests (609 before push; 600 before the inbox; 565 before navigation wiring; 40 / 400 before H26; 42 / 444 after H27; 477 after H28 first pass; 496 after core journeys; 551 after all screens)
+* **Pass Rate**: **53 / 53 passed (100%)** — 2026-11-13
 * **Note on QR Attendance Suite**: `src/__tests__/qrAttendance.test.tsx` passes 21/21 tests in isolation; under heavy single-threaded Jest runs, grant a timeout buffer if needed.
 
 ---

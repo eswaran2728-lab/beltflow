@@ -194,4 +194,18 @@ The 22 outbox event types are now delivered to a per-person inbox.
 - **Server:** `services/notifications/deliver.ts` runs in the background scheduler. Recipients are resolved from database relationships (applicant, student and active linked parents, class leader, Persatuan admins, payer, thread participant); a user id in the payload is used only if the database confirms it. Super Admin never receives one; only active users do. Only display-safe params are copied (never free-text reasons, requested information, certificate tokens or message text). Idempotent per `(outbox_id, user_id)`; outbox rows become `PROCESSED`. Table `user_notifications`. API (own only): `GET /api/v1/notifications`, `POST /notifications/:id/read`, `POST /notifications/read-all`.
 - **Mobile:** the home bell for Admin Persatuan, Master, Parent and Student shows a dot only for real unread notifications and opens an inbox (EN/BM/Tamil text per event type). Previously the dot meant "notices exist" or "pending items", and never lit on Admin.
 - **Evidence:** `notification_inbox.test.ts` (server, 44 suites pass); `notificationInbox.test.tsx` (mobile, 52 suites / 609 tests). Real flows from 9 feature suites on PostgreSQL 16: all 22 event types delivered (33 events, 36 notifications), none to Super Admin, no private fields copied.
-- **Not done:** push notifications to the phone's lock screen (needs Expo push tokens on devices and, for production, an Expo access token), SMS or email. The message event is already lock-screen safe (no message text).
+- **Push:** built 2026-11-13, see §10. SMS and email not done.
+
+## 10. Push notifications to phones (2026-11-13, built but not live-tested)
+
+- **Server:** `services/notifications/push.ts`. Devices register with `POST /api/v1/notifications/devices` `{token, platform, locale}` and unregister with `POST /notifications/devices/unregister`; only the caller's own device, token never echoed. The scheduler pushes each new in-app notification once to the recipient's active devices with neutral lock-screen text in the device language ("You have a new update in BeltFlow" / BM / Tamil) and only the notification id: no names, amounts, class names or message text. Claimed before sending; older than 24 h skipped; `DeviceNotRegistered` disables the device. Tables: `device_push_tokens`; `user_notifications.push_status`.
+- **Mobile:** `services/pushRegistration.ts` registers after a server-verified sign-in (and on language change), unregisters on logout. A push arriving refreshes the bell; tapping one opens the inbox.
+- **Tests:** `push_notifications.test.ts` (fake provider and a local stand-in for Expo's API; PGlite and PostgreSQL 16), `pushRegistration.test.ts`, `notificationInbox.test.tsx`. Backend 45/45; mobile 53 suites / 615 tests; Android and iOS export OK.
+
+**To switch it on (owner):**
+1. `cd mobile && npx eas init` to create the EAS project; this writes `expo.extra.eas.projectId` into the app config.
+2. Android: create a Firebase project, add the Android app `com.beltflow.app`, and upload the FCM V1 service-account key to the EAS project credentials (`npx eas credentials`). iOS: EAS creates the APNs key during `eas build`.
+3. Server: set `PUSH_PROVIDER=expo` (and `EXPO_ACCESS_TOKEN` only if "enhanced push security" is enabled in Expo). Never commit these values.
+4. Rebuild the app (`npx eas build --profile preview --platform android`), sign in on a real phone, trigger an event (e.g. approve a class) and confirm the push arrives within the scheduler interval.
+
+**Not verified:** a real send through `exp.host` (blocked from this environment) and delivery on a real device.
