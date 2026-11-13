@@ -22,6 +22,7 @@ import { OfflineBanner, LoadingState, ErrorState } from '../../../components/Fee
 import { useDashboardData } from '../../../hooks/useDashboardData';
 import { dashboardService, SuperAdminDashboardData } from '../../../services/dashboardService';
 import { useI18n } from '../../../i18n';
+import { TenantFeaturesPanel } from './TenantFeaturesPanel';
 
 export interface RoleScreenProps {
   user: AuthUser;
@@ -317,7 +318,9 @@ export const PersatuanManagementScreen: React.FC<RoleScreenProps> = props => {
       testID="persatuan-management-screen"
       icon={<Building2 size={iconSize.lg} color={colors.buttonPrimaryBg} />}
       scopeDescription={t('superAdminHome.persatuanMgmt.scope')}
-    />
+    >
+      <TenantFeaturesPanel />
+    </RolePlaceholderBase>
   );
 };
 
