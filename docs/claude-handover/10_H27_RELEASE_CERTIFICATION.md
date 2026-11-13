@@ -185,7 +185,7 @@ Suite `server/src/tests/ops_payment_safety_followups.test.ts` (in `npm test`, 43
 
 **Owner decision (not changed):** the official H13 test starts several overlapping payments for the same months and expects each to succeed. Blocking a new payment while one for the same months is still pending would prevent most double payments, but changes that H13 behaviour. F makes any double payment visible for refund in the meantime.
 
-Still open: push/SMS/email delivery (needs a provider and credentials; in-app delivery done, §9); `students.billing_status` is set to `Paid` on any settlement even if other months remain unpaid (existing behaviour).
+Still open: push/SMS/email delivery (needs a provider and credentials; in-app delivery done, §9); ~~`students.billing_status` set to `Paid` on any settlement~~ fixed 2026-11-13 (§11).
 
 ## 9. In-app notifications (2026-11-12)
 
@@ -209,3 +209,13 @@ The 22 outbox event types are now delivered to a per-person inbox.
 4. Rebuild the app (`npx eas build --profile preview --platform android`), sign in on a real phone, trigger an event (e.g. approve a class) and confirm the push arrives within the scheduler interval.
 
 **Not verified:** a real send through `exp.host` (blocked from this environment) and delivery on a real device.
+
+## 11. Student billing status follows the dues ledger (2026-11-13)
+
+**Bug:** every payment (online, Master-approved, cash) set `students.billing_status = 'Paid'` even when other months were still owed, and billing a new month never set it back. After one payment a student stayed `Paid` forever, so the Master's overdue-tuition follow-up (`trials.routes.ts`) never flagged them and the parent family hub showed `Paid`.
+
+**Fix:** `server/src/services/billingStatus.ts` `syncStudentBillingStatus()` sets `Paid` only when no billed month is still owed, otherwise `Unpaid`. It runs after each payment is applied to its months (gateway settlement inside the same transaction, Master approval, cash), after new months are generated, and after dues corrections. A student with no dues ledger keeps the old behaviour (a payment marks `Paid`).
+
+**Tests:** new `billing_status_sync.test.ts`. The official H13 test's Requirement 23 asserted `Paid` while December (whose payment failed earlier in that test) was still owed — it pinned the bug. It now asserts `Unpaid` while December is owed, pays December through the real gateway path and asserts `Paid`; its reconciliation check now finds the original settlement by receipt number (a second settlement exists). Both pass on PGlite and PostgreSQL 16.
+
+**Test-environment note:** the older backend suites share one default database, and public certificate verification is rate-limited per address over 5 minutes in that database. Running `npm test` several times within 5 minutes can make H15 fail with 429; wait 5 minutes or use a fresh database.
