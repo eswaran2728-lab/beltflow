@@ -300,21 +300,59 @@ paymentGatewayRouter.post('/intents', authenticateJWT, async (req: Request, res:
       }
     }
 
-    // 4b. One live payment per billing month: refuse a second payment for any
-    // month already in an unpaid intent that has not expired, and return that
-    // intent so the app can reopen it (prevents paying twice).
-    const inFlight = await dbClient.query(
-      `SELECT * FROM payment_intents
-       WHERE student_id = $1
-         AND billing_month_ids && $2::text[]
-         AND status IN ('REQUIRES_PAYMENT_METHOD', 'PENDING_PROCESSING')
-         AND expires_at > CURRENT_TIMESTAMP
-       ORDER BY created_at DESC
-       LIMIT 1`,
-      [studentId, billingMonthIds]
-    );
-    if (inFlight.rows.length > 0) {
-      const row = inFlight.rows[0];
+    // 4b + 5. One live payment per billing month, checked and claimed atomically:
+    // lock the requested dues rows so concurrent requests for the same month
+    // queue here; the first creates the intent, the others see it and get 409.
+    const intentId = newId('pi');
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes window
+
+    const claim = await dbClient.transaction(async (tx) => {
+      await tx.query(
+        `SELECT id FROM monthly_dues WHERE id = ANY($1::text[]) AND student_id = $2 AND organization_id = $3 ORDER BY id FOR UPDATE`,
+        [billingMonthIds, studentId, student.organization_id]
+      );
+      const inFlight = await tx.query(
+        `SELECT * FROM payment_intents
+         WHERE student_id = $1
+           AND organization_id = $3
+           AND billing_month_ids && $2::text[]
+           AND status IN ('REQUIRES_PAYMENT_METHOD', 'PENDING_PROCESSING')
+           AND expires_at > CURRENT_TIMESTAMP
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [studentId, billingMonthIds, student.organization_id]
+      );
+      if (inFlight.rows.length > 0) return { inFlight: inFlight.rows[0] };
+      await tx.query(
+        `INSERT INTO payment_intents (
+           id, organization_id, merchant_id, student_id, payer_user_id,
+           amount_cents, currency, billing_month_ids, payment_method, fpx_bank_code,
+           status, idempotency_key, expires_at, metadata
+         ) VALUES ($1, $2, $3, $4, $5, $6, 'MYR', $7, $8, $9, 'REQUIRES_PAYMENT_METHOD', $10, $11, $12)`,
+        [
+          intentId,
+          student.organization_id,
+          merchant.id,
+          studentId,
+          req.user!.id,
+          totalRemainingSen,
+          billingMonthIds,
+          normalizedMethod,
+          fpxBankCode || null,
+          idempotencyKey || null,
+          expiresAt,
+          JSON.stringify({
+            studentName: student.full_name,
+            payerEmail: req.user!.email,
+            duesCount: billingMonthIds.length,
+          }),
+        ]
+      );
+      return { inFlight: null };
+    });
+
+    if (claim.inFlight) {
+      const row = claim.inFlight;
       return res.status(409).json({
         error: 'A payment for these months is already in progress.',
         code: 'PAYMENT_IN_PROGRESS',
@@ -325,46 +363,20 @@ paymentGatewayRouter.post('/intents', authenticateJWT, async (req: Request, res:
           currency: row.currency,
           status: row.status,
           paymentMethod: row.payment_method,
-          providerSessionUrl: row.provider_session_url,
-          providerTxId: row.provider_tx_id,
+          // The bank page belongs to whoever started this payment; others only learn it is in progress.
+          providerSessionUrl: row.payer_user_id === req.user!.id ? row.provider_session_url : null,
+          providerTxId: row.payer_user_id === req.user!.id ? row.provider_tx_id : null,
           expiresAt: row.expires_at,
         },
       });
     }
 
-    // 5. Create Payment Intent Row
-    const intentId = newId('pi');
-    const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes window
-
-    await dbClient.query(
-      `INSERT INTO payment_intents (
-         id, organization_id, merchant_id, student_id, payer_user_id,
-         amount_cents, currency, billing_month_ids, payment_method, fpx_bank_code,
-         status, idempotency_key, expires_at, metadata
-       ) VALUES ($1, $2, $3, $4, $5, $6, 'MYR', $7, $8, $9, 'REQUIRES_PAYMENT_METHOD', $10, $11, $12)`,
-      [
-        intentId,
-        student.organization_id,
-        merchant.id,
-        studentId,
-        req.user!.id,
-        totalRemainingSen,
-        billingMonthIds,
-        normalizedMethod,
-        fpxBankCode || null,
-        idempotencyKey || null,
-        expiresAt,
-        JSON.stringify({
-          studentName: student.full_name,
-          payerEmail: req.user!.email,
-          duesCount: billingMonthIds.length,
-        }),
-      ]
-    );
 
     // 6. Invoke Gateway Adapter for Session URL
     const adapter = getPaymentGatewayAdapter(merchant.provider);
-    const sessionResult = await adapter.createPaymentSession(
+    let sessionResult;
+    try {
+      sessionResult = await adapter.createPaymentSession(
       {
         intentId,
         amountCents: totalRemainingSen,
@@ -378,7 +390,16 @@ paymentGatewayRouter.post('/intents', authenticateJWT, async (req: Request, res:
         description: `Tuition Dues (${duesRes.rows.map((d: any) => d.billing_month).join(', ')}) - ${student.full_name}`,
       },
       merchant.webhook_secret_hash || 'sandbox_secret'
-    );
+      );
+    } catch (sessionErr) {
+      // No bank session exists, so this intent can never be paid: mark it
+      // FAILED so it does not block the months for its 30-minute window.
+      await dbClient.query(
+        `UPDATE payment_intents SET status = 'FAILED', updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND status = 'REQUIRES_PAYMENT_METHOD'`,
+        [intentId]
+      );
+      throw sessionErr;
+    }
 
     // 7. Update Intent with Provider Session
     await dbClient.query(

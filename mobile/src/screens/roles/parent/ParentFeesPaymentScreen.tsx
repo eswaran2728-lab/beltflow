@@ -495,7 +495,7 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
 
           <PendingNextStep kind="PAYMENT" status={activeIntent.status} testID="payment-next-step" />
 
-          {activeIntent.status === 'PENDING_PROCESSING' && (
+          {(activeIntent.status === 'PENDING_PROCESSING' || activeIntent.status === 'REQUIRES_PAYMENT_METHOD') && (
             <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
               <Button
                 label={pollingStatus ? t('parentHome.fees.checkingStatus') : t('parentHome.fees.checkStatus')}

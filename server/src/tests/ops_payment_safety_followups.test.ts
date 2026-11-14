@@ -25,6 +25,7 @@ import { generateAuthToken } from '../security/crypto';
 import { UserRole } from '../security/rbac';
 import { SandboxGatewayAdapter } from '../services/payment/sandboxAdapter';
 import { runWorkerCycle, expireStalePaymentIntents } from '../workers/scheduler';
+import { registerGatewayAdapter } from '../services/payment/gatewayRegistry';
 
 type Res = { status: number; data: any };
 
@@ -249,6 +250,42 @@ async function runTests() {
     const other = await request(server, 'POST', '/payments/intents', { token: tPar2, body: { studentId: 'stu_ops_2', billingMonthIds: ['due_ops_h4s'], paymentMethod: 'FPX', fpxBankCode: 'TEST0001' } });
     assert.equal(other.status, 201, `another child's payment is not blocked (${JSON.stringify(other.data)})`);
     console.log('✅ H: one live payment per month; idempotent retries, overdue links, failed attempts and other children are not blocked.');
+
+    // ------------------------------------------------------------------ I (final-review fixes)
+    // I1: if the bank session cannot be created, the half-made intent must not lock the month.
+    registerGatewayAdapter('BROKENTEST', { createPaymentSession: async () => { throw new Error('provider down'); } } as any);
+    await dbClient.query(`UPDATE persatuan_merchants SET provider = 'BROKENTEST' WHERE organization_id = $1`, [org]);
+    await due('due_ops_i1', '2026-10');
+    const broken = await post({ billingMonthIds: ['due_ops_i1'] });
+    assert.ok(broken.status >= 500, `provider failure surfaces as an error (got ${broken.status})`);
+    const leftover = await dbClient.query(`SELECT status FROM payment_intents WHERE 'due_ops_i1' = ANY(billing_month_ids)`);
+    assert.ok(leftover.rows.every((r: any) => r.status === 'FAILED'), `a failed session setup is marked FAILED (${JSON.stringify(leftover.rows)})`);
+    await dbClient.query(`UPDATE persatuan_merchants SET provider = 'SANDBOX' WHERE organization_id = $1`, [org]);
+    assert.equal((await post({ billingMonthIds: ['due_ops_i1'] })).status, 201, 'the parent can try again straight away');
+
+    // I2: concurrent requests for the same month create exactly one intent.
+    await due('due_ops_i2', '2026-11');
+    const burst = await Promise.all(Array.from({ length: 30 }, () => post({ billingMonthIds: ['due_ops_i2'] })));
+    const codes = burst.map(r => r.status).sort();
+    assert.equal(codes.filter(c => c === 201).length, 1, `exactly one payment created (${codes.join(',')})`);
+    assert.equal(codes.filter(c => c === 409).length, 29, `the rest are told one is in progress (${codes.join(',')})`);
+    const i2Rows = await dbClient.query(`SELECT id FROM payment_intents WHERE 'due_ops_i2' = ANY(billing_month_ids)`);
+    assert.equal(i2Rows.rows.length, 1, 'one intent row for the month');
+
+    // I3: only the person who started the payment gets its bank session link back.
+    await dbClient.query(
+      `INSERT INTO users (id, email, password_hash, full_name, role, organization_id, status) VALUES ('ops_par_co', 'ops_par_co@example.test', 'h', 'Test Co-Parent', 'PARENT', $1, 'ACTIVE') ON CONFLICT (id) DO NOTHING`, [org]);
+    await dbClient.query(
+      `INSERT INTO parent_student_links (id, parent_id, student_id, status, student_approved, master_approved, admin_approved)
+       VALUES ('psl_ops_co', 'ops_par_co', $1, 'ACTIVE', true, true, true) ON CONFLICT (parent_id, student_id) DO NOTHING`, [studentId]);
+    const tCo = tok('ops_par_co', UserRole.PARENT, org, { linkedStudentIds: [studentId] });
+    const coTry = await request(server, 'POST', '/payments/intents', { token: tCo, body: { studentId, billingMonthIds: ['due_ops_i2'], paymentMethod: 'FPX', fpxBankCode: 'TEST0001' } });
+    assert.equal(coTry.status, 409);
+    assert.ok(coTry.data.intent?.id, 'the co-parent still learns a payment is in progress');
+    assert.equal(coTry.data.intent.providerSessionUrl ?? null, null, "another person never gets the payer's bank link");
+    const payerTry = await post({ billingMonthIds: ['due_ops_i2'] });
+    assert.ok(payerTry.data.intent.providerSessionUrl, 'the payer gets their own bank link to reopen');
+    console.log('✅ I: failed session setup does not lock the month; concurrent requests create one payment; bank link only for the payer.');
 
     // ------------------------------------------------------------------ G
     const otherOrg = 'org_ops_other';

@@ -251,6 +251,22 @@ describe('H28 next-step cards for more waiting states', () => {
     await act(async () => { await r.unmount(); });
   });
 
+  test('payment screen: a payment in progress without a bank link can still be checked', async () => {
+    mockFeesScreen();
+    (paymentGatewayService.createPaymentIntent as jest.Mock).mockRejectedValue(
+      Object.assign(new Error('A payment for these months is already in progress.'), {
+        status: 409,
+        details: { code: 'PAYMENT_IN_PROGRESS', intent: { id: 'intent_other', amountCents: 8000, amountRM: '80.00', currency: 'MYR', paymentMethod: 'FPX', status: 'REQUIRES_PAYMENT_METHOD', providerSessionUrl: null } },
+      })
+    );
+    const r = await render(wrap(<ParentFeesPaymentScreen user={feesParent} />));
+    await waitFor(() => expect(r.getByTestId('btn-pay-now')).toBeTruthy());
+    await act(async () => { fireEvent.press(r.getByTestId('btn-pay-now')); });
+    await waitFor(() => expect(r.getByTestId('active-intent-card')).toBeTruthy());
+    expect(r.getByTestId('btn-check-payment-status')).toBeTruthy();
+    await act(async () => { await r.unmount(); });
+  });
+
   test('payment screen: other payment errors still show the failure alert', async () => {
     mockFeesScreen();
     (paymentGatewayService.createPaymentIntent as jest.Mock).mockRejectedValue(Object.assign(new Error('boom'), { status: 409, details: {} }));
