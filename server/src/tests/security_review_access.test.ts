@@ -152,6 +152,20 @@ async function runTests() {
     assert.equal((await request(server, 'POST', '/certificates/cert_sa_1/revoke', T.admA, { reason: 'Test revocation' })).status, 200, 'the Admin can');
     console.log('✅ Certificates are revoked by staff only.');
 
+    // ------------------------------------------------ trials
+    await q(`INSERT INTO trial_bookings (id, organization_id, class_id, scheduled_date, candidate_name, guardian_phone)
+             VALUES ('trl_sa_1', 'org_sa_a', 'cls_sa_1', '2026-12-01', 'Test Candidate', '0100000000')`);
+    assert.equal((await request(server, 'POST', '/trials/trl_sa_1/attendance', T.admB, { status: 'CANCELLED' })).status, 403, 'another Persatuan\'s Admin cannot change a trial');
+    assert.equal((await request(server, 'POST', '/trials/trl_sa_1/attendance', T.admA, { status: 'ATTENDED' })).status, 200);
+    console.log('✅ Trial status changes stay inside the Persatuan.');
+
+    // ------------------------------------------------ bookings
+    for (const t of [T.admB, T.mb, T.sa]) {
+      assert.equal((await request(server, 'GET', '/bookings/student/stu_sa_s', t)).status, 403, 'other Persatuan staff and Super Admin cannot list a child\'s bookings');
+    }
+    assert.equal((await request(server, 'GET', '/bookings/student/stu_sa_s', T.admA)).status, 200);
+    console.log('✅ Make-up bookings stay inside the Persatuan.');
+
     // ------------------------------------------------ rate limit ignores spoofed X-Forwarded-For
     let limited = false;
     for (let i = 0; i < 20 && !limited; i++) {

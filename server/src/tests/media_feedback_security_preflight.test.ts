@@ -272,6 +272,9 @@ async function runPreflightTests() {
     // A malformed token is a clean 403, not a server error.
     const badUrl = `/api/v1/media/storage/upload/${encodeURIComponent(pendingKey)}?token=abc&expires=${Math.floor(Date.now() / 1000) + 60}`;
     assert.strictEqual((await makeRequest(server, 'PUT', badUrl, undefined, undefined, mp4Buffer, 'video/mp4')).status, 403);
+    // Only the uploader can finalize an upload.
+    const otherFinalize = await makeRequest(server, 'POST', `/media/videos/${pendingReq.data.videoId}/finalize`, {}, parentToken);
+    assert.strictEqual(otherFinalize.status, 403, 'someone other than the uploader cannot finalize');
     // The signing secret: required (32+ chars) in production, random per process otherwise.
     assert.throws(() => resolveMediaStorageSecret({ NODE_ENV: 'production' }), /MEDIA_STORAGE_SECRET/);
     assert.throws(() => resolveMediaStorageSecret({ NODE_ENV: 'production', MEDIA_STORAGE_SECRET: 'short' }), /MEDIA_STORAGE_SECRET/);

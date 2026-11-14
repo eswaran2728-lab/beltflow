@@ -143,6 +143,19 @@ async function callerOrganization(req: Request): Promise<string | null> {
   return orgId;
 }
 
+/**
+ * The Persatuan a signed-out (or Persatuan-less) request is addressed to, e.g.
+ * the public trial booking's body.organizationId. Used only to apply that
+ * Persatuan's module setting; it never grants access to anything.
+ */
+function addressedOrganization(req: Request): string | null {
+  const fromBody = (req.body as any)?.organizationId;
+  if (typeof fromBody === 'string' && fromBody) return fromBody;
+  const fromQuery = req.query?.organizationId;
+  if (typeof fromQuery === 'string' && fromQuery) return fromQuery;
+  return null;
+}
+
 /** Express middleware placed in front of an optional module's router. */
 export function moduleGate(key: string) {
   if (!RELEASE_MODULES.some(m => m.key === key)) throw new Error(`moduleGate: unknown module "${key}"`);
@@ -150,7 +163,7 @@ export function moduleGate(key: string) {
   return async (req: Request, res: Response, next: NextFunction) => {
     if (!isModuleEnabled(key)) return refuse(res);
     try {
-      const orgId = await callerOrganization(req);
+      const orgId = (await callerOrganization(req)) ?? addressedOrganization(req);
       if (orgId) {
         const settings = await getTenantModuleSettings(orgId);
         if (!isModuleEnabledForTenant(key, settings[key])) return refuse(res);

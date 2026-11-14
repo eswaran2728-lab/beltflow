@@ -12,7 +12,8 @@ function newId(prefix: string): string {
 
 // Helper: Check if user is an authorized master for a class
 async function verifyMasterClassAccess(user: any, classId: string, orgId: string): Promise<boolean> {
-  if (user.role === UserRole.SUPER_ADMIN) return true;
+  // Super Admin does not read or edit a Persatuan's lesson plans or private Master notes.
+  if (user.role === UserRole.SUPER_ADMIN) return false;
   if (user.role === UserRole.ADMIN_PERSATUAN) {
     return user.organizationId === orgId;
   }

@@ -295,6 +295,11 @@ router.post(
 
       const video = vidRes.rows[0];
 
+      // Only the person who requested the upload can finalize it.
+      if (video.uploader_user_id !== user.id || video.organization_id !== user.organizationId) {
+        return res.status(403).json({ error: 'Only the uploader can finalize this video.' });
+      }
+
       // Verify token
       if (token && video.presigned_token !== token) {
         return res.status(403).json({ error: 'Invalid upload token.' });
@@ -762,6 +767,10 @@ router.delete(
         if (!isLinked) {
           return res.status(403).json({ error: 'Guardians can only delete videos for their own children.' });
         }
+      }
+      // A Master may only delete videos of students they teach.
+      if (user.role === UserRole.MASTER && !(await isMasterAuthorizedForStudent(user.id, video.student_id, video.organization_id))) {
+        return res.status(403).json({ error: 'Masters can only delete videos of their own students.' });
       }
 
       // Soft delete: sets deleted_at and status = 'DELETED'

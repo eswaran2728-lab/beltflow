@@ -177,7 +177,7 @@ router.post('/make-up/request', authenticateJWT, async (req: Request, res: Respo
       if (!homeMasterCheck && user.organizationId !== student.organization_id) {
         return res.status(403).json({ error: 'Master cannot request make-up for unmanaged student.' });
       }
-    } else if (user.role !== UserRole.ADMIN_PERSATUAN) {
+    } else if (user.role !== UserRole.ADMIN_PERSATUAN || user.organizationId !== student.organization_id) {
       return res.status(403).json({ error: 'Unauthorized role.' });
     }
 
@@ -689,6 +689,19 @@ router.get('/sessions/:sessionId', authenticateJWT, async (req: Request, res: Re
       return res.status(404).json({ error: 'Session not found.' });
     }
     const sess = sessRes.rows[0];
+    const viewer = req.user!;
+    // Same Persatuan only; Super Admin never sees child booking lists.
+    if (!viewer.organizationId || viewer.organizationId !== sess.organization_id) {
+      return res.status(403).json({ error: 'Access denied.' });
+    }
+    // Parents and students see seat counts and only their own children's bookings.
+    let ownStudentIds: string[] | null = null;
+    if (viewer.role === UserRole.PARENT) {
+      ownStudentIds = viewer.linkedStudentIds || [];
+    } else if (viewer.role === UserRole.STUDENT) {
+      const own = await dbClient.query('SELECT id FROM students WHERE user_id = $1', [viewer.id]);
+      ownStudentIds = own.rows.map((r: any) => r.id);
+    }
 
     // Bookings list
     const bookingsRes = await dbClient.query(
@@ -711,7 +724,8 @@ router.get('/sessions/:sessionId', authenticateJWT, async (req: Request, res: Re
     const confirmedMakeups = bookingsRes.rows.filter(
       (b) => b.status === 'CONFIRMED' || (b.status === 'OFFERED' && (!b.offer_expires_at || new Date(b.offer_expires_at) > now))
     );
-    const waitlisted = bookingsRes.rows.filter((b) => b.status === 'WAITLISTED');
+    const visible = ownStudentIds ? bookingsRes.rows.filter((b) => ownStudentIds!.includes(b.student_id)) : bookingsRes.rows;
+    const waitlisted = visible.filter((b) => b.status === 'WAITLISTED');
 
     return res.json({
       session: sess,
@@ -719,7 +733,7 @@ router.get('/sessions/:sessionId', authenticateJWT, async (req: Request, res: Re
       enrolledHomeCount: Number(homeCountRes.rows[0]?.count || 0),
       confirmedMakeupCount: confirmedMakeups.length,
       availableSeats: Math.max(0, Number(sess.capacity || 30) - Number(homeCountRes.rows[0]?.count || 0) - confirmedMakeups.length),
-      bookings: bookingsRes.rows,
+      bookings: visible,
       waitlist: waitlisted,
     });
   } catch (err: any) {
@@ -750,6 +764,11 @@ router.get('/student/:studentId', authenticateJWT, async (req: Request, res: Res
       if (link.rowCount === 0) {
         return res.status(403).json({ error: 'Access denied to unlinked student.' });
       }
+    }
+    // Staff: same Persatuan only. Super Admin never sees a child's bookings.
+    if (user.role !== UserRole.STUDENT && user.role !== UserRole.PARENT &&
+        ((user.role !== UserRole.ADMIN_PERSATUAN && user.role !== UserRole.MASTER) || user.organizationId !== student.organization_id)) {
+      return res.status(403).json({ error: 'Access denied.' });
     }
 
     const bookingsRes = await dbClient.query(
