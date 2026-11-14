@@ -2,6 +2,8 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { dbClient } from '../db/client';
 import { authenticateJWT } from '../middleware/auth';
 import { UserRole } from '../security/rbac';
+import { studentAccess } from '../security/access';
+import { randomBytes } from 'crypto';
 
 const router = Router();
 
@@ -245,6 +247,14 @@ router.post('/orders', authenticateJWT, async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Order must contain at least one item.' });
     }
 
+    // An order may only name a student the buyer is allowed to act for, in this Persatuan.
+    if (studentId !== undefined && studentId !== null && studentId !== '') {
+      const access = typeof studentId === 'string' ? await studentAccess(req.user!, studentId) : { allowed: false, student: null };
+      if (!access.allowed || access.student?.organization_id !== targetOrgId) {
+        return res.status(403).json({ success: false, criterion: 'cross_tenant_order_denied', error: 'You cannot order for this student.' });
+      }
+    }
+
     const result = await dbClient.transaction(async (client) => {
       let totalAmount = 0;
       const orderItemsToInsert: Array<{ productId: string; quantity: number; unitPrice: number; totalPrice: number }> = [];
@@ -471,9 +481,13 @@ router.post('/orders/:orderId/reserve', authenticateJWT, async (req: Request, re
 // ----------------------------------------------------------------------------
 export async function confirmOrderPaymentInternal(
   orderId: string,
-  event: { paymentId?: string; amount?: number; method?: string; forceExpired?: boolean },
+  // Only the payment method is taken from the caller. The ledger row id is
+  // always generated here and expiry is decided from the database, so a
+  // client cannot pick which payment row is written or force a refund.
+  event: { method?: string },
   userOrgId?: string,
-  isSuperAdmin: boolean = false
+  isSuperAdmin: boolean = false,
+  recordedBy?: string
 ) {
   return await dbClient.transaction(async (client) => {
     // 1. Fetch order
@@ -519,8 +533,18 @@ export async function confirmOrderPaymentInternal(
       [orderId]
     );
 
+    // Only a RESERVED order can be fulfilled (stock was held for it).
+    if (order.status !== 'RESERVED') {
+      return {
+        status: 409,
+        data: { success: false, errorCode: 'ORDER_NOT_RESERVED', error: `Order is ${order.status}; reserve stock before recording payment.` }
+      };
+    }
+    const method = typeof event.method === 'string' && event.method.trim() ? event.method.trim().slice(0, 50) : 'DuitNow QR';
+    const newPaymentId = () => `pay_${Date.now()}_${randomBytes(6).toString('hex')}`;
+
     // 3. Check reservation expiration status
-    const isExpired = event.forceExpired || (
+    const isExpired = !!(
       order.reservation_expires_at &&
       new Date(order.reservation_expires_at).getTime() < Date.now()
     );
@@ -564,19 +588,19 @@ export async function confirmOrderPaymentInternal(
 
         // Record reversal in shared ledger
         const receiptNo = `REF-LATE-${Date.now()}`;
-        const payId = event.paymentId || `pay_rev_${Date.now()}`;
+        // Append-only: always a new ledger row, never an update of an existing one.
         await client.query(
-          `INSERT INTO payments (id, organization_id, student_id, amount, method, proof_notes, receipt_no, submitted_by, status)
-           VALUES ($1, $2, $3, $4, $5, 'Automated refund for late payment on expired reservation', $6, $7, 'Refunded')
-           ON CONFLICT (id) DO UPDATE SET status = 'Refunded'`,
+          `INSERT INTO payments (id, organization_id, student_id, amount, method, proof_notes, receipt_no, submitted_by, status, order_id)
+           VALUES ($1, $2, $3, $4, $5, 'Automated refund for late payment on expired reservation', $6, $7, 'Refunded', $8)`,
           [
-            payId,
+            newPaymentId(),
             order.organization_id,
             order.student_id || null,
             order.total_amount,
-            event.method || 'DuitNow QR',
+            method,
             receiptNo,
-            order.buyer_user_id
+            order.buyer_user_id,
+            orderId
           ]
         );
 
@@ -598,23 +622,27 @@ export async function confirmOrderPaymentInternal(
     for (const item of itemsRes.rows) {
       const requested = parseInt(item.quantity, 10);
 
-      if (order.status === 'RESERVED' && !isExpired) {
-        await client.query(
+      // Conditional decrement: stock can never go below zero.
+      const dec = !isExpired
+        ? await client.query(
           `UPDATE products
            SET stock_quantity = stock_quantity - $1,
                reserved_quantity = GREATEST(0, reserved_quantity - $1),
                updated_at = CURRENT_TIMESTAMP
-           WHERE id = $2`,
+           WHERE id = $2 AND stock_quantity >= $1
+           RETURNING id`,
           [requested, item.product_id]
-        );
-      } else {
-        await client.query(
+        )
+        : await client.query(
           `UPDATE products
            SET stock_quantity = stock_quantity - $1,
                updated_at = CURRENT_TIMESTAMP
-           WHERE id = $2`,
+           WHERE id = $2 AND stock_quantity >= $1
+           RETURNING id`,
           [requested, item.product_id]
         );
+      if (dec.rows.length === 0) {
+        throw Object.assign(new Error('Insufficient stock to fulfil order.'), { httpStatus: 409, errorCode: 'INSUFFICIENT_STOCK' });
       }
 
       // Record COMMITTED movement
@@ -628,20 +656,21 @@ export async function confirmOrderPaymentInternal(
 
     // 5. Update shared ledger (payments table)
     const receiptNo = `RCP-COMM-${Date.now()}`;
-    const paymentId = event.paymentId || `pay_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const paymentId = newPaymentId();
 
     await client.query(
-      `INSERT INTO payments (id, organization_id, student_id, amount, method, proof_notes, receipt_no, submitted_by, approved_at, status)
-       VALUES ($1, $2, $3, $4, $5, 'Commerce inventory purchase', $6, $7, CURRENT_TIMESTAMP, 'Approved')
-       ON CONFLICT (id) DO UPDATE SET status = 'Approved', receipt_no = $6`,
+      `INSERT INTO payments (id, organization_id, student_id, amount, method, proof_notes, receipt_no, submitted_by, approved_by, approved_at, status, order_id)
+       VALUES ($1, $2, $3, $4, $5, 'Commerce inventory purchase', $6, $7, $8, CURRENT_TIMESTAMP, 'Approved', $9)`,
       [
         paymentId,
         order.organization_id,
         order.student_id || null,
         order.total_amount,
-        event.method || 'DuitNow QR',
+        method,
         receiptNo,
-        order.buyer_user_id
+        order.buyer_user_id,
+        recordedBy || null,
+        orderId
       ]
     );
 
@@ -669,17 +698,23 @@ export async function confirmOrderPaymentInternal(
   });
 }
 
-router.post('/orders/:orderId/confirm-payment', authenticateJWT, async (req: Request, res: Response) => {
+// Recording that an order was paid is a staff action for the order's own
+// Persatuan (like recording a cash payment). Buyers cannot mark their own
+// order paid and Super Admin does not move tenant money.
+router.post('/orders/:orderId/confirm-payment', authenticateJWT, requireRole([UserRole.ADMIN_PERSATUAN, UserRole.MASTER]), async (req: Request, res: Response) => {
   try {
-    const isSuperAdmin = req.user?.role === UserRole.SUPER_ADMIN;
     const result = await confirmOrderPaymentInternal(
       req.params.orderId,
-      req.body,
+      { method: req.body?.method },
       req.user?.organizationId,
-      isSuperAdmin
+      false,
+      req.user?.id
     );
     return res.status(result.status).json(result.data);
   } catch (error: any) {
+    if (error?.httpStatus === 409) {
+      return res.status(409).json({ success: false, errorCode: error.errorCode, error: error.message });
+    }
     return res.status(500).json({ error: error.message || 'Failed to confirm order payment' });
   }
 });
@@ -847,7 +882,14 @@ router.get('/orders', authenticateJWT, async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Missing organization context' });
     }
 
-    let query = `
+    // Super Admin sees orders without any child data (child-privacy rule).
+    let query = req.user?.role === UserRole.SUPER_ADMIN
+      ? `
+      SELECT o.id, o.organization_id, o.total_amount, o.status, o.created_at, o.updated_at
+      FROM inventory_orders o
+      WHERE 1=1
+    `
+      : `
       SELECT o.*,
              u.full_name as buyer_name,
              u.email as buyer_email,

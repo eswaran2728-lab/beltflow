@@ -209,13 +209,13 @@ async function runTests() {
     // Reduce uniform stock to 0 to simulate total stock depletion during expired window
     await dbClient.query('UPDATE products SET stock_quantity = 0, reserved_quantity = 0 WHERE id = $1', [productUniformId]);
 
-    // Late payment event arrives for Order C
+    // The reservation window has passed (expiry comes from the database, never from the client).
+    await dbClient.query(`UPDATE inventory_orders SET reservation_expires_at = CURRENT_TIMESTAMP - INTERVAL '1 hour' WHERE id = $1`, [orderCId]);
+
+    // Late payment arrives for Order C and is recorded by the Persatuan's staff
     const latePayRes = await makeRequest(server, 'POST', `/commerce/orders/${orderCId}/confirm-payment`, {
-      paymentId: `pay_late_${timestamp}`,
-      amount: 120.00,
-      method: 'FPX',
-      forceExpired: true
-    }, tokenBuyer1);
+      method: 'FPX'
+    }, tokenAdminOrg1);
 
     // Must return 422 with late_payment_no_negative_stock and automated refund
     assert.strictEqual(latePayRes.status, 422);
@@ -230,7 +230,7 @@ async function runTests() {
     assert.strictEqual(finalStock, 0);
 
     // Verify automated refund recorded in shared ledger
-    const payCheck = await dbClient.query('SELECT status, receipt_no FROM payments WHERE id = $1', [`pay_late_${timestamp}`]);
+    const payCheck = await dbClient.query('SELECT status, receipt_no FROM payments WHERE receipt_no = $1', [latePayRes.data.receiptNo]);
     assert.strictEqual(payCheck.rows[0].status, 'Refunded');
     assert.ok(payCheck.rows[0].receipt_no.startsWith('REF-LATE-'));
 
@@ -258,10 +258,8 @@ async function runTests() {
 
     await makeRequest(server, 'POST', `/commerce/orders/${orderDId}/reserve`, {}, tokenBuyer1);
     const payDRes = await makeRequest(server, 'POST', `/commerce/orders/${orderDId}/confirm-payment`, {
-      paymentId: `pay_d_${timestamp}`,
-      amount: 240.00,
       method: 'DuitNow QR'
-    }, tokenBuyer1);
+    }, tokenAdminOrg1);
     assert.strictEqual(payDRes.status, 200);
 
     // Stock should now be 5 - 2 = 3
@@ -305,10 +303,7 @@ async function runTests() {
     }, tokenBuyer1);
     const orderEId = orderERes.data.order.id;
     await makeRequest(server, 'POST', `/commerce/orders/${orderEId}/reserve`, {}, tokenBuyer1);
-    await makeRequest(server, 'POST', `/commerce/orders/${orderEId}/confirm-payment`, {
-      paymentId: `pay_e_${timestamp}`,
-      amount: 120.00
-    }, tokenBuyer1);
+    await makeRequest(server, 'POST', `/commerce/orders/${orderEId}/confirm-payment`, {}, tokenAdminOrg1);
 
     // Stock is now 5 - 1 = 4
     const stockPreDiscard = await dbClient.query('SELECT stock_quantity FROM products WHERE id = $1', [productUniformId]);
@@ -359,10 +354,8 @@ async function runTests() {
     assert.strictEqual(crossReserve.status, 403);
     assert.strictEqual(crossReserve.data.criterion, 'cross_tenant_order_denied');
 
-    // Buyer from Org 2 attempts to confirm payment on Org 1 order
-    const crossConfirm = await makeRequest(server, 'POST', `/commerce/orders/${winningOrderId}/confirm-payment`, {
-      paymentId: 'cross_pay'
-    }, tokenBuyerOrg2);
+    // Staff from Org 2 attempt to confirm payment on Org 1 order
+    const crossConfirm = await makeRequest(server, 'POST', `/commerce/orders/${winningOrderId}/confirm-payment`, {}, tokenAdminOrg2);
     assert.strictEqual(crossConfirm.status, 403);
     assert.strictEqual(crossConfirm.data.criterion, 'cross_tenant_order_denied');
 

@@ -34,7 +34,7 @@ const SUITES = [
   'assistant_grounded_ai_h26', 'assistant_gemini_provider_h26', 'postgres_type_compat_h27',
   'release_certification_h27', 'worker_replay_h27', 'db_init_concurrency_h27', 'no_response_inside_transaction_h27',
   'ops_payment_safety_followups', 'notification_inbox', 'push_notifications', 'billing_status_sync',
-  'tenant_feature_flags',
+  'tenant_feature_flags', 'security_review_commerce',
 ];
 
 const distTests = path.join(__dirname, '..', 'dist', 'tests');

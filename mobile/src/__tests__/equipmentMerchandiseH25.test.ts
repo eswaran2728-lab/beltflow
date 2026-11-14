@@ -166,14 +166,11 @@ describe('Task H25: Equipment and Merchandise (commerce/inventory) Mobile Accept
       (apiClient.post as jest.Mock).mockResolvedValueOnce(mockPaidSuccess);
 
       const res = await commerceService.confirmOrderPayment('ord_valid_pay', {
-        paymentId: 'pay_123',
-        amount: 65.0,
         method: 'DuitNow QR',
       });
 
+      // Only the method is sent: the server generates the ledger row id.
       expect(apiClient.post).toHaveBeenCalledWith('/commerce/orders/ord_valid_pay/confirm-payment', {
-        paymentId: 'pay_123',
-        amount: 65.0,
         method: 'DuitNow QR',
       });
       expect(res.success).toBe(true);
@@ -193,11 +190,7 @@ describe('Task H25: Equipment and Merchandise (commerce/inventory) Mobile Accept
 
       (apiClient.post as jest.Mock).mockResolvedValueOnce(mockLateRefund);
 
-      const res = await commerceService.confirmOrderPayment('ord_expired_pay', {
-        paymentId: 'pay_late_evt',
-        amount: 120.0,
-        forceExpired: true,
-      });
+      const res = await commerceService.confirmOrderPayment('ord_expired_pay', {});
 
       expect(res.success).toBe(false);
       expect(res.status).toBe('PAYMENT_LATE_UNFULFILLED');
