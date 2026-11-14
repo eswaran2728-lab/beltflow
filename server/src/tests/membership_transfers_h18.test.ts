@@ -1,3 +1,5 @@
+import os from 'node:os';
+import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import app from '../app';
@@ -59,7 +61,8 @@ function makeRequest(
 async function runH18Tests() {
   console.log('🥋 Starting Task H18: Pauses, Returns and Controlled Transfers Integration Tests...');
   const path = await import('node:path');
-  const dbDir = path.resolve(process.cwd(), '.beltflow_pgdata');
+  // Fresh database per run (scripts/run-tests.js sets PG_DATA_DIR); never the developer's local .beltflow_pgdata.
+  const dbDir = process.env.PG_DATA_DIR || fs.mkdtempSync(path.join(os.tmpdir(), 'beltflow-test-'));
   await dbClient.init(dbDir);
 
   const server = http.createServer(app);
