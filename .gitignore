@@ -48,3 +48,6 @@ backups/
 db_backups/
 .claude/
 Codex Image*.png
+
+# Local agent planning workspace (ledgers, briefs)
+.superpowers/

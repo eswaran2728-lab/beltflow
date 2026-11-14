@@ -7,6 +7,7 @@
  *  C. Payment intents past expires_at become EXPIRED, but a genuine bank
  *     success webhook still settles them (money already moved).
  *  D. A failure webhook can never overwrite a SUCCEEDED intent.
+ *  H. Only one live payment per billing month (409 PAYMENT_IN_PROGRESS).
  *  G. An Admin Persatuan may only read payment intents of their own Persatuan.
  *  F. A second settlement for dues that are already paid is not silently
  *     absorbed: it is recorded as DISCREPANCY_AMOUNT for the admin to refund
@@ -147,6 +148,8 @@ async function runTests() {
     // ------------------------------------------------------------------ C
     await due('due_ops_c', '2026-01');
     const stale = await newIntent(['due_ops_c']);
+    // Only one live intent per month: the stale link must be past its window first.
+    await dbClient.query(`UPDATE payment_intents SET expires_at = CURRENT_TIMESTAMP - INTERVAL '1 minute' WHERE id = $1`, [stale.id]);
     const fresh = await newIntent(['due_ops_c']);
     await dbClient.query(`UPDATE payment_intents SET expires_at = CURRENT_TIMESTAMP - INTERVAL '1 minute' WHERE id = $1`, [stale.id]);
     const expiredCount = await expireStalePaymentIntents();
@@ -183,6 +186,8 @@ async function runTests() {
     // ------------------------------------------------------------------ F
     await due('due_ops_f', '2026-03');
     const f1 = await newIntent(['due_ops_f']);
+    // A second payment is only possible once the first link expired (the bank can still confirm both).
+    await dbClient.query(`UPDATE payment_intents SET expires_at = CURRENT_TIMESTAMP - INTERVAL '1 minute' WHERE id = $1`, [f1.id]);
     const f2 = await newIntent(['due_ops_f']);
     assert.equal((await webhook(f1, 'payment.succeeded')).status, 200);
     assert.equal((await webhook(f2, 'payment.succeeded')).status, 200);
@@ -198,6 +203,52 @@ async function runTests() {
     assert.equal(admView.status, 200);
     assert.ok(JSON.stringify(admView.data).includes('DISCREPANCY_AMOUNT'), 'the admin reconciliation view shows the flag');
     console.log('✅ F: a duplicate payment is flagged DISCREPANCY_AMOUNT and dues are not over-applied.');
+
+    // ------------------------------------------------------------------ H
+    const post = (body: object) => request(server, 'POST', '/payments/intents', { token: tPar, body: { studentId, paymentMethod: 'FPX', fpxBankCode: 'TEST0001', ...body } });
+    // H1: an exact idempotent retry still returns the same intent.
+    await due('due_ops_h1', '2026-05');
+    const h1 = await post({ billingMonthIds: ['due_ops_h1'], idempotencyKey: 'idem_ops_h1' });
+    assert.equal(h1.status, 201);
+    const h1again = await post({ billingMonthIds: ['due_ops_h1'], idempotencyKey: 'idem_ops_h1' });
+    assert.equal(h1again.status, 200, 'idempotent retry is not refused');
+    assert.equal(h1again.data.intent.id, h1.data.intent.id);
+    assert.notEqual(h1again.data.code, 'PAYMENT_IN_PROGRESS');
+    // H2: a month already in a live payment is refused, even mixed with a new month.
+    await due('due_ops_h2a', '2026-06');
+    await due('due_ops_h2b', '2026-07');
+    const h2 = await newIntent(['due_ops_h2a']);
+    const h2dup = await post({ billingMonthIds: ['due_ops_h2a', 'due_ops_h2b'] });
+    assert.equal(h2dup.status, 409, `second payment refused (${JSON.stringify(h2dup.data)})`);
+    assert.equal(h2dup.data.code, 'PAYMENT_IN_PROGRESS');
+    assert.equal(h2dup.data.intent.id, h2.id, 'the payment in progress is returned');
+    assert.ok(h2dup.data.intent.providerSessionUrl, 'so the app can reopen the bank page');
+    const h2bIntents = await dbClient.query(`SELECT id FROM payment_intents WHERE student_id = $1 AND 'due_ops_h2b' = ANY(billing_month_ids)`, [studentId]);
+    assert.equal(h2bIntents.rows.length, 0, 'no new intent was created');
+    // H3: an intent past its window but not yet swept does not block.
+    await due('due_ops_h3', '2026-08');
+    const h3 = await newIntent(['due_ops_h3']);
+    await dbClient.query(`UPDATE payment_intents SET expires_at = CURRENT_TIMESTAMP - INTERVAL '1 minute' WHERE id = $1`, [h3.id]);
+    assert.equal(await intentStatus(h3.id), 'PENDING_PROCESSING');
+    assert.equal((await post({ billingMonthIds: ['due_ops_h3'] })).status, 201, 'an overdue link frees the month');
+    // H4: a failed attempt does not block a retry; another child is not blocked.
+    await due('due_ops_h4', '2026-09');
+    const h4 = await newIntent(['due_ops_h4']);
+    assert.equal((await webhook(h4, 'payment.failed')).status, 200);
+    assert.equal((await post({ billingMonthIds: ['due_ops_h4'] })).status, 201, 'retry after a failure is allowed');
+    await dbClient.query(
+      `INSERT INTO students (id, organization_id, full_name, ic_number, belt_rank, status, billing_status)
+       VALUES ('stu_ops_2', $1, 'Test Student Ops Two', '000000-00-0002', 'White Belt', 'Active', 'Unpaid') ON CONFLICT (id) DO NOTHING`, [org]);
+    await dbClient.query(
+      `INSERT INTO parent_student_links (id, parent_id, student_id, status, student_approved, master_approved, admin_approved)
+       VALUES ('psl_ops_2', 'ops_par', 'stu_ops_2', 'ACTIVE', true, true, true) ON CONFLICT (parent_id, student_id) DO NOTHING`);
+    await dbClient.query(
+      `INSERT INTO monthly_dues (id, organization_id, class_id, student_id, billing_month, fee_amount, amount_paid, status)
+       VALUES ('due_ops_h4s', $1, 'cls_ops_1', 'stu_ops_2', '2026-09', 80.00, 0.00, 'Pending') ON CONFLICT (id) DO NOTHING`, [org]);
+    const tPar2 = tok('ops_par', UserRole.PARENT, org, { linkedStudentIds: [studentId, 'stu_ops_2'] });
+    const other = await request(server, 'POST', '/payments/intents', { token: tPar2, body: { studentId: 'stu_ops_2', billingMonthIds: ['due_ops_h4s'], paymentMethod: 'FPX', fpxBankCode: 'TEST0001' } });
+    assert.equal(other.status, 201, `another child's payment is not blocked (${JSON.stringify(other.data)})`);
+    console.log('✅ H: one live payment per month; idempotent retries, overdue links, failed attempts and other children are not blocked.');
 
     // ------------------------------------------------------------------ G
     const otherOrg = 'org_ops_other';

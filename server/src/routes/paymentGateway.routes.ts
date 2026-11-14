@@ -300,6 +300,38 @@ paymentGatewayRouter.post('/intents', authenticateJWT, async (req: Request, res:
       }
     }
 
+    // 4b. One live payment per billing month: refuse a second payment for any
+    // month already in an unpaid intent that has not expired, and return that
+    // intent so the app can reopen it (prevents paying twice).
+    const inFlight = await dbClient.query(
+      `SELECT * FROM payment_intents
+       WHERE student_id = $1
+         AND billing_month_ids && $2::text[]
+         AND status IN ('REQUIRES_PAYMENT_METHOD', 'PENDING_PROCESSING')
+         AND expires_at > CURRENT_TIMESTAMP
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [studentId, billingMonthIds]
+    );
+    if (inFlight.rows.length > 0) {
+      const row = inFlight.rows[0];
+      return res.status(409).json({
+        error: 'A payment for these months is already in progress.',
+        code: 'PAYMENT_IN_PROGRESS',
+        intent: {
+          id: row.id,
+          amountCents: row.amount_cents,
+          amountRM: (row.amount_cents / 100).toFixed(2),
+          currency: row.currency,
+          status: row.status,
+          paymentMethod: row.payment_method,
+          providerSessionUrl: row.provider_session_url,
+          providerTxId: row.provider_tx_id,
+          expiresAt: row.expires_at,
+        },
+      });
+    }
+
     // 5. Create Payment Intent Row
     const intentId = newId('pi');
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes window

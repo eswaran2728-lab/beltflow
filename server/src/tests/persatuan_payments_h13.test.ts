@@ -269,6 +269,32 @@ async function runTests() {
     const providerTxId = intentRes.data.intent.providerTxId;
     console.log('✅ Requirement 5 & 8 Passed: Server-authoritative sen calculation & FPX adapter contract verified.');
 
+    // 8b. Only one live payment per billing month (2026-11-14 owner decision):
+    // October is already in the pending 16,000-sen intent above.
+    const secondForOctober = await makeRequest(
+      server,
+      'POST',
+      '/payments/intents',
+      { studentId: studentA1Id, billingMonthIds: [due1Id], paymentMethod: 'FPX' },
+      tokenParentA
+    );
+    assert.equal(secondForOctober.status, 409, 'A second payment for a month already in progress must be refused');
+    assert.equal(secondForOctober.data.code, 'PAYMENT_IN_PROGRESS');
+    assert.equal(secondForOctober.data.intent.id, intentId, 'The payment already in progress is returned');
+    console.log('✅ Requirement 26 Passed: A second payment for a month already in progress is refused.');
+
+    // Steps 9 and 10 check the adapter and amount handling on their own months,
+    // so they do not overlap the pending October/November intent.
+    const forgedDueId = 'due_pay_forged_test';
+    const duitnowDueId = 'due_pay_duitnow_test';
+    await dbClient.query(
+      `INSERT INTO monthly_dues (id, organization_id, class_id, student_id, billing_month, fee_amount, amount_paid, status)
+       VALUES ($1, $2, $3, $4, '2027-01', 80.00, 0.00, 'Pending'),
+              ($5, $2, $3, $4, '2027-02', 80.00, 0.00, 'Pending')
+       ON CONFLICT (id) DO NOTHING`,
+      [forgedDueId, orgIdA, classAId, studentA1Id, duitnowDueId]
+    );
+
     // 9. Client attempted amount tampering is rejected / ignored (server does not accept client amount)
     const forgedAttemptRes = await makeRequest(
       server,
@@ -276,7 +302,7 @@ async function runTests() {
       '/payments/intents',
       {
         studentId: studentA1Id,
-        billingMonthIds: [due1Id],
+        billingMonthIds: [forgedDueId],
         amount: 1.00, // Forged client amount!
         amountCents: 100,
         paymentMethod: 'FPX',
@@ -295,7 +321,7 @@ async function runTests() {
       '/payments/intents',
       {
         studentId: studentA1Id,
-        billingMonthIds: [due1Id],
+        billingMonthIds: [duitnowDueId],
         paymentMethod: 'DUITNOW_QR',
       },
       tokenParentA
@@ -304,6 +330,10 @@ async function runTests() {
     assert.equal(duitnowIntentRes.data.intent.paymentMethod, 'DUITNOW_QR');
     assert.ok(duitnowIntentRes.data.intent.providerSessionUrl.includes('sandbox-pay.beltflow.local'));
     console.log('✅ Requirement 9 Passed: DuitNow provider adapter contract verified.');
+
+    // Remove the two helper months and their unpaid intents so later billing-status checks are unchanged.
+    await dbClient.query(`DELETE FROM payment_intents WHERE billing_month_ids && $1::text[]`, [[forgedDueId, duitnowDueId]]);
+    await dbClient.query(`DELETE FROM monthly_dues WHERE id = ANY($1::text[])`, [[forgedDueId, duitnowDueId]]);
 
     // 11. Idempotency on payment intent creation with network retry
     const retryIntentRes = await makeRequest(
