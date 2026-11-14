@@ -513,6 +513,7 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
                   variant="outline"
                   size="sm"
                   fullWidth
+                  testID="btn-reopen-checkout"
                 />
               ) : null}
             </View>

@@ -248,6 +248,8 @@ describe('H28 next-step cards for more waiting states', () => {
     expect(r.getByTestId('payment-next-step')).toBeTruthy();
     expect(r.getByTestId('btn-check-payment-status')).toBeTruthy();
     expect(alertSpy).toHaveBeenCalledWith(en['parentHome.fees.inProgressTitle'], en['parentHome.fees.inProgressMessage']);
+    // The payer can reopen their bank page.
+    expect(r.getByTestId('btn-reopen-checkout')).toBeTruthy();
     await act(async () => { await r.unmount(); });
   });
 
@@ -264,6 +266,8 @@ describe('H28 next-step cards for more waiting states', () => {
     await act(async () => { fireEvent.press(r.getByTestId('btn-pay-now')); });
     await waitFor(() => expect(r.getByTestId('active-intent-card')).toBeTruthy());
     expect(r.getByTestId('btn-check-payment-status')).toBeTruthy();
+    // Without the payer's link there is nothing to reopen.
+    expect(r.queryByTestId('btn-reopen-checkout')).toBeNull();
     await act(async () => { await r.unmount(); });
   });
 

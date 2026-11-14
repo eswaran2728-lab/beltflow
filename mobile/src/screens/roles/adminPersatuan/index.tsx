@@ -54,7 +54,6 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
   const { colors, typography, spacing, iconSize } = useTheme();
   // H28: follow the app-wide language; the header switch changes it for the whole app.
   const app = useI18n();
-  // Optional R3 modules: hide their shortcuts when the server switches them off.
   const [lang, setLangLocal] = useState<AdminLanguage>(app.locale);
   const [seenLocale, setSeenLocale] = useState(app.locale);
   if (seenLocale !== app.locale) {

@@ -152,7 +152,6 @@ async function runTests() {
     // Only one live intent per month: the stale link must be past its window first.
     await dbClient.query(`UPDATE payment_intents SET expires_at = CURRENT_TIMESTAMP - INTERVAL '1 minute' WHERE id = $1`, [stale.id]);
     const fresh = await newIntent(['due_ops_c']);
-    await dbClient.query(`UPDATE payment_intents SET expires_at = CURRENT_TIMESTAMP - INTERVAL '1 minute' WHERE id = $1`, [stale.id]);
     const expiredCount = await expireStalePaymentIntents();
     assert.ok(expiredCount >= 1, 'at least the stale intent expired');
     assert.equal(await intentStatus(stale.id), 'EXPIRED');
