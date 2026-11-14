@@ -944,6 +944,11 @@ export async function approveEnrollment(params: {
     if (stu.organization_id !== app.organization_id) {
       throw new AuthorityError('Student does not belong to the same organization as the class.', 403, 'CROSS_ORGANIZATION');
     }
+    // Approving an enrollment cannot take an active student out of another class;
+    // that is a class transfer, which needs both Masters.
+    if (stu.class_id && stu.class_id !== app.class_id && stu.status === 'ACTIVE') {
+      throw new AuthorityError('Student is active in another class. Use a class transfer instead.', 409, 'USE_TRANSFER');
+    }
 
     // 10. Update Student to ACTIVE and link class_id (preserving canonical student ID)
     const classFee = Number(cls.monthly_fee || 120.0);

@@ -104,18 +104,27 @@ router.post('/', authenticateJWT, async (req: Request, res: Response) => {
       if (!targetStudentId) {
         return res.status(400).json({ error: 'studentId is required.' });
       }
+      // Staff only act inside their own Persatuan.
+      if (!user.organizationId || cls.organization_id !== user.organizationId) {
+        return res.status(403).json({ error: 'You can only submit applications for your own Persatuan.' });
+      }
     } else {
       return res.status(403).json({ error: 'Unauthorized role for enrollment application.' });
     }
 
     // Verify student belongs to class's organization
-    const stuRes = await dbClient.query('SELECT id, organization_id, full_name, ic_number, phone FROM students WHERE id = $1', [targetStudentId]);
+    const stuRes = await dbClient.query('SELECT id, organization_id, class_id, status, full_name, ic_number, phone FROM students WHERE id = $1', [targetStudentId]);
     if (stuRes.rowCount === 0) {
       return res.status(404).json({ error: 'Student record not found.' });
     }
     const student = stuRes.rows[0];
     if (student.organization_id !== cls.organization_id) {
       return res.status(403).json({ error: 'Cross-Persatuan enrollment is not permitted: student and class belong to different organizations.' });
+    }
+    // A Master may only apply for a student they already teach, or one not yet in any class.
+    // Moving a student out of another Master's class goes through the transfer flow.
+    if (user.role === UserRole.MASTER && student.class_id && !(user.assignedClassIds || []).includes(student.class_id)) {
+      return res.status(403).json({ error: 'This student is in another class. Use a class transfer instead.' });
     }
 
     const appStatus = requestedStatus === 'DRAFT' ? 'DRAFT' : 'SUBMITTED';
@@ -152,7 +161,8 @@ router.post('/', authenticateJWT, async (req: Request, res: Response) => {
 
     return res.status(201).json({
       message: appStatus === 'DRAFT' ? 'Application draft saved.' : 'Enrollment application submitted successfully.',
-      application: insertRes.rows[0],
+      // Identity numbers are not echoed back.
+      application: { ...insertRes.rows[0], ic_number: undefined, phone: undefined },
     });
   } catch (err: any) {
     console.error('[Create enrollment application error]', err);

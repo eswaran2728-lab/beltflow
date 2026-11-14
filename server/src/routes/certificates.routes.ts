@@ -35,7 +35,9 @@ router.post('/public-verify', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Certificate code or verification token is required.' });
     }
 
-    const rawIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || '127.0.0.1';
+    // req.ip honours X-Forwarded-For only when TRUST_PROXY_HOPS is configured (app.ts),
+    // so a client cannot dodge the rate limit by sending its own header.
+    const rawIp = req.ip || req.socket.remoteAddress || '127.0.0.1';
     const clientIpHash = crypto.createHash('sha256').update(rawIp).digest('hex');
 
     // Rate Limiting & Enumeration Defense: Check attempts within last 5 minutes (max 15 attempts)
@@ -165,7 +167,7 @@ router.post('/verify', authenticateJWT, requirePermission(Permission.CERTIFICATE
 });
 
 // Revoke Certificate (Persatuan Admin / Issuing Authority)
-router.post('/:id/revoke', authenticateJWT, async (req: Request, res: Response) => {
+router.post('/:id/revoke', authenticateJWT, requirePermission(Permission.CERTIFICATE_REVOKE), async (req: Request, res: Response) => {
   try {
     const { reason } = req.body;
     const certRes = await dbClient.query('SELECT * FROM certificates WHERE id = $1', [req.params.id]);

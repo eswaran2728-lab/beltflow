@@ -111,6 +111,16 @@ async function isGuardianLinkedToStudent(guardianId: string, studentId: string):
 // 1. POST /api/v1/messaging/threads (createThread(childId, classId))
 // Acceptance test: cross_class_thread_denied
 // ============================================================================
+
+// A guardian keeps access to a thread only while their link to that child is ACTIVE.
+async function guardianLinkActive(parentId: string, studentId: string): Promise<boolean> {
+  const r = await dbClient.query(
+    `SELECT 1 FROM parent_student_links WHERE parent_id = $1 AND student_id = $2 AND status = 'ACTIVE' LIMIT 1;`,
+    [parentId, studentId]
+  );
+  return r.rows.length > 0;
+}
+
 router.post('/threads', authenticateJWT, async (req: Request, res: Response) => {
   try {
     const user = req.user;
@@ -348,7 +358,7 @@ router.post('/threads/:threadId/messages', authenticateJWT, async (req: Request,
         });
       }
     } else if (user.role === UserRole.PARENT) {
-      if (thread.parent_id !== user.id) {
+      if (thread.parent_id !== user.id || !(await guardianLinkActive(user.id, thread.student_id))) {
         return res.status(403).json({ error: 'Guardians can only message in their own child threads.' });
       }
     } else if (user.role !== UserRole.ADMIN_PERSATUAN) {
@@ -532,8 +542,12 @@ router.get('/threads/:threadId/messages', authenticateJWT, async (req: Request, 
         error: 'no_private_thread_auto_handover: Incoming or unassigned Master cannot access another instructor private thread.',
       });
     }
-    if (user.role === UserRole.PARENT && thread.parent_id !== user.id) {
+    if (user.role === UserRole.PARENT && (thread.parent_id !== user.id || !(await guardianLinkActive(user.id, thread.student_id)))) {
       return res.status(403).json({ error: 'Guardian unauthorized to view this thread.' });
+    }
+    // Private parent–Master threads: only the participants and the Persatuan Admin.
+    if (![UserRole.MASTER, UserRole.PARENT, UserRole.ADMIN_PERSATUAN].includes(user.role as UserRole)) {
+      return res.status(403).json({ error: 'Unauthorized to view this thread.' });
     }
 
     // Fetch messages

@@ -3,6 +3,7 @@ import { dbClient } from '../db/client';
 import { authenticateJWT } from '../middleware/auth';
 import { UserRole } from '../security/rbac';
 import { safeErrorMessage } from '../security/errors';
+import { studentAccess } from '../security/access';
 
 const router = Router();
 
@@ -98,9 +99,12 @@ router.get('/students/:studentId/timeline', authenticateJWT, async (req: Request
       if (student.user_id !== user.id) {
         return res.status(403).json({ error: 'Access denied. You can only view your own timeline.' });
       }
-    } else if (user.role === UserRole.ADMIN_PERSATUAN) {
-      if (student.organization_id !== user.organizationId) {
-        return res.status(403).json({ error: 'Access denied to students in another Persatuan.' });
+    } else {
+      // Admin of the same Persatuan or the student's assigned Master. Super Admin
+      // never sees an individual child's record.
+      const access = await studentAccess(user, studentId);
+      if (!access.allowed) {
+        return res.status(403).json({ error: 'Access denied to this student.' });
       }
     }
 
