@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import app from '../app';
 import { dbClient } from '../db/client';
+import { signMediaStorageToken, resolveMediaStorageSecret } from '../services/mediaStorageAdapter';
 import { generateAuthToken } from '../security/crypto';
 import { UserRole } from '../security/rbac';
 
@@ -249,6 +250,36 @@ async function runPreflightTests() {
     assert.strictEqual(finRes.status, 200);
     assert.strictEqual(finRes.data.status, 'UPLOADED');
     console.log('✅ Integrated upload and magic byte verification succeeded.');
+
+    // ------------------------------------------------------------------------
+    console.log('--- 2b. Security review 2026-11-14: storage link hardening ---');
+    // A finished upload cannot be overwritten with the same link.
+    const reUpload = await makeRequest(server, 'PUT', upReq.data.uploadUrl, undefined, undefined, mp4Buffer, 'video/mp4');
+    assert.strictEqual(reUpload.status, 409, `re-upload after finalize must be refused: ${JSON.stringify(reUpload.data)}`);
+
+    const pendingReq = await makeRequest(server, 'POST', '/media/upload-request',
+      { studentId, title: 'Pending Clip', techniqueCategory: 'SPARRING', fileSize: 16, mimeType: 'video/mp4', durationSeconds: 5 }, studentToken);
+    assert.strictEqual(pendingReq.status, 201);
+    const pendingKey: string = pendingReq.data.storageKey || decodeURIComponent(pendingReq.data.uploadUrl.split('/storage/upload/')[1].split('?')[0]);
+    // An upload link is not a playback link (and vice versa: the operation is signed).
+    const asPlayback = pendingReq.data.uploadUrl.replace('/storage/upload/', '/storage/playback/');
+    assert.strictEqual((await makeRequest(server, 'GET', asPlayback)).status, 403, 'upload token cannot be used for playback');
+    // A correctly signed link with a far-future expiry is refused (lifetime cap).
+    const farExp = Math.floor(Date.now() / 1000) + 10 * 365 * 24 * 3600;
+    const farTok = signMediaStorageToken('upload', pendingKey, farExp);
+    const farUrl = `/api/v1/media/storage/upload/${encodeURIComponent(pendingKey)}?token=${farTok}&expires=${farExp}`;
+    assert.strictEqual((await makeRequest(server, 'PUT', farUrl, undefined, undefined, mp4Buffer, 'video/mp4')).status, 403, 'expiry beyond the cap is refused');
+    // A malformed token is a clean 403, not a server error.
+    const badUrl = `/api/v1/media/storage/upload/${encodeURIComponent(pendingKey)}?token=abc&expires=${Math.floor(Date.now() / 1000) + 60}`;
+    assert.strictEqual((await makeRequest(server, 'PUT', badUrl, undefined, undefined, mp4Buffer, 'video/mp4')).status, 403);
+    // The signing secret: required (32+ chars) in production, random per process otherwise.
+    assert.throws(() => resolveMediaStorageSecret({ NODE_ENV: 'production' }), /MEDIA_STORAGE_SECRET/);
+    assert.throws(() => resolveMediaStorageSecret({ NODE_ENV: 'production', MEDIA_STORAGE_SECRET: 'short' }), /MEDIA_STORAGE_SECRET/);
+    const longSecret = 'x'.repeat(40);
+    assert.strictEqual(resolveMediaStorageSecret({ NODE_ENV: 'production', MEDIA_STORAGE_SECRET: longSecret }), longSecret);
+    const devA = resolveMediaStorageSecret({});
+    assert.ok(/^[0-9a-f]{64}$/.test(devA) && devA !== resolveMediaStorageSecret({}), 'dev secret is random, never a committed default');
+    console.log('✅ Storage links are operation-bound, lifetime-capped, single-use for upload, and the secret has no default.');
 
     // ------------------------------------------------------------------------
     console.log('--- 3. Storage Magic Byte Enforcement: rejects non-video binary ---');

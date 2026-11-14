@@ -812,8 +812,19 @@ router.put('/storage/upload/:key(*)', async (req: Request, res: Response) => {
     if (Math.floor(Date.now() / 1000) > expires) {
       return res.status(403).json({ error: 'expired_URL_denied: Upload URL has expired.' });
     }
-    if (!mediaStorageAdapter.verifyToken(key, token, expires)) {
+    if (!mediaStorageAdapter.verifyToken(key, token, expires, 'upload')) {
       return res.status(403).json({ error: 'Invalid or forged storage upload token.' });
+    }
+    // Only a video still waiting for its upload accepts bytes, so a link
+    // cannot be reused to replace a finished video.
+    const videoRes = await dbClient.query(
+      `SELECT upload_status, deleted_at FROM video_submissions WHERE storage_key = $1 LIMIT 1;`, [key]);
+    const video = videoRes.rows[0];
+    if (!video || video.deleted_at) {
+      return res.status(404).json({ error: 'Upload target not found.' });
+    }
+    if (video.upload_status !== 'PENDING_UPLOAD') {
+      return res.status(409).json({ error: 'This video has already been uploaded.' });
     }
 
     // Read body buffer
@@ -855,10 +866,20 @@ router.get('/storage/playback/:key(*)', async (req: Request, res: Response) => {
     if (Math.floor(Date.now() / 1000) > expires) {
       return res.status(403).json({ error: 'expired_URL_denied: Playback URL has expired.' });
     }
-    if (!mediaStorageAdapter.verifyToken(key, token, expires)) {
+    if (!mediaStorageAdapter.verifyToken(key, token, expires, 'playback')) {
       return res.status(403).json({
         error: 'consent_revocation_blocks_new_access: Invalid, expired, or revoked playback token.',
       });
+    }
+    // Re-check the video and consent on every request (not only in memory).
+    const videoRes = await dbClient.query(
+      `SELECT student_id, organization_id, deleted_at FROM video_submissions WHERE storage_key = $1 LIMIT 1;`, [key]);
+    const video = videoRes.rows[0];
+    if (!video || video.deleted_at) {
+      return res.status(404).json({ error: 'deleted_media_not_returned_by_API: Video not found on storage.' });
+    }
+    if (!(await isMediaConsentActive(video.student_id, video.organization_id))) {
+      return res.status(403).json({ error: 'consent_revocation_blocks_new_access: Media consent is not active.' });
     }
 
     const obj = await mediaStorageAdapter.getObject(key, token);
