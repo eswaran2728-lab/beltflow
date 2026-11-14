@@ -21,6 +21,7 @@ import app from '../app';
 import { dbClient } from '../db/client';
 import { generateAuthToken } from '../security/crypto';
 import { UserRole } from '../security/rbac';
+import { getPaymentGatewayAdapter } from '../services/payment/gatewayRegistry';
 
 type Res = { status: number; data: any };
 function request(server: http.Server, method: string, urlPath: string, token?: string, body?: any): Promise<Res> {
@@ -167,6 +168,18 @@ async function runTests() {
       assert.ok(!o.student_name && !o.student_id, 'Super Admin never sees child names or ids');
     }
     console.log('✅ Super Admin order list contains no child data.');
+
+    // ------------------------------------------------ gateway fails closed in production
+    const savedEnv = process.env.NODE_ENV;
+    try {
+      process.env.NODE_ENV = 'production';
+      assert.throws(() => getPaymentGatewayAdapter('UNCONFIGURED_LIVE'), /not configured/, 'an unknown provider never falls back to the sandbox in production');
+      assert.ok(getPaymentGatewayAdapter('SANDBOX'));
+    } finally {
+      if (savedEnv === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = savedEnv;
+    }
+    assert.ok(getPaymentGatewayAdapter('UNCONFIGURED_LIVE'), 'development keeps the sandbox fallback');
+    console.log('✅ Unknown payment providers fail closed in production.');
 
     console.log('\n🎉 Commerce security review tests PASSED.');
   } finally {

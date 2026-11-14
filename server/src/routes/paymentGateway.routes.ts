@@ -373,9 +373,9 @@ paymentGatewayRouter.post('/intents', authenticateJWT, async (req: Request, res:
 
 
     // 6. Invoke Gateway Adapter for Session URL
-    const adapter = getPaymentGatewayAdapter(merchant.provider);
     let sessionResult;
     try {
+      const adapter = getPaymentGatewayAdapter(merchant.provider);
       sessionResult = await adapter.createPaymentSession(
       {
         intentId,

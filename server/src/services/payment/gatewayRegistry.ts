@@ -53,7 +53,12 @@ export function getPaymentGatewayAdapter(provider: string = 'SANDBOX'): PaymentG
   const normalized = (provider || 'SANDBOX').toUpperCase();
   const adapter = adapters[normalized];
   if (!adapter) {
-    // If an unconfigured live provider is requested without production credentials, return Sandbox with fallback warning
+    // Production fails closed: an unconfigured provider must never be served by
+    // the sandbox (which would accept test-signed success events).
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(`Payment provider ${normalized} is not configured.`);
+    }
+    // Development / test: sandbox fallback.
     return adapters['SANDBOX'];
   }
   return adapter;
