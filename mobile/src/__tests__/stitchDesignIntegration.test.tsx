@@ -343,3 +343,44 @@ describe('Google Stitch UI/UX Approved Design System Integration', () => {
     expect(handleSelectRole).toHaveBeenCalledWith('student');
   });
 });
+
+// 2026-11-14 owner decision: the pre-filled guardian WhatsApp message follows the Master's app language.
+describe('guardian WhatsApp message', () => {
+  const { Alert, Linking } = jest.requireActual('react-native');
+  const { I18nProvider, translate } = jest.requireActual('../i18n');
+  const metricsWa = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 47, left: 0, right: 0, bottom: 34 } };
+  const student = { id: 'stu_wa_1', name: 'Test Child', missedCount: 3, parentPhone: '+60 12-000 0000' };
+
+  const openWhatsAppIn = async (locale: 'en' | 'ms' | 'ta') => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const openSpy = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    const r = await render(
+      <SafeAreaProvider initialMetrics={metricsWa}>
+        <I18nProvider initialLocale={locale}>
+          <ThemeProvider defaultMode="light">
+            <AtRiskAttendanceAlert students={[student]} />
+          </ThemeProvider>
+        </I18nProvider>
+      </SafeAreaProvider>
+    );
+    await act(async () => { fireEvent.press(r.getByTestId('btn-ping-parent-stu_wa_1')); });
+    const buttons = alertSpy.mock.calls[0][2] as Array<{ onPress?: () => void }>;
+    await act(async () => { buttons[buttons.length - 1].onPress?.(); });
+    const url = String(openSpy.mock.calls[0][0]);
+    alertSpy.mockRestore();
+    openSpy.mockRestore();
+    await act(async () => { await r.unmount(); });
+    return url;
+  };
+
+  it('guardian WhatsApp message follows the app language', async () => {
+    const url = await openWhatsAppIn('ms');
+    expect(url.startsWith('https://wa.me/60120000000?text=')).toBe(true);
+    expect(decodeURIComponent(url.split('?text=')[1])).toBe(translate('ms', 'components.atRisk.whatsappMessage', { name: 'Test Child' }));
+  });
+
+  it('guardian WhatsApp message is unchanged in English', async () => {
+    const url = await openWhatsAppIn('en');
+    expect(decodeURIComponent(url.split('?text=')[1])).toBe("Salam, this is your Master from the Dojang regarding Test Child's attendance.");
+  });
+});

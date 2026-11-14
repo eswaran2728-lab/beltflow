@@ -45,7 +45,7 @@ export const AtRiskAttendanceAlert: React.FC<AtRiskAttendanceAlertProps> = ({
           onPress: () => {
             const cleanPhone = (student.parentPhone || '').replace(/[^0-9]/g, '');
             const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(
-              `Salam, this is your Master from the Dojang regarding ${student.name}'s attendance.`
+              t('components.atRisk.whatsappMessage', { name: student.name })
             )}`;
             Linking.openURL(url).catch(() => {});
           },

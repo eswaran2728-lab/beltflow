@@ -144,6 +144,7 @@ export const componentsEn = {
   'components.trainee.markPresentA11y': 'Mark {name} present',
   'components.trainee.markLateA11y': 'Mark {name} late',
   'components.trainee.markAbsentA11y': 'Mark {name} absent',
+  'components.atRisk.whatsappMessage': 'Salam, this is your Master from the Dojang regarding {name}\'s attendance.',
 };
 
 export const componentsMs: Record<keyof typeof componentsEn, string> = {
@@ -287,6 +288,7 @@ export const componentsMs: Record<keyof typeof componentsEn, string> = {
   'components.trainee.markPresentA11y': 'Tandakan {name} hadir',
   'components.trainee.markLateA11y': 'Tandakan {name} lewat',
   'components.trainee.markAbsentA11y': 'Tandakan {name} tidak hadir',
+  'components.atRisk.whatsappMessage': 'Salam, ini Master anda dari Dojang mengenai kehadiran {name}.',
 };
 
 export const componentsTa: Record<keyof typeof componentsEn, string> = {
@@ -430,4 +432,5 @@ export const componentsTa: Record<keyof typeof componentsEn, string> = {
   'components.trainee.markPresentA11y': '{name} ஐ வருகை எனக் குறி',
   'components.trainee.markLateA11y': '{name} ஐ தாமதம் எனக் குறி',
   'components.trainee.markAbsentA11y': '{name} ஐ வரவில்லை எனக் குறி',
+  'components.atRisk.whatsappMessage': 'வணக்கம், நான் பயிற்சிக் கூடத்தின் ஆசான். {name} இன் வருகை பற்றி பேச விரும்புகிறேன்.',
 };
