@@ -12,10 +12,7 @@ import path from 'path';
 
 const SRC = path.join(__dirname, '..');
 
-const KNOWN_UNREGISTERED: Record<string, string> = {
-  Tournaments: 'Admin Persatuan dashboard (H24)',
-  Inventory: 'Admin Persatuan dashboard (H25)',
-};
+const KNOWN_UNREGISTERED: Record<string, string> = {};
 
 function sourceFiles(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {

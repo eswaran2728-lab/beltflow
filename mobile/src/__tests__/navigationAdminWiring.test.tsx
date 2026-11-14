@@ -115,17 +115,12 @@ describe('Admin Persatuan navigation wiring', () => {
     expect(await findByTestId('admin-persatuan-locations-screen')).toBeTruthy();
   });
 
-  test('commerce and tournaments shortcuts are shown when those modules are enabled', async () => {
-    const { findByTestId } = await renderNavigator(ALL_MODULES);
-    expect(await findByTestId('shortcut-ap-inventory')).toBeTruthy();
-    expect(await findByTestId('shortcut-ap-tournaments')).toBeTruthy();
-  });
-
-  test('commerce and tournaments shortcuts are hidden when the server disables them', async () => {
-    const { findByTestId, queryByTestId } = await renderNavigator([]);
+  test('no dead Inventory or Tournaments buttons, even with every module on', async () => {
+    const { findByTestId, queryByTestId } = await renderNavigator(ALL_MODULES);
     // Core (R1) shortcuts stay visible.
     expect(await findByTestId('shortcut-ap-class-approvals')).toBeTruthy();
     expect(await findByTestId('shortcut-ap-curriculum')).toBeTruthy();
+    // The app has no Inventory or Tournaments screens (2026-11-14 owner decision).
     expect(queryByTestId('shortcut-ap-inventory')).toBeNull();
     expect(queryByTestId('shortcut-ap-tournaments')).toBeNull();
   });

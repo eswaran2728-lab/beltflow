@@ -13,8 +13,6 @@ import {
   User,
   GraduationCap,
   LogOut,
-  ShoppingBag,
-  Trophy,
   BookOpen,
   Globe,
 } from 'lucide-react-native';
@@ -32,7 +30,6 @@ import { Button } from '../../../components/Button';
 import { StatusBadge } from '../../../components/Badges';
 import { OfflineBanner, LoadingState, ErrorState } from '../../../components/Feedback';
 import { useDashboardData } from '../../../hooks/useDashboardData';
-import { useReleaseModules } from '../../../hooks/useReleaseModules';
 import { dashboardService, AdminPersatuanDashboardData } from '../../../services/dashboardService';
 import { MasterApprovalsScreen } from './MasterApprovalsScreen';
 import { AdminAcademySetupScreen } from './AdminAcademySetupScreen';
@@ -58,7 +55,6 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
   // H28: follow the app-wide language; the header switch changes it for the whole app.
   const app = useI18n();
   // Optional R3 modules: hide their shortcuts when the server switches them off.
-  const release = useReleaseModules();
   const [lang, setLangLocal] = useState<AdminLanguage>(app.locale);
   const [seenLocale, setSeenLocale] = useState(app.locale);
   if (seenLocale !== app.locale) {
@@ -435,30 +431,6 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
               rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonPrimaryText} />}
               testID="shortcut-ap-onboarding"
             />
-            {release.isEnabled('commerce') && (
-              <Button
-                label={t('adminHome.btnInventory')}
-                onPress={() => navigation?.navigate('Inventory')}
-                variant="secondary"
-                size="md"
-                fullWidth
-                leftIcon={<ShoppingBag size={iconSize.md} color={colors.buttonSecondaryText} />}
-                rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
-                testID="shortcut-ap-inventory"
-              />
-            )}
-            {release.isEnabled('tournaments') && (
-              <Button
-                label={t('adminHome.btnTournaments')}
-                onPress={() => navigation?.navigate('Tournaments')}
-                variant="secondary"
-                size="md"
-                fullWidth
-                leftIcon={<Trophy size={iconSize.md} color={colors.buttonSecondaryText} />}
-                rightIcon={<ArrowRight size={iconSize.md} color={colors.buttonSecondaryText} />}
-                testID="shortcut-ap-tournaments"
-              />
-            )}
             <Button
               label={t('adminHome.btnLocations')}
               onPress={() => navigation?.navigate('Locations')}

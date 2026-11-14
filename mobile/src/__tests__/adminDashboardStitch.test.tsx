@@ -214,28 +214,22 @@ describe('Google Stitch Admin Persatuan UI/UX Workstream Tests (Task H25)', () =
   });
 
   // =========================================================================
-  // Requirement 5: Quick Navigation Shortcuts including H25 Commerce
+  // Requirement 5: Quick Navigation Shortcuts
+  // (2026-11-14 owner decision: the app has no Inventory or Tournaments screens,
+  // so those buttons were dead and are removed.)
   // =========================================================================
-  test('renders quick navigation shortcuts including H25 inventory and routes correctly', async () => {
+  test('renders quick navigation shortcuts and no dead Inventory or Tournaments buttons', async () => {
     const mockNav = { navigate: jest.fn() };
-    const { findByTestId, findByText } = await renderScreen(adminUser, mockNav);
+    const { findByTestId, queryByTestId } = await renderScreen(adminUser, mockNav);
 
-    // Verify H25 Commerce shortcut
-    const inventoryBtn = await findByTestId('shortcut-ap-inventory');
-    expect(inventoryBtn).toBeTruthy();
-    expect(await findByText('Equipment & Merchandise Inventory')).toBeTruthy();
-
-    // Verify Tournaments shortcut
-    const tournBtn = await findByTestId('shortcut-ap-tournaments');
-    expect(tournBtn).toBeTruthy();
-
-    // Verify Onboarding shortcut
+    // Verify Onboarding shortcut and its navigation
     const onboardingBtn = await findByTestId('shortcut-ap-onboarding');
     expect(onboardingBtn).toBeTruthy();
+    fireEvent.press(onboardingBtn);
+    expect(mockNav.navigate).toHaveBeenCalledWith('AcademySetup');
 
-    // Fire press event and assert navigation
-    fireEvent.press(inventoryBtn);
-    expect(mockNav.navigate).toHaveBeenCalledWith('Inventory');
+    expect(queryByTestId('shortcut-ap-inventory')).toBeNull();
+    expect(queryByTestId('shortcut-ap-tournaments')).toBeNull();
   });
 
   // =========================================================================
@@ -253,12 +247,12 @@ describe('Google Stitch Admin Persatuan UI/UX Workstream Tests (Task H25)', () =
     // 1st cycle: Switch to Bahasa Melayu
     fireEvent.press(langBtn);
     expect(await findByText('Skop Pentadbiran Persatuan')).toBeTruthy();
-    expect(await findByText('Inventori Peralatan & Barangan')).toBeTruthy();
+    expect(await findByText('Kelulusan Cadangan Kelas')).toBeTruthy();
 
     // 2nd cycle: Switch to Tamil
     fireEvent.press(langBtn);
     expect(await findByText('நிர்வாக அதிகார வரம்பு')).toBeTruthy();
-    expect(await findByText('உபகரணங்கள் & பொருட்கள் சேமிப்பு')).toBeTruthy();
+    expect(await findByText('வகுப்பு முன்மொழிவு ஒப்புதல்கள்')).toBeTruthy();
 
     // 3rd cycle: Return to English
     fireEvent.press(langBtn);
