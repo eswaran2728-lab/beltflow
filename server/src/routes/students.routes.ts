@@ -1,7 +1,15 @@
 import { Router, Request, Response } from 'express';
 import { dbClient } from '../db/client';
 import { Permission, UserRole } from '../security/rbac';
-import { hashPasswordServer } from '../security/crypto';
+import {
+  hashPasswordServer,
+  signQrPassPayload,
+  verifyQrPassPayload,
+  ACTIVE_QR_KEY_ID,
+  getQrVerificationKeys,
+  QR_ISSUER,
+  QR_AUDIENCE,
+} from '../security/crypto';
 import { validatePassword } from '../security/passwordPolicy';
 import { authenticateJWT, requirePermission } from '../middleware/auth';
 import { studentAccess, assignedMasterAccess } from '../security/access';
@@ -54,6 +62,181 @@ router.get('/:studentId/sessions', authenticateJWT, async (req: Request, res: Re
   } catch (err: any) {
     console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
+// Digital Attendance Pass for Student (Task 2.4)
+// Accessible by: Student themselves, approved linked Parent, assigned Master, or Persatuan Admin.
+// Generates an opaque, non-enumerable, signed digital token. Never leaks NRIC, phone, or payment info.
+router.get('/:studentId/digital-pass', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const access = await studentAccess(req.user!, req.params.studentId);
+    if (!access.allowed || !access.student) {
+      return res.status(403).json({ error: 'Digital pass access denied.' });
+    }
+    const student = access.student;
+    const now = Math.floor(Date.now() / 1000);
+    const exp = now + 30 * 86400; // 30-day validity
+    
+    // Cryptographically sign the pass payload with Ed25519 (SEC-QR-001)
+    const { sig, kid, v, iss, aud, nonce } = signQrPassPayload({
+      v: 2,
+      kid: ACTIVE_QR_KEY_ID,
+      iss: QR_ISSUER,
+      aud: QR_AUDIENCE,
+      oid: student.organization_id,
+      sid: student.id,
+      iat: now,
+      exp,
+    });
+
+    // Zero PII embedded in payload
+    const payload = {
+      type: 'BF_PASS',
+      v,
+      kid,
+      iss,
+      aud,
+      oid: student.organization_id,
+      sid: student.id,
+      iat: now,
+      exp,
+      nonce,
+      sig,
+    };
+
+    return res.json({
+      student: {
+        id: student.id,
+        fullName: student.full_name,
+        beltRank: student.belt_rank,
+        status: student.status,
+        organizationId: student.organization_id,
+        className: student.class_name,
+      },
+      pass: {
+        payload,
+        qrString: JSON.stringify(payload),
+        issuedAt: new Date(now * 1000).toISOString(),
+        expiresAt: new Date(exp * 1000).toISOString(),
+      },
+    });
+  } catch (err: any) {
+    console.error('[Digital pass error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
+// Key Rotation Metadata for Offline / Online Verification (SEC-QR-001 Resolved)
+// Returns public verification keys only. Private signing keys are NEVER distributed.
+router.get('/qr/verification-keys', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const keysInfo = getQrVerificationKeys();
+    return res.json({
+      activeKid: keysInfo.activeKid,
+      supportedKids: keysInfo.supportedKids,
+      algorithm: keysInfo.algorithm,
+      publicKeys: keysInfo.publicKeys,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: safeErrorMessage(err, 'Failed to fetch verification keys.') });
+  }
+});
+
+// Server-side QR Pass Verification & Roll-Call Validation (SEC-QR-001 Resolved)
+router.post('/qr/verify-pass', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const { qrString, expectedClassId, expectedSessionId } = req.body;
+    if (!qrString || typeof qrString !== 'string') {
+      return res.status(400).json({ valid: false, errorCode: 'INVALID_QR_FORMAT', errorMessage: 'Missing QR string.' });
+    }
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(qrString);
+    } catch {
+      return res.status(400).json({ valid: false, errorCode: 'INVALID_QR_FORMAT', errorMessage: 'Malformed JSON in QR pass.' });
+    }
+
+    if (!parsed || parsed.type !== 'BF_PASS') {
+      return res.status(400).json({ valid: false, errorCode: 'INVALID_QR_FORMAT', errorMessage: 'Unsupported QR pass format.' });
+    }
+
+    if (parsed.v !== 2) {
+      return res.status(403).json({
+        valid: false,
+        errorCode: 'UNSUPPORTED_VERSION',
+        errorMessage: 'Legacy v1 pass rejected. Asymmetric Ed25519 v2 credentials required.',
+      });
+    }
+
+    // Cryptographic signature verification
+    const sigResult = verifyQrPassPayload({
+      v: parsed.v,
+      kid: parsed.kid,
+      iss: parsed.iss,
+      aud: parsed.aud,
+      oid: parsed.oid,
+      sid: parsed.sid,
+      iat: parsed.iat,
+      exp: parsed.exp,
+      nonce: parsed.nonce,
+      sig: parsed.sig,
+    });
+
+    if (!sigResult.valid) {
+      return res.status(403).json(sigResult);
+    }
+
+    // Tenant Isolation
+    if (req.user?.organizationId && parsed.oid !== req.user.organizationId) {
+      return res.status(403).json({
+        valid: false,
+        errorCode: 'CROSS_PERSATUAN_REJECTED',
+        errorMessage: 'Pass belongs to a different academy / Persatuan.',
+      });
+    }
+
+    // Check student in database
+    const stuRes = await dbClient.query('SELECT * FROM students WHERE id = $1', [parsed.sid]);
+    if (stuRes.rowCount === 0) {
+      return res.status(404).json({
+        valid: false,
+        errorCode: 'STUDENT_NOT_FOUND',
+        errorMessage: 'Student record not found in system.',
+      });
+    }
+
+    const student = stuRes.rows[0];
+    if (student.status !== 'ACTIVE') {
+      return res.status(403).json({
+        valid: false,
+        errorCode: 'STUDENT_INACTIVE_REJECTED',
+        errorMessage: 'Student membership is inactive or suspended.',
+      });
+    }
+
+    if (expectedClassId && student.class_id !== expectedClassId) {
+      return res.status(403).json({
+        valid: false,
+        errorCode: 'UNASSIGNED_STUDENT_REJECTED',
+        errorMessage: 'Student is not enrolled in this martial arts class.',
+      });
+    }
+
+    return res.json({
+      valid: true,
+      student: {
+        id: student.id,
+        fullName: student.full_name,
+        beltRank: student.belt_rank,
+        status: student.status,
+        classId: student.class_id,
+        organizationId: student.organization_id,
+      },
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: safeErrorMessage(err, 'Failed to verify pass.') });
   }
 });
 
@@ -275,7 +458,200 @@ router.get('/:studentId', authenticateJWT, async (req: Request, res: Response) =
       return res.status(403).json({ error: 'Access Denied: Not authorized to view this student record.' });
     }
 
-    return res.json({ student: access.student });
+    const studentData = { ...access.student };
+    if (req.user?.role === UserRole.MASTER) {
+      studentData.is_teaching_view = true;
+      if (studentData.ic_number && studentData.ic_number.length > 4) {
+        studentData.ic_number = `******-**-${studentData.ic_number.slice(-4)}`;
+      }
+    }
+
+    return res.json({ student: studentData });
+  } catch (err: any) {
+    console.error('[Database error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
+// ============================================================================
+// Task H11: Protected Student Safety Profile Endpoints
+// ============================================================================
+
+// Get student safety profile (Emergency contact, medical, allergies, consent)
+// Strictly restricted to authorized assigned Master, linked Parent, or Student themselves.
+router.get('/:studentId/safety', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const access = await studentAccess(req.user!, req.params.studentId);
+    if (!access.student) return res.status(404).json({ error: 'Student not found.' });
+    if (!access.allowed) {
+      return res.status(403).json({ error: 'Access Denied: Not authorized to view student safety profile.' });
+    }
+
+    const safetyRes = await dbClient.query(
+      `SELECT * FROM student_safety_profiles WHERE student_id = $1`,
+      [req.params.studentId]
+    );
+
+    if (safetyRes.rowCount === 0) {
+      return res.json({
+        hasProfile: false,
+        safetyProfile: null,
+      });
+    }
+
+    return res.json({
+      hasProfile: true,
+      safetyProfile: safetyRes.rows[0],
+    });
+  } catch (err: any) {
+    console.error('[Database error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
+// Create or update student safety profile & medical / activity consents
+router.put('/:studentId/safety', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const access = await studentAccess(req.user!, req.params.studentId);
+    if (!access.student) return res.status(404).json({ error: 'Student not found.' });
+    if (!access.allowed) {
+      return res.status(403).json({ error: 'Access Denied: Not authorized to update student safety profile.' });
+    }
+
+    const {
+      emergencyContactName,
+      emergencyContactPhone,
+      emergencyContactRelationship,
+      medicalConditions,
+      allergies,
+      dietaryRestrictions,
+      bloodType,
+      activityConsentGiven = true,
+      medicalConsentGiven = true,
+      photoConsentGiven = false,
+      consentSignedBy,
+    } = req.body;
+
+    if (!emergencyContactName || !emergencyContactName.trim()) {
+      return res.status(400).json({ error: 'Emergency contact name is required.' });
+    }
+    if (!emergencyContactPhone || !emergencyContactPhone.trim()) {
+      return res.status(400).json({ error: 'Emergency contact phone is required.' });
+    }
+    if (!emergencyContactRelationship || !emergencyContactRelationship.trim()) {
+      return res.status(400).json({ error: 'Emergency contact relationship is required.' });
+    }
+    if (!consentSignedBy || !consentSignedBy.trim()) {
+      return res.status(400).json({ error: 'Consent signature is required.' });
+    }
+
+    const safetyId = `safe_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const student = access.student;
+
+    const upsertRes = await dbClient.query(
+      `INSERT INTO student_safety_profiles (
+         id, student_id, organization_id, emergency_contact_name, emergency_contact_phone,
+         emergency_contact_relationship, medical_conditions, allergies, dietary_restrictions,
+         blood_type, activity_consent_given, medical_consent_given, photo_consent_given,
+         consent_signed_by, updated_by, updated_at
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP)
+       ON CONFLICT (student_id) DO UPDATE SET
+         emergency_contact_name = EXCLUDED.emergency_contact_name,
+         emergency_contact_phone = EXCLUDED.emergency_contact_phone,
+         emergency_contact_relationship = EXCLUDED.emergency_contact_relationship,
+         medical_conditions = EXCLUDED.medical_conditions,
+         allergies = EXCLUDED.allergies,
+         dietary_restrictions = EXCLUDED.dietary_restrictions,
+         blood_type = EXCLUDED.blood_type,
+         activity_consent_given = EXCLUDED.activity_consent_given,
+         medical_consent_given = EXCLUDED.medical_consent_given,
+         photo_consent_given = EXCLUDED.photo_consent_given,
+         consent_signed_by = EXCLUDED.consent_signed_by,
+         updated_by = EXCLUDED.updated_by,
+         updated_at = CURRENT_TIMESTAMP
+       RETURNING *`,
+      [
+        safetyId,
+        student.id,
+        student.organization_id,
+        emergencyContactName.trim(),
+        emergencyContactPhone.trim(),
+        emergencyContactRelationship.trim(),
+        medicalConditions?.trim() || null,
+        allergies?.trim() || null,
+        dietaryRestrictions?.trim() || null,
+        bloodType?.trim() || null,
+        Boolean(activityConsentGiven),
+        Boolean(medicalConsentGiven),
+        Boolean(photoConsentGiven),
+        consentSignedBy.trim(),
+        req.user!.id,
+      ]
+    );
+
+    await dbClient.query(
+      `INSERT INTO audit_logs (id, action, details, user_role, user_email)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [
+        `audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        'Student Safety Profile Updated',
+        `Safety & consent profile updated for student ${student.full_name} (${student.id}) by ${req.user!.email}`,
+        req.user!.role,
+        req.user!.email,
+      ]
+    );
+
+    return res.status(200).json({
+      message: 'Student safety profile updated successfully.',
+      safetyProfile: upsertRes.rows[0],
+    });
+  } catch (err: any) {
+    console.error('[Database error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
+// Student and Linked Parent Progress View (Task H12)
+router.get('/:studentId/progress', authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const access = await studentAccess(req.user!, req.params.studentId);
+    if (!access.allowed || !access.student) {
+      return res.status(403).json({ error: 'Access denied to student progress.' });
+    }
+    const student = access.student;
+
+    const rankHistoryRes = await dbClient.query(
+      `SELECT * FROM student_rank_history
+       WHERE student_id = $1
+       ORDER BY awarded_at DESC`,
+      [student.id]
+    );
+
+    const skillsRes = await dbClient.query(
+      `SELECT ss.*, s.name as skill_name, s.category
+       FROM student_skills ss
+       JOIN skills s ON s.id = ss.skill_id
+       WHERE ss.student_id = $1
+       ORDER BY ss.updated_at DESC`,
+      [student.id]
+    );
+
+    const certsRes = await dbClient.query(
+      `SELECT id, code, rank_or_title, issue_date, status, verification_token, organization_name, master_name
+       FROM certificates
+       WHERE student_id = $1
+       ORDER BY issue_date DESC, created_at DESC`,
+      [student.id]
+    );
+
+    return res.json({
+      studentId: student.id,
+      fullName: student.full_name,
+      currentBelt: student.belt_rank,
+      rankHistory: rankHistoryRes.rows,
+      skills: skillsRes.rows,
+      certificates: certsRes.rows,
+    });
   } catch (err: any) {
     console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });

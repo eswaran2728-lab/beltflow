@@ -27,6 +27,8 @@ server/dist/
 server/node_modules/
 *.beltflow_pgdata/
 .beltflow_pgdata/
+.storage/
+server/.storage/
 
 # Android local toolchain / IDE state
 .kotlin/
@@ -44,3 +46,8 @@ scratch/
 *.pgdump
 backups/
 db_backups/
+.claude/
+Codex Image*.png
+
+# Local agent planning workspace (ledgers, briefs)
+.superpowers/

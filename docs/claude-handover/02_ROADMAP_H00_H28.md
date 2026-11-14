@@ -1,0 +1,54 @@
+# 02 — Roadmap H00–H28 Verification & Status
+
+> Official Roadmap: 29 milestone tasks (H00 through H28).  
+> Current status as of 2026-11-12: H00–H25 reported COMPLETED; **H26 PASS** (`09`); **H27 CONDITIONAL PASS** (native E2E needs a device — `10`); **H28 PARTIAL** (5/5 official acceptance tests pass; all screens now use EN/BM/Tamil keys; native review, device and user testing remain — `11`).
+
+---
+
+## 1. Verified Roadmap Status Matrix
+
+| Task | Title | Status | Backend Test Suite | Key Invariants Verified |
+| :--- | :--- | :---: | :--- | :--- |
+| **H00** | Phase 2 Architecture & RBAC | **DONE** | `server_rbac.test.ts` | 5 global roles; Super Admin excluded from child data |
+| **H01** | Multi-Tenant Schema & Isolation | **DONE** | `transaction_pool.test.ts` | Connection pool safety, transaction rollback, tenant scoping |
+| **H02** | Authority & Legacy Migration | **DONE** | `authority_relationships.test.ts` | 22 migration & leadership scenarios verified |
+| **H03** | Master Verification & Affiliation | **DONE** | `master_verification.test.ts` | Admin verification required before Master acts |
+| **H04** | Class Lifecycle & Discovery | **DONE** | `class_lifecycle.test.ts` | Master proposes; Admin approves; discovery excludes pending |
+| **H05** | Student Enrollment & Approvals | **DONE** | `student_enrollment.test.ts` | Master approves applications; capacity limits enforced |
+| **H06** | Master Workspace & Rosters | **DONE** | `master_class_workspace.test.ts` | Active roster filtering, today's sessions derivation |
+| **H07** | Master Handover & Substitution | **DONE** | `master_handover.test.ts` | Delegated leadership; revoked substitute auto-cutoff |
+| **H08** | Tamper-Evident QR Digital Pass | **DONE** | `qr_pass_security.test.ts` | Ed25519 signatures, zero PII, offline scan cache |
+| **H09** | Persatuan Curriculum & Syllabus | **DONE** | `persatuan_curriculum.test.ts` | Versioned belt ranks, technique checklists, requirements |
+| **H10** | Class Scheduling & Sessions | **DONE** | `class_scheduling.test.ts` | Schedule recurrence, holiday blackout, cancellation |
+| **H11** | Student Safety & Notices | **DONE** | `student_safety_notices.test.ts` | Emergency contacts, mandatory guardian acknowledgements |
+| **H12** | Grading Examinations & Certs | **DONE** | `grading_progression_h12.test.ts` | Atomic rank progression, public cert verification (CERT-001) |
+| **H13** | Payments & Merchant Separation | **DONE** | `persatuan_payments_h13.test.ts` | Tenant merchant isolation, append-only receipt ledgers |
+| **H14** | Academy Setup & Legacy Imports | **DONE** | `academy_onboarding_imports_h14.test.ts` | Dry-run validation, idempotent batch commits |
+| **H15** | Core Pilot Certification | **DONE** | `core_pilot_certification_h15.test.ts` | Multi-tenant pilot benchmark, zero data leakage |
+| **H16** | Trial Sessions & Conversions | **DONE** | `trials_retention_h16.test.ts` | Trial booking, conversion to enrolled student |
+| **H17** | Waitlists & Make-Up Lessons | **DONE** | `makeup_waitlist_h17.test.ts` | Last-seat race protection, waitlist expiry worker |
+| **H18** | Academy Transfers & Roaming | **DONE** | `membership_transfers_h18.test.ts` | Inter-academy transfers, future-dated activation |
+| **H19** | Lesson Plans & Family Hub | **DONE** | `lesson_plans_family_hub_h19.test.ts` | Published syllabus visibility, family timeline feeds |
+| **H20** | Learning Library & Rewards | **DONE** | `learning_library_rewards_h20.test.ts` | Role-gated videos, achievements, points ledger |
+| **H21** | Private Video Feedback | **DONE** | `media_feedback_h21.test.ts` | S3 magic-byte validation, signed URLs, minor consent |
+| **H22** | Parent-Master Messaging | **DONE** | `messaging_parent_master_h22.test.ts` | Active-enrollment thread gating, moderation reporting |
+| **H23** | Growth Analytics & Exports | **DONE** | `growth_analytics_h23.test.ts` | Server-side financial aggregation, CSV formula sanitization |
+| **H24** | Tournament Operations | **DONE** | `tournament_operations_h24.test.ts` | Category eligibility, match locking, appeals, preflight checks |
+| **H25** | Equipment Commerce | **DONE** | `equipment_merchandise_h25.test.ts` | Stock reservations, inventory locking, cross-tenant denial |
+| **H26** | **Role-Aware Grounded AI** | **PASS** | `assistant_grounded_ai_h26.test.ts`, `assistant_gemini_provider_h26.test.ts` | 5 official criteria; live Gemini 4/4; live red-team 13/13 (`09`) |
+| **H27** | Advanced Release Certification | **CONDITIONAL PASS** | `release_certification_h27`, `worker_replay_h27`, `scripts/db/h27_migration_restore_rehearsal.js` | disabled_module_inaccessible, migration_restore_pass, worker_replay_safe PASS; release_specific_native_E2E BLOCKED (no device); 7 defects fixed (`10`) |
+| **H28** | Continuous Localization & Usability | **PARTIAL** | `localizationUsabilityH28.test.tsx`, `i18nCoverageRatchetH28.test.ts` | 5/5 official tests pass; i18n foundation, language picker, translated tabs, next-step cards, icon badges, system fonts; all 83 screens/components translated (2,156 keys, guard test); remaining: native review, device/user tests, Stitch screens (`11`) |
+
+---
+
+## 2. Task H26 (implemented 2026-11-10 — evidence in `09_H26_ROLE_AWARE_AI.md`)
+
+**Task H26 Specification**:
+* **Official Title**: Role-Aware Grounded AI Assistant
+* **Contract**: `answerAuthorizedQuestion(actor, query, context) -> answerWithSources`
+* **Mandatory Acceptance Criteria**:
+  1. `retrieval_cross_tenant_denied` (Strictly zero knowledge leakage across Persatuans)
+  2. `document_instruction_cannot_override_policy` (Prompt injection cannot alter system rules)
+  3. `unknown_answer_admits_gap` (No hallucination when evidence is absent)
+  4. `no_auto_grading_or_payment` (AI is informational only; no automated transactions)
+  5. `Super_Admin_no_child_data` (Platform admins cannot query minor records)

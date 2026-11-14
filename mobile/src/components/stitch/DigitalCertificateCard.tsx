@@ -1,0 +1,163 @@
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
+import { Download, QrCode } from 'lucide-react-native';
+import { StitchTokens } from '../../theme/tokens';
+import { useI18n } from '../../i18n';
+
+export interface DigitalCertificateCardProps {
+  title: string;
+  issuedDate: string;
+  certificateNumber: string;
+  isVerified?: boolean;
+  onDownloadPress?: () => void;
+  onViewQrPress?: () => void;
+  style?: ViewStyle;
+}
+
+export const DigitalCertificateCard: React.FC<DigitalCertificateCardProps> = ({
+  title,
+  issuedDate,
+  certificateNumber,
+  isVerified = false,
+  onDownloadPress,
+  onViewQrPress,
+  style,
+}) => {
+  const { t } = useI18n();
+  return (
+    <View style={[styles.card, style]} testID="digital-certificate-card">
+      {/* Header Row */}
+      <View style={styles.headerRow}>
+        <Text style={styles.headerLabel}>{t('components.certificate.label')}</Text>
+        {isVerified && (
+          <View style={styles.verifiedBadge} testID="qr-verified-badge">
+            <Text style={styles.verifiedBadgeText}>{t('components.certificate.verified')}</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Certificate Details */}
+      <Text style={styles.titleText}>{title}</Text>
+      <Text style={styles.subText}>
+        {t('components.certificate.issued', { date: issuedDate, number: certificateNumber })}
+      </Text>
+
+      {/* Action Buttons */}
+      <View style={styles.buttonRow}>
+        {onDownloadPress ? (
+          <TouchableOpacity
+            style={styles.downloadBtn}
+            onPress={onDownloadPress}
+            activeOpacity={0.85}
+            testID="btn-download-cert"
+          >
+            <Download size={14} color="#FFFFFF" />
+            <Text style={styles.downloadBtnText}>{t('components.certificate.download')}</Text>
+          </TouchableOpacity>
+        ) : (
+          <View
+            style={[styles.downloadBtn, { backgroundColor: '#94A3B8' }]}
+            testID="btn-download-cert-disabled"
+            accessibilityState={{ disabled: true }}
+          >
+            <Download size={14} color="#E2E8F0" />
+            <Text style={styles.downloadBtnText}>{t('components.certificate.pending')}</Text>
+          </View>
+        )}
+
+        {onViewQrPress && (
+          <TouchableOpacity
+            style={styles.qrBtn}
+            onPress={onViewQrPress}
+            activeOpacity={0.8}
+            testID="btn-view-cert-qr"
+            accessibilityLabel={t('components.certificate.viewQrA11y')}
+          >
+            <QrCode size={16} color={StitchTokens.colors.brandNavy} />
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: StitchTokens.colors.colorAccent,
+    borderRadius: StitchTokens.radii.cardLarge,
+    padding: 16,
+    ...StitchTokens.shadows.cardElevated,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  headerLabel: {
+    fontFamily: StitchTokens.typography.fontFamily,
+    fontSize: 10,
+    fontWeight: '800',
+    color: StitchTokens.colors.colorAccent,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  verifiedBadge: {
+    backgroundColor: StitchTokens.colors.bfGreenSoft,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: StitchTokens.radii.tagMini,
+  },
+  verifiedBadgeText: {
+    fontFamily: StitchTokens.typography.fontFamily,
+    fontSize: 9,
+    fontWeight: '700',
+    color: StitchTokens.colors.bfGreenDark,
+  },
+  titleText: {
+    fontFamily: StitchTokens.typography.fontFamily,
+    fontSize: 16,
+    fontWeight: '800',
+    color: StitchTokens.colors.brandNavy,
+  },
+  subText: {
+    fontFamily: StitchTokens.typography.fontFamily,
+    fontSize: 11,
+    color: StitchTokens.colors.slateTextMuted,
+    marginTop: 2,
+    marginBottom: 12,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  downloadBtn: {
+    flex: 1,
+    backgroundColor: StitchTokens.colors.brandNavy,
+    borderRadius: StitchTokens.radii.btn,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minHeight: 44,
+  },
+  downloadBtnText: {
+    fontFamily: StitchTokens.typography.fontFamily,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  qrBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: StitchTokens.radii.btn,
+    borderWidth: 1,
+    borderColor: StitchTokens.colors.slateBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+});

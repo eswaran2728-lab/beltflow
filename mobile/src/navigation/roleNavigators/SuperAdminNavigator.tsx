@@ -1,0 +1,134 @@
+import React from 'react';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Home, Building2, ShieldCheck, User, Sparkles } from 'lucide-react-native';
+import { useTheme } from '../../theme/ThemeProvider';
+import { RoleNavigationContainer } from '../RoleNavigationContainer';
+import { AssistantScreen } from '../../screens/shared/AssistantScreen';
+import { useReleaseModules } from '../../hooks/useReleaseModules';
+import { useI18n } from '../../i18n';
+import {
+  SuperAdminHomeScreen,
+  PersatuanManagementScreen,
+  PlatformAuditScreen,
+  SuperAdminProfileScreen,
+} from '../../screens/roles/superAdmin';
+import { RoleNavigatorProps, SuperAdminTabParamList } from '../types';
+
+const Tab = createBottomTabNavigator<SuperAdminTabParamList>();
+
+export const SuperAdminNavigator: React.FC<RoleNavigatorProps> = ({
+  user,
+  onLogout,
+  isOffline,
+}) => {
+  const { colors, iconSize } = useTheme();
+  const release = useReleaseModules();
+  const { t } = useI18n();
+
+  return (
+    <RoleNavigationContainer user={user}>
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: colors.buttonPrimaryBg,
+        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+          borderTopWidth: 1,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+        },
+      }}
+    >
+      <Tab.Screen
+        name="Home"
+        options={{
+          tabBarLabel: t('tabs.home'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.home') }),
+          tabBarButtonTestID: 'tab-sa-home',
+          tabBarIcon: ({ color }) => <Home size={iconSize.md} color={color} />,
+        }}
+      >
+        {() => (
+          <SuperAdminHomeScreen
+            user={user}
+            onLogout={onLogout}
+            isOffline={isOffline}
+          />
+        )}
+      </Tab.Screen>
+
+      <Tab.Screen
+        name="Persatuans"
+        options={{
+          tabBarLabel: t('tabs.persatuans'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.persatuanManagement') }),
+          tabBarButtonTestID: 'tab-sa-persatuans',
+          tabBarIcon: ({ color }) => <Building2 size={iconSize.md} color={color} />,
+        }}
+      >
+        {() => (
+          <PersatuanManagementScreen
+            user={user}
+            onLogout={onLogout}
+            isOffline={isOffline}
+          />
+        )}
+      </Tab.Screen>
+
+      <Tab.Screen
+        name="Audit"
+        options={{
+          tabBarLabel: t('tabs.audit'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.platformAudit') }),
+          tabBarButtonTestID: 'tab-sa-audit',
+          tabBarIcon: ({ color }) => <ShieldCheck size={iconSize.md} color={color} />,
+        }}
+      >
+        {() => (
+          <PlatformAuditScreen
+            user={user}
+            onLogout={onLogout}
+            isOffline={isOffline}
+          />
+        )}
+      </Tab.Screen>
+
+      {release.isEnabled('assistant') && (
+        <Tab.Screen
+          name="Assistant"
+          options={{
+            tabBarLabel: t('tabs.ask'),
+            tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.assistant') }),
+            tabBarButtonTestID: 'tab-sa-assistant',
+            tabBarIcon: ({ color }) => <Sparkles size={iconSize.md} color={color} />,
+          }}
+        >
+          {() => <AssistantScreen user={user} isOffline={isOffline} />}
+        </Tab.Screen>
+      )}
+
+      <Tab.Screen
+        name="Profile"
+        options={{
+          tabBarLabel: t('tabs.profile'),
+          tabBarAccessibilityLabel: t('tabs.a11y', { label: t('tabs.profile') }),
+          tabBarButtonTestID: 'tab-sa-profile',
+          tabBarIcon: ({ color }) => <User size={iconSize.md} color={color} />,
+        }}
+      >
+        {() => (
+          <SuperAdminProfileScreen
+            user={user}
+            onLogout={onLogout}
+            isOffline={isOffline}
+          />
+        )}
+      </Tab.Screen>
+    </Tab.Navigator>
+    </RoleNavigationContainer>
+  );
+};

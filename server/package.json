@@ -7,7 +7,8 @@
     "build": "tsc && node -e \"require('fs').copyFileSync('src/db/schema.sql', 'dist/db/schema.sql')\"",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
-    "test": "node dist/tests/server_rbac.test.js"
+    "seed:test": "ts-node src/db/seed_test_env.ts",
+    "test": "node scripts/run-tests.js"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",
@@ -16,7 +17,8 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
-    "pg": "^8.12.0"
+    "pg": "^8.12.0",
+    "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

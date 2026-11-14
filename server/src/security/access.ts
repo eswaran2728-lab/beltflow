@@ -9,6 +9,9 @@ export async function studentAccess(user: AuthUserContext, studentId: string): P
   if (!student || !user.organizationId || student.organization_id !== user.organizationId) {
     return { allowed: false, student };
   }
+  if (user.role === UserRole.SUPER_ADMIN) {
+    return { allowed: false, student };
+  }
   const allowed = (user.role === UserRole.ADMIN_PERSATUAN) ||
     (user.role === UserRole.MASTER && !!student.class_id && !!user.assignedClassIds?.includes(student.class_id)) ||
     (user.role === UserRole.STUDENT && student.user_id === user.id) ||
@@ -19,22 +22,125 @@ export async function studentAccess(user: AuthUserContext, studentId: string): P
 export async function classAccess(user: AuthUserContext, classId: string): Promise<boolean> {
   const result = await dbClient.query('SELECT organization_id FROM classes WHERE id = $1', [classId]);
   const row = result.rows[0];
-  return !!row && !!user.organizationId && row.organization_id === user.organizationId &&
-    (user.role === UserRole.ADMIN_PERSATUAN ||
-      (user.role === UserRole.MASTER && !!user.assignedClassIds?.includes(classId)));
+  if (!row || !user.organizationId || row.organization_id !== user.organizationId) {
+    return false;
+  }
+  if (user.role === UserRole.ADMIN_PERSATUAN) {
+    return true;
+  }
+  if (user.role === UserRole.MASTER) {
+    // Check if Master has an affiliation that is not ACTIVE
+    const affilCheck = await dbClient.query(
+      `SELECT status FROM master_affiliations WHERE master_id = $1 AND organization_id = $2 ORDER BY created_at DESC LIMIT 1`,
+      [user.id, user.organizationId]
+    );
+    if (affilCheck.rowCount > 0 && affilCheck.rows[0].status !== 'ACTIVE') {
+      return false;
+    }
+
+    // Check if Master has an application that is not APPROVED
+    const appCheck = await dbClient.query(
+      `SELECT status FROM master_applications WHERE user_id = $1 AND organization_id = $2 ORDER BY created_at DESC LIMIT 1`,
+      [user.id, user.organizationId]
+    );
+    if (appCheck.rowCount > 0 && appCheck.rows[0].status !== 'APPROVED') {
+      return false;
+    }
+
+    // Check active class leadership
+    const leadRes = await dbClient.query(
+      `SELECT 1 FROM class_leaderships cl
+       WHERE cl.class_id = $1 AND cl.master_id = $2 AND cl.is_active = TRUE`,
+      [classId, user.id]
+    );
+    if (leadRes.rowCount > 0) return true;
+    return !!user.assignedClassIds?.includes(classId);
+  }
+  return false;
 }
 
-// Strictly the Master currently assigned to this class/location — never the
-// Persatuan Admin. Use this (not classAccess) for every write operation the
-// Persatuan is explicitly not allowed to perform: groups, schedules,
-// sessions, attendance, notices, fees, dues, and payments. `assignedClassIds`
-// is re-derived fresh from coach_class_assignments on every authenticated
-// request (see middleware/auth.ts), so a Master whose assignment was just
-// revoked loses this access on their very next request — no stale token
-// can grant continued access.
+// Strictly the Master currently holding active leadership for this class — never the
+// Persatuan Admin. Re-checked dynamically with active verified affiliation.
 export async function assignedMasterAccess(user: AuthUserContext, classId: string): Promise<boolean> {
   const result = await dbClient.query('SELECT organization_id FROM classes WHERE id = $1', [classId]);
   const row = result.rows[0];
-  return !!row && !!user.organizationId && row.organization_id === user.organizationId &&
-    user.role === UserRole.MASTER && !!user.assignedClassIds?.includes(classId);
+  if (!row || !user.organizationId || row.organization_id !== user.organizationId) {
+    return false;
+  }
+  if (user.role !== UserRole.MASTER) {
+    return false;
+  }
+
+  // Check if Master has an affiliation that is not ACTIVE (PENDING, SUSPENDED, ENDED)
+  const statusCheck = await dbClient.query(
+    `SELECT status FROM master_affiliations WHERE master_id = $1 AND organization_id = $2 ORDER BY created_at DESC LIMIT 1`,
+    [user.id, user.organizationId]
+  );
+  if (statusCheck.rowCount > 0 && statusCheck.rows[0].status !== 'ACTIVE') {
+    return false; // Non-active affiliation strictly loses operational access
+  }
+
+  // Check if Master has an application that is not APPROVED (e.g. REJECTED, SUBMITTED, NEEDS_INFORMATION)
+  const appCheck = await dbClient.query(
+    `SELECT status FROM master_applications WHERE user_id = $1 AND organization_id = $2 ORDER BY created_at DESC LIMIT 1`,
+    [user.id, user.organizationId]
+  );
+  if (appCheck.rowCount > 0 && appCheck.rows[0].status !== 'APPROVED') {
+    return false; // Non-approved applicant strictly cannot use legacy fallback
+  }
+
+  // Check active verified leadership in class_leaderships
+  const leadRes = await dbClient.query(
+    `SELECT is_active, leadership_type, effective_from, effective_to, capabilities
+     FROM class_leaderships cl
+     WHERE cl.class_id = $1 AND cl.master_id = $2
+     ORDER BY (cl.is_active = TRUE AND (cl.effective_to IS NULL OR cl.effective_to >= CURRENT_TIMESTAMP) AND cl.effective_from <= CURRENT_TIMESTAMP) DESC,
+              (cl.leadership_type = 'PRIMARY') DESC,
+              cl.created_at DESC
+     LIMIT 1`,
+    [classId, user.id]
+  );
+  if (leadRes.rowCount > 0) {
+    const lead = leadRes.rows[0];
+    if (lead.is_active) {
+      const now = new Date();
+      const from = new Date(lead.effective_from);
+      const to = lead.effective_to ? new Date(lead.effective_to) : null;
+      if (now >= from && (!to || now <= to)) {
+        return true;
+      }
+    }
+    // If they have an explicit record in class_leaderships that is inactive or expired, DO NOT fall back to legacy token
+    return false;
+  }
+
+  // Legacy transition fallback to assignedClassIds ONLY if no leadership records exist for this class
+  const anyLead = await dbClient.query('SELECT 1 FROM class_leaderships WHERE class_id = $1', [classId]);
+  if (anyLead.rowCount === 0) {
+    return !!user.assignedClassIds?.includes(classId);
+  }
+  return false;
+}
+
+// Strictly the PRIMARY Master currently holding active leadership for this class
+export async function primaryMasterAccess(user: AuthUserContext, classId: string): Promise<boolean> {
+  const result = await dbClient.query('SELECT organization_id FROM classes WHERE id = $1', [classId]);
+  const row = result.rows[0];
+  if (!row || !user.organizationId || row.organization_id !== user.organizationId) {
+    return false;
+  }
+  if (user.role !== UserRole.MASTER) {
+    return false;
+  }
+  const leadRes = await dbClient.query(
+    `SELECT 1 FROM class_leaderships
+     WHERE class_id = $1 AND master_id = $2 AND leadership_type = 'PRIMARY' AND is_active = TRUE`,
+    [classId, user.id]
+  );
+  if (leadRes.rowCount > 0) return true;
+  const anyLead = await dbClient.query('SELECT 1 FROM class_leaderships WHERE class_id = $1', [classId]);
+  if (anyLead.rowCount === 0) {
+    return !!user.assignedClassIds?.includes(classId);
+  }
+  return false;
 }

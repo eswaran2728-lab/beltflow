@@ -139,6 +139,28 @@ async function run() {
     assert.equal((await call('POST', `/students/transfer-requests/${transferId}/approve`, {}, newMaster.token)).data.status, 'APPROVED');
     assert.equal((await call('GET', '/students/' + studentId, undefined, master.token)).status, 403);
     assert.equal((await call('GET', '/students/' + studentId, undefined, newMaster.token)).status, 200);
+
+    // --- Dashboard Endpoint & Permission Boundary Regression Tests ---
+    const healthRes = await fetch(base.replace('/api/v1', '') + '/api/health');
+    assert.equal(healthRes.status, 200);
+
+    assert.equal((await call('GET', '/notices/mine', undefined, studentToken)).status, 200);
+    assert.equal((await call('GET', '/notices/mine', undefined, a.token)).status, 403);
+
+    assert.equal((await call('GET', '/attendance/student/' + studentId + '/history', undefined, studentToken)).status, 200);
+    assert.equal((await call('GET', '/attendance/student/' + studentId + '/history', undefined, otherMaster.token)).status, 403);
+    assert.equal((await call('GET', '/attendance/student/' + studentId + '/history', undefined, b.token)).status, 403);
+
+    assert.equal((await call('GET', '/skills/student/' + studentId, undefined, studentToken)).status, 200);
+    assert.equal((await call('GET', '/skills/student/' + studentId, undefined, b.token)).status, 403);
+
+    assert.equal((await call('GET', '/billing/monthly-dues/student/' + studentId, undefined, studentToken)).status, 200);
+    assert.equal((await call('GET', '/billing/monthly-dues/student/' + studentId, undefined, superToken)).status, 403);
+    assert.equal((await call('GET', '/billing/monthly-dues/student/' + studentId, undefined, b.token)).status, 403);
+
+    assert.equal((await call('GET', '/organizations/' + a.id, undefined, studentToken)).status, 200);
+    assert.equal((await call('GET', '/organizations/' + a.id, undefined, b.token)).status, 403);
+
     await dbClient.close();
     await dbClient.init(dir);
     assert.equal((await call('GET', '/students/me', undefined, studentToken)).status, 200);

@@ -35,7 +35,12 @@ export async function authenticateJWT(req: Request, res: Response, next: NextFun
       return res.status(403).json({ error: 'Account or organization is not active.' });
     }
     const classes = account.role === 'MASTER'
-      ? await dbClient.query('SELECT class_id FROM coach_class_assignments WHERE coach_id = $1', [account.id])
+      ? await dbClient.query(
+          `SELECT class_id FROM coach_class_assignments WHERE coach_id = $1
+           UNION
+           SELECT class_id FROM class_leaderships WHERE master_id = $1 AND is_active = TRUE`,
+          [account.id]
+        )
       : { rows: [] };
     const links = account.role === 'PARENT'
       ? await dbClient.query(

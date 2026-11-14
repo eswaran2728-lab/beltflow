@@ -4,6 +4,7 @@ import { Permission, UserRole } from '../security/rbac';
 import { authenticateJWT, requirePermission } from '../middleware/auth';
 import { studentAccess, classAccess, assignedMasterAccess } from '../security/access';
 import { safeErrorMessage } from '../security/errors';
+import { syncStudentBillingStatus } from '../services/billingStatus';
 
 const router = Router();
 
@@ -171,6 +172,8 @@ router.post('/monthly-dues/generate', authenticateJWT, async (req: Request, res:
         [dueId, cls.organization_id, classId, s.id, billingMonth, s.monthly_fee]
       );
       if (insertRes.rowCount) created++; else skipped++;
+      // A newly billed month makes a paid-up student Unpaid again.
+      await syncStudentBillingStatus(s.id);
     }
 
     await dbClient.query(
@@ -351,9 +354,6 @@ router.post('/:paymentId/approve', authenticateJWT, requirePermission(Permission
       }
     }
 
-    // Update student billing status
-    await dbClient.query("UPDATE students SET billing_status = 'Paid' WHERE id = $1", [payment.student_id]);
-
     // Allocate to the specific billing month(s) selected at submission time,
     // if any — never rewrites payment.amount/receipt_no, only the ledger.
     // The payment itself is already approved and receipted at this point
@@ -372,6 +372,8 @@ router.post('/:paymentId/approve', authenticateJWT, requirePermission(Permission
         ledgerWarning = 'Payment approved, but it could not be applied to the selected billing month(s): ' + allocErr.message;
       }
     }
+    // Billing status follows the ledger (Paid only when no month is still owed).
+    await syncStudentBillingStatus(payment.student_id, 'Paid');
 
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email)
@@ -463,9 +465,6 @@ router.post('/record-cash-payment', authenticateJWT, requirePermission(Permissio
       }
     }
 
-    // Update student billing status
-    await dbClient.query("UPDATE students SET billing_status = 'Paid' WHERE id = $1", [student.id]);
-
     // Already-validated above, so this should not throw — but guarded the
     // same way as the /approve path for consistency and defense in depth.
     if (monthIds) {
@@ -475,6 +474,7 @@ router.post('/record-cash-payment', authenticateJWT, requirePermission(Permissio
         console.error('[Monthly dues allocation error]', allocErr);
       }
     }
+    await syncStudentBillingStatus(student.id, 'Paid');
 
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email)
@@ -578,6 +578,7 @@ router.post('/monthly-dues/correct', authenticateJWT, async (req: Request, res: 
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
         [newId('corr'), cls.organization_id, classId, due.student_id, due.id, originalAmount, feeCheck.amount, reason.trim(), req.user!.id, req.user!.email]
       );
+      await syncStudentBillingStatus(due.student_id);
       corrected++;
     }
 

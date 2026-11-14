@@ -303,7 +303,7 @@ router.post('/register-student', authAttemptLimit, async (req: Request, res: Res
       [userId, organizationId, cleanEmail, passHash, fullName.trim(), phone?.trim() || null, UserRole.STUDENT, 'PENDING_VERIFICATION']
     );
 
-    // 2. Create the student profile row
+    // 2. Create the student profile row (status PENDING until approved)
     await dbClient.query(
       `INSERT INTO students (id, organization_id, class_id, user_id, full_name, ic_number, phone, email,
                              belt_rank, monthly_fee, has_sibling_discount, billing_status, status)
@@ -313,9 +313,21 @@ router.post('/register-student', authAttemptLimit, async (req: Request, res: Res
        'White Belt', baseFee, false, 'Unpaid', 'PENDING']
     );
 
+    // Create official enrollment application record if classId provided
+    if (classId) {
+      const appId = `app_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      await dbClient.query(
+        `INSERT INTO enrollment_applications (
+           id, student_id, class_id, organization_id, submitted_by_user_id,
+           applicant_type, student_name, ic_number, phone, consent_accepted, status, version, submitted_at
+         ) VALUES ($1, $2, $3, $4, $5, 'STUDENT', $6, $7, $8, true, 'SUBMITTED', 1, CURRENT_TIMESTAMP)`,
+        [appId, studentId, classId, organizationId, userId, fullName.trim(), icNumber?.trim() || null, phone?.trim() || null]
+      );
+    }
+
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email) VALUES ($1, $2, $3, $4, $5)`,
-      [`audit_${Date.now()}`, 'Student Self-Registration', `Student ${fullName.trim()} registered — awaiting admin approval`, UserRole.STUDENT, cleanEmail]
+      [`audit_${Date.now()}`, 'Student Self-Registration', `Student ${fullName.trim()} registered — awaiting Master approval`, UserRole.STUDENT, cleanEmail]
     );
 
     return res.status(201).json({
@@ -501,18 +513,19 @@ router.post('/register-parent', authAttemptLimit, async (req: Request, res: Resp
         linkRequest: { id: linkId, studentId: reqStudentId, status: 'PENDING_STUDENT' }
       });
     } else {
-      // Creating a NEW child student — parent is the registering guardian, link is ACTIVE.
-      // Tuition is the assigned class's own fee, not the org's legacy base fee.
+      // Fix AUTH-REG-001: Creating a NEW child student creates a PROVISIONAL identity.
+      // Master approval is strictly required before active enrollment or attendance eligibility.
       const newStudentId = `stu_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
       const baseFee = selectedClassFee ?? 120.0;
 
+      // Child record has class_id = NULL and status = 'PROVISIONAL'
       await dbClient.query(
         `INSERT INTO students (id, organization_id, class_id, full_name, ic_number, phone, email, belt_rank, monthly_fee, has_sibling_discount, billing_status, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-        [newStudentId, targetOrgId, classId, childName.trim(), '', phone?.trim() || null, null, 'White Belt', baseFee, false, 'Unpaid', 'ACTIVE']
+         VALUES ($1, $2, NULL, $3, $4, $5, NULL, 'White Belt', $6, false, 'Unpaid', 'PROVISIONAL')`,
+        [newStudentId, targetOrgId, childName.trim(), '', phone?.trim() || null, baseFee]
       );
 
-      // ACTIVE link — parent created this child, no external approval needed.
+      // ACTIVE link — parent registered their own child, establishing guardianship
       const linkId = `plink_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
       await dbClient.query(
         `INSERT INTO parent_student_links (id, parent_id, student_id, status, student_approved, master_approved, admin_approved, created_at)
@@ -521,20 +534,34 @@ router.post('/register-parent', authAttemptLimit, async (req: Request, res: Resp
         [linkId, parentId, newStudentId]
       );
 
+      // Create official enrollment application awaiting Master review
+      let appId: string | null = null;
+      if (classId) {
+        appId = `app_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+        await dbClient.query(
+          `INSERT INTO enrollment_applications (
+             id, student_id, class_id, organization_id, guardian_id, submitted_by_user_id,
+             applicant_type, student_name, consent_accepted, status, version, submitted_at
+           ) VALUES ($1, $2, $3, $4, $5, $5, 'PARENT', $6, true, 'SUBMITTED', 1, CURRENT_TIMESTAMP)`,
+          [appId, newStudentId, classId, targetOrgId, parentId, childName.trim()]
+        );
+      }
+
       const token = generateAuthToken({ id: parentId, email: cleanEmail, role: UserRole.PARENT, organizationId: targetOrgId, assignedClassIds: [], linkedStudentIds: [newStudentId] });
 
       await dbClient.query(
         `INSERT INTO audit_logs (id, action, details, user_role, user_email)
          VALUES ($1, $2, $3, $4, $5)`,
-        [`audit_${Date.now()}`, 'Parent Registration', `Registered parent: ${parentFullName.trim()} with new child student ${newStudentId}`, UserRole.PARENT, cleanEmail]
+        [`audit_${Date.now()}`, 'Parent Registration', `Registered parent: ${parentFullName.trim()} with provisional child student ${newStudentId} (Application: ${appId || 'None'})`, UserRole.PARENT, cleanEmail]
       );
 
       return res.status(201).json({
-        message: 'Parent and new child student successfully registered and linked.',
+        message: 'Parent and new child student successfully registered. Enrollment application submitted awaiting Master approval.',
         token,
         user: { id: parentId, fullName: parentFullName.trim(), email: cleanEmail, role: UserRole.PARENT, organizationId: targetOrgId, linkedStudentIds: [newStudentId] },
         parentId,
-        studentId: newStudentId
+        studentId: newStudentId,
+        applicationId: appId
       });
     }
   } catch (err: any) {

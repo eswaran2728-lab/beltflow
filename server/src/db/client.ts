@@ -8,12 +8,36 @@ export interface SqlQueryResult<T = any> {
   rowCount: number;
 }
 
+export interface SqlTransactionClient {
+  query<T = any>(sql: string, params?: any[]): Promise<SqlQueryResult<T>>;
+}
+
 class PostgresDatabaseClient {
   private pgPool: Pool | null = null;
   private pglite: PGlite | null = null;
+  private pgliteTxMutex: Promise<void> = Promise.resolve();
   private isInitialized = false;
 
+  private initPromise: Promise<void> | null = null;
+
+  /**
+   * Initialises the connection and applies the schema exactly once.
+   * Concurrent callers (e.g. many first requests on a freshly started
+   * server) share one in-flight initialisation; a failed attempt is
+   * forgotten so the next call can retry.
+   */
   async init(customDataDir?: string): Promise<void> {
+    if (this.isInitialized) return;
+    if (!this.initPromise) {
+      this.initPromise = this.initOnce(customDataDir).catch(err => {
+        this.initPromise = null;
+        throw err;
+      });
+    }
+    return this.initPromise;
+  }
+
+  private async initOnce(customDataDir?: string): Promise<void> {
     if (this.isInitialized) return;
 
     const dbUrl = process.env.DATABASE_URL;
@@ -90,6 +114,74 @@ class PostgresDatabaseClient {
     throw new Error('Database client not initialized');
   }
 
+  async transaction<T>(callback: (client: SqlTransactionClient) => Promise<T>): Promise<T> {
+    if (!this.isInitialized) {
+      await this.init();
+    }
+
+    if (this.pgPool) {
+      const client = await this.pgPool.connect();
+      try {
+        await client.query('BEGIN');
+        const txClient: SqlTransactionClient = {
+          query: async <R = any>(sql: string, params: any[] = []): Promise<SqlQueryResult<R>> => {
+            const res: any = await client.query(sql, params);
+            return { rows: res.rows, rowCount: res.rowCount || 0 };
+          }
+        };
+        const result = await callback(txClient);
+        await client.query('COMMIT');
+        return result;
+      } catch (err) {
+        try {
+          await client.query('ROLLBACK');
+        } catch (rbErr) {
+          console.error('[Database pool transaction rollback error]', rbErr);
+        }
+        throw err;
+      } finally {
+        client.release();
+      }
+    }
+
+    if (this.pglite) {
+      // PGlite is a single-connection embedded engine. Concurrent transactions
+      // must execute serially in strict FIFO order so BEGIN/COMMIT do not interleave.
+      let releaseMutex: () => void = () => {};
+      const previousTx = this.pgliteTxMutex;
+      this.pgliteTxMutex = new Promise<void>((resolve) => {
+        releaseMutex = resolve;
+      });
+
+      await previousTx;
+      try {
+        await this.pglite.query('BEGIN');
+        try {
+          const txClient: SqlTransactionClient = {
+            query: async <R = any>(sql: string, params: any[] = []): Promise<SqlQueryResult<R>> => {
+              const res = await this.pglite!.query<R>(sql, params);
+              return { rows: res.rows, rowCount: res.rows.length };
+            }
+          };
+          const result = await callback(txClient);
+          await this.pglite.query('COMMIT');
+          return result;
+        } catch (err) {
+          try {
+            await this.pglite.query('ROLLBACK');
+          } catch (rbErr) {
+            console.error('[PGlite transaction rollback error]', rbErr);
+          }
+          throw err;
+        }
+      } finally {
+        releaseMutex();
+      }
+    }
+
+    throw new Error('Database client not initialized');
+  }
+
   async exec(sql: string): Promise<void> {
     if (this.pgPool) {
       const client = await this.pgPool.connect();
@@ -122,6 +214,7 @@ class PostgresDatabaseClient {
       this.pglite = null;
     }
     this.isInitialized = false;
+    this.initPromise = null;
   }
 }
 
