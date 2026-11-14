@@ -46,9 +46,23 @@ export function resetApiBaseUrl(): void {
   currentApiBaseUrl = null;
 }
 
+/**
+ * Dev builds, and testing builds made with EXPO_PUBLIC_BELTFLOW_TESTING_BUILD=1
+ * (the CI testing APK), show the developer panel: server address override and
+ * synthetic test accounts. Production builds do not, and ignore a saved override.
+ */
+export function isTestingBuild(): boolean {
+  return (typeof __DEV__ !== 'undefined' && __DEV__) || process.env.EXPO_PUBLIC_BELTFLOW_TESTING_BUILD === '1';
+}
+
 export async function initializeApiBaseUrl(): Promise<string> {
+  if (!isTestingBuild()) {
+    return getApiBaseUrl();
+  }
   try {
-    const { getStoredApiBaseUrl } = await import('../services/storage');
+    // Lazy require (not a top-level import) to avoid a storage <-> env import cycle.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { getStoredApiBaseUrl } = require('../services/storage') as typeof import('../services/storage');
     const stored = await getStoredApiBaseUrl();
     if (stored) {
       setApiBaseUrl(stored);

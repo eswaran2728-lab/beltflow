@@ -14,6 +14,7 @@ import { Input, PasswordInput } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { ErrorState } from '../../components/Feedback';
 import { DevEnvironmentPanel } from '../../components/DevEnvironmentPanel';
+import { isTestingBuild } from '../../config/env';
 import { authService } from '../../services/authService';
 import { AuthUser } from '../../types/auth';
 import { useI18n } from '../../i18n';
@@ -122,7 +123,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             </View>
           ) : null}
 
-          {/* Development Network & Test Accounts Helper */}
+          {/* Development Network & Test Accounts Helper (dev / testing builds only) */}
+          {isTestingBuild() ? (
           <DevEnvironmentPanel
             onSelectTestAccount={(testEmail, testPass) => {
               setEmail(testEmail);
@@ -132,6 +134,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               setGeneralError(undefined);
             }}
           />
+          ) : null}
 
           {/* Form Fields */}
           <View style={styles.form}>

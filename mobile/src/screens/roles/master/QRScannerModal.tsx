@@ -76,6 +76,11 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
   const [savingAttendance, setSavingAttendance] = useState(false);
   const resetTimerRef = useRef<any>(null);
 
+  // Trust the server's published verification keys (cached for offline use).
+  useEffect(() => {
+    void qrPassService.refreshTrustedKeys();
+  }, []);
+
   useEffect(() => {
     return () => {
       if (resetTimerRef.current) {
