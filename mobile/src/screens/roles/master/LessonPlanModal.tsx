@@ -96,14 +96,14 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
           setPlanVersion(res.lessonPlan.version || 1);
         } else {
           // Initialize new
-          setTitle(`Lesson Plan - ${sessionTitle || 'Session'}`);
+          setTitle(t('masterClasses.lessonPlan.defaultTitle', { session: sessionTitle || t('masterClasses.lessonPlan.defaultSession') }));
           setObjectives('');
           setCoveredMaterial('');
           setPrivateMasterNotes('');
-          setEquipmentInput('Taegeuk Mats, Kick Targets');
+          setEquipmentInput(t('masterClasses.lessonPlan.defaultEquipment'));
           setDrills([
-            { name: 'Warm-up & Joint Mobility', duration_minutes: 10, instructions: 'Standard dynamic warm up' },
-            { name: 'Pattern Practice (Poomsae)', duration_minutes: 25, instructions: 'Focus on stances and hip rotation' },
+            { name: t('masterClasses.lessonPlan.drillWarmupName'), duration_minutes: 10, instructions: t('masterClasses.lessonPlan.drillWarmupInstructions') },
+            { name: t('masterClasses.lessonPlan.drillPatternName'), duration_minutes: 25, instructions: t('masterClasses.lessonPlan.drillPatternInstructions') },
           ]);
           setPlanVersion(1);
         }
@@ -127,7 +127,7 @@ export const LessonPlanModal: React.FC<LessonPlanModalProps> = ({
       ...prev,
       {
         id: `drill-${Date.now()}`,
-        name: 'New Drill',
+        name: t('masterClasses.lessonPlan.newDrillName'),
         duration_minutes: 15,
         instructions: '',
         key_focus: '',

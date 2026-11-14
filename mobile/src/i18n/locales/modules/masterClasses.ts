@@ -150,6 +150,14 @@ export const masterClassesEn = {
   'masterClasses.lessonPlan.privateNotesPlaceholder': "Private reflections, student grading readiness observations...",
   'masterClasses.lessonPlan.saving': "Saving...",
   'masterClasses.lessonPlan.saveButton': "Save Lesson Plan (v{version})",
+  'masterClasses.lessonPlan.defaultTitle': 'Lesson Plan - {session}',
+  'masterClasses.lessonPlan.defaultSession': 'Session',
+  'masterClasses.lessonPlan.defaultEquipment': 'Taegeuk Mats, Kick Targets',
+  'masterClasses.lessonPlan.drillWarmupName': 'Warm-up & Joint Mobility',
+  'masterClasses.lessonPlan.drillWarmupInstructions': 'Standard dynamic warm up',
+  'masterClasses.lessonPlan.drillPatternName': 'Pattern Practice (Poomsae)',
+  'masterClasses.lessonPlan.drillPatternInstructions': 'Focus on stances and hip rotation',
+  'masterClasses.lessonPlan.newDrillName': 'New Drill',
 };
 
 export const masterClassesMs: Record<keyof typeof masterClassesEn, string> = {
@@ -299,6 +307,14 @@ export const masterClassesMs: Record<keyof typeof masterClassesEn, string> = {
   'masterClasses.lessonPlan.privateNotesPlaceholder': "Refleksi peribadi, pemerhatian kesediaan penggredan pelajar...",
   'masterClasses.lessonPlan.saving': "Menyimpan...",
   'masterClasses.lessonPlan.saveButton': "Simpan Rancangan Pelajaran (v{version})",
+  'masterClasses.lessonPlan.defaultTitle': 'Rancangan Pengajaran - {session}',
+  'masterClasses.lessonPlan.defaultSession': 'Sesi',
+  'masterClasses.lessonPlan.defaultEquipment': 'Tikar Taegeuk, Sasaran Tendangan',
+  'masterClasses.lessonPlan.drillWarmupName': 'Memanaskan Badan & Mobiliti Sendi',
+  'masterClasses.lessonPlan.drillWarmupInstructions': 'Memanaskan badan dinamik biasa',
+  'masterClasses.lessonPlan.drillPatternName': 'Latihan Corak (Poomsae)',
+  'masterClasses.lessonPlan.drillPatternInstructions': 'Fokus pada kuda-kuda dan putaran pinggul',
+  'masterClasses.lessonPlan.newDrillName': 'Latihan Baharu',
 };
 
 export const masterClassesTa: Record<keyof typeof masterClassesEn, string> = {
@@ -448,4 +464,12 @@ export const masterClassesTa: Record<keyof typeof masterClassesEn, string> = {
   'masterClasses.lessonPlan.privateNotesPlaceholder': "தனிப்பட்ட சிந்தனைகள், மாணவர் தர மதிப்பீட்டுத் தயார்நிலை கவனிப்புகள்...",
   'masterClasses.lessonPlan.saving': "சேமிக்கிறது...",
   'masterClasses.lessonPlan.saveButton': "பாடத் திட்டத்தைச் சேமி (v{version})",
+  'masterClasses.lessonPlan.defaultTitle': 'பாடத் திட்டம் - {session}',
+  'masterClasses.lessonPlan.defaultSession': 'அமர்வு',
+  'masterClasses.lessonPlan.defaultEquipment': 'டேகியுக் பாய்கள், உதை இலக்குகள்',
+  'masterClasses.lessonPlan.drillWarmupName': 'உடல் சூடேற்றம் & மூட்டு இயக்கம்',
+  'masterClasses.lessonPlan.drillWarmupInstructions': 'வழக்கமான இயக்க உடல் சூடேற்றம்',
+  'masterClasses.lessonPlan.drillPatternName': 'வடிவப் பயிற்சி (பூம்சே)',
+  'masterClasses.lessonPlan.drillPatternInstructions': 'நிலைகளிலும் இடுப்புச் சுழற்சியிலும் கவனம்',
+  'masterClasses.lessonPlan.newDrillName': 'புதிய பயிற்சி',
 };

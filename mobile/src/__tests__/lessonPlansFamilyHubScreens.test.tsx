@@ -424,3 +424,39 @@ describe('Official Task H19: Lesson Plans & Family Hub Depth Mobile Tests', () =
     expect(await findByText('Persatuan Taekwondo Selangor')).toBeTruthy();
   });
 });
+
+// 2026-11-14 owner decision: a new lesson plan's starter text follows the Master's app language.
+describe('lesson plan starter text', () => {
+  const { I18nProvider, translate } = jest.requireActual('../i18n');
+  const metricsStarter = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 47, left: 0, right: 0, bottom: 34 } };
+  const renderIn = (locale: 'en' | 'ms' | 'ta') =>
+    render(
+      <SafeAreaProvider initialMetrics={metricsStarter}>
+        <I18nProvider initialLocale={locale}>
+          <ThemeProvider defaultMode="light">
+            <LessonPlanModal visible={true} onClose={jest.fn()} sessionId="sess_new" sessionTitle="Test Session" isSubstituteViewInitial={false} />
+          </ThemeProvider>
+        </I18nProvider>
+      </SafeAreaProvider>
+    );
+
+  beforeEach(() => {
+    (teachingService.getLessonPlan as jest.Mock).mockResolvedValue({ session: { id: 'sess_new' }, lessonPlan: null });
+  });
+
+  it('lesson plan starter text follows the app language', async () => {
+    const r = await renderIn('ta');
+    await waitFor(() => expect(r.getByTestId('input-lesson-title').props.value).toBe(translate('ta', 'masterClasses.lessonPlan.defaultTitle', { session: 'Test Session' })));
+    expect(r.getByTestId('input-lesson-equipment').props.value).toBe(translate('ta', 'masterClasses.lessonPlan.defaultEquipment'));
+    expect(r.getByTestId('input-drill-name-0').props.value).toBe(translate('ta', 'masterClasses.lessonPlan.drillWarmupName'));
+    fireEvent.press(r.getByTestId('btn-add-drill'));
+    await waitFor(() => expect(r.getByTestId('input-drill-name-2').props.value).toBe(translate('ta', 'masterClasses.lessonPlan.newDrillName')));
+  });
+
+  it('lesson plan starter text is unchanged in English', async () => {
+    const r = await renderIn('en');
+    await waitFor(() => expect(r.getByTestId('input-lesson-equipment').props.value).toBe('Taegeuk Mats, Kick Targets'));
+    expect(r.getByTestId('input-lesson-title').props.value).toBe('Lesson Plan - Test Session');
+    expect(r.getByTestId('input-drill-name-0').props.value).toBe('Warm-up & Joint Mobility');
+  });
+});
