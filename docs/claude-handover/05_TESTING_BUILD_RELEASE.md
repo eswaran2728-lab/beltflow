@@ -9,9 +9,9 @@
 
 ### Backend Integration Suites (`server/`):
 * **Command**: `npm test` inside `server/`
-* **Test Suites**: 47 test suites covering H00 to H27 plus follow-ups (35 before H26; H26 added 2, H27 added 5; ops/payment safety and notification inbox, push and billing-status and per-tenant flag follow-ups added 5, see `10` §8–12)
+* **Test Suites**: 48 test suites covering H00 to H27 plus follow-ups (35 before H26; H26 added 2, H27 added 5; ops/payment safety and notification inbox, push and billing-status and per-tenant flag follow-ups added 5, see `10` §8–12)
 * **Execution Engine**: Express routes with embedded PostgreSQL (`@electric-sql/pglite`) in isolated temporary directories
-* **Pass Rate**: **47 / 47 passed (100%)** on PGlite (2026-11-13; 42 / 42 earlier). Wait 5 minutes between full runs (certificate rate limit, `10` §11), and **42 / 42 on real PostgreSQL 16.15** (each suite on a fresh database) — 2026-11-10 — ~73 s. H26 and H24-preflight suites close the DB and exit naturally; 27 older suites still end with `process.exit(0)` (follow-up).
+* **Pass Rate**: **48 / 48 passed (100%)** on PGlite, each suite on a fresh database (`scripts/run-tests.js`, `10` §13) (2026-11-13; 42 / 42 earlier). Back-to-back runs are safe, and **42 / 42 on real PostgreSQL 16.15** (each suite on a fresh database) — 2026-11-10 — ~73 s. H26 and H24-preflight suites close the DB and exit naturally; 27 older suites still end with `process.exit(0)` (follow-up).
 * **Duration**: ~40 seconds
 
 ### Mobile Unit & Component Suites (`mobile/`):

@@ -133,7 +133,7 @@ The assistant's privacy controls are in `09`.
 4. **The R1 web client (`index.html`) still calls `/tournaments`,** which is R3. In an R1-only deployment that tab would show "not enabled".
 5. ~~**Feature flags are global, not per tenant.**~~ **Per-Persatuan since 2026-11-13** (§12). The PDF says "enable feature by tenant"; per-Persatuan flags are a follow-up.
 6. ~~**Mobile hides only the Ask tab.**~~ Fixed in H28 (`11` §8): optional-module entry points follow the release modules. Other R2/R3 entry points still show and get "not enabled" from the server. Hiding them is H28 UI work.
-7. **`attendance_sync` and `server_rbac` need an empty database** (one-time setup); this is a test-isolation limitation.
+7. ~~**`attendance_sync` and `server_rbac` need an empty database**~~ fixed 2026-11-14: every suite gets a fresh database (§13).
 
 ## 6. Open release gates after H27
 
@@ -218,7 +218,7 @@ The 22 outbox event types are now delivered to a per-person inbox.
 
 **Tests:** new `billing_status_sync.test.ts`. The official H13 test's Requirement 23 asserted `Paid` while December (whose payment failed earlier in that test) was still owed — it pinned the bug. It now asserts `Unpaid` while December is owed, pays December through the real gateway path and asserts `Paid`; its reconciliation check now finds the original settlement by receipt number (a second settlement exists). Both pass on PGlite and PostgreSQL 16.
 
-**Test-environment note:** the older backend suites share one default database, and public certificate verification is rate-limited per address over 5 minutes in that database. Running `npm test` several times within 5 minutes can make H15 fail with 429; wait 5 minutes or use a fresh database.
+**Test-environment note:** fixed 2026-11-14 (§13); suites no longer share a database.
 
 ## 12. Features by Persatuan (2026-11-13)
 
@@ -230,3 +230,12 @@ PDF: "enable feature by tenant", backed by "tenant-specific PostgreSQL records a
 - **Editing:** Super Admin only (`GET /release/tenants/:orgId/modules`, `PUT .../modules/:key` `{setting: ON|OFF|INHERIT}`), audited as "Tenant Module Setting Changed". Core R1 features cannot be switched off. App: Persatuans tab > Features by Persatuan.
 - **Evidence:** `tenant_feature_flags.test.ts` (PGlite and PostgreSQL 16), `tenantFeaturesPanel.test.tsx`; H27 `disabled_module_inaccessible` still passes. Backend 47/47; mobile 54 suites / 619 tests.
 - **Note:** background jobs (waitlist expiry, scheduled transfers) still run for every Persatuan while the module is on for the platform; they only process existing records.
+
+## 13. Test isolation (2026-11-14)
+
+`npm test` now runs `server/scripts/run-tests.js`:
+- Every suite runs in its own process with a **fresh, empty embedded database** (`PG_DATA_DIR` in a new temp folder, deleted afterwards). With `DATABASE_URL` set, suites use that PostgreSQL database as before.
+- Previously 17 suites used the default `server/.beltflow_pgdata`, which is the **developer's local server database**: tests wrote synthetic data into it, and data or rate limits left there could change results (e.g. H15 failing with 429 on back-to-back runs). Nine of them hard-coded that path; they now use `PG_DATA_DIR`, or a temporary folder when run alone.
+- All suites run even if one fails; failures are listed and the exit code is 1. `node scripts/run-tests.js h13 push` runs only matching suites.
+- The runner refuses to start if a compiled suite is missing from its list. That found `phase2_backend_readiness`, which existed but was never run; it passes and is now included (48 suites).
+- **Evidence:** two back-to-back full runs, 48/48 each (~150 s); 0 files changed in `.beltflow_pgdata`; no temp folders left behind; a deliberately failing run exits 1 and names the suite.

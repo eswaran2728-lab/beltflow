@@ -17,7 +17,7 @@ cd server
 npm ci
 npx tsc --noEmit           # Must pass with 0 errors
 npm run build              # Compiles to dist/ and copies schema.sql
-npm test                   # Runs all 47 test suites covering H00 to H27 and follow-ups
+npm test                   # Runs all 48 test suites, each on a fresh database (scripts/run-tests.js)
 
 # 2. Mobile Verification
 cd ../mobile
