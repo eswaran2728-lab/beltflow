@@ -255,7 +255,13 @@ export const ParentFeesPaymentScreen: React.FC<ParentFeesPaymentScreenProps> = (
         });
       }
     } catch (err: any) {
-      Alert.alert(t('parentHome.fees.initiationFailedTitle'), err.message || t('parentHome.fees.initiationFailedMsg'));
+      // Only one live payment per month: reopen the one already in progress.
+      if (err?.status === 409 && err?.details?.code === 'PAYMENT_IN_PROGRESS' && err.details.intent) {
+        setActiveIntent(err.details.intent);
+        Alert.alert(t('parentHome.fees.inProgressTitle'), t('parentHome.fees.inProgressMessage'));
+      } else {
+        Alert.alert(t('parentHome.fees.initiationFailedTitle'), err.message || t('parentHome.fees.initiationFailedMsg'));
+      }
     } finally {
       setInitiatingPayment(false);
     }

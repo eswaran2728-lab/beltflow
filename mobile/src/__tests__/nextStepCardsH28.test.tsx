@@ -219,6 +219,50 @@ describe('H28 next-step cards for more waiting states', () => {
     await act(async () => { await r.unmount(); });
   });
 
+  const mockFeesScreen = () => {
+    (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+      if (url === '/dashboard/parent') return Promise.resolve({ children: [{ id: 'stu_x', fullName: 'Test Child', currentBeltRank: 'White', organizationId: 'org_x' }] });
+      if (url.includes('/billing/student/')) return Promise.resolve({ dues: [{ id: 'due_x', class_id: 'cls_x', student_id: 'stu_x', billing_month: '2026-03', fee_amount: 80, amount_paid: 0, status: 'Pending' }] });
+      if (url.includes('/payments')) return Promise.resolve({ payments: [] });
+      return Promise.reject(new Error(`Unhandled URL: ${url}`));
+    });
+    (paymentGatewayService.getMerchantConfig as jest.Mock).mockResolvedValue({
+      configured: true,
+      merchant: { id: 'm', merchantName: 'Test Persatuan', provider: 'SANDBOX', settlementBankName: 'Test Bank', settlementAccountMasked: '****0000', fpxEnabled: true, duitnowEnabled: true, status: 'ACTIVE' },
+    });
+  };
+  const feesParent: AuthUser = { id: 'usr_p', fullName: 'Test Parent', email: 'p@example.test', role: UserRole.PARENT, organizationId: 'org_x' };
+
+  test('payment screen: a payment already in progress is reopened instead of starting a second', async () => {
+    mockFeesScreen();
+    (paymentGatewayService.createPaymentIntent as jest.Mock).mockRejectedValue(
+      Object.assign(new Error('A payment for these months is already in progress.'), {
+        status: 409,
+        details: { code: 'PAYMENT_IN_PROGRESS', intent: { id: 'intent_live', amountCents: 8000, amountRM: '80.00', currency: 'MYR', paymentMethod: 'FPX', status: 'PENDING_PROCESSING', providerSessionUrl: 'https://sandbox.example.test/x' } },
+      })
+    );
+    const r = await render(wrap(<ParentFeesPaymentScreen user={feesParent} />));
+    await waitFor(() => expect(r.getByTestId('btn-pay-now')).toBeTruthy());
+    await act(async () => { fireEvent.press(r.getByTestId('btn-pay-now')); });
+    await waitFor(() => expect(r.getByTestId('active-intent-card')).toBeTruthy());
+    expect(r.getByTestId('payment-next-step')).toBeTruthy();
+    expect(r.getByTestId('btn-check-payment-status')).toBeTruthy();
+    expect(alertSpy).toHaveBeenCalledWith(en['parentHome.fees.inProgressTitle'], en['parentHome.fees.inProgressMessage']);
+    await act(async () => { await r.unmount(); });
+  });
+
+  test('payment screen: other payment errors still show the failure alert', async () => {
+    mockFeesScreen();
+    (paymentGatewayService.createPaymentIntent as jest.Mock).mockRejectedValue(Object.assign(new Error('boom'), { status: 409, details: {} }));
+    const r = await render(wrap(<ParentFeesPaymentScreen user={feesParent} />));
+    await waitFor(() => expect(r.getByTestId('btn-pay-now')).toBeTruthy());
+    await act(async () => { fireEvent.press(r.getByTestId('btn-pay-now')); });
+    await waitFor(() => expect(alertSpy).toHaveBeenCalled());
+    expect(alertSpy.mock.calls[0][0]).toBe(en['parentHome.fees.initiationFailedTitle']);
+    expect(r.queryByTestId('active-intent-card')).toBeNull();
+    await act(async () => { await r.unmount(); });
+  });
+
   const booking = (over: Partial<MakeUpBooking>): MakeUpBooking => ({
     id: 'bk_x', organization_id: 'org_x', student_id: 'stu_x', original_class_id: 'cls_a', target_session_id: 'sess_x',
     target_class_id: 'cls_b', status: 'REQUESTED', version: 1, target_class_name: 'Test Make-Up Class',

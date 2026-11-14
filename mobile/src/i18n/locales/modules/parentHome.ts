@@ -133,6 +133,8 @@ export const parentHomeEn = {
   'parentHome.fees.intentExpired': 'Payment Link Expired',
   'parentHome.fees.intentExpiredNote': 'This payment link has expired. If you already paid at your bank, your receipt will still appear: check your fees before paying again.',
   'parentHome.fees.startAgain': 'Start Again',
+  'parentHome.fees.inProgressTitle': 'Payment Already in Progress',
+  'parentHome.fees.inProgressMessage': 'A payment for these months is already in progress. Finish it at your bank or check its status before paying again.',
 };
 
 export const parentHomeMs: Record<keyof typeof parentHomeEn, string> = {
@@ -260,6 +262,8 @@ export const parentHomeMs: Record<keyof typeof parentHomeEn, string> = {
   'parentHome.fees.intentExpired': 'Pautan Bayaran Tamat Tempoh',
   'parentHome.fees.intentExpiredNote': 'Pautan bayaran ini telah tamat tempoh. Jika anda sudah membayar di bank, resit anda tetap akan dipaparkan: semak yuran anda sebelum membayar semula.',
   'parentHome.fees.startAgain': 'Mula Semula',
+  'parentHome.fees.inProgressTitle': 'Bayaran Sedang Diproses',
+  'parentHome.fees.inProgressMessage': 'Bayaran untuk bulan ini sedang diproses. Selesaikan di bank anda atau semak statusnya sebelum membayar semula.',
 };
 
 export const parentHomeTa: Record<keyof typeof parentHomeEn, string> = {
@@ -387,4 +391,6 @@ export const parentHomeTa: Record<keyof typeof parentHomeEn, string> = {
   'parentHome.fees.intentExpired': 'கட்டண இணைப்பு காலாவதியானது',
   'parentHome.fees.intentExpiredNote': 'இந்தக் கட்டண இணைப்பு காலாவதியாகிவிட்டது. வங்கியில் ஏற்கனவே செலுத்தியிருந்தால், உங்கள் ரசீது இன்னும் தோன்றும்: மீண்டும் செலுத்தும் முன் கட்டணங்களைச் சரிபார்க்கவும்.',
   'parentHome.fees.startAgain': 'மீண்டும் தொடங்கு',
+  'parentHome.fees.inProgressTitle': 'கட்டணம் ஏற்கனவே நடைபெறுகிறது',
+  'parentHome.fees.inProgressMessage': 'இந்த மாதங்களுக்கான கட்டணம் ஏற்கனவே நடைபெறுகிறது. மீண்டும் செலுத்தும் முன் உங்கள் வங்கியில் அதை முடிக்கவும் அல்லது அதன் நிலையைச் சரிபார்க்கவும்.',
 };
