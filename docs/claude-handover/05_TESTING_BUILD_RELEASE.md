@@ -16,7 +16,7 @@
 
 ### Mobile Unit & Component Suites (`mobile/`):
 * **Command**: `npm test` inside `mobile/`
-* **Test Suites**: 54 test suites, 619 total tests (615 before per-tenant flags; 609 before push; 600 before the inbox; 565 before navigation wiring; 40 / 400 before H26; 42 / 444 after H27; 477 after H28 first pass; 496 after core journeys; 551 after all screens)
+* **Test Suites**: 54 test suites, 624 total tests (619 before the owner decisions; 615 before per-tenant flags; 609 before push; 600 before the inbox; 565 before navigation wiring; 40 / 400 before H26; 42 / 444 after H27; 477 after H28 first pass; 496 after core journeys; 551 after all screens)
 * **Pass Rate**: **54 / 54 passed (100%)** — 2026-11-13
 * **Note on QR Attendance Suite**: `src/__tests__/qrAttendance.test.tsx` passes 21/21 tests in isolation; under heavy single-threaded Jest runs, grant a timeout buffer if needed.
 

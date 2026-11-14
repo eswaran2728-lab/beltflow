@@ -364,7 +364,7 @@ describe('guardian WhatsApp message', () => {
       </SafeAreaProvider>
     );
     await act(async () => { fireEvent.press(r.getByTestId('btn-ping-parent-stu_wa_1')); });
-    const buttons = alertSpy.mock.calls[0][2] as Array<{ onPress?: () => void }>;
+    const buttons = alertSpy.mock.calls[0][2] as { onPress?: () => void }[];
     await act(async () => { buttons[buttons.length - 1].onPress?.(); });
     const url = String(openSpy.mock.calls[0][0]);
     alertSpy.mockRestore();

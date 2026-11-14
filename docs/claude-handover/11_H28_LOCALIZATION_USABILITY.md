@@ -121,7 +121,7 @@ Code fixes made along the way:
 
 Left in English on purpose: values sent to the server (default reasons, lesson-plan defaults, upload titles, enum values), names and messages written by people or returned by the server, role codes, "RM" formatting, test-account names in the dev panel, and machine-readable error-code prefixes at the start of consent/policy messages.
 
-**Decisions for the owner:**
+**Owner decisions (decided and implemented 2026-11-14):** lesson-plan starter text and the guardian WhatsApp message now follow the Master's app language; the dead Inventory/Tournaments dashboard buttons were removed. Original notes:
 - Lesson-plan starting text (drill names, "New Drill", equipment) is saved with the plan, so it stays English. Translating it would store plans in mixed languages.
 - The WhatsApp message pre-filled for a guardian from the at-risk attendance alert stays English.
 

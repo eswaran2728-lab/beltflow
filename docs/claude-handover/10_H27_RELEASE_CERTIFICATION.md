@@ -183,7 +183,7 @@ Suite `server/src/tests/ops_payment_safety_followups.test.ts` (in `npm test`, 43
 | F | Money for dues already paid (second payment for the same months) was dropped silently and recorded `MATCHED` | Recorded `DISCREPANCY_AMOUNT` with "Refund or credit the payer"; dues never over-applied; visible in admin reconciliation |
 | G | Any Admin Persatuan could read any Persatuan's payment intent (`GET /payments/intents/:id`) — tenant leak | Only the owning Persatuan's admin (plus the payer / linked parent / student access as before) |
 
-**Owner decision (not changed):** the official H13 test starts several overlapping payments for the same months and expects each to succeed. Blocking a new payment while one for the same months is still pending would prevent most double payments, but changes that H13 behaviour. F makes any double payment visible for refund in the meantime.
+**Owner decision (decided and implemented 2026-11-14):** `POST /payments/intents` refuses a second payment for any month already in a live intent (unpaid, not expired) of the same student: 409 `PAYMENT_IN_PROGRESS` with that intent, which the Parent fees screen reopens. Exact idempotent retries, overdue links, failed attempts and other children are not blocked. H13 Requirement 26 and ops suite section H cover it. F still flags any duplicate the bank confirms after a link expired.
 
 Still open: push/SMS/email delivery (needs a provider and credentials; in-app delivery done, §9); ~~`students.billing_status` set to `Paid` on any settlement~~ fixed 2026-11-13 (§11).
 
