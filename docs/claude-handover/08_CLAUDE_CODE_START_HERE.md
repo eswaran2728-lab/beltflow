@@ -17,7 +17,7 @@ cd server
 npm ci
 npx tsc --noEmit           # Must pass with 0 errors
 npm run build              # Compiles to dist/ and copies schema.sql
-npm test                   # Runs all 51 test suites, each on a fresh database (scripts/run-tests.js)
+npm test                   # Runs all 52 test suites, each on a fresh database (scripts/run-tests.js)
 
 # 2. Mobile Verification
 cd ../mobile
@@ -39,7 +39,8 @@ npm test                   # Runs Jest component and unit test suites
 7. `docs/claude-handover/09_H26_ROLE_AWARE_AI.md`, `10_H27_RELEASE_CERTIFICATION.md` and `11_H28_LOCALIZATION_USABILITY.md` (latest evidence)
 8. `docs/claude-handover/12_SECURITY_REVIEW_2026-11-14.md` (security fixes, open owner decisions, required production secrets)
 9. `docs/claude-handover/13_SECURITY_HARDENING_2026-11-15.md` (hardening checklist, leaked secrets the owner must replace, live attack test)
-10. Authoritative PDF: `BeltFlow_Complete_Structure_Implementation_and_Handoff_v2.pdf` at the repository root.
+10. `docs/claude-handover/14_PRIVACY_LEGAL_ACCESSIBILITY_2026-11-15.md` (legal pages, consent, data rights, accessibility; owner must complete `legal/business.js`)
+11. Authoritative PDF: `BeltFlow_Complete_Structure_Implementation_and_Handoff_v2.pdf` at the repository root.
 
 ---
 
