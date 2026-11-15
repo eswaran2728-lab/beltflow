@@ -49,7 +49,7 @@ router.post('/record', authenticateJWT, requirePermission(Permission.CLASS_MARK_
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email)
        VALUES ($1, $2, $3, $4, $5)`,
-      [`audit_${Date.now()}`, 'Attendance Recorded', `Recorded attendance for class ${classId} on ${sessionDate} (${records.length} students)`, req.user!.role, req.user!.email]
+      [`audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, 'Attendance Recorded', `Recorded attendance for class ${classId} on ${sessionDate} (${records.length} students)`, req.user!.role, req.user!.email]
     );
 
     return res.json({ message: 'Attendance recorded successfully in PostgreSQL.', count: records.length });

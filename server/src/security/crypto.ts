@@ -19,31 +19,75 @@ function getJwtSecret(): string {
 
 const JWT_EXPIRES_IN = '7d';
 
+// Password hashing.
+//
+// Format: scrypt$N$r$p$<salt hex>$<hash hex>. scrypt is memory-hard, so
+// guessing passwords from a stolen database is expensive even on GPUs.
+// Two older formats still verify so nobody is locked out, and are replaced
+// with scrypt the next time that person signs in (passwordNeedsRehash):
+//   <salt>:<hash>   PBKDF2-SHA256, 10,000 rounds
+//   <64 hex>        unsalted SHA-256 (oldest accounts)
+const SCRYPT_N = 16384;
+const SCRYPT_R = 8;
+const SCRYPT_P = 1;
+const SCRYPT_KEYLEN = 64;
+
+function constantTimeEqualHex(a: string, b: string): boolean {
+  const x = Buffer.from(a, 'hex');
+  const y = Buffer.from(b, 'hex');
+  return x.length === y.length && x.length > 0 && crypto.timingSafeEqual(x, y);
+}
+
 /**
- * Generates a cryptographic salt and hashes password with PBKDF2/SHA-256.
+ * Hashes a password with scrypt and a fresh random salt.
  */
 export function hashPasswordServer(password: string): string {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha256').toString('hex');
-  return `${salt}:${hash}`;
+  const salt = crypto.randomBytes(16);
+  const hash = crypto.scryptSync(password, salt, SCRYPT_KEYLEN, { N: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P });
+  return `scrypt$${SCRYPT_N}$${SCRYPT_R}$${SCRYPT_P}$${salt.toString('hex')}$${hash.toString('hex')}`;
 }
 
 /**
- * Verifies password against stored salt:hash string.
+ * Verifies a password against any stored format, in constant time.
+ * A malformed stored value is simply "no match".
  */
 export function verifyPasswordServer(password: string, storedHash: string): boolean {
-  if (!storedHash) return false;
-  
-  if (storedHash.includes(':')) {
-    const [salt, originalHash] = storedHash.split(':');
-    const hash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha256').toString('hex');
-    return hash === originalHash;
+  if (!storedHash || typeof password !== 'string') return false;
+  try {
+    if (storedHash.startsWith('scrypt$')) {
+      const [, n, r, p, saltHex, hashHex] = storedHash.split('$');
+      const N = Number(n), R = Number(r), P = Number(p);
+      if (!saltHex || !hashHex || !Number.isInteger(N) || N < 1024 || N > 1048576 || !Number.isInteger(R) || !Number.isInteger(P)) return false;
+      const hash = crypto.scryptSync(password, Buffer.from(saltHex, 'hex'), hashHex.length / 2, { N, r: R, p: P, maxmem: 256 * 1024 * 1024 });
+      return constantTimeEqualHex(hash.toString('hex'), hashHex);
+    }
+    if (storedHash.includes(':')) {
+      const [salt, originalHash] = storedHash.split(':');
+      const hash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha256').toString('hex');
+      return constantTimeEqualHex(hash, originalHash);
+    }
+    if (/^[0-9a-f]{64}$/i.test(storedHash)) {
+      const legacyHash = crypto.createHash('sha256').update(password).digest('hex');
+      return constantTimeEqualHex(legacyHash, storedHash);
+    }
+  } catch {
+    return false;
   }
-
-  // Direct SHA-256 hex string fallback
-  const legacyHash = crypto.createHash('sha256').update(password).digest('hex');
-  return legacyHash === storedHash;
+  return false;
 }
+
+/** True when a stored hash is in an older format (or weaker settings) and should be replaced at the next sign-in. */
+export function passwordNeedsRehash(storedHash: string): boolean {
+  if (!storedHash || !storedHash.startsWith('scrypt$')) return true;
+  const [, n, r, p] = storedHash.split('$');
+  return Number(n) < SCRYPT_N || Number(r) < SCRYPT_R || Number(p) < SCRYPT_P;
+}
+
+/**
+ * A hash nobody knows the password for. Verifying against it takes as long as
+ * a real check, so "no such account" is not faster than "wrong password".
+ */
+export const DUMMY_PASSWORD_HASH = hashPasswordServer(crypto.randomBytes(24).toString('hex'));
 
 /**
  * Signs JWT session token for authenticated user.

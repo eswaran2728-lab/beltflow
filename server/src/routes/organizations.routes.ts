@@ -54,7 +54,7 @@ router.post('/', authenticateJWT, requirePermission(Permission.ORGANIZATION_CREA
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email)
        VALUES ($1, $2, $3, $4, $5)`,
-      [`audit_${Date.now()}`, 'Organization Onboarded', `Super Admin created academy: ${name.trim()}`, req.user!.role, req.user!.email]
+      [`audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, 'Organization Onboarded', `Super Admin created academy: ${name.trim()}`, req.user!.role, req.user!.email]
     );
 
     return res.status(201).json({
@@ -120,7 +120,7 @@ router.put('/:orgId', authenticateJWT, requirePermission(Permission.PERSATUAN_ED
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email)
        VALUES ($1, $2, $3, $4, $5)`,
-      [`audit_${Date.now()}`, 'Organization Settings Updated', `Updated profile for organization ${req.params.orgId}`, req.user!.role, req.user!.email]
+      [`audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, 'Organization Settings Updated', `Updated profile for organization ${req.params.orgId}`, req.user!.role, req.user!.email]
     );
 
     return res.json({ message: 'Settings updated successfully.', organization: orgRes.rows[0] });

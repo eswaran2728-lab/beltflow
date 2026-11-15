@@ -310,7 +310,7 @@ router.post('/submit-payment', authenticateJWT, async (req: Request, res: Respon
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email)
        VALUES ($1, $2, $3, $4, $5)`,
-      [`audit_${Date.now()}`, 'Payment Notice Submitted', `Submitted payment notice of RM ${amount} for ${student.full_name}`, user.role, user.email]
+      [`audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, 'Payment Notice Submitted', `Submitted payment notice of RM ${amount} for ${student.full_name}`, user.role, user.email]
     );
 
     return res.status(201).json({ message: 'Payment notice submitted for review.', payment: payRes.rows[0] });
@@ -378,7 +378,7 @@ router.post('/:paymentId/approve', authenticateJWT, requirePermission(Permission
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email)
        VALUES ($1, $2, $3, $4, $5)`,
-      [`audit_${Date.now()}`, 'Payment Approved', `Approved payment ${payment.id} with receipt ${receiptNo}`, req.user!.role, req.user!.email]
+      [`audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, 'Payment Approved', `Approved payment ${payment.id} with receipt ${receiptNo}`, req.user!.role, req.user!.email]
     );
 
     return res.json({ message: 'Payment approved successfully in PostgreSQL.', payment: updatePayRes!.rows[0], ledgerWarning });
@@ -479,7 +479,7 @@ router.post('/record-cash-payment', authenticateJWT, requirePermission(Permissio
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email)
        VALUES ($1, $2, $3, $4, $5)`,
-      [`audit_${Date.now()}`, 'Cash Payment Recorded', `Recorded in-person payment of RM ${amount} for ${student.full_name} (Receipt: ${receiptNo})`, req.user!.role, req.user!.email]
+      [`audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, 'Cash Payment Recorded', `Recorded in-person payment of RM ${amount} for ${student.full_name} (Receipt: ${receiptNo})`, req.user!.role, req.user!.email]
     );
 
     return res.status(201).json({ message: 'Cash payment recorded and receipt generated in PostgreSQL.', payment: payRes!.rows[0] });

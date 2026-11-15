@@ -1,6 +1,14 @@
 import app from './app';
 import { dbClient } from './db/client';
 import { startBackgroundWorkers } from './workers/scheduler';
+import { validateProductionEnv } from './config/validateEnv';
+
+// Refuse to start in production with a missing or weak configuration.
+const configProblems = validateProductionEnv();
+if (configProblems.length > 0) {
+  console.error('FATAL: production configuration problems:\n - ' + configProblems.join('\n - '));
+  process.exit(1);
+}
 
 const PORT = process.env.PORT || 4000;
 

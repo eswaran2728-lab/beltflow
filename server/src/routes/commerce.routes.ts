@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { safeErrorMessage } from '../security/errors';
 import { dbClient } from '../db/client';
 import { authenticateJWT } from '../middleware/auth';
 import { UserRole } from '../security/rbac';
@@ -85,7 +86,7 @@ router.get('/products', authenticateJWT, async (req: Request, res: Response) => 
     const result = await dbClient.query(query, params);
     return res.json({ products: result.rows });
   } catch (error: any) {
-    return res.status(500).json({ error: error.message || 'Failed to list products' });
+    return res.status(500).json({ error: safeErrorMessage(error, 'Failed to list products') });
   }
 });
 
@@ -152,7 +153,7 @@ router.post(
       // Respond only after COMMIT (see no_response_inside_transaction_h27).
       return res.status(result.status).json(result.body);
     } catch (error: any) {
-      return res.status(500).json({ error: error.message || 'Failed to create product' });
+      return res.status(500).json({ error: safeErrorMessage(error, 'Failed to create product') });
     }
   }
 );
@@ -218,7 +219,7 @@ router.post(
       // Respond only after COMMIT (see no_response_inside_transaction_h27).
       return res.status(result.status).json(result.body);
     } catch (error: any) {
-      return res.status(500).json({ error: error.message || 'Failed to restock product' });
+      return res.status(500).json({ error: safeErrorMessage(error, 'Failed to restock product') });
     }
   }
 );
@@ -326,7 +327,7 @@ router.post('/orders', authenticateJWT, async (req: Request, res: Response) => {
       // Respond only after COMMIT (see no_response_inside_transaction_h27).
       return res.status(result.status).json(result.body);
   } catch (error: any) {
-    return res.status(500).json({ error: error.message || 'Failed to create order' });
+    return res.status(500).json({ error: safeErrorMessage(error, 'Failed to create order') });
   }
 });
 
@@ -471,7 +472,7 @@ router.post('/orders/:orderId/reserve', authenticateJWT, async (req: Request, re
     const result = await reserveStockInternal(req.params.orderId, req.user?.organizationId, isSuperAdmin);
     return res.status(result.status).json(result.data);
   } catch (error: any) {
-    return res.status(500).json({ error: error.message || 'Failed to reserve stock' });
+    return res.status(500).json({ error: safeErrorMessage(error, 'Failed to reserve stock') });
   }
 });
 
@@ -715,7 +716,7 @@ router.post('/orders/:orderId/confirm-payment', authenticateJWT, requireRole([Us
     if (error?.httpStatus === 409) {
       return res.status(409).json({ success: false, errorCode: error.errorCode, error: error.message });
     }
-    return res.status(500).json({ error: error.message || 'Failed to confirm order payment' });
+    return res.status(500).json({ error: safeErrorMessage(error, 'Failed to confirm order payment') });
   }
 });
 
@@ -867,7 +868,7 @@ router.post(
       );
       return res.status(result.status).json(result.data);
     } catch (error: any) {
-      return res.status(500).json({ error: error.message || 'Failed to refund order' });
+      return res.status(500).json({ error: safeErrorMessage(error, 'Failed to refund order') });
     }
   }
 );
@@ -917,7 +918,7 @@ router.get('/orders', authenticateJWT, async (req: Request, res: Response) => {
     const result = await dbClient.query(query, params);
     return res.json({ orders: result.rows });
   } catch (error: any) {
-    return res.status(500).json({ error: error.message || 'Failed to list orders' });
+    return res.status(500).json({ error: safeErrorMessage(error, 'Failed to list orders') });
   }
 });
 
@@ -978,7 +979,7 @@ router.get('/orders/:orderId', authenticateJWT, async (req: Request, res: Respon
       movements: movementsRes.rows
     });
   } catch (error: any) {
-    return res.status(500).json({ error: error.message || 'Failed to get order' });
+    return res.status(500).json({ error: safeErrorMessage(error, 'Failed to get order') });
   }
 });
 

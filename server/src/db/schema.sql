@@ -1687,3 +1687,42 @@ CREATE TABLE IF NOT EXISTS organization_module_settings (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (organization_id, module_key)
 );
+
+
+-- ============================================================================
+-- Security hardening (2026-11-15)
+-- ============================================================================
+-- Sign-in protection and session invalidation.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_login_count INT NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ;
+
+-- Suspicious-activity log. Holds no passwords, tokens or child data: the
+-- client address is stored only as a one-way hash.
+CREATE TABLE IF NOT EXISTS security_events (
+    id TEXT PRIMARY KEY,
+    type VARCHAR(50) NOT NULL,
+    severity VARCHAR(10) NOT NULL DEFAULT 'INFO', -- 'INFO', 'WARN', 'ALERT'
+    client_hash VARCHAR(64),
+    user_id TEXT,
+    method VARCHAR(10),
+    path VARCHAR(255),
+    status INT,
+    detail VARCHAR(500),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_security_events_created ON security_events(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_security_events_type ON security_events(type, created_at DESC);
+
+-- One-time password reset codes. Only a hash of the code is stored.
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash VARCHAR(64) NOT NULL,
+    issued_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    used_at TIMESTAMPTZ,
+    failed_attempts INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_password_reset_user ON password_reset_tokens(user_id, created_at DESC);
