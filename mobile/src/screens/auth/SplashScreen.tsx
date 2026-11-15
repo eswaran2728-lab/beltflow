@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { Shield } from 'lucide-react-native';
+import { AnimatedLogo, AnimatedWordmark } from '../../components/AnimatedLogo';
+import { Entrance } from '../../components/motion';
 import { useTheme } from '../../theme/ThemeProvider';
 import { authService } from '../../services/authService';
 import { AuthUser } from '../../types/auth';
@@ -21,7 +22,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   onUnauthenticated,
   autoRestore = true,
 }) => {
-  const { colors, typography, spacing } = useTheme();
+  const { typography, spacing } = useTheme();
   const { t } = useI18n();
 
   useEffect(() => {
@@ -54,33 +55,26 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
 
   return (
     <View
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={[styles.container, { backgroundColor: '#0D2B47' }]}
       testID="splash-screen"
       accessibilityRole="text"
       accessibilityLabel={t('auth.splash.a11y')}
     >
       <View style={styles.brandContainer}>
-        <View
-          style={[
-            styles.iconWrapper,
-            { backgroundColor: colors.surface, borderColor: colors.border },
-          ]}
-        >
-          <Shield size={56} color={colors.buttonPrimaryBg} />
-        </View>
+        <AnimatedLogo size={176} style={{ marginBottom: 8 }} />
 
-        <Text style={[typography.display, styles.brandTitle, { color: colors.textPrimary }]}>
-          {t('app.name')}
-        </Text>
+        <AnimatedWordmark text={t('app.name')} />
 
-        <Text style={[typography.bodyMedium, styles.brandSubtitle, { color: colors.textSecondary }]}>
-          {t('auth.common.tagline')}
-        </Text>
+        <Entrance delay={1350} style={{ marginTop: 8 }}>
+          <Text style={[typography.bodyMedium, styles.brandSubtitle, { color: '#B8C7D9' }]}>
+            {t('auth.common.tagline')}
+          </Text>
+        </Entrance>
       </View>
 
       <View style={[styles.loaderContainer, { marginBottom: spacing.xxl }]}>
-        <ActivityIndicator size="large" color={colors.buttonPrimaryBg} />
-        <Text style={[typography.caption, { color: colors.textMuted, marginTop: 12 }]}>
+        <ActivityIndicator size="large" color="#F2941C" />
+        <Text style={[typography.caption, { color: '#B8C7D9', marginTop: 12 }]}>
           {t('auth.splash.loading')}
         </Text>
       </View>

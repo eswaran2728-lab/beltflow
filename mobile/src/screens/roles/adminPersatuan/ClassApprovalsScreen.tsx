@@ -228,6 +228,7 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
     <ScreenContainer scrollable testID="admin-class-approvals-screen" style={{ backgroundColor: colors.background }}>
       {/* Stitch App Header */}
       <StitchAppHeader
+        inContainer
         roleBadgeText="ADMIN PERSATUAN"
         dojangName="PERSATUAN DOJANG"
         hasUnreadNotifications={pendingCount > 0}

@@ -103,20 +103,21 @@ export interface ThemeColors {
 }
 
 export const lightThemeColors: ThemeColors = {
-  background: BrandColors.slate50,
-  backgroundSecondary: BrandColors.slate100,
+  background: '#F4F6FA',
+  backgroundSecondary: '#EBEFF5',
   surface: '#FFFFFF',
   surfaceElevated: '#FFFFFF',
   surfaceHighlight: BrandColors.amberSoft,
 
   textPrimary: BrandColors.slate900,
   textSecondary: BrandColors.slate600,
-  textMuted: BrandColors.slate400,
+  // slate500 (not 400): small helper text must stay readable on white.
+  textMuted: BrandColors.slate500,
   textInverse: '#FFFFFF',
   text: BrandColors.slate900,
 
-  border: BrandColors.slate200,
-  borderLight: BrandColors.slate100,
+  border: '#E4E9F0',
+  borderLight: '#EEF1F6',
   borderFocused: BrandColors.navy,
 
   disabled: BrandColors.slate200,

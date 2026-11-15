@@ -222,6 +222,7 @@ export const CurriculumManagementScreen: React.FC<CurriculumManagementScreenProp
     <ScreenContainer scrollable testID="curriculum-management-screen" style={{ backgroundColor: colors.background }}>
       {/* Stitch App Header */}
       <StitchAppHeader
+        inContainer
         roleBadgeText="ADMIN PERSATUAN"
         dojangName="PERSATUAN DOJANG"
       />

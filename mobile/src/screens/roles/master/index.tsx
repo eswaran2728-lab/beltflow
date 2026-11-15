@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { readableId } from '../../../utils/displayName';
 import { View, Text, StyleSheet, RefreshControl } from 'react-native';
 import {
   Calendar,
@@ -74,12 +75,12 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
           <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
             {user.fullName}
           </Text>
-          <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
+          <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]} numberOfLines={1} ellipsizeMode="middle">
             {user.email}
           </Text>
           {user.organizationId ? (
             <Text style={[typography.caption, { color: colors.buttonPrimaryBg, marginTop: 2, fontWeight: '600' }]}>
-              {t('masterHome.persatuanLabel', { org: user.organizationId })}
+              {t('masterHome.persatuanLabel', { org: readableId(user.organizationId) })}
             </Text>
           ) : null}
         </View>
@@ -97,7 +98,7 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <StitchAppHeader
-          dojangName={user.organizationId ? t('masterHome.headerPersatuan', { org: user.organizationId.toUpperCase() }) : t('masterHome.headerPersatuanFallback')}
+          dojangName={user.organizationId ? t('masterHome.headerPersatuan', { org: readableId(user.organizationId).toUpperCase() }) : t('masterHome.headerPersatuanFallback')}
           roleBadgeText="MASTER"
           hasUnreadNotifications={false}
         />
@@ -122,7 +123,7 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <StitchAppHeader
-          dojangName={user.organizationId ? t('masterHome.headerPersatuan', { org: user.organizationId.toUpperCase() }) : t('masterHome.headerPersatuanFallback')}
+          dojangName={user.organizationId ? t('masterHome.headerPersatuan', { org: readableId(user.organizationId).toUpperCase() }) : t('masterHome.headerPersatuanFallback')}
           roleBadgeText="MASTER"
           hasUnreadNotifications={false}
         />
@@ -146,7 +147,7 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StitchAppHeader
-        dojangName={user.organizationId ? t('masterHome.headerPersatuan', { org: user.organizationId.toUpperCase() }) : t('masterHome.headerPersatuanFallback')}
+        dojangName={user.organizationId ? t('masterHome.headerPersatuan', { org: readableId(user.organizationId).toUpperCase() }) : t('masterHome.headerPersatuanFallback')}
         roleBadgeText="MASTER"
         hasUnreadNotifications={inbox.unreadCount > 0}
         onNotificationPress={inbox.openInbox}

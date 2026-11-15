@@ -151,9 +151,6 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
         styles.screenHeaderContainer,
         {
           minHeight: layout.headerHeight,
-          borderBottomColor: colors.border,
-          borderBottomWidth: 1,
-          backgroundColor: colors.surface,
         },
         style,
       ]}
@@ -173,12 +170,12 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
           </TouchableOpacity>
         ) : null}
 
-        <View>
-          <Text style={[typography.pageTitle, { color: colors.textPrimary }]}>
+        <View style={styles.headerTitles}>
+          <Text style={[typography.pageTitle, { color: colors.textPrimary }]} numberOfLines={2}>
             {title}
           </Text>
           {subtitle ? (
-            <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
+            <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginTop: 2 }]} numberOfLines={2}>
               {subtitle}
             </Text>
           ) : null}
@@ -211,8 +208,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 4,
+    paddingTop: 8,
+    paddingBottom: 12,
+  },
+  headerTitles: {
+    flex: 1,
+    minWidth: 0,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -226,5 +228,6 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     marginLeft: 12,
+    flexShrink: 0,
   },
 });

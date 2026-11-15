@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import { StitchTokens } from '../../theme/tokens';
+import { useCountUp } from '../motion';
 
 export interface StitchStatCardProps {
   label?: string;
@@ -34,6 +35,7 @@ export const StitchStatCard: React.FC<StitchStatCardProps> = ({
   const displayLabel = label || kpiLabel || '';
   const displayValue = value ?? kpiValue ?? '';
   const displaySubtext = subtext || kpiSubtext;
+  const shownValue = useCountUp(displayValue);
 
   return (
     <View
@@ -45,9 +47,9 @@ export const StitchStatCard: React.FC<StitchStatCardProps> = ({
       ]}
       testID={testID || "stitch-stat-card"}
     >
-      <Text style={styles.label}>{displayLabel}</Text>
+      <Text style={styles.label} numberOfLines={2}>{displayLabel}</Text>
       <Text style={[styles.valueText, accentColor && displayValue !== '0' && displayValue !== 'RM 0' && displayValue !== 'RM 0.00' ? { color: accentColor } : null]}>
-        {displayValue}
+        {shownValue}
       </Text>
       {trendText ? (
         <Text
@@ -71,7 +73,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: StitchTokens.colors.slateBorder,
     borderRadius: StitchTokens.radii.cardMini,
-    padding: 16,
+    padding: 14,
     ...StitchTokens.shadows.card,
   },
   accentBorder: {
@@ -84,14 +86,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: StitchTokens.colors.slateTextMuted,
     textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    letterSpacing: 0.3,
+    lineHeight: 14,
+    minHeight: 28,
   },
   valueText: {
     fontFamily: StitchTokens.typography.fontFamily,
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '800',
+    letterSpacing: -0.6,
     color: StitchTokens.colors.brandNavy,
-    marginTop: 4,
+    marginTop: 6,
   },
   trendText: {
     fontFamily: StitchTokens.typography.fontFamily,

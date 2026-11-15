@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react';
+import { readableId } from '../../../utils/displayName';
 import { useI18n, translate } from '../../../i18n';
 import { useNotificationInbox } from '../../../components/NotificationsInbox';
 import { View, Text, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
@@ -91,12 +92,12 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
           <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
             {user.fullName}
           </Text>
-          <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
+          <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]} numberOfLines={1} ellipsizeMode="middle">
             {user.email}
           </Text>
           {user.organizationId ? (
             <Text style={[typography.caption, { color: StitchTokens.colors.brandNavy, marginTop: 4, fontWeight: '700' }]}>
-              {t('adminHome.persatuanId', { id: user.organizationId })}
+              {t('adminHome.persatuanId', { id: readableId(user.organizationId) })}
             </Text>
           ) : null}
         </View>
@@ -114,6 +115,7 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
     return (
       <ScreenContainer scrollable testID="admin-persatuan-home-screen">
         <StitchAppHeader
+        inContainer
           dojangName="PERSATUAN DOJANG"
           roleBadgeText="ADMIN PERSATUAN"
           hasUnreadNotifications={false}
@@ -142,6 +144,7 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
     return (
       <ScreenContainer scrollable testID="admin-persatuan-home-screen">
         <StitchAppHeader
+        inContainer
           dojangName="PERSATUAN DOJANG"
           roleBadgeText="ADMIN PERSATUAN"
           hasUnreadNotifications={false}
@@ -185,6 +188,7 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
     >
       {/* 1. Google Stitch App Header */}
       <StitchAppHeader
+        inContainer
         dojangName="PERSATUAN DOJANG"
         roleBadgeText="ADMIN PERSATUAN"
         hasUnreadNotifications={inbox.unreadCount > 0}

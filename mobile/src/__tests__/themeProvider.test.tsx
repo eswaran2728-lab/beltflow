@@ -29,7 +29,7 @@ describe('ThemeProvider & useTheme hook', () => {
 
     expect(result.current.themeMode).toBe('light');
     expect(result.current.isDark).toBe(false);
-    expect(result.current.colors.background).toBe('#F8FAFC');
+    expect(result.current.colors.background).toBe('#F4F6FA');
   });
 
   test('toggleTheme toggles between light and dark', async () => {
@@ -52,7 +52,7 @@ describe('ThemeProvider & useTheme hook', () => {
     });
 
     expect(result.current.isDark).toBe(false);
-    expect(result.current.colors.background).toBe('#F8FAFC');
+    expect(result.current.colors.background).toBe('#F4F6FA');
   });
 
   test('provides typography, spacing, borderRadius and belt utilities', async () => {

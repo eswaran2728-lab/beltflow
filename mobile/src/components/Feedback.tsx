@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { AlertTriangle, WifiOff, Inbox } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeProvider';
+import { Shimmer } from './motion';
 import { Button } from './Button';
 import { useI18n } from '../i18n';
 
@@ -55,6 +56,8 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
           {message}
         </Text>
       ) : null}
+      {/* Placeholder lines so the screen does not jump when content arrives */}
+      <Shimmer lines={3} style={styles.loadingShimmer} color={colors.border} />
     </View>
   );
 };
@@ -292,6 +295,10 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
 };
 
 const styles = StyleSheet.create({
+  loadingShimmer: {
+    marginTop: 20,
+    maxWidth: 280,
+  },
   centerContainer: {
     padding: 24,
     alignItems: 'center',

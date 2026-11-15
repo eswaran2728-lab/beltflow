@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ViewStyle, StyleProp, ActivityIndicator } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import { Card } from './Card';
+import { useCountUp } from './motion';
 
 export interface StatCardProps {
   title: string;
@@ -25,6 +26,7 @@ export const StatCard: React.FC<StatCardProps> = ({
   testID,
 }) => {
   const { colors, typography } = useTheme();
+  const shownValue = useCountUp(value);
 
   return (
     <Card variant="standard" style={[styles.card, style]} testID={testID}>
@@ -36,6 +38,8 @@ export const StatCard: React.FC<StatCardProps> = ({
             { color: colors.textSecondary },
           ]}
           numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.75}
         >
           {title}
         </Text>
@@ -54,7 +58,7 @@ export const StatCard: React.FC<StatCardProps> = ({
             { color: empty ? colors.textMuted : colors.textPrimary },
           ]}
         >
-          {empty ? '—' : value}
+          {empty ? '—' : shownValue}
         </Text>
       )}
 
@@ -76,7 +80,7 @@ export const StatCard: React.FC<StatCardProps> = ({
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    minWidth: 140,
+    minWidth: 96,
   },
   headerRow: {
     flexDirection: 'row',

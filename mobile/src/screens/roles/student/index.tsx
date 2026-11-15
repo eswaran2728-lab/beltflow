@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { readableId } from '../../../utils/displayName';
 import { View, Text, StyleSheet, RefreshControl, TouchableOpacity, Alert, Modal } from 'react-native';
 import {
   CheckSquare,
@@ -134,12 +135,12 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
           <Text style={[typography.sectionHeading, { color: colors.textPrimary }]} numberOfLines={2}>
             {user.fullName}
           </Text>
-          <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
+          <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]} numberOfLines={1} ellipsizeMode="middle">
             {user.email}
           </Text>
           {user.organizationId ? (
             <Text style={[typography.caption, { color: colors.buttonPrimaryBg, marginTop: 2, fontWeight: '600' }]}>
-              {t('studentHome.persatuanLabel', { organization: user.organizationId })}
+              {t('studentHome.persatuanLabel', { organization: readableId(user.organizationId) })}
             </Text>
           ) : null}
         </View>
@@ -157,6 +158,7 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
     return (
       <ScreenContainer scrollable testID="student-home-screen">
         <StitchAppHeader
+        inContainer
           dojangName="PERSATUAN SILAMBAM"
           roleBadgeText="STUDENT"
           hasUnreadNotifications={false}
@@ -180,6 +182,7 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
     return (
       <ScreenContainer scrollable testID="student-home-screen">
         <StitchAppHeader
+        inContainer
           dojangName="PERSATUAN SILAMBAM"
           roleBadgeText="STUDENT"
           hasUnreadNotifications={false}
@@ -218,6 +221,7 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
     >
       {/* 1. Google Stitch App Header */}
       <StitchAppHeader
+        inContainer
         dojangName={data?.persatuanName ? data.persatuanName.toUpperCase() : 'PERSATUAN DOJANG (SELANGOR)'}
         roleBadgeText="STUDENT"
         hasUnreadNotifications={inbox.unreadCount > 0}
@@ -676,6 +680,7 @@ export const StudentAttendanceScreen: React.FC<RoleScreenProps> = props => {
   return (
     <ScreenContainer scrollable testID="student-attendance-screen">
       <StitchAppHeader
+        inContainer
         dojangName={t('studentHome.attendance.header')}
         roleBadgeText="STUDENT"
         hasUnreadNotifications={false}
@@ -722,6 +727,7 @@ export const CertificatesScreen: React.FC<RoleScreenProps> = props => {
   return (
     <ScreenContainer scrollable testID="student-certificates-screen">
       <StitchAppHeader
+        inContainer
         dojangName={t('studentHome.certificates.header')}
         roleBadgeText="STUDENT"
         hasUnreadNotifications={false}
