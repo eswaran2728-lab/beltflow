@@ -284,6 +284,14 @@ async function runTests() {
     assert.equal(coTry.data.intent.providerSessionUrl ?? null, null, "another person never gets the payer's bank link");
     const payerTry = await post({ billingMonthIds: ['due_ops_i2'] });
     assert.ok(payerTry.data.intent.providerSessionUrl, 'the payer gets their own bank link to reopen');
+    // I4: a retry key belongs to the payer who used it; another user sending the same key learns nothing.
+    await dbClient.query(`UPDATE payment_intents SET idempotency_key = 'idem_ops_i4' WHERE id = $1`, [payerTry.data.intent.id]);
+    const coKey = await request(server, 'POST', '/payments/intents', { token: tCo, body: { studentId, billingMonthIds: ['due_ops_i2'], paymentMethod: 'FPX', fpxBankCode: 'TEST0001', idempotencyKey: 'idem_ops_i4' } });
+    assert.equal(coKey.status, 409, `another user's retry key is refused: ${JSON.stringify(coKey.data)}`);
+    assert.equal(coKey.data.code, 'IDEMPOTENCY_KEY_CONFLICT');
+    assert.ok(!JSON.stringify(coKey.data).includes('http'), 'no bank link or intent details');
+    const ownKey = await post({ billingMonthIds: ['due_ops_i2'], idempotencyKey: 'idem_ops_i4' });
+    assert.equal(ownKey.data.intent?.id, payerTry.data.intent.id, 'the payer still gets their own intent back');
     console.log('✅ I: failed session setup does not lock the month; concurrent requests create one payment; bank link only for the payer.');
 
     // ------------------------------------------------------------------ G

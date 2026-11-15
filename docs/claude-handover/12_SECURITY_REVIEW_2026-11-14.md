@@ -40,6 +40,7 @@ fixed. Each fix has a test that failed first:
 | Med-Low | The per-tenant module switch did not apply to signed-out requests (public trial booking) | `moduleGate` applies the addressed Persatuan's setting |
 | Low | Trial status changes, make-up booking lists and admin bookings were not scoped to the Persatuan. Super Admin could read and edit lesson plans. Any Master could delete any video | All scoped; Super Admin refused |
 | Low | An unknown payment provider silently fell back to the sandbox | Production fails closed |
+| Low | A payment intent's retry (idempotency) key returned another payer's intent and bank link to a same-Persatuan user who sent the same key | Another payer's key gets 409 `IDEMPOTENCY_KEY_CONFLICT` with no details (fixed 2026-11-15) |
 
 ## Open — owner decisions or later work
 
@@ -51,9 +52,8 @@ fixed. Each fix has a test that failed first:
 3. **Merchandise orders have no online gateway path.** Payment is recorded by
    staff. Add a payment intent and verified webhook for orders before online
    merchandise sales.
-4. **Before live payments:**
-   - the Persatuan Admin currently chooses the merchant webhook secret; move to provider-issued secrets in a KMS;
-   - the intent idempotency key is scoped only by organisation (scope it by payer).
+4. **Before live payments:** the Persatuan Admin currently chooses the
+   merchant webhook secret; move to provider-issued secrets in a KMS.
 5. **Developer panel code is still in production JS bundles** (hidden). Its
    accounts are the synthetic seed (`seed_test_env.ts`), which must never run
    against production data.

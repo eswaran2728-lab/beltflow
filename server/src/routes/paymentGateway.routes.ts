@@ -283,6 +283,10 @@ paymentGatewayRouter.post('/intents', authenticateJWT, async (req: Request, res:
       );
       if (existingIntent.rowCount! > 0) {
         const row = existingIntent.rows[0];
+        // A retry key belongs to the payer who used it: anyone else learns nothing.
+        if (row.payer_user_id !== req.user!.id) {
+          return res.status(409).json({ code: 'IDEMPOTENCY_KEY_CONFLICT', error: 'This request key is already in use. Use a new key.' });
+        }
         return res.json({
           message: 'Existing payment intent returned (idempotent).',
           intent: {
