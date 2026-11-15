@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Award, Users, CheckCircle2 } from 'lucide-react-native';
-import { BrandMark } from '../../components/BrandMark';
+import { AnimatedLogo } from '../../components/AnimatedLogo';
 import { Entrance, PopIn } from '../../components/motion';
 import { useTheme } from '../../theme/ThemeProvider';
 import { ScreenContainer } from '../../components/Layout';
@@ -28,7 +28,9 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         {/* Header Branding */}
         <View style={styles.header}>
           <PopIn>
-            <BrandMark tile size={96} style={styles.logoTile} />
+            <View style={[styles.logoTile, styles.logoTileFace]}>
+              <AnimatedLogo size={80} glow={false} />
+            </View>
           </PopIn>
           <Text style={[typography.display, styles.title, { color: colors.textPrimary }]}>
             {t('app.name')}
@@ -128,6 +130,14 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     marginBottom: 28,
+  },
+  logoTileFace: {
+    width: 100,
+    height: 100,
+    borderRadius: 28,
+    backgroundColor: '#0D2B47',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   logoTile: {
     marginBottom: 18,

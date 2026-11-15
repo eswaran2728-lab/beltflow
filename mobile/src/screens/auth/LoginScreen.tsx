@@ -8,7 +8,7 @@ import {
   Platform,
 } from 'react-native';
 import { Mail } from 'lucide-react-native';
-import { BrandMark } from '../../components/BrandMark';
+import { AnimatedLogo } from '../../components/AnimatedLogo';
 import { PopIn } from '../../components/motion';
 import { useTheme } from '../../theme/ThemeProvider';
 import { ScreenContainer } from '../../components/Layout';
@@ -99,7 +99,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           {/* Top Brand Logo */}
           <View style={styles.header}>
             <PopIn>
-              <BrandMark tile size={72} style={styles.logoTile} />
+              <View style={[styles.logoTile, styles.logoTileFace]}>
+                <AnimatedLogo size={60} glow={false} />
+              </View>
             </PopIn>
             <Text style={[typography.pageTitle, styles.title, { color: colors.textPrimary }]}>
               {t('auth.login.title')}
@@ -235,6 +237,14 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     marginBottom: 24,
+  },
+  logoTileFace: {
+    width: 76,
+    height: 76,
+    borderRadius: 22,
+    backgroundColor: '#0D2B47',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   logoTile: {
     marginBottom: 16,

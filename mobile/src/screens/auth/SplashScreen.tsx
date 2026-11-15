@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { BrandMark } from '../../components/BrandMark';
-import { PopIn } from '../../components/motion';
+import { AnimatedLogo, AnimatedWordmark } from '../../components/AnimatedLogo';
+import { Entrance } from '../../components/motion';
 import { useTheme } from '../../theme/ThemeProvider';
 import { authService } from '../../services/authService';
 import { AuthUser } from '../../types/auth';
@@ -61,17 +61,15 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
       accessibilityLabel={t('auth.splash.a11y')}
     >
       <View style={styles.brandContainer}>
-        <PopIn float style={{ marginBottom: 12 }}>
-          <BrandMark size={132} />
-        </PopIn>
+        <AnimatedLogo size={176} style={{ marginBottom: 8 }} />
 
-        <Text style={[typography.display, styles.brandTitle, { color: '#FFFFFF' }]}>
-          {t('app.name')}
-        </Text>
+        <AnimatedWordmark text={t('app.name')} />
 
-        <Text style={[typography.bodyMedium, styles.brandSubtitle, { color: '#B8C7D9' }]}>
-          {t('auth.common.tagline')}
-        </Text>
+        <Entrance delay={1350} style={{ marginTop: 8 }}>
+          <Text style={[typography.bodyMedium, styles.brandSubtitle, { color: '#B8C7D9' }]}>
+            {t('auth.common.tagline')}
+          </Text>
+        </Entrance>
       </View>
 
       <View style={[styles.loaderContainer, { marginBottom: spacing.xxl }]}>

@@ -7,6 +7,8 @@ import type { ThemeColors } from '../theme/colors';
 export function tabBarScreenOptions(colors: ThemeColors) {
   return {
     headerShown: false,
+    // Screens slide slightly when you switch tabs.
+    animation: 'shift' as const,
     tabBarActiveTintColor: colors.buttonPrimaryBg,
     tabBarInactiveTintColor: colors.textMuted,
     tabBarAllowFontScaling: false,

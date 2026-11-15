@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import { StitchTokens } from '../../theme/tokens';
+import { useCountUp } from '../motion';
 
 export interface StitchStatCardProps {
   label?: string;
@@ -34,6 +35,7 @@ export const StitchStatCard: React.FC<StitchStatCardProps> = ({
   const displayLabel = label || kpiLabel || '';
   const displayValue = value ?? kpiValue ?? '';
   const displaySubtext = subtext || kpiSubtext;
+  const shownValue = useCountUp(displayValue);
 
   return (
     <View
@@ -47,7 +49,7 @@ export const StitchStatCard: React.FC<StitchStatCardProps> = ({
     >
       <Text style={styles.label} numberOfLines={2}>{displayLabel}</Text>
       <Text style={[styles.valueText, accentColor && displayValue !== '0' && displayValue !== 'RM 0' && displayValue !== 'RM 0.00' ? { color: accentColor } : null]}>
-        {displayValue}
+        {shownValue}
       </Text>
       {trendText ? (
         <Text
