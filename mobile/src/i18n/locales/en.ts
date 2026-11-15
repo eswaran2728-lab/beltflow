@@ -19,6 +19,7 @@ import { parentLifecycleEn } from './modules/parentLifecycle';
 import { studentFlowsEn } from './modules/studentFlows';
 import { componentsEn } from './modules/components';
 import { notificationsEn } from './modules/notifications';
+import { privacyEn } from './modules/privacy';
 
 export const en = {
   'app.name': 'BeltFlow',
@@ -160,6 +161,7 @@ export const en = {
   ...studentFlowsEn,
   ...componentsEn,
   ...notificationsEn,
+  ...privacyEn,
 };
 
 export type TranslationKey = keyof typeof en;

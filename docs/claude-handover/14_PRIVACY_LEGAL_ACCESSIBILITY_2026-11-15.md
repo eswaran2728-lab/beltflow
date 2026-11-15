@@ -127,12 +127,17 @@ Sources: [Baker McKenzie on the PDPA amendments](https://insightplus.bakermckenz
   request, no cookie): 36 of 36 checks pass.
 - **Backend:** 52/52 suites on PGlite; privacy and auth suites also pass on
   PostgreSQL 16. New suite: `privacy_compliance`.
-- **Mobile:** 57 suites / 639 tests; `tsc` 0 errors; eslint 0 errors.
+- **Mobile:** 58 suites / 646 tests; `tsc` 0 errors; eslint 0 errors. The
+  privacy screen was also run against a seeded server in the app preview:
+  a parent opened it from Profile, saw their two children offered, and sent a
+  correction request that the server recorded.
 
 ## Not done
 
-- The **mobile app** has legal links on its welcome screen but no "Privacy
-  and my data" screen yet. Mobile users can use the web app for that.
+- The **mobile app** has a "Privacy and my data" screen on every role's
+  Profile tab (share my data, make a request, see my requests). It does not
+  yet have the staff screen for carrying out requests; Admins use the web app
+  for that.
 - The legal pages are not translated into **Tamil**.
 - **Re-consent** when the documents change is not built. The version agreed
   to is recorded, so it can be added.

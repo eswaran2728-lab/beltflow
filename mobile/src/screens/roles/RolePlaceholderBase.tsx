@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { readableId } from '../../utils/displayName';
 import { View, Text, StyleSheet } from 'react-native';
 import { LanguageSelector } from '../../components/LanguageSelector';
-import { LogOut } from 'lucide-react-native';
+import { LogOut, ShieldCheck } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import { ScreenContainer, ScreenHeader } from '../../components/Layout';
 import { Card } from '../../components/Card';
@@ -11,6 +11,7 @@ import { OfflineBanner } from '../../components/Feedback';
 import { Button } from '../../components/Button';
 import { AuthUser, RoleType } from '../../types/auth';
 import { useI18n } from '../../i18n';
+import { PrivacyDataSheet } from '../../components/PrivacyDataSheet';
 
 export interface RolePlaceholderBaseProps {
   title: string;
@@ -43,6 +44,7 @@ export const RolePlaceholderBase: React.FC<RolePlaceholderBaseProps> = ({
   showLanguageSelector = false,
 }) => {
   const { colors, typography, spacing, iconSize } = useTheme();
+  const [privacyOpen, setPrivacyOpen] = useState(false);
   const { t } = useI18n();
 
   return (
@@ -114,6 +116,29 @@ export const RolePlaceholderBase: React.FC<RolePlaceholderBaseProps> = ({
             <LanguageSelector />
           </Card>
         ) : null}
+
+        {/* Profile screens: privacy rights (download, correct, delete) */}
+        {showLanguageSelector ? (
+          <Card variant="standard" style={{ marginBottom: spacing.md }} testID="card-privacy-entry">
+            <View style={styles.userRow}>
+              <ShieldCheck size={iconSize.md} color={colors.buttonPrimaryBg} />
+              <View style={{ flex: 1, marginLeft: spacing.sm }}>
+                <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>{t('privacy.entry.title')}</Text>
+                <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>{t('privacy.entry.body')}</Text>
+              </View>
+            </View>
+            <Button
+              label={t('privacy.entry.open')}
+              variant="outline"
+              size="sm"
+              onPress={() => setPrivacyOpen(true)}
+              style={{ marginTop: spacing.md, alignSelf: 'flex-start' }}
+              accessibilityLabel={t('privacy.entry.title')}
+              testID="btn-open-privacy"
+            />
+          </Card>
+        ) : null}
+        <PrivacyDataSheet visible={privacyOpen} onClose={() => setPrivacyOpen(false)} />
 
         {/* Feature Overview Card */}
         <Card variant="elevated" style={styles.featureCard}>
