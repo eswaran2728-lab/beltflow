@@ -19,6 +19,7 @@ import { SplashScreen } from '../screens/auth/SplashScreen';
 import { UnauthorizedRoleScreen } from '../screens/roles/UnauthorizedRoleScreen';
 import { authService, SessionValidationResult } from '../services/authService';
 import { registerForPushNotifications, unregisterPushNotifications } from '../services/pushRegistration';
+import { qrPassService } from '../services/qrPassService';
 import { useI18n } from '../i18n';
 import { initializeApiBaseUrl } from '../config/env';
 import { AuthUser, UserRole } from '../types/auth';
@@ -199,6 +200,14 @@ export const AppNavigator: React.FC<AppNavigatorProps> = ({
     if (phase !== 'authenticated' || !userId || !verifiedOnline || hasInjectedUser) return;
     registerForPushNotifications(locale).catch(() => undefined);
   }, [phase, userId, verifiedOnline, locale, hasInjectedUser]);
+
+  // 5. Masters: load the server's QR verification keys while online, so the
+  // scanner can check passes offline later.
+  const signedInRole = user?.role;
+  useEffect(() => {
+    if (phase !== 'authenticated' || signedInRole !== 'MASTER' || !verifiedOnline || hasInjectedUser) return;
+    qrPassService.refreshTrustedKeys().catch(() => undefined);
+  }, [phase, signedInRole, verifiedOnline, hasInjectedUser]);
 
   if (phase === 'bootstrapping') {
     return <SplashScreen autoRestore={false} />;

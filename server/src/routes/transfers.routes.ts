@@ -3,7 +3,7 @@ import { dbClient } from '../db/client';
 import { authenticateJWT } from '../middleware/auth';
 import { requireWorkerOrSuperAdmin } from '../middleware/workerAuth';
 import { UserRole } from '../security/rbac';
-import { assignedMasterAccess } from '../security/access';
+import { assignedMasterAccess, studentAccess } from '../security/access';
 import { safeErrorMessage } from '../security/errors';
 
 const router = Router();
@@ -866,6 +866,22 @@ router.get('/students/:studentId/history', authenticateJWT, async (req: Request,
         [user.id, student.id]
       );
       if (link.rowCount === 0) {
+        return res.status(403).json({ error: 'Access denied.' });
+      }
+    }
+    if (user.role !== UserRole.STUDENT && user.role !== UserRole.PARENT) {
+      // Same-Persatuan Admin, or a Master who teaches the student or leads a class in
+      // one of the student's transfers. Super Admin never sees child records.
+      let allowed = (await studentAccess(user, student.id)).allowed;
+      if (!allowed && user.role === UserRole.MASTER && user.organizationId === student.organization_id) {
+        const involved = await dbClient.query(
+          `SELECT 1 FROM class_transfer_requests t
+           WHERE t.student_id = $1 AND (t.old_class_id = ANY($2::text[]) OR t.new_class_id = ANY($2::text[])) LIMIT 1`,
+          [student.id, user.assignedClassIds || []]
+        );
+        allowed = involved.rows.length > 0;
+      }
+      if (!allowed) {
         return res.status(403).json({ error: 'Access denied.' });
       }
     }

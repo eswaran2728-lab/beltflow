@@ -137,14 +137,13 @@ export const commerceService = {
 
   /**
    * Confirm order payment event — Contract: confirmOrderPayment(event)
+   * Staff only (Admin Persatuan / Master). The server generates the ledger
+   * row and decides reservation expiry; only the payment method is sent.
    */
   async confirmOrderPayment(
     orderId: string,
     event: {
-      paymentId?: string;
-      amount?: number;
       method?: string;
-      forceExpired?: boolean;
     }
   ): Promise<{
     success: boolean;

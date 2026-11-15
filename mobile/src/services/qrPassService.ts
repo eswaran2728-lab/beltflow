@@ -11,6 +11,8 @@
 import nacl from 'tweetnacl';
 import { CachedStudent, CachedSession, AttendanceStatus } from '../database/types';
 import { hexToBytes, utf8Encode } from '../utils/crypto';
+import * as SecureStore from 'expo-secure-store';
+import { apiClient } from './apiClient';
 
 export interface StudentQRPayload {
   type: 'BF_PASS';
@@ -54,16 +56,67 @@ export const HISTORICAL_QR_KEY_ID = 'bf_ed25519_k0';
 export const QR_ISSUER = 'beltflow-authority';
 export const QR_AUDIENCE = 'beltflow-attendance';
 
-// Default pinned Ed25519 public verification keys (32 bytes = 64 hex characters).
+// Development-only Ed25519 public keys (32 bytes = 64 hex characters). They come
+// from development seeds that are public in this repository, and a production
+// server refuses those seeds, so release builds never trust them: they use the
+// keys published by the server (refreshTrustedKeys).
 // PRIVATE KEYS NEVER RESIDE ON UNTRUSTED MOBILE CLIENTS.
 export const DEFAULT_PINNED_PUBLIC_KEY = '9be104dc180101c12e16df1ca611f72818268fa376522891b3513edcab53fd17';
 export const HISTORICAL_PINNED_PUBLIC_KEY = '34d15fa471ca6fc1bbbdfefdfe5db0290fefe85b0016d489178588e365811569';
 
+const QR_KEY_RING_STORE = 'beltflow_qr_key_ring';
+
+function defaultKeyRing(): Record<string, string> {
+  const isDev = typeof __DEV__ !== 'undefined' && __DEV__;
+  return isDev
+    ? { [ACTIVE_QR_KEY_ID]: DEFAULT_PINNED_PUBLIC_KEY, [HISTORICAL_QR_KEY_ID]: HISTORICAL_PINNED_PUBLIC_KEY }
+    : {};
+}
+
+/** Keeps only well-formed Ed25519 public keys (64 hex characters). */
+function sanitizeKeyRing(input: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!input || typeof input !== 'object') return out;
+  for (const [kid, value] of Object.entries(input as Record<string, unknown>)) {
+    if (typeof value === 'string' && /^[0-9a-f]{64}$/i.test(value.trim()) && kid.length <= 64) {
+      out[kid] = value.trim().toLowerCase();
+    }
+  }
+  return out;
+}
+
 export class QRPassService {
-  private trustedPublicKeyRing: Record<string, string> = {
-    [ACTIVE_QR_KEY_ID]: DEFAULT_PINNED_PUBLIC_KEY,
-    [HISTORICAL_QR_KEY_ID]: HISTORICAL_PINNED_PUBLIC_KEY,
-  };
+  private trustedPublicKeyRing: Record<string, string> = defaultKeyRing();
+
+  /**
+   * Loads the server's public verification keys (authenticated), caching them
+   * for offline roll-call. Falls back to the cached keys when offline.
+   * Returns true when a usable key ring is in place.
+   */
+  public async refreshTrustedKeys(): Promise<boolean> {
+    try {
+      const res = await apiClient.get<{ publicKeys?: Record<string, string> }>('/students/qr/verification-keys');
+      const keys = sanitizeKeyRing(res?.publicKeys);
+      if (Object.keys(keys).length > 0) {
+        this.setTrustedKeyRing(keys);
+        await SecureStore.setItemAsync(QR_KEY_RING_STORE, JSON.stringify(keys)).catch(() => undefined);
+        return true;
+      }
+    } catch {
+      // offline or server error: use the cached keys below
+    }
+    try {
+      const cached = await SecureStore.getItemAsync(QR_KEY_RING_STORE);
+      const keys = cached ? sanitizeKeyRing(JSON.parse(cached)) : {};
+      if (Object.keys(keys).length > 0) {
+        this.setTrustedKeyRing(keys);
+        return true;
+      }
+    } catch {
+      // unreadable cache: keep the current ring
+    }
+    return Object.keys(this.trustedPublicKeyRing).length > 0;
+  }
 
   /**
    * Updates trusted public key ring (e.g. synchronized from authenticated /qr/verification-keys).
@@ -88,13 +141,10 @@ export class QRPassService {
   }
 
   /**
-   * Resets trusted keys to default pinned public keys.
+   * Resets trusted keys to the defaults (development keys in dev builds only).
    */
   public resetTrustedKeys(): void {
-    this.trustedPublicKeyRing = {
-      [ACTIVE_QR_KEY_ID]: DEFAULT_PINNED_PUBLIC_KEY,
-      [HISTORICAL_QR_KEY_ID]: HISTORICAL_PINNED_PUBLIC_KEY,
-    };
+    this.trustedPublicKeyRing = defaultKeyRing();
   }
 
   /**

@@ -109,6 +109,16 @@ async function runTests() {
     assert.ok(audit.rows.length >= 1, 'the change is audited');
     console.log('✅ OFF applies to one Persatuan only, immediately, cannot be bypassed with a token claim, and is audited.');
 
+    // ------------------------------------------------ signed-out requests addressed to a Persatuan
+    // (security review 2026-11-14): the public trial booking names its Persatuan in the body.
+    assert.equal((await request(server, 'PUT', '/release/tenants/org_tf_a/modules/trials', tSA, { setting: 'OFF' })).status, 200);
+    const anonA = await request(server, 'POST', '/trials/book', undefined, { organizationId: 'org_tf_a', classId: 'cls_none' });
+    assert.ok(disabled(anonA), `a signed-out request to a Persatuan with the module OFF is refused: ${JSON.stringify(anonA.data)}`);
+    const anonB = await request(server, 'POST', '/trials/book', undefined, { organizationId: 'org_tf_b', classId: 'cls_none' });
+    assert.ok(!disabled(anonB), 'other Persatuans are unaffected');
+    assert.equal((await request(server, 'PUT', '/release/tenants/org_tf_a/modules/trials', tSA, { setting: 'INHERIT' })).status, 200);
+    console.log('✅ Signed-out requests addressed to a Persatuan follow that Persatuan\'s setting.');
+
     // ------------------------------------------------ back to inherit
     assert.equal((await request(server, 'PUT', '/release/tenants/org_tf_a/modules/messaging', tSA, { setting: 'INHERIT' })).status, 200);
     assert.ok(!disabled(await probe(tParA)), 'inherit restores the platform setting');

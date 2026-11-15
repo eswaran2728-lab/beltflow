@@ -642,7 +642,7 @@ router.get('/family-summary', authenticateJWT, async (req: Request, res: Respons
        JOIN students s ON psl.student_id = s.id
        JOIN organizations o ON s.organization_id = o.id
        LEFT JOIN classes c ON s.class_id = c.id
-       WHERE psl.parent_id = $1`,
+       WHERE psl.parent_id = $1 AND psl.status = 'ACTIVE'`,
       [user.id]
     );
 

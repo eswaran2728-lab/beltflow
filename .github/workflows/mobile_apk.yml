@@ -33,6 +33,9 @@ jobs:
     env:
       EXPO_PUBLIC_API_URL: ${{ github.event.inputs.api_url || vars.BELTFLOW_API_URL || '' }}
       EXPO_NO_TELEMETRY: "1"
+      # Testing APK only: keeps the developer panel (server address, synthetic
+      # test accounts). Never set this for a production build.
+      EXPO_PUBLIC_BELTFLOW_TESTING_BUILD: "1"
 
     steps:
       - name: Checkout

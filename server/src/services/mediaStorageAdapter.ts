@@ -49,11 +49,38 @@ export interface IMediaStorageProvider {
 
   isTokenRevoked(token: string): boolean;
 
-  verifyToken(key: string, token: string, expiryTimestamp: number): boolean;
+  verifyToken(key: string, token: string, expiryTimestamp: number, operation?: MediaStorageOperation): boolean;
 }
 
-// Secret key for HMAC token signing (provider-neutral)
-const STORAGE_SIGNING_SECRET = process.env.MEDIA_STORAGE_SECRET || 'bf_sec_media_signing_key_v2_2026';
+export type MediaStorageOperation = 'upload' | 'playback';
+
+/** Signed storage links never live longer than this, whatever expiry a link claims. */
+export const MAX_STORAGE_TOKEN_LIFETIME_SECONDS = 3600;
+
+/**
+ * The HMAC key for storage links. There is no built-in default: production
+ * refuses to start without MEDIA_STORAGE_SECRET (32+ characters); other
+ * environments get a random per-process key.
+ */
+export function resolveMediaStorageSecret(env: NodeJS.ProcessEnv | Record<string, string | undefined> = process.env): string {
+  const configured = env.MEDIA_STORAGE_SECRET;
+  if (configured && configured.length >= 32) return configured;
+  if (env.NODE_ENV === 'production') {
+    throw new Error('FATAL SECURITY ERROR: MEDIA_STORAGE_SECRET must be set to at least 32 characters in production.');
+  }
+  if (configured) return configured;
+  return crypto.randomBytes(32).toString('hex');
+}
+
+const STORAGE_SIGNING_SECRET = resolveMediaStorageSecret();
+
+/** Signs a storage link. The operation is part of the signed data, so an upload link is not a playback link. */
+export function signMediaStorageToken(operation: MediaStorageOperation, key: string, expiryTimestamp: number): string {
+  return crypto
+    .createHmac('sha256', STORAGE_SIGNING_SECRET)
+    .update(`${operation}:${key}:${expiryTimestamp}`)
+    .digest('hex');
+}
 
 // In-memory revocation registry for active tokens
 const revokedTokensSet = new Set<string>();
@@ -115,14 +142,14 @@ export class LocalMediaStorageProvider implements IMediaStorageProvider {
     return path.join(this.baseDir, safeKey);
   }
 
-  private generateHmac(key: string, expiryTimestamp: number): string {
-    return crypto
-      .createHmac('sha256', STORAGE_SIGNING_SECRET)
-      .update(`${key}:${expiryTimestamp}`)
-      .digest('hex');
-  }
-
-  public verifyToken(key: string, token: string, expiryTimestamp: number): boolean {
+  public verifyToken(key: string, token: string, expiryTimestamp: number, operation: MediaStorageOperation = 'playback'): boolean {
+    if (typeof token !== 'string' || !/^[0-9a-f]{64}$/.test(token)) {
+      return false;
+    }
+    const now = Math.floor(Date.now() / 1000);
+    if (!Number.isFinite(expiryTimestamp) || expiryTimestamp < now || expiryTimestamp > now + MAX_STORAGE_TOKEN_LIFETIME_SECONDS) {
+      return false;
+    }
     if (revokedTokensSet.has(token)) {
       return false;
     }
@@ -131,8 +158,8 @@ export class LocalMediaStorageProvider implements IMediaStorageProvider {
         return false;
       }
     }
-    const expected = this.generateHmac(key, expiryTimestamp);
-    return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expected));
+    const expected = signMediaStorageToken(operation, key, expiryTimestamp);
+    return crypto.timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'));
   }
 
   public async generatePresignedUploadUrl(
@@ -141,7 +168,7 @@ export class LocalMediaStorageProvider implements IMediaStorageProvider {
   ): Promise<StoragePresignedUploadResult> {
     const expiresAt = new Date(Date.now() + options.expiresInSeconds * 1000);
     const expiryTimestamp = Math.floor(expiresAt.getTime() / 1000);
-    const presignedToken = this.generateHmac(storageKey, expiryTimestamp);
+    const presignedToken = signMediaStorageToken('upload', storageKey, expiryTimestamp);
 
     const uploadUrl = `/api/v1/media/storage/upload/${encodeURIComponent(storageKey)}?token=${presignedToken}&expires=${expiryTimestamp}`;
 
@@ -163,7 +190,7 @@ export class LocalMediaStorageProvider implements IMediaStorageProvider {
   ): Promise<StoragePresignedPlaybackResult> {
     const expiresAt = new Date(Date.now() + options.expiresInSeconds * 1000);
     const expiryTimestamp = Math.floor(expiresAt.getTime() / 1000);
-    const presignedToken = this.generateHmac(storageKey, expiryTimestamp);
+    const presignedToken = signMediaStorageToken('playback', storageKey, expiryTimestamp);
 
     const playbackUrl = `/api/v1/media/storage/playback/${encodeURIComponent(storageKey)}?token=${presignedToken}&expires=${expiryTimestamp}`;
 

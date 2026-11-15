@@ -40,6 +40,12 @@ import { moduleGate } from './release/modules';
 import releaseRoutes from './routes/release.routes';
 
 const app = express();
+// Client IP for rate limits: only trust X-Forwarded-For from the given number
+// of reverse-proxy hops (TRUST_PROXY_HOPS). Unset = use the socket address.
+{
+  const hops = Number(process.env.TRUST_PROXY_HOPS);
+  app.set('trust proxy', Number.isInteger(hops) && hops > 0 ? hops : false);
+}
 
 // Middleware
 //

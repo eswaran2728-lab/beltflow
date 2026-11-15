@@ -125,7 +125,8 @@ router.post('/:trialId/attendance', authenticateJWT, async (req: Request, res: R
     }
     const trial = trialRes.rows[0];
 
-    if (!(await assignedMasterAccess(req.user!, trial.class_id)) && req.user!.role !== UserRole.ADMIN_PERSATUAN) {
+    const sameOrgAdmin = req.user!.role === UserRole.ADMIN_PERSATUAN && req.user!.organizationId === trial.organization_id;
+    if (!(await assignedMasterAccess(req.user!, trial.class_id)) && !sameOrgAdmin) {
       return res.status(403).json({ error: 'Only the assigned Master or Admin may update trial attendance.' });
     }
 

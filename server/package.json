@@ -7,7 +7,7 @@
     "build": "tsc && node -e \"require('fs').copyFileSync('src/db/schema.sql', 'dist/db/schema.sql')\"",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
-    "seed:test": "ts-node src/db/seed_test_env.ts",
+    "seed:test": "node dist/db/seed_test_env.js",
     "test": "node scripts/run-tests.js"
   },
   "dependencies": {

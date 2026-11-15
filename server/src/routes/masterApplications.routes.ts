@@ -20,6 +20,16 @@ router.post('/', authenticateJWT, async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'organizationId is required.' });
     }
 
+    // Super Admin cannot apply, and an account that belongs to another
+    // Persatuan (other than an existing Master) cannot be turned into a Master
+    // by a different Persatuan's Admin. (Self-approval is refused at review.)
+    if (user.role === UserRole.SUPER_ADMIN) {
+      return res.status(403).json({ error: 'This account cannot apply to become a Master.' });
+    }
+    if (user.role !== UserRole.MASTER && user.organizationId && user.organizationId !== organizationId) {
+      return res.status(403).json({ error: 'Your account belongs to another Persatuan.' });
+    }
+
     // Validate that target organization exists and is ACTIVE
     const orgRes = await dbClient.query('SELECT id, status FROM organizations WHERE id = $1', [organizationId]);
     if (orgRes.rowCount === 0 || orgRes.rows[0].status !== 'ACTIVE') {
@@ -414,7 +424,8 @@ router.post('/:id/review', authenticateJWT, async (req: Request, res: Response) 
 
         // 3. Ensure users table reflects organization_id and role
         await tx.query(
-          `UPDATE users SET organization_id = COALESCE(organization_id, $1), role = 'MASTER' WHERE id = $2`,
+          `UPDATE users SET organization_id = COALESCE(organization_id, $1), role = 'MASTER'
+           WHERE id = $2 AND (organization_id IS NULL OR organization_id = $1 OR role = 'MASTER')`,
           [application.organization_id, application.user_id]
         );
 
