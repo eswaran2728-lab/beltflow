@@ -36,6 +36,8 @@ export const StatCard: React.FC<StatCardProps> = ({
             { color: colors.textSecondary },
           ]}
           numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.75}
         >
           {title}
         </Text>
@@ -76,7 +78,7 @@ export const StatCard: React.FC<StatCardProps> = ({
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    minWidth: 140,
+    minWidth: 96,
   },
   headerRow: {
     flexDirection: 'row',

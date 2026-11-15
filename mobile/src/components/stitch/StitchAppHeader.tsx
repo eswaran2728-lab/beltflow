@@ -19,6 +19,8 @@ export interface StitchAppHeaderProps {
    * the status-bar spacing to the container's safe area.
    */
   inContainer?: boolean;
+  /** Hide the notification bell for roles that have no inbox. */
+  showBell?: boolean;
   style?: ViewStyle;
 }
 
@@ -29,6 +31,7 @@ export const StitchAppHeader: React.FC<StitchAppHeaderProps> = ({
   onNotificationPress,
   notificationAccessibilityLabel,
   inContainer = false,
+  showBell = true,
   style,
 }) => {
   const { t } = useI18n();
@@ -56,6 +59,7 @@ export const StitchAppHeader: React.FC<StitchAppHeaderProps> = ({
           <Text style={styles.brandTitle}>BELTFLOW</Text>
         </View>
 
+        {showBell ? (
         <TouchableOpacity
           style={styles.bellButton}
           onPress={onNotificationPress}
@@ -66,6 +70,7 @@ export const StitchAppHeader: React.FC<StitchAppHeaderProps> = ({
           <Bell size={20} color="#FFFFFF" />
           {hasUnreadNotifications && <View style={styles.bellDot} testID="bell-unread-dot" />}
         </TouchableOpacity>
+        ) : <View style={{ minHeight: 44 }} />}
       </View>
 
       {/* Who and where: role + academy, on their own line so nothing is cut off */}

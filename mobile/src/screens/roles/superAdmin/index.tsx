@@ -23,6 +23,7 @@ import { useDashboardData } from '../../../hooks/useDashboardData';
 import { dashboardService, SuperAdminDashboardData } from '../../../services/dashboardService';
 import { useI18n } from '../../../i18n';
 import { TenantFeaturesPanel } from './TenantFeaturesPanel';
+import { StitchAppHeader } from '../../../components/stitch/StitchAppHeader';
 
 export interface RoleScreenProps {
   user: AuthUser;
@@ -68,7 +69,7 @@ export const SuperAdminHomeScreen: React.FC<RoleScreenProps> = ({
           <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
             {user.fullName}
           </Text>
-          <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
+          <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]} numberOfLines={1} ellipsizeMode="middle">
             {user.email}
           </Text>
         </View>
@@ -85,6 +86,13 @@ export const SuperAdminHomeScreen: React.FC<RoleScreenProps> = ({
   if (loading && !data) {
     return (
       <ScreenContainer scrollable testID="super-admin-home-screen">
+<StitchAppHeader
+          inContainer
+          showBell={false}
+          hasUnreadNotifications={false}
+          dojangName={t('superAdminHome.headerTitle').toUpperCase()}
+          roleBadgeText="SUPER ADMIN"
+        />
         <ScreenHeader title={t('superAdminHome.headerTitle')} subtitle={t('superAdminHome.headerSubtitle')} rightAction={headerRightAction} />
         {isOffline ? (
           <View style={{ marginBottom: spacing.md }}>
@@ -103,6 +111,13 @@ export const SuperAdminHomeScreen: React.FC<RoleScreenProps> = ({
   if (error && !data) {
     return (
       <ScreenContainer scrollable testID="super-admin-home-screen">
+<StitchAppHeader
+          inContainer
+          showBell={false}
+          hasUnreadNotifications={false}
+          dojangName={t('superAdminHome.headerTitle').toUpperCase()}
+          roleBadgeText="SUPER ADMIN"
+        />
         <ScreenHeader title={t('superAdminHome.headerTitle')} subtitle={t('superAdminHome.headerSubtitle')} rightAction={headerRightAction} />
         {isOffline ? (
           <View style={{ marginBottom: spacing.md }}>
@@ -131,6 +146,13 @@ export const SuperAdminHomeScreen: React.FC<RoleScreenProps> = ({
         />
       }
     >
+      <StitchAppHeader
+        inContainer
+        showBell={false}
+        hasUnreadNotifications={false}
+        dojangName={t('superAdminHome.headerTitle').toUpperCase()}
+        roleBadgeText="SUPER ADMIN"
+      />
       <ScreenHeader
         title={t('superAdminHome.headerTitle')}
         subtitle={t('superAdminHome.headerSubtitle')}

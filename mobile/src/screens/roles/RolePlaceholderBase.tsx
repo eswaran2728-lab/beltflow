@@ -84,7 +84,7 @@ export const RolePlaceholderBase: React.FC<RolePlaceholderBaseProps> = ({
               <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
                 {user.fullName}
               </Text>
-              <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
+              <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]} numberOfLines={1} ellipsizeMode="middle">
                 {user.email}
               </Text>
               {user.organizationId ? (
