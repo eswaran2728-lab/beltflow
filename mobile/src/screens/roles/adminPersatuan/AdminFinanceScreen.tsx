@@ -189,6 +189,7 @@ export const AdminFinanceScreen: React.FC<AdminFinanceScreenProps> = ({
     <ScreenContainer scrollable testID="admin-finance-screen" style={{ backgroundColor: colors.background }}>
       {/* Stitch App Header */}
       <StitchAppHeader
+        inContainer
         roleBadgeText="ADMIN PERSATUAN"
         dojangName="PERSATUAN DOJANG"
       />

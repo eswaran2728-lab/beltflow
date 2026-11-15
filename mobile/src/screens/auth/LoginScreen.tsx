@@ -7,7 +7,9 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Mail, Shield } from 'lucide-react-native';
+import { Mail } from 'lucide-react-native';
+import { BrandMark } from '../../components/BrandMark';
+import { PopIn } from '../../components/motion';
 import { useTheme } from '../../theme/ThemeProvider';
 import { ScreenContainer } from '../../components/Layout';
 import { Input, PasswordInput } from '../../components/Input';
@@ -96,14 +98,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         <View style={styles.content}>
           {/* Top Brand Logo */}
           <View style={styles.header}>
-            <View
-              style={[
-                styles.logoWrapper,
-                { backgroundColor: colors.surface, borderColor: colors.border },
-              ]}
-            >
-              <Shield size={36} color={colors.buttonPrimaryBg} />
-            </View>
+            <PopIn>
+              <BrandMark tile size={72} style={styles.logoTile} />
+            </PopIn>
             <Text style={[typography.pageTitle, styles.title, { color: colors.textPrimary }]}>
               {t('auth.login.title')}
             </Text>
@@ -239,14 +236,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
-  logoWrapper: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
+  logoTile: {
+    marginBottom: 16,
+    borderBottomWidth: 5,
+    borderBottomColor: '#061828',
+    shadowColor: '#0D2B47',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.22,
+    shadowRadius: 14,
+    elevation: 8,
   },
   title: {
     marginBottom: 6,

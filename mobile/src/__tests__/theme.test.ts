@@ -21,11 +21,11 @@ describe('BeltFlow Design System — Task 1.2 Tokens & Foundations', () => {
 
   describe('Semantic Color Mappings (Light & Dark)', () => {
     test('light theme provides proper contrast and clean card surfaces', () => {
-      expect(lightThemeColors.background).toBe('#F8FAFC');
+      expect(lightThemeColors.background).toBe('#F4F6FA');
       expect(lightThemeColors.surface).toBe('#FFFFFF');
       expect(lightThemeColors.textPrimary).toBe('#0F172A');
       expect(lightThemeColors.textSecondary).toBe('#475569');
-      expect(lightThemeColors.border).toBe('#E2E8F0');
+      expect(lightThemeColors.border).toBe('#E4E9F0');
       expect(lightThemeColors.buttonPrimaryBg).toBe(BrandColors.navy);
       expect(lightThemeColors.buttonPrimaryText).toBe('#FFFFFF');
       expect(lightThemeColors.offlineBg).toBe('#FEF3C7');
@@ -52,30 +52,30 @@ describe('BeltFlow Design System — Task 1.2 Tokens & Foundations', () => {
 
   describe('Typography Scale', () => {
     test('defines required hierarchical scales with lineHeights and weights', () => {
-      expect(typography.display.fontSize).toBe(32);
+      expect(typography.display.fontSize).toBe(34);
       expect(typography.display.lineHeight).toBe(40);
-      expect(typography.display.fontWeight).toBe('700');
+      expect(typography.display.fontWeight).toBe('800');
 
-      expect(typography.pageTitle.fontSize).toBe(24);
-      expect(typography.pageTitle.lineHeight).toBe(30);
+      expect(typography.pageTitle.fontSize).toBe(26);
+      expect(typography.pageTitle.lineHeight).toBe(32);
 
-      expect(typography.sectionHeading.fontSize).toBe(18);
-      expect(typography.sectionHeading.lineHeight).toBe(24);
+      expect(typography.sectionHeading.fontSize).toBe(19);
+      expect(typography.sectionHeading.lineHeight).toBe(26);
 
-      expect(typography.bodyLarge.fontSize).toBe(15);
-      expect(typography.bodyLarge.lineHeight).toBe(22);
+      expect(typography.bodyLarge.fontSize).toBe(16);
+      expect(typography.bodyLarge.lineHeight).toBe(24);
 
-      expect(typography.bodyMedium.fontSize).toBe(13);
-      expect(typography.bodyMedium.lineHeight).toBe(18);
+      expect(typography.bodyMedium.fontSize).toBe(14);
+      expect(typography.bodyMedium.lineHeight).toBe(21);
 
-      expect(typography.caption.fontSize).toBe(11);
-      expect(typography.caption.lineHeight).toBe(14);
+      expect(typography.caption.fontSize).toBe(12.5);
+      expect(typography.caption.lineHeight).toBe(17);
 
-      expect(typography.button.fontSize).toBe(14);
-      expect(typography.button.fontWeight).toBe('600');
+      expect(typography.button.fontSize).toBe(15);
+      expect(typography.button.fontWeight).toBe('700');
 
-      expect(typography.statNumber.fontSize).toBe(28);
-      expect(typography.statNumber.fontWeight).toBe('700');
+      expect(typography.statNumber.fontSize).toBe(30);
+      expect(typography.statNumber.fontWeight).toBe('800');
     });
   });
 
@@ -91,9 +91,9 @@ describe('BeltFlow Design System — Task 1.2 Tokens & Foundations', () => {
     });
 
     test('defines border radiuses including full pill', () => {
-      expect(borderRadius.sm).toBe(6);
-      expect(borderRadius.md).toBe(10);
-      expect(borderRadius.lg).toBe(16);
+      expect(borderRadius.sm).toBe(8);
+      expect(borderRadius.md).toBe(14);
+      expect(borderRadius.lg).toBe(18);
       expect(borderRadius.full).toBe(9999);
     });
 

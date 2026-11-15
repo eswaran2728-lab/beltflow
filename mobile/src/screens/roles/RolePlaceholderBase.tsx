@@ -1,4 +1,5 @@
 import React from 'react';
+import { readableId } from '../../utils/displayName';
 import { View, Text, StyleSheet } from 'react-native';
 import { LanguageSelector } from '../../components/LanguageSelector';
 import { LogOut } from 'lucide-react-native';
@@ -88,7 +89,7 @@ export const RolePlaceholderBase: React.FC<RolePlaceholderBaseProps> = ({
               </Text>
               {user.organizationId ? (
                 <Text style={[typography.caption, { color: colors.buttonPrimaryBg, marginTop: 2, fontWeight: '600' }]}>
-                  {t('auth.role.persatuan', { id: user.organizationId })}
+                  {t('auth.role.persatuan', { id: readableId(user.organizationId) })}
                 </Text>
               ) : null}
             </View>

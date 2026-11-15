@@ -1,4 +1,5 @@
 import React from 'react';
+import { readableId } from '../utils/displayName';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from '../theme/ThemeProvider';
@@ -456,7 +457,7 @@ describe('BeltFlow Role-Based Navigation Architecture — Task 1.6 (TDD)', () =>
         <AdminPersatuanNavigator user={initialUser} onLogout={jest.fn()} />
       );
 
-      expect(getByText(/org_001/i)).toBeTruthy();
+      expect(getByText(new RegExp(readableId('org_001')))).toBeTruthy();
 
       const switchedUser: AuthUser = {
         ...initialUser,
@@ -471,7 +472,7 @@ describe('BeltFlow Role-Based Navigation Architecture — Task 1.6 (TDD)', () =>
         </SafeAreaProvider>
       );
 
-      expect(getByText(/org_002/i)).toBeTruthy();
+      expect(getByText(new RegExp(readableId('org_002')))).toBeTruthy();
     });
   });
 
@@ -602,7 +603,7 @@ describe('BeltFlow Role-Based Navigation Architecture — Task 1.6 (TDD)', () =>
       await act(async () => {
         (authService as any)._triggerSessionEnded();
       });
-      await waitFor(() => expect(queryByText(/org_tenant_one/)).toBeNull());
+      await waitFor(() => expect(queryByText(/: Tenant One/)).toBeNull());
 
       // A new verified sign-in for another tenant.
       const orgTwoAdmin: AuthUser = { ...orgOneAdmin, id: 'usr_ap_t2', organizationId: 'org_tenant_two' };
@@ -616,8 +617,8 @@ describe('BeltFlow Role-Based Navigation Architecture — Task 1.6 (TDD)', () =>
         fireEvent.press(getByTestId('btn-login-submit'));
       });
 
-      expect(await findByText(/org_tenant_two/)).toBeTruthy();
-      expect(queryByText(/org_tenant_one/)).toBeNull();
+      expect(await findByText(/: Tenant Two/)).toBeTruthy();
+      expect(queryByText(/: Tenant One/)).toBeNull();
       expect(activeTabName()).toBe('Home');
       expect(roleNavigationRef.getCurrentRoute()?.name).toBe('Dashboard');
     });

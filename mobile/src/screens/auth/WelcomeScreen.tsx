@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Shield, Award, Users, CheckCircle2 } from 'lucide-react-native';
+import { Award, Users, CheckCircle2 } from 'lucide-react-native';
+import { BrandMark } from '../../components/BrandMark';
+import { Entrance, PopIn } from '../../components/motion';
 import { useTheme } from '../../theme/ThemeProvider';
 import { ScreenContainer } from '../../components/Layout';
 import { Button } from '../../components/Button';
@@ -25,14 +27,9 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
       <View style={styles.content}>
         {/* Header Branding */}
         <View style={styles.header}>
-          <View
-            style={[
-              styles.logoWrapper,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-          >
-            <Shield size={44} color={colors.buttonPrimaryBg} />
-          </View>
+          <PopIn>
+            <BrandMark tile size={96} style={styles.logoTile} />
+          </PopIn>
           <Text style={[typography.display, styles.title, { color: colors.textPrimary }]}>
             {t('app.name')}
           </Text>
@@ -42,11 +39,14 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         </View>
 
         {/* Feature Highlights Card */}
+        <Entrance delay={120}>
         <Card variant="standard" style={styles.card}>
           <View style={styles.featureItem}>
-            <Users size={22} color={colors.buttonPrimaryBg} style={styles.featureIcon} />
+            <View style={[styles.featureBubble, { backgroundColor: colors.surfaceHighlight }]}>
+              <Users size={22} color={colors.buttonSecondaryBg} />
+            </View>
             <View style={styles.featureText}>
-              <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
+              <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
                 {t('auth.welcome.feature1.title')}
               </Text>
               <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
@@ -56,9 +56,11 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           </View>
 
           <View style={styles.featureItem}>
-            <Award size={22} color={colors.buttonPrimaryBg} style={styles.featureIcon} />
+            <View style={[styles.featureBubble, { backgroundColor: colors.surfaceHighlight }]}>
+              <Award size={22} color={colors.buttonSecondaryBg} />
+            </View>
             <View style={styles.featureText}>
-              <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
+              <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
                 {t('auth.welcome.feature2.title')}
               </Text>
               <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
@@ -68,9 +70,11 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           </View>
 
           <View style={[styles.featureItem, { marginBottom: 0 }]}>
-            <CheckCircle2 size={22} color={colors.buttonPrimaryBg} style={styles.featureIcon} />
+            <View style={[styles.featureBubble, { backgroundColor: colors.surfaceHighlight }]}>
+              <CheckCircle2 size={22} color={colors.buttonSecondaryBg} />
+            </View>
             <View style={styles.featureText}>
-              <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>
+              <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
                 {t('auth.welcome.feature3.title')}
               </Text>
               <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
@@ -79,9 +83,10 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             </View>
           </View>
         </Card>
+        </Entrance>
 
         {/* Action Buttons */}
-        <View style={[styles.actions, { marginTop: spacing.xl }]}>
+        <Entrance delay={220} style={[styles.actions, { marginTop: spacing.xl }]}>
           <Button
             label={t('auth.welcome.signIn')}
             onPress={onNavigateLogin}
@@ -103,7 +108,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             testID="btn-welcome-verify"
             accessibilityLabel={t('auth.common.verifyOfficialCertificate')}
           />
-        </View>
+        </Entrance>
 
         {/* H28: language choice, below the main actions */}
         <View style={styles.language}>
@@ -124,14 +129,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 28,
   },
-  logoWrapper: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
+  logoTile: {
+    marginBottom: 18,
+    // the tile sits on a thick edge, like the buttons
+    borderBottomWidth: 6,
+    borderBottomColor: '#061828',
+    shadowColor: '#0D2B47',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 18,
+    elevation: 10,
   },
   title: {
     letterSpacing: 0.5,
@@ -149,9 +156,15 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 20,
   },
-  featureIcon: {
+  featureBubble: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 14,
-    marginTop: 2,
+    borderBottomWidth: 3,
+    borderBottomColor: '#FED7AA',
   },
   featureText: {
     flex: 1,

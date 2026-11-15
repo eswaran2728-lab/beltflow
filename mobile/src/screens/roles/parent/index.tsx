@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
+import { readableId } from '../../../utils/displayName';
 import { View, Text, StyleSheet, RefreshControl, TouchableOpacity, ScrollView } from 'react-native';
 import {
   Users,
@@ -138,7 +139,7 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
           </Text>
           {user.organizationId ? (
             <Text style={[typography.caption, { color: colors.buttonPrimaryBg, marginTop: 2, fontWeight: '600' }]}>
-              {t('parentHome.primaryPersatuan', { id: user.organizationId })}
+              {t('parentHome.primaryPersatuan', { id: readableId(user.organizationId) })}
             </Text>
           ) : null}
         </View>
@@ -411,7 +412,7 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
                             {cert.beltRank}
                           </Text>
                           <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-                            {t('parentHome.certLine', { number: cert.certificateNumber, date: new Date(cert.issuedDate).toLocaleDateString() })}
+                            {t('parentHome.certLine', { number: cert.certificateNumber, date: formatCertDate(cert.issuedDate) })}
                           </Text>
                         </View>
                         <Award size={20} color={StitchTokens.colors.colorAccent} />
@@ -545,6 +546,13 @@ export const ParentHomeScreen: React.FC<RoleScreenProps> = ({
     </View>
   );
 };
+
+/** A certificate date for display; never "Invalid Date". */
+function formatCertDate(value?: string): string {
+  if (!value) return '—';
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? value : d.toLocaleDateString();
+}
 
 function getBeltDotColor(beltRank?: string): string {
   const rank = (beltRank || '').toLowerCase();

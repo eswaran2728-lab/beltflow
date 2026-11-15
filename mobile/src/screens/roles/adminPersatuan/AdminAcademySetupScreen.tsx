@@ -208,6 +208,7 @@ export const AdminAcademySetupScreen: React.FC<AdminAcademySetupScreenProps> = (
   return (
     <ScreenContainer scrollable testID="admin-academy-setup-screen">
       <StitchAppHeader
+        inContainer
         dojangName="PERSATUAN DOJANG"
         roleBadgeText="ADMIN PERSATUAN"
         hasUnreadNotifications={false}

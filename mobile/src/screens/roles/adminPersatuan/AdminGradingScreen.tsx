@@ -269,6 +269,7 @@ export const AdminGradingScreen: React.FC<AdminGradingScreenProps> = ({
     >
       {/* Stitch App Header */}
       <StitchAppHeader
+        inContainer
         roleBadgeText="ADMIN PERSATUAN"
         dojangName="PERSATUAN DOJANG"
       />

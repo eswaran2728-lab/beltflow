@@ -226,6 +226,7 @@ export const MasterApprovalsScreen: React.FC<MasterApprovalsScreenProps> = ({
   return (
     <ScreenContainer scrollable={false} testID="admin-persatuan-master-approvals-screen">
       <StitchAppHeader
+        inContainer
         dojangName="PERSATUAN DOJANG"
         roleBadgeText="ADMIN PERSATUAN"
         hasUnreadNotifications={applications.some(a => a.status === 'SUBMITTED')}

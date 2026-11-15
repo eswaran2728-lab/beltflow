@@ -2,6 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Home, MapPin, Users, BarChart3, User, Sparkles } from 'lucide-react-native';
+import { tabBarScreenOptions } from '../tabBarOptions';
 import { useTheme } from '../../theme/ThemeProvider';
 import { RoleNavigationContainer } from '../RoleNavigationContainer';
 import { AssistantScreen } from '../../screens/shared/AssistantScreen';
@@ -74,20 +75,7 @@ export const AdminPersatuanNavigator: React.FC<RoleNavigatorProps> = ({
   return (
     <RoleNavigationContainer user={user}>
     <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.buttonPrimaryBg,
-        tabBarInactiveTintColor: colors.textSecondary,
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-        },
-      }}
+      screenOptions={tabBarScreenOptions(colors)}
     >
       <Tab.Screen
         name="Home"

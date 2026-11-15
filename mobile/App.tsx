@@ -19,7 +19,7 @@ function BeltFlowRoot() {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <ThemeProvider defaultMode="dark">
+      <ThemeProvider defaultMode="light">
         <I18nProvider>
           <BeltFlowRoot />
         </I18nProvider>

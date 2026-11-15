@@ -1,4 +1,5 @@
 import { apiClient } from './apiClient';
+import { readableId } from '../utils/displayName';
 import { AuthUser } from '../types/auth';
 import { authService } from './authService';
 import { mutationQueueRepository } from '../database/repositories/mutationQueueRepository';
@@ -519,7 +520,7 @@ export const dashboardService = {
             fullName: s.full_name,
             beltRank: s.belt_rank,
             classId: s.class_id,
-            className: s.class_id ? `Class ${s.class_id}` : undefined,
+            className: s.class_name || (s.class_id ? readableId(s.class_id) : undefined),
             monthlyFee: parseFloat(s.monthly_fee) || 0,
             hasSiblingDiscount: Boolean(s.has_sibling_discount),
             organizationId: s.organization_id,
@@ -537,9 +538,10 @@ export const dashboardService = {
             })),
             certificates: certs.slice(0, 3).map((c: any) => ({
               id: c.id,
-              beltRank: c.belt_rank,
-              issuedDate: c.issued_date,
-              certificateNumber: c.certificate_number,
+              // The certificates API returns rank_or_title / issue_date / code.
+              beltRank: c.belt_rank ?? c.rank_or_title ?? '',
+              issuedDate: c.issued_date ?? c.issue_date ?? '',
+              certificateNumber: c.certificate_number ?? c.code ?? '',
             })),
           });
         }
@@ -627,9 +629,9 @@ export const dashboardService = {
       })),
       certificates: certs.slice(0, 5).map(c => ({
         id: c.id,
-        beltRank: c.belt_rank,
-        issuedDate: c.issued_date,
-        certificateNumber: c.certificate_number,
+        beltRank: c.belt_rank ?? c.rank_or_title ?? '',
+        issuedDate: c.issued_date ?? c.issue_date ?? '',
+        certificateNumber: c.certificate_number ?? c.code ?? '',
         status: c.status || 'ACTIVE',
       })),
       notices: notices.slice(0, 5).map(n => ({
