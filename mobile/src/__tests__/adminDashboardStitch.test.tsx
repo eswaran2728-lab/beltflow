@@ -187,7 +187,7 @@ describe('Google Stitch Admin Persatuan UI/UX Workstream Tests (Task H25)', () =
     expect(await findByText('Persatuan Administration Scope')).toBeTruthy();
     expect(
       await findByText(
-        /Per-class fee modifications and grading evaluation submissions remain strictly under the authority of certified Masters/i
+        /Per-class fee modifications and grading evaluation submissions remain strictly under the authority of Masters approved by the Persatuan/i
       )
     ).toBeTruthy();
   });

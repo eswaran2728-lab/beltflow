@@ -39,7 +39,9 @@ describe('BeltFlow Design System — Task 1.2 Tokens & Foundations', () => {
       expect(darkThemeColors.textSecondary).toBe('#CBD5E1');
       expect(darkThemeColors.border).toBe('#1E3A5F');
       expect(darkThemeColors.buttonPrimaryBg).toBe(BrandColors.amber);
-      expect(darkThemeColors.buttonPrimaryText).toBe('#FFFFFF');
+      // Dark navy on the amber button: 7.7:1 (white on amber is 2.3:1 and fails WCAG AA).
+      expect(darkThemeColors.buttonPrimaryText).toBe(BrandColors.navyDark);
+      expect(lightThemeColors.buttonSecondaryText).toBe(BrandColors.navyDark);
       expect(darkThemeColors.offlineBg).toBe('#78350F');
     });
 

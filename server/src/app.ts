@@ -39,6 +39,7 @@ import assistantRoutes from './routes/assistant.routes';
 import { moduleGate } from './release/modules';
 import releaseRoutes from './routes/release.routes';
 import securityRoutes from './routes/security.routes';
+import privacyRoutes from './routes/privacy.routes';
 import { httpsOnly } from './middleware/httpsOnly';
 import { securityAudit } from './middleware/securityAudit';
 import { rateLimit } from './middleware/rateLimit';
@@ -127,7 +128,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 // by an explicit allow-list. Anything else is a 404.
 const webRoot = path.resolve(__dirname, '../../');
 const WEB_FILES = new Set(['/index.html', '/manifest.json', '/sw.js', '/support.js', '/.well-known/assetlinks.json']);
-const WEB_DIRS = ['/assets/'];
+const WEB_DIRS = ['/assets/', '/legal/'];
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   if (req.path.startsWith('/api/')) return next();
@@ -178,6 +179,7 @@ app.use('/api/v1/release', releaseRoutes);
 // everything else is core R1 and always on.
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/security', securityRoutes);
+app.use('/api/v1/privacy', privacyRoutes);
 app.use('/api/v1/organizations', organizationRoutes);
 app.use('/api/v1/classes', classRoutes);
 app.use('/api/v1/students', studentRoutes);

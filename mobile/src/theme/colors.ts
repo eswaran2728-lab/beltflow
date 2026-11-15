@@ -111,8 +111,8 @@ export const lightThemeColors: ThemeColors = {
 
   textPrimary: BrandColors.slate900,
   textSecondary: BrandColors.slate600,
-  // slate500 (not 400): small helper text must stay readable on white.
-  textMuted: BrandColors.slate500,
+  // 5.5:1 on white and 5.1:1 on the page background (WCAG AA needs 4.5:1).
+  textMuted: '#5A6A80',
   textInverse: '#FFFFFF',
   text: BrandColors.slate900,
 
@@ -126,7 +126,8 @@ export const lightThemeColors: ThemeColors = {
   buttonPrimaryBg: BrandColors.navy,
   buttonPrimaryText: '#FFFFFF',
   buttonSecondaryBg: BrandColors.amber,
-  buttonSecondaryText: '#FFFFFF',
+  // Dark navy on amber is 7.7:1; white on amber is only 2.3:1 (fails WCAG AA).
+  buttonSecondaryText: BrandColors.navyDark,
   buttonOutlineBorder: BrandColors.navy,
   buttonOutlineText: BrandColors.navy,
   buttonDangerBg: BrandColors.danger,
@@ -170,7 +171,7 @@ export const darkThemeColors: ThemeColors = {
   disabledText: BrandColors.slate500,
 
   buttonPrimaryBg: BrandColors.amber,
-  buttonPrimaryText: '#FFFFFF',
+  buttonPrimaryText: BrandColors.navyDark,
   buttonSecondaryBg: BrandColors.navyLight,
   buttonSecondaryText: '#FFFFFF',
   buttonOutlineBorder: BrandColors.amber,

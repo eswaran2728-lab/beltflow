@@ -1,0 +1,85 @@
+/* Shared styles for the BeltFlow legal pages. Fonts are served from this site. */
+@font-face { font-family: 'Inter'; font-weight: 400; font-display: swap; src: url('/assets/fonts/inter-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Inter'; font-weight: 600; font-display: swap; src: url('/assets/fonts/inter-latin-600-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Inter'; font-weight: 700; font-display: swap; src: url('/assets/fonts/inter-latin-700-normal.woff2') format('woff2'); }
+
+:root {
+  --navy: #0d2b47;
+  --text: #0f172a;
+  --muted: #475569;      /* 7.6:1 on white */
+  --link: #0b4a80;       /* 8.6:1 on white */
+  --line: #d6dde8;
+  --canvas: #f4f6fa;
+  --amber-deep: #8a4b00; /* 6.9:1 on white, 6.0:1 on the note background */
+  --note-bg: #fff7ed;
+}
+
+* { box-sizing: border-box; }
+html { font-size: 100%; }
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--text);
+  background: var(--canvas);
+}
+
+.skip-link {
+  position: absolute; left: 12px; top: -60px;
+  background: #fff; color: var(--navy); padding: 10px 14px; border-radius: 8px;
+  font-weight: 700; z-index: 10;
+}
+.skip-link:focus { top: 12px; }
+
+a { color: var(--link); text-underline-offset: 3px; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 3px solid #f2941c; outline-offset: 2px; box-shadow: 0 0 0 5px #0d2b47; border-radius: 4px; }
+
+.site-header { background: var(--navy); color: #fff; padding: 20px 16px; }
+.site-header .inner, main, .site-footer .inner { max-width: 760px; margin: 0 auto; }
+.site-header a { color: #fff; font-weight: 700; font-size: 1.125rem; text-decoration: none; }
+.site-header a:hover { text-decoration: underline; }
+.site-header nav { margin-top: 10px; }
+.site-header nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.site-header nav a { font-weight: 600; font-size: 0.9375rem; color: #dbe7f3; }
+.site-header nav a[aria-current='page'] { color: #fff; text-decoration: underline; }
+
+main { padding: 24px 16px 48px; }
+article { background: #fff; border: 1px solid var(--line); border-bottom-width: 3px; border-radius: 18px; padding: 24px 22px; margin-bottom: 24px; }
+
+h1 { font-size: 1.75rem; line-height: 1.25; margin: 0 0 6px; letter-spacing: -0.01em; }
+h2 { font-size: 1.25rem; line-height: 1.35; margin: 28px 0 8px; }
+h3 { font-size: 1.0625rem; margin: 20px 0 6px; }
+p, ul, ol, dl, table { margin: 0 0 14px; }
+ul, ol { padding-left: 22px; }
+li { margin-bottom: 6px; }
+.meta { color: var(--muted); font-size: 0.9375rem; }
+.lang-switch { font-size: 0.9375rem; margin-bottom: 18px; }
+
+dl.details { display: grid; grid-template-columns: minmax(120px, 34%) 1fr; gap: 6px 14px; }
+dl.details dt { font-weight: 600; color: var(--muted); }
+dl.details dd { margin: 0; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.9375rem; }
+caption { text-align: left; font-weight: 600; margin-bottom: 6px; }
+th, td { text-align: left; vertical-align: top; padding: 8px 10px; border: 1px solid var(--line); }
+th { background: var(--canvas); }
+.table-wrap { overflow-x: auto; }
+
+.draft-banner, .note {
+  background: var(--note-bg); border: 1px solid #fed7aa; border-left: 5px solid #f2941c;
+  border-radius: 10px; padding: 12px 14px; color: var(--amber-deep); font-weight: 600; margin-bottom: 18px;
+}
+.note { font-weight: 400; color: var(--text); }
+.biz-missing { background: var(--note-bg); color: var(--amber-deep); font-weight: 600; padding: 0 4px; border-radius: 4px; }
+
+.site-footer { padding: 0 16px 40px; color: var(--muted); font-size: 0.9375rem; }
+
+@media (max-width: 520px) {
+  dl.details { grid-template-columns: 1fr; }
+  dl.details dt { margin-top: 8px; }
+  article { padding: 20px 16px; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+@media print { .site-header nav, .skip-link, .lang-switch { display: none; } body { background: #fff; } article { border: 0; padding: 0; } }

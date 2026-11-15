@@ -1726,3 +1726,38 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_password_reset_user ON password_reset_tokens(user_id, created_at DESC);
+
+
+-- ============================================================================
+-- Privacy compliance (PDPA), 2026-11-15
+-- ============================================================================
+-- Who agreed to what, to which document version, and when. Append-only.
+CREATE TABLE IF NOT EXISTS user_consents (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    consent_type VARCHAR(30) NOT NULL,
+    document_version VARCHAR(20) NOT NULL,
+    client_hash VARCHAR(64),
+    accepted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_user_consents_user ON user_consents(user_id);
+
+-- Requests from people about their own data: deletion, correction, or
+-- withdrawal of consent. Handled by the Persatuan's Admin (a Persatuan
+-- Admin's own request by the Super Admin).
+CREATE TABLE IF NOT EXISTS data_requests (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE,
+    student_id TEXT REFERENCES students(id) ON DELETE SET NULL,
+    type VARCHAR(30) NOT NULL,
+    details VARCHAR(1000),
+    status VARCHAR(20) NOT NULL DEFAULT 'OPEN',
+    due_at TIMESTAMPTZ NOT NULL,
+    resolved_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    resolved_at TIMESTAMPTZ,
+    resolution_note VARCHAR(1000),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_data_requests_org ON data_requests(organization_id, status);
+CREATE INDEX IF NOT EXISTS idx_data_requests_user ON data_requests(user_id);

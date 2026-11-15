@@ -82,7 +82,7 @@ export const parentFlowsEn = {
   'parentFlows.trial.emergencyPhonePlaceholder': 'e.g. 0198765432',
   'parentFlows.trial.medicalLabel': 'Medical Disclosures / Injuries / Notes',
   'parentFlows.trial.medicalPlaceholder': 'Disclose any asthma, past joint injuries, or allergies...',
-  'parentFlows.trial.consent': 'I confirm I am the legal parent/guardian. I authorize the candidate to participate in this introductory martial arts trial class under the supervision of academy certified instructors.',
+  'parentFlows.trial.consent': 'I confirm I am the legal parent/guardian. I authorize the candidate to participate in this introductory martial arts trial class under the supervision of the academy instructors.',
   'parentFlows.trial.reserving': 'Reserving...',
   'parentFlows.trial.confirmBooking': 'Confirm Trial Booking',
 
@@ -248,7 +248,7 @@ export const parentFlowsMs: Record<keyof typeof parentFlowsEn, string> = {
   'parentFlows.trial.emergencyPhonePlaceholder': 'cth. 0198765432',
   'parentFlows.trial.medicalLabel': 'Pendedahan Perubatan / Kecederaan / Nota',
   'parentFlows.trial.medicalPlaceholder': 'Nyatakan sebarang asma, kecederaan sendi lalu atau alahan...',
-  'parentFlows.trial.consent': 'Saya mengesahkan bahawa saya ibu bapa/penjaga yang sah. Saya membenarkan calon menyertai kelas percubaan pengenalan seni mempertahankan diri ini di bawah seliaan jurulatih bertauliah akademi.',
+  'parentFlows.trial.consent': 'Saya mengesahkan bahawa saya ibu bapa/penjaga yang sah. Saya membenarkan calon menyertai kelas percubaan pengenalan seni mempertahankan diri ini di bawah seliaan jurulatih akademi.',
   'parentFlows.trial.reserving': 'Menempah...',
   'parentFlows.trial.confirmBooking': 'Sahkan Tempahan Percubaan',
 
@@ -412,7 +412,7 @@ export const parentFlowsTa: Record<keyof typeof parentFlowsEn, string> = {
   'parentFlows.trial.emergencyPhonePlaceholder': 'எ.கா. 0198765432',
   'parentFlows.trial.medicalLabel': 'மருத்துவத் தகவல்கள் / காயங்கள் / குறிப்புகள்',
   'parentFlows.trial.medicalPlaceholder': 'ஆஸ்துமா, முந்தைய மூட்டுக் காயங்கள் அல்லது ஒவ்வாமைகளைத் தெரிவிக்கவும்...',
-  'parentFlows.trial.consent': 'நான் சட்டப்பூர்வ பெற்றோர்/பாதுகாவலர் என உறுதிப்படுத்துகிறேன். அகாடமியின் சான்றளிக்கப்பட்ட பயிற்றுநர்களின் மேற்பார்வையில் இந்த அறிமுகத் தற்காப்புக் கலை சோதனை வகுப்பில் வேட்பாளர் பங்கேற்க அனுமதிக்கிறேன்.',
+  'parentFlows.trial.consent': 'நான் சட்டப்பூர்வ பெற்றோர்/பாதுகாவலர் என உறுதிப்படுத்துகிறேன். அகாடமியின் பயிற்றுநர்களின் மேற்பார்வையில் இந்த அறிமுகத் தற்காப்புக் கலை சோதனை வகுப்பில் வேட்பாளர் பங்கேற்க அனுமதிக்கிறேன்.',
   'parentFlows.trial.reserving': 'முன்பதிவு செய்கிறது...',
   'parentFlows.trial.confirmBooking': 'சோதனை முன்பதிவை உறுதிசெய்',
 

@@ -8,6 +8,7 @@ import { ScreenContainer } from '../../components/Layout';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { LanguageSelector } from '../../components/LanguageSelector';
+import { LegalLinks } from '../../components/LegalLinks';
 import { useI18n } from '../../i18n';
 
 export interface WelcomeScreenProps {
@@ -116,6 +117,9 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         <View style={styles.language}>
           <LanguageSelector testID="welcome-language-selector" />
         </View>
+
+        {/* Legal pages: always reachable before signing in */}
+        <LegalLinks style={{ marginTop: 16 }} />
       </View>
     </ScreenContainer>
   );

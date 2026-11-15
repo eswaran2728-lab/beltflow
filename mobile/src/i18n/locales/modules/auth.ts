@@ -16,6 +16,10 @@ export const authEn = {
   'auth.welcome.feature2.body': 'Tailored ranking, exams, and verified grading criteria',
   'auth.welcome.feature3.title': 'Offline Mat Attendance',
   'auth.welcome.feature3.body': 'Track training sessions with seamless cloud synchronization',
+  'auth.legal.privacy': 'Privacy Notice',
+  'auth.legal.terms': 'Terms',
+  'auth.legal.refunds': 'Refunds',
+  'auth.legal.opens': 'Opens in your browser',
   'auth.welcome.signIn': 'Sign In to Academy',
 
   // Login
@@ -120,6 +124,10 @@ export const authMs: Record<keyof typeof authEn, string> = {
   'auth.welcome.feature2.body': 'Kedudukan, peperiksaan dan kriteria penggredan yang disahkan',
   'auth.welcome.feature3.title': 'Kehadiran Gelanggang Luar Talian',
   'auth.welcome.feature3.body': 'Rekod sesi latihan dengan penyegerakan awan yang lancar',
+  'auth.legal.privacy': 'Notis Privasi',
+  'auth.legal.terms': 'Terma',
+  'auth.legal.refunds': 'Bayaran Balik',
+  'auth.legal.opens': 'Dibuka dalam pelayar anda',
   'auth.welcome.signIn': 'Log Masuk ke Akademi',
 
   'auth.login.title': 'Log Masuk ke BeltFlow',
@@ -217,6 +225,10 @@ export const authTa: Record<keyof typeof authEn, string> = {
   'auth.welcome.feature2.body': 'தனிப்பயன் தரவரிசை, தேர்வுகள் மற்றும் சரிபார்க்கப்பட்ட தர மதிப்பீட்டு அளவுகோல்கள்',
   'auth.welcome.feature3.title': 'ஆஃப்லைன் பயிற்சிக்கள வருகை',
   'auth.welcome.feature3.body': 'பயிற்சி அமர்வுகளைப் பதிவுசெய்து, கிளவுடுடன் தடையின்றி ஒத்திசைக்கவும்',
+  'auth.legal.privacy': 'தனியுரிமை அறிவிப்பு',
+  'auth.legal.terms': 'விதிமுறைகள்',
+  'auth.legal.refunds': 'பணத்தைத் திரும்பப் பெறுதல்',
+  'auth.legal.opens': 'உங்கள் உலாவியில் திறக்கும்',
   'auth.welcome.signIn': 'அகாடமியில் உள்நுழை',
 
   'auth.login.title': 'BeltFlow-இல் உள்நுழை',

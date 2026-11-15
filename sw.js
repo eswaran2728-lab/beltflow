@@ -1,12 +1,19 @@
 // BeltFlow PWA Service Worker
-const CACHE_NAME = 'beltflow-cache-v2';
+const CACHE_NAME = 'beltflow-cache-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
   '/assets/beltflow-logo.png',
-  'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap',
-  'https://unpkg.com/lucide@0.469.0/dist/umd/lucide.js'
+  // Fonts and icons are served from this site (no third-party requests).
+  '/assets/vendor/lucide-0.469.0.min.js',
+  '/assets/fonts/inter-latin-400-normal.woff2',
+  '/assets/fonts/inter-latin-500-normal.woff2',
+  '/assets/fonts/inter-latin-600-normal.woff2',
+  '/assets/fonts/inter-latin-700-normal.woff2',
+  '/assets/fonts/space-grotesk-latin-500-normal.woff2',
+  '/assets/fonts/space-grotesk-latin-600-normal.woff2',
+  '/assets/fonts/space-grotesk-latin-700-normal.woff2'
 ];
 
 // Install Event - Pre-cache core app shell
@@ -45,6 +52,12 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
+
+  // Never cache personal data. API answers (accounts, students, payments,
+  // messages) always come fresh from the server and are never stored here,
+  // so nothing personal stays in the browser after sign-out. Requests to
+  // other sites are left to the browser as well.
+  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
 
   // For HTML navigations, try network first, fallback to cached index.html
   if (event.request.mode === 'navigate') {

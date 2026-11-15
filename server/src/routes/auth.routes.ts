@@ -4,6 +4,7 @@ import { UserRole } from '../security/rbac';
 import crypto from 'crypto';
 import { hashPasswordServer, verifyPasswordServer, generateAuthToken, passwordNeedsRehash, DUMMY_PASSWORD_HASH } from '../security/crypto';
 import { recordSecurityEvent } from '../services/securityEvents';
+import { agreed, recordConsents } from '../services/consent';
 import { validatePassword } from '../security/passwordPolicy';
 import { authenticateJWT } from '../middleware/auth';
 import { safeErrorMessage } from '../security/errors';
@@ -434,6 +435,14 @@ router.post('/register-student', authAttemptLimit, async (req: Request, res: Res
     if (!fullName || !email || !password || !organizationId || !classId) {
       return res.status(400).json({ error: 'fullName, email, password, organizationId, and requested classId are required.' });
     }
+    // Explicit agreement is required before anything is stored (PDPA). A
+    // person under 18 needs a parent's or guardian's agreement.
+    if (!agreed(req.body.acceptedPrivacyNotice) || !agreed(req.body.acceptedTerms) || !agreed(req.body.ageOrGuardianConfirmed)) {
+      return res.status(400).json({
+        code: 'CONSENT_REQUIRED',
+        error: 'Please confirm that you have read the Privacy Notice, agree to the Terms, and are 18 or older or have your parent\'s or guardian\'s agreement.',
+      });
+    }
     const studentPasswordCheck = validatePassword(password);
     if (!studentPasswordCheck.valid) {
       return res.status(400).json({ error: studentPasswordCheck.error });
@@ -476,6 +485,7 @@ router.post('/register-student', authAttemptLimit, async (req: Request, res: Res
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [userId, organizationId, cleanEmail, passHash, fullName.trim(), phone?.trim() || null, UserRole.STUDENT, 'PENDING_VERIFICATION']
     );
+    await recordConsents(userId, ['PRIVACY_NOTICE', 'TERMS', 'AGE_OR_GUARDIAN'], req);
 
     // 2. Create the student profile row (status PENDING until approved)
     await dbClient.query(
@@ -606,6 +616,14 @@ router.post('/register-parent', authAttemptLimit, async (req: Request, res: Resp
     if (!reqStudentId && (!childName || !classId)) {
       return res.status(400).json({ error: 'Child name and class are required for a new child.' });
     }
+    // Explicit agreement is required before anything is stored (PDPA), and a
+    // child's data needs the parent's or guardian's consent.
+    if (!agreed(req.body.acceptedPrivacyNotice) || !agreed(req.body.acceptedTerms) || !agreed(req.body.guardianConsent)) {
+      return res.status(400).json({
+        code: 'CONSENT_REQUIRED',
+        error: 'Please confirm that you have read the Privacy Notice, agree to the Terms, and consent as the child\'s parent or guardian.',
+      });
+    }
 
     const cleanEmail = email.trim().toLowerCase();
     const existingUser = await dbClient.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [cleanEmail]);
@@ -639,6 +657,7 @@ router.post('/register-parent', authAttemptLimit, async (req: Request, res: Resp
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [parentId, targetOrgId, cleanEmail, passHash, parentFullName.trim(), phone?.trim() || null, UserRole.PARENT, 'ACTIVE']
     );
+    await recordConsents(parentId, ['PRIVACY_NOTICE', 'TERMS', 'GUARDIAN'], req);
 
     // --- Branch: new child vs. linking to existing student ---
     if (reqStudentId) {

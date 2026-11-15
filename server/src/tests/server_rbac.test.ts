@@ -60,6 +60,7 @@ async function run() {
     assert.equal(cls.status, 201);
     const classId = cls.data.class.id;
     const reg = await call('POST', '/auth/register-student', {
+      acceptedPrivacyNotice: true, acceptedTerms: true, ageOrGuardianConfirmed: true,
       organizationId: a.id, classId, fullName: 'Student A', email: 'student@test.local', password: 'safe-password'
     });
     assert.equal(reg.status, 201);
@@ -77,6 +78,7 @@ async function run() {
     const studentToken = studentLogin.data.token;
     assert.equal((await call('GET', '/students/me', undefined, studentToken)).status, 200);
     const parent = await call('POST', '/auth/register-parent', {
+      acceptedPrivacyNotice: true, acceptedTerms: true, guardianConsent: true,
       organizationId: a.id, studentId, fullName: 'Parent A', email: 'parent@test.local', password: 'safe-password'
     });
     assert.equal(parent.status, 201);
