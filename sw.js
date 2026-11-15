@@ -1,12 +1,12 @@
 // BeltFlow PWA Service Worker
-const CACHE_NAME = 'beltflow-cache-v1';
+const CACHE_NAME = 'beltflow-cache-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
   '/assets/beltflow-logo.png',
   'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap',
-  'https://unpkg.com/lucide@latest/dist/umd/lucide.js'
+  'https://unpkg.com/lucide@0.469.0/dist/umd/lucide.js'
 ];
 
 // Install Event - Pre-cache core app shell

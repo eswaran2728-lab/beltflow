@@ -1,4 +1,4 @@
-import { getApiBaseUrl, API_TIMEOUT_MS } from '../config/env';
+import { getApiBaseUrl, API_TIMEOUT_MS, isTestingBuild } from '../config/env';
 import { getAuthToken } from './storage';
 import { ApiErrorDetails } from '../types/auth';
 
@@ -86,6 +86,19 @@ async function request<T = unknown>(
 
   const baseUrl = getApiBaseUrl();
   const url = endpoint.startsWith('http') ? endpoint : `${baseUrl}${apiPath(endpoint)}`;
+  // The sign-in token only ever goes to the configured BeltFlow server.
+  const toOwnServer = url === baseUrl || url.startsWith(`${baseUrl}/`);
+
+  // Production builds only talk to the server over HTTPS, so passwords and
+  // tokens are never sent in clear text. Dev and testing builds may use a
+  // local http:// server.
+  if (toOwnServer && !isTestingBuild() && !url.toLowerCase().startsWith('https://')) {
+    throw new ApiError({
+      message: 'A secure (https) connection to the server is required.',
+      status: 0,
+      isNetworkError: true,
+    });
+  }
 
   const headers: Record<string, string> = {
     Accept: 'application/json',
@@ -93,7 +106,7 @@ async function request<T = unknown>(
   };
 
   // Inject Bearer token if required & available
-  if (requiresAuth) {
+  if (requiresAuth && toOwnServer) {
     const token = await getAuthToken();
     if (token) {
       headers.Authorization = `Bearer ${token}`;

@@ -19,7 +19,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.js" integrity="sha384-cztVf4nptt4arwI8Ixfn8naubPgxH22BSvA0CuqFUCulIT+dgnb18vSqiZbbPDL1" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <style>
     :root {
@@ -2093,14 +2093,14 @@
         const select = document.getElementById('newClassCoach');
         if (select) select.innerHTML = '<option value="">Assign later</option>' +
           coaches.filter(c => c.persatuan_id === activePersatuan?.id && c.status === 'Active')
-            .map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            .map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
       }
       if (id === 'newStudentModal') {
         const classSelect = document.getElementById('newStudentClass');
         if (classSelect) {
           classSelect.innerHTML = '<option value="">Select a class...</option>' +
             classes.filter(c => c.persatuan_id === activePersatuan?.id)
-              .map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+              .map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
         }
         const beltSelect = document.getElementById('newStudentBelt');
         if (beltSelect) {
@@ -2345,6 +2345,11 @@
         return;
       }
 
+      // Older sessions are ended by the server; keep working with the new one.
+      if (res.data && res.data.token) {
+        currentAuthToken = res.data.token;
+        sessionStorage.setItem('beltflow_jwt_token', res.data.token);
+      }
       alert('✅ Account password successfully updated in PostgreSQL database!');
       closeModal('changePasswordModal');
     }
@@ -2642,7 +2647,7 @@
 
       const container = document.getElementById('sidebarNavItems');
       container.innerHTML = r.nav.map(item => `
-        <div class="sidebar-nav-item ${currentTab === item.id ? 'active' : ''}" onclick="switchTab('${item.id}')">
+        <div class="sidebar-nav-item ${currentTab === item.id ? 'active' : ''}" data-a1="${escapeHtml(String(item.id))}" onclick="switchTab(this.dataset.a1)">
           <i data-lucide="${item.icon}"></i>
           <span>${item.label}</span>
         </div>
@@ -2666,7 +2671,7 @@
         const overflowItems = r.nav.slice(4);
         const overflowActive = overflowItems.some(item => item.id === currentTab);
         mobileNav.innerHTML = primaryItems.map(item => `
-          <button class="mobile-tab-btn ${currentTab === item.id ? 'active' : ''}" onclick="switchTab('${item.id}')">
+          <button class="mobile-tab-btn ${currentTab === item.id ? 'active' : ''}" data-a1="${escapeHtml(String(item.id))}" onclick="switchTab(this.dataset.a1)">
             <i data-lucide="${item.icon}"></i>
             <span>${mobileTabShortLabel(item.label)}</span>
           </button>
@@ -2680,7 +2685,7 @@
         const moreMenu = document.getElementById('mobileMoreMenu');
         if (moreMenu) {
           moreMenu.innerHTML = overflowItems.map(item => `
-            <div class="sidebar-nav-item ${currentTab === item.id ? 'active' : ''}" onclick="switchTab('${item.id}');closeMobileMoreMenu()">
+            <div class="sidebar-nav-item ${currentTab === item.id ? 'active' : ''}" data-a1="${escapeHtml(String(item.id))}" onclick="switchTab(this.dataset.a1);closeMobileMoreMenu()">
               <i data-lucide="${item.icon}"></i>
               <span>${item.label}</span>
             </div>
@@ -2748,10 +2753,10 @@
       container.innerHTML = persatuans.map(p => {
         const isSelected = wizardState.persatuanId == p.id;
         return `
-            <div class="wizard-role-card ${isSelected ? 'selected' : ''}" style="text-align:left;display:flex;align-items:center;justify-content:space-between;padding:12px 16px" onclick="selectWizardPersatuan('${p.id}')">
+            <div class="wizard-role-card ${isSelected ? 'selected' : ''}" style="text-align:left;display:flex;align-items:center;justify-content:space-between;padding:12px 16px" data-a1="${escapeHtml(String(p.id))}" onclick="selectWizardPersatuan(this.dataset.a1)">
             <div>
-              <div style="font-weight:700;font-size:14px;color:var(--bf-navy)">${p.name}</div>
-              <div style="font-size:11px;color:var(--bf-text-muted)">${p.state} · ${p.style || 'Martial Arts'}</div>
+              <div style="font-weight:700;font-size:14px;color:var(--bf-navy)">${escapeHtml(p.name)}</div>
+              <div style="font-size:11px;color:var(--bf-text-muted)">${escapeHtml(p.state)} · ${escapeHtml(p.style || 'Martial Arts')}</div>
             </div>
             ${isSelected ? '<i data-lucide="check-circle" style="width:20px;height:20px;color:var(--bf-amber)"></i>' : ''}
           </div>
@@ -2832,7 +2837,7 @@
         if (pClasses.length === 0) {
           classSelect.innerHTML = '<option value="">No classes available; contact the academy</option>';
         } else {
-          classSelect.innerHTML = pClasses.map(c => `<option value="${c.id}">${c.name} (${c.schedule})</option>`).join('');
+          classSelect.innerHTML = pClasses.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)} (${escapeHtml(c.schedule)})</option>`).join('');
         }
 
         // Populate Belts
@@ -3154,7 +3159,6 @@
     // ================= MONTHLY DUES LEDGER =================
     let activeMonthlyDuesClassId = null;
 
-    function escapeHtmlAttr(s) { return String(s).replace(/'/g, "\\'"); }
 
     async function openMonthlyDuesReport(classId) {
       activeMonthlyDuesClassId = classId;
@@ -3169,7 +3173,7 @@
       body.innerHTML = '<p style="font-size:13px;color:var(--bf-text-muted)">Loading…</p>';
       const result = await fetchApi('/billing/monthly-dues/class/' + activeMonthlyDuesClassId);
       if (!result.ok) {
-        body.innerHTML = '<p style="color:#dc2626">' + ((result.data && result.data.error) || 'Failed to load monthly dues.') + '</p>';
+        body.innerHTML = '<p style="color:#dc2626">' + escapeHtml((result.data && result.data.error) || 'Failed to load monthly dues.') + '</p>';
         return;
       }
       const students = result.data.students || [];
@@ -3181,11 +3185,11 @@
         <div class="bf-card" style="margin-bottom:12px;padding:14px">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
             <div>
-              <strong>${s.studentName}</strong>
+              <strong>${escapeHtml(s.studentName)}</strong>
               <div style="font-size:12px;color:var(--bf-text-muted)">Current Fee: RM ${s.currentFee.toFixed(2)} / month</div>
             </div>
             <div style="text-align:right">
-              <div style="font-size:12px;color:var(--bf-text-muted)">${s.monthsPendingCount} month(s) pending</div>
+              <div style="font-size:12px;color:var(--bf-text-muted)">${escapeHtml(s.monthsPendingCount)} month(s) pending</div>
               <div style="font-weight:800;color:${s.totalPending > 0 ? '#dc2626' : '#16a34a'}">RM ${s.totalPending.toFixed(2)} outstanding</div>
             </div>
           </div>
@@ -3195,12 +3199,12 @@
               <tbody>
                 ${s.dues.map(d => `
                   <tr>
-                    <td>${d.billing_month}</td>
+                    <td>${escapeHtml(d.billing_month)}</td>
                     <td>RM ${d.fee_amount.toFixed(2)}</td>
                     <td>RM ${d.amount_paid.toFixed(2)}</td>
                     <td>RM ${d.remaining.toFixed(2)}</td>
-                    <td><span class="belt-badge" style="background:${d.effective_status === 'Paid' ? '#dcfce7' : d.effective_status === 'Overdue' ? '#fee2e2' : d.effective_status === 'Partially Paid' ? '#fef3c7' : '#f1f5f9'};color:${d.effective_status === 'Paid' ? '#166534' : d.effective_status === 'Overdue' ? '#991b1b' : d.effective_status === 'Partially Paid' ? '#92400e' : '#475569'}">${d.effective_status}</span></td>
-                    <td>${d.effective_status !== 'Paid' ? `<button class="bf-btn bf-btn-sm bf-btn-outline" onclick="recordDuePayment('${s.studentId}', '${d.id}', ${d.remaining}, '${escapeHtmlAttr(s.studentName)}', '${d.billing_month}')">Record Payment</button>` : ''}</td>
+                    <td><span class="belt-badge" style="background:${d.effective_status === 'Paid' ? '#dcfce7' : d.effective_status === 'Overdue' ? '#fee2e2' : d.effective_status === 'Partially Paid' ? '#fef3c7' : '#f1f5f9'};color:${d.effective_status === 'Paid' ? '#166534' : d.effective_status === 'Overdue' ? '#991b1b' : d.effective_status === 'Partially Paid' ? '#92400e' : '#475569'}">${escapeHtml(d.effective_status)}</span></td>
+                    <td>${d.effective_status !== 'Paid' ? `<button class="bf-btn bf-btn-sm bf-btn-outline" data-a1="${escapeHtml(String(s.studentId))}" data-a2="${escapeHtml(String(d.id))}" data-a3="${escapeHtml(String(d.remaining))}" data-a4="${escapeHtml(String(s.studentName))}" data-a5="${escapeHtml(String(d.billing_month))}" onclick="recordDuePayment(this.dataset.a1, this.dataset.a2, Number(this.dataset.a3), this.dataset.a4, this.dataset.a5)">Record Payment</button>` : ''}</td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -3244,7 +3248,7 @@
         fetchApi('/classes/' + activeGroupsScheduleClassId + '/sessions')
       ]);
       if (!groupsRes.ok) {
-        body.innerHTML = '<p style="color:#dc2626">' + ((groupsRes.data && groupsRes.data.error) || 'Failed to load.') + '</p>';
+        body.innerHTML = '<p style="color:#dc2626">' + escapeHtml((groupsRes.data && groupsRes.data.error) || 'Failed to load.') + '</p>';
         return;
       }
       const groups = groupsRes.data.groups || [];
@@ -3258,7 +3262,7 @@
           <h4 style="font-size:14px;margin-bottom:8px">Training Groups</h4>
           <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:${canWrite ? '10px' : '0'}">
             ${groups.length === 0 ? '<span style="font-size:12px;color:var(--bf-text-muted)">No groups yet.</span>' :
-              groups.map(g => `<span class="belt-badge" style="background:#e0f2fe;color:#0369a1">${g.name}</span>`).join('')}
+              groups.map(g => `<span class="belt-badge" style="background:#e0f2fe;color:#0369a1">${escapeHtml(g.name)}</span>`).join('')}
           </div>
           ${canWrite ? `
             <form onsubmit="handleCreateGroup(event)" style="display:flex;gap:8px;flex-wrap:wrap">
@@ -3274,7 +3278,7 @@
           <form onsubmit="handleCreateSchedule(event)" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
             <select id="newScheduleGroup" required class="bf-input">
               <option value="">Group…</option>
-              ${groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
+              ${groups.map(g => `<option value="${escapeHtml(g.id)}">${escapeHtml(g.name)}</option>`).join('')}
             </select>
             <input type="text" id="newScheduleDay" required placeholder="e.g. Sunday" class="bf-input">
             <input type="text" id="newScheduleStart" required placeholder="e.g. 5:00 PM" class="bf-input">
@@ -3295,11 +3299,11 @@
             <tbody>
               ${schedules.map(s => `
                 <tr>
-                  <td>${groupName(s.group_id)}</td>
-                  <td>${s.day_of_week}</td>
-                  <td>${s.start_time}–${s.end_time}</td>
-                  <td>${s.location}</td>
-                  <td>${canWrite ? `<button class="bf-btn bf-btn-sm bf-btn-outline" onclick="generateSessionFromSchedule('${s.id}', '${s.group_id}')">Generate Session</button>` : ''}</td>
+                  <td>${escapeHtml(groupName(s.group_id))}</td>
+                  <td>${escapeHtml(s.day_of_week)}</td>
+                  <td>${escapeHtml(s.start_time)}–${escapeHtml(s.end_time)}</td>
+                  <td>${escapeHtml(s.location)}</td>
+                  <td>${canWrite ? `<button class="bf-btn bf-btn-sm bf-btn-outline" data-a1="${escapeHtml(String(s.id))}" data-a2="${escapeHtml(String(s.group_id))}" onclick="generateSessionFromSchedule(this.dataset.a1, this.dataset.a2)">Generate Session</button>` : ''}</td>
                 </tr>
               `).join('')}
             </tbody></table>
@@ -3312,7 +3316,7 @@
           <form onsubmit="handleCreateExtraSession(event)" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
             <select id="extraSessionGroup" required class="bf-input">
               <option value="">Group…</option>
-              ${groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
+              ${groups.map(g => `<option value="${escapeHtml(g.id)}">${escapeHtml(g.name)}</option>`).join('')}
             </select>
             <input type="date" id="extraSessionDate" required class="bf-input">
             <input type="text" id="extraSessionDay" required placeholder="e.g. Friday" class="bf-input">
@@ -3332,14 +3336,14 @@
             <tbody>
               ${sessions.map(s => `
                 <tr>
-                  <td>${s.session_date}${s.is_extra ? ' <span class="belt-badge" style="background:#fef3c7;color:#92400e;font-size:9px">EXTRA</span>' : ''}</td>
-                  <td>${groupName(s.group_id)}</td>
-                  <td>${s.start_time}–${s.end_time}</td>
-                  <td>${s.location}</td>
-                  <td><span class="belt-badge" style="background:${s.status === 'Cancelled' ? '#fee2e2' : s.status === 'Completed' ? '#dcfce7' : '#f1f5f9'};color:${s.status === 'Cancelled' ? '#991b1b' : s.status === 'Completed' ? '#166534' : '#475569'}">${s.status}</span></td>
+                  <td>${escapeHtml(s.session_date)}${s.is_extra ? ' <span class="belt-badge" style="background:#fef3c7;color:#92400e;font-size:9px">EXTRA</span>' : ''}</td>
+                  <td>${escapeHtml(groupName(s.group_id))}</td>
+                  <td>${escapeHtml(s.start_time)}–${escapeHtml(s.end_time)}</td>
+                  <td>${escapeHtml(s.location)}</td>
+                  <td><span class="belt-badge" style="background:${s.status === 'Cancelled' ? '#fee2e2' : s.status === 'Completed' ? '#dcfce7' : '#f1f5f9'};color:${s.status === 'Cancelled' ? '#991b1b' : s.status === 'Completed' ? '#166534' : '#475569'}">${escapeHtml(s.status)}</span></td>
                   <td style="display:flex;gap:4px;flex-wrap:wrap">
-                    ${canWrite && s.status !== 'Cancelled' ? `<button class="bf-btn bf-btn-sm bf-btn-outline" onclick="openSessionAttendance('${s.id}')">Attendance</button>` : ''}
-                    ${canWrite && s.status === 'Scheduled' ? `<button class="bf-btn bf-btn-sm bf-btn-outline" onclick="cancelSession('${s.id}')">Cancel</button>` : ''}
+                    ${canWrite && s.status !== 'Cancelled' ? `<button class="bf-btn bf-btn-sm bf-btn-outline" data-a1="${escapeHtml(String(s.id))}" onclick="openSessionAttendance(this.dataset.a1)">Attendance</button>` : ''}
+                    ${canWrite && s.status === 'Scheduled' ? `<button class="bf-btn bf-btn-sm bf-btn-outline" data-a1="${escapeHtml(String(s.id))}" onclick="cancelSession(this.dataset.a1)">Cancel</button>` : ''}
                   </td>
                 </tr>
               `).join('')}
@@ -3420,7 +3424,7 @@
       body.innerHTML = '<p style="font-size:13px;color:var(--bf-text-muted)">Loading…</p>';
       const result = await fetchApi('/attendance/session/' + sessionId + '/roster');
       if (!result.ok) {
-        body.innerHTML = '<p style="color:#dc2626">' + ((result.data && result.data.error) || 'Failed to load roster.') + '</p>';
+        body.innerHTML = '<p style="color:#dc2626">' + escapeHtml((result.data && result.data.error) || 'Failed to load roster.') + '</p>';
         return;
       }
       const { session, roster } = result.data;
@@ -3436,10 +3440,10 @@
             <tbody>
               ${roster.map(s => `
                 <tr>
-                  <td>${s.full_name}</td>
+                  <td>${escapeHtml(s.full_name)}</td>
                   <td>
-                    <select class="bf-input attendance-status-select" data-student-id="${s.id}">
-                      ${['Present', 'Late', 'Absent', 'Excused'].map(st => `<option value="${st}" ${(s.attendance && s.attendance.status === st) || (!s.attendance && st === 'Present') ? 'selected' : ''}>${st}</option>`).join('')}
+                    <select class="bf-input attendance-status-select" data-student-id="${escapeHtml(s.id)}">
+                      ${['Present', 'Late', 'Absent', 'Excused'].map(st => `<option value="${escapeHtml(st)}" ${(s.attendance && s.attendance.status === st) || (!s.attendance && st === 'Present') ? 'selected' : ''}>${escapeHtml(st)}</option>`).join('')}
                     </select>
                   </td>
                 </tr>
@@ -3475,7 +3479,7 @@
       const select = document.getElementById('assignMasterSelect');
       const orgCoaches = coaches.filter(c => activePersatuan && c.persatuan_id == activePersatuan.id);
       select.innerHTML = '<option value="">— Remove current Master —</option>' +
-        orgCoaches.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+        orgCoaches.map(m => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.name)}</option>`).join('');
       openModal('assignMasterModal');
     }
 
@@ -3594,15 +3598,15 @@
                   const nextBelt = (currIdx >= 0 && currIdx + 1 < cfg.belts.length) ? cfg.belts[currIdx + 1].name : (s.belt || 'Yellow Belt');
                   return `
                     <tr>
-                      <td><strong>${s.name}</strong><br><span style="font-size:10px;color:var(--bf-text-muted)">${s.className}</span></td>
-                      <td><span class="belt-badge ${s.beltClass}">${s.belt}</span></td>
+                      <td><strong>${escapeHtml(s.name)}</strong><br><span style="font-size:10px;color:var(--bf-text-muted)">${escapeHtml(s.className)}</span></td>
+                      <td><span class="belt-badge ${escapeHtml(s.beltClass)}">${escapeHtml(s.belt)}</span></td>
                       <td>
-                        <select id="gradeTargetBelt_${s.id}" class="bf-input" style="padding:4px 8px;font-size:12px">
+                        <select id="gradeTargetBelt_${escapeHtml(s.id)}" class="bf-input" style="padding:4px 8px;font-size:12px">
                           ${cfg.belts.map(b => `<option value="${b.name}" ${b.name === nextBelt ? 'selected' : ''}>${b.name}</option>`).join('')}
                         </select>
                       </td>
                       <td>
-                        <select id="gradeResult_${s.id}" class="bf-input" style="padding:4px 8px;font-size:12px">
+                        <select id="gradeResult_${escapeHtml(s.id)}" class="bf-input" style="padding:4px 8px;font-size:12px">
                           <option value="Passed">Passed (Promote)</option>
                           <option value="Pending">Pending</option>
                           <option value="Retest">Retest</option>
@@ -3616,7 +3620,7 @@
           </div>
           <div style="display:flex;justify-content:flex-end;gap:8px">
             <button type="button" class="bf-btn bf-btn-outline" onclick="closeModal('recordGradingResultsModal')">Cancel</button>
-            <button type="button" class="bf-btn bf-btn-primary" onclick="handleSaveGradingResults('${g.id}')">Save Results & Issue Certificates</button>
+            <button type="button" class="bf-btn bf-btn-primary" data-a1="${escapeHtml(String(g.id))}" onclick="handleSaveGradingResults(this.dataset.a1)">Save Results & Issue Certificates</button>
           </div>
         `;
       }
@@ -3724,12 +3728,12 @@
               <tbody>
                 ${pStudents.map(s => `
                   <tr>
-                    <td><strong>${s.name}</strong><br><span style="font-size:10px;color:var(--bf-text-muted)">${s.belt}</span></td>
+                    <td><strong>${escapeHtml(s.name)}</strong><br><span style="font-size:10px;color:var(--bf-text-muted)">${escapeHtml(s.belt)}</span></td>
                     <td>
-                      <input type="text" id="tourneyCat_${s.id}" class="bf-input" style="padding:4px 8px;font-size:12px" value="Forms & Sparring">
+                      <input type="text" id="tourneyCat_${escapeHtml(s.id)}" class="bf-input" style="padding:4px 8px;font-size:12px" value="Forms & Sparring">
                     </td>
                     <td>
-                      <select id="tourneyMedal_${s.id}" class="bf-input" style="padding:4px 8px;font-size:12px">
+                      <select id="tourneyMedal_${escapeHtml(s.id)}" class="bf-input" style="padding:4px 8px;font-size:12px">
                         <option value="None">Did Not Participate</option>
                         <option value="Gold">🥇 Gold Medal (Champion)</option>
                         <option value="Silver">🥈 Silver Medal (Runner-Up)</option>
@@ -3744,7 +3748,7 @@
           </div>
           <div style="display:flex;justify-content:flex-end;gap:8px">
             <button type="button" class="bf-btn bf-btn-outline" onclick="closeModal('recordTournamentMedalsModal')">Cancel</button>
-            <button type="button" class="bf-btn bf-btn-primary" onclick="handleSaveTournamentMedals('${t.id}')">Save Medals & Issue Certificates</button>
+            <button type="button" class="bf-btn bf-btn-primary" data-a1="${escapeHtml(String(t.id))}" onclick="handleSaveTournamentMedals(this.dataset.a1)">Save Medals & Issue Certificates</button>
           </div>
         `;
       }
@@ -3796,7 +3800,7 @@
         alert('No active students registered in this academy.');
         return;
       }
-      select.innerHTML = pStudents.map(s => `<option value="${s.id}">${s.name} (${s.className}) - Fee: RM ${s.monthlyFee || 120}</option>`).join('');
+      select.innerHTML = pStudents.map(s => `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name)} (${escapeHtml(s.className)}) - Fee: RM ${escapeHtml(s.monthlyFee || 120)}</option>`).join('');
       openModal('manualPaymentReceiptModal');
     }
 
@@ -4065,8 +4069,8 @@
 
       document.getElementById('parentPaySummaryBox').innerHTML = `
         <div style="font-size:12px;color:var(--bf-navy);line-height:1.6">
-          <strong>Student:</strong> ${child.name} (${child.belt})<br>
-          <strong>Academy:</strong> ${child.persatuan_name || (p ? p.name : 'Academy')}<br>
+          <strong>Student:</strong> ${escapeHtml(child.name)} (${escapeHtml(child.belt)})<br>
+          <strong>Academy:</strong> ${escapeHtml(child.persatuan_name || (p ? p.name : 'Academy'))}<br>
           <strong>Monthly Training Fee:</strong> RM ${amount.toFixed(2)}
         </div>
       `;
@@ -4083,8 +4087,8 @@
           <div style="display:flex;flex-direction:column;gap:6px;max-height:140px;overflow-y:auto;border:1px solid var(--bf-border);border-radius:var(--radius-sm);padding:8px">
             ${pendingDues.map(d => `
               <label style="display:flex;align-items:center;gap:8px;font-size:13px">
-                <input type="checkbox" class="parent-pay-month-cb" value="${d.id}" data-remaining="${d.remaining}" onchange="updateParentPayAmount()">
-                ${d.billing_month} — RM ${d.remaining.toFixed(2)} ${d.effective_status === 'Overdue' ? '<span style="color:#dc2626;font-weight:700">(Overdue)</span>' : ''}
+                <input type="checkbox" class="parent-pay-month-cb" value="${escapeHtml(d.id)}" data-remaining="${escapeHtml(d.remaining)}" onchange="updateParentPayAmount()">
+                ${escapeHtml(d.billing_month)} — RM ${d.remaining.toFixed(2)} ${d.effective_status === 'Overdue' ? '<span style="color:#dc2626;font-weight:700">(Overdue)</span>' : ''}
               </label>
             `).join('')}
           </div>
@@ -4238,21 +4242,21 @@
 
       document.getElementById('certModalContent').innerHTML = `
         <div class="cert-frame">
-          <div style="font-size:10px;font-weight:800;letter-spacing:0.12em;color:var(--bf-amber);text-transform:uppercase">${cert.persatuanName}</div>
+          <div style="font-size:10px;font-weight:800;letter-spacing:0.12em;color:var(--bf-amber);text-transform:uppercase">${escapeHtml(cert.persatuanName)}</div>
           <h2 style="font-size:22px;color:var(--bf-navy);margin-top:6px">${cert.type === 'Tournament Medal' ? 'MEDAL OF ACHIEVEMENT' : 'CERTIFICATE OF PROMOTION'}</h2>
           <p style="font-size:12px;color:var(--bf-text-muted);margin-top:4px">This officially certifies that</p>
-          <div style="font-size:24px;font-weight:800;color:var(--bf-navy);margin:10px 0;font-family:'Space Grotesk',sans-serif">${cert.studentName}</div>
-          <p style="font-size:12px;color:var(--bf-text-muted);max-width:440px;margin:0 auto">${cert.notes}</p>
-          <div style="font-size:18px;font-weight:800;color:#854d0e;margin:12px 0">${cert.rankOrTitle}</div>
+          <div style="font-size:24px;font-weight:800;color:var(--bf-navy);margin:10px 0;font-family:'Space Grotesk',sans-serif">${escapeHtml(cert.studentName)}</div>
+          <p style="font-size:12px;color:var(--bf-text-muted);max-width:440px;margin:0 auto">${escapeHtml(cert.notes)}</p>
+          <div style="font-size:18px;font-weight:800;color:#854d0e;margin:12px 0">${escapeHtml(cert.rankOrTitle)}</div>
           
           <div style="display:flex;justify-content:space-around;align-items:center;margin-top:18px;padding-top:14px;border-top:1px dashed #cbd5e1">
             <div style="text-align:center">
-              <div style="font-size:12px;font-weight:700">${cert.masterName}</div>
+              <div style="font-size:12px;font-weight:700">${escapeHtml(cert.masterName)}</div>
               <div style="font-size:9px;color:var(--bf-text-muted)">Chief Examiner / Master</div>
             </div>
             <div class="cert-seal">BELTFLOW<br>VERIFIED</div>
             <div style="text-align:center">
-              <div style="font-size:12px;font-weight:700;color:var(--bf-navy)">${cert.code}</div>
+              <div style="font-size:12px;font-weight:700;color:var(--bf-navy)">${escapeHtml(cert.code)}</div>
               <div style="font-size:9px;color:var(--bf-text-muted)">Verification Hash</div>
             </div>
           </div>
@@ -4333,7 +4337,7 @@
         <div class="coach-toast" id="globalLiveToast">
           <div style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600">
             <i data-lucide="check-circle" style="width:20px;height:20px;flex-shrink:0"></i>
-            <span>${toastMsg}</span>
+            <span>${escapeHtml(toastMsg)}</span>
           </div>
           <button style="background:transparent;border:none;color:#fff;cursor:pointer;display:flex;align-items:center" onclick="toastMsg='';renderContent()">
             <i data-lucide="x" style="width:16px;height:16px"></i>
@@ -4347,8 +4351,8 @@
             : pendingLinks.map(link => `<div class="bf-card" style="margin-top:12px">
               <strong>${escapeHtml(link.parent_name)}</strong> requested access to ${escapeHtml(link.student_name)}
               <div style="margin-top:8px;display:flex;gap:8px">
-              <button class="bf-btn bf-btn-primary" onclick="reviewParentLink('${link.id}','approve')">Approve</button>
-              <button class="bf-btn bf-btn-outline" onclick="reviewParentLink('${link.id}','reject')">Reject</button>
+              <button class="bf-btn bf-btn-primary" data-a1="${escapeHtml(String(link.id))}" onclick="reviewParentLink(this.dataset.a1,'approve')">Approve</button>
+              <button class="bf-btn bf-btn-outline" data-a1="${escapeHtml(String(link.id))}" onclick="reviewParentLink(this.dataset.a1,'reject')">Reject</button>
               </div></div>`).join(''));
       } else if (currentTab === 'verify') {
         renderVerifyPortal(view, toastHtml);
@@ -4421,11 +4425,11 @@
                   ` : persatuans.map(p => {
                     return `
                       <tr>
-                        <td><strong>${p.name}</strong><br><span style="font-size:10px;color:var(--bf-text-muted)">${p.email}</span></td>
-                        <td>${p.state}</td>
-                        <td><span class="belt-badge" style="background:#e0f2fe;color:#0369a1">${p.style || 'Martial Arts'}</span></td>
-                        <td><strong>${p.master}</strong></td>
-                        <td><span class="belt-badge" style="background:#dcfce7;color:#166534">${p.status}</span></td>
+                        <td><strong>${escapeHtml(p.name)}</strong><br><span style="font-size:10px;color:var(--bf-text-muted)">${escapeHtml(p.email)}</span></td>
+                        <td>${escapeHtml(p.state)}</td>
+                        <td><span class="belt-badge" style="background:#e0f2fe;color:#0369a1">${escapeHtml(p.style || 'Martial Arts')}</span></td>
+                        <td><strong>${escapeHtml(p.master)}</strong></td>
+                        <td><span class="belt-badge" style="background:#dcfce7;color:#166534">${escapeHtml(p.status)}</span></td>
                         <td>
                           <span title="Academy operations require an academy account">Academy account required</span>
                         </td>
@@ -4474,10 +4478,10 @@
                     </tr>
                   ` : auditLogs.map(log => `
                     <tr>
-                      <td style="font-size:11px;color:var(--bf-text-muted)">${log.timestamp}</td>
-                      <td><strong>${log.userEmail}</strong><br><span style="font-size:10px;color:var(--bf-text-muted)">${log.userRole}</span></td>
-                      <td><span class="belt-badge" style="background:#e0f2fe;color:#0369a1">${log.action}</span></td>
-                      <td>${log.details}</td>
+                      <td style="font-size:11px;color:var(--bf-text-muted)">${escapeHtml(log.timestamp)}</td>
+                      <td><strong>${escapeHtml(log.userEmail)}</strong><br><span style="font-size:10px;color:var(--bf-text-muted)">${escapeHtml(log.userRole)}</span></td>
+                      <td><span class="belt-badge" style="background:#e0f2fe;color:#0369a1">${escapeHtml(log.action)}</span></td>
+                      <td>${escapeHtml(log.details)}</td>
                     </tr>
                   `).join('')}
                 </tbody>
@@ -4494,7 +4498,7 @@
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
           <div>
             <h2 style="font-size:22px;color:var(--bf-navy)">BeltFlow HQ Global Platform</h2>
-            <p style="font-size:12px;color:var(--bf-text-muted)">Super Admin: <strong>${loggedInUserEmail}</strong></p>
+            <p style="font-size:12px;color:var(--bf-text-muted)">Super Admin: <strong>${escapeHtml(loggedInUserEmail)}</strong></p>
           </div>
           <button class="bf-btn bf-btn-primary" onclick="openModal('newPersatuanModal')">
             <i data-lucide="plus-circle" style="width:14px;height:14px"></i>
@@ -4530,28 +4534,28 @@
                 <tbody>
                   ${pendingStudents.map(s => `
                     <tr style="background:#fff">
-                      <td><strong>${s.name}</strong><br><span style="font-size:10px;color:var(--bf-text-muted)">${s.email}</span></td>
-                      <td>${s.persatuan_name || 'Academy'}</td>
+                      <td><strong>${escapeHtml(s.name)}</strong><br><span style="font-size:10px;color:var(--bf-text-muted)">${escapeHtml(s.email)}</span></td>
+                      <td>${escapeHtml(s.persatuan_name || 'Academy')}</td>
                       <td><span class="belt-badge" style="background:#fef3c7;color:#92400e">Student</span></td>
-                      <td>${s.phone}</td>
+                      <td>${escapeHtml(s.phone)}</td>
                       <td>
                         <div style="display:flex;gap:6px">
-                          <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="approveRegistration('${s.id}', 'student')">Approve</button>
-                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="rejectRegistration('${s.id}', 'student')">Decline</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-primary" data-a1="${escapeHtml(String(s.id))}" onclick="approveRegistration(this.dataset.a1, 'student')">Approve</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" data-a1="${escapeHtml(String(s.id))}" onclick="rejectRegistration(this.dataset.a1, 'student')">Decline</button>
                         </div>
                       </td>
                     </tr>
                   `).join('')}
                   ${pendingCoaches.map(c => `
                     <tr style="background:#fff">
-                      <td><strong>${c.name}</strong><br><span style="font-size:10px;color:var(--bf-text-muted)">${c.email}</span></td>
-                      <td>${c.persatuan_name || 'Academy'}</td>
+                      <td><strong>${escapeHtml(c.name)}</strong><br><span style="font-size:10px;color:var(--bf-text-muted)">${escapeHtml(c.email)}</span></td>
+                      <td>${escapeHtml(c.persatuan_name || 'Academy')}</td>
                       <td><span class="belt-badge" style="background:#e0f2fe;color:#0369a1">Instructor</span></td>
-                      <td>${c.phone}</td>
+                      <td>${escapeHtml(c.phone)}</td>
                       <td>
                         <div style="display:flex;gap:6px">
-                          <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="approveRegistration('${c.id}', 'coach')">Approve</button>
-                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="rejectRegistration('${c.id}', 'coach')">Decline</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-primary" data-a1="${escapeHtml(String(c.id))}" onclick="approveRegistration(this.dataset.a1, 'coach')">Approve</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" data-a1="${escapeHtml(String(c.id))}" onclick="rejectRegistration(this.dataset.a1, 'coach')">Decline</button>
                         </div>
                       </td>
                     </tr>
@@ -4593,10 +4597,10 @@
                 ` : persatuans.map(p => {
                   return `
                     <tr>
-                      <td><strong>${p.name}</strong></td>
-                      <td>${p.state}</td>
-                      <td><span class="belt-badge" style="background:#e0f2fe;color:#0369a1">${p.style || 'Martial Arts'}</span></td>
-                      <td>${p.master}</td>
+                      <td><strong>${escapeHtml(p.name)}</strong></td>
+                      <td>${escapeHtml(p.state)}</td>
+                      <td><span class="belt-badge" style="background:#e0f2fe;color:#0369a1">${escapeHtml(p.style || 'Martial Arts')}</span></td>
+                      <td>${escapeHtml(p.master)}</td>
                       <td>
                         <span title="Academy operations require an academy account">Academy account required</span>
                       </td>
@@ -4650,7 +4654,7 @@
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
             <div>
               <h2 style="font-size:22px;color:var(--bf-navy)">Student Directory & Lifecycle</h2>
-              <p style="font-size:12px;color:var(--bf-text-muted)">${pName} · ${activeStudents.length} active registered students</p>
+              <p style="font-size:12px;color:var(--bf-text-muted)">${escapeHtml(pName)} · ${activeStudents.length} active registered students</p>
             </div>
             <button class="bf-btn bf-btn-primary" onclick="openAddStudentModalForAdmin()">
               <i data-lucide="user-plus" style="width:14px;height:14px"></i>
@@ -4687,20 +4691,20 @@
                   ` : activeStudents.map(s => `
                     <tr>
                       <td>
-                        <strong>${s.name}</strong> ${s.sibling ? '<span class="belt-badge" style="background:#e0f2fe;color:#0369a1;font-size:10px">Sibling Discount</span>' : ''}
-                        <br><span style="font-size:10px;color:var(--bf-text-muted)">${s.ic || s.email}</span>
+                        <strong>${escapeHtml(s.name)}</strong> ${s.sibling ? '<span class="belt-badge" style="background:#e0f2fe;color:#0369a1;font-size:10px">Sibling Discount</span>' : ''}
+                        <br><span style="font-size:10px;color:var(--bf-text-muted)">${escapeHtml(s.ic || s.email)}</span>
                       </td>
-                      <td>${s.className}</td>
-                      <td><span class="belt-badge ${s.beltClass}">${s.belt}</span></td>
-                      <td><strong style="color:${s.attendance != null && s.attendance < 75 ? 'var(--bf-danger)' : 'var(--bf-success)'}">${s.attendance == null ? "—" : s.attendance + "%"}</strong></td>
+                      <td>${escapeHtml(s.className)}</td>
+                      <td><span class="belt-badge ${escapeHtml(s.beltClass)}">${escapeHtml(s.belt)}</span></td>
+                      <td><strong style="color:${s.attendance != null && s.attendance < 75 ? 'var(--bf-danger)' : 'var(--bf-success)'}">${escapeHtml(s.attendance == null ? "—" : s.attendance + "%")}</strong></td>
                       <td>
                         <span class="belt-badge" style="background:${s.billingStatus === 'Paid' ? '#dcfce7' : '#fef3c7'};color:${s.billingStatus === 'Paid' ? '#166534' : '#92400e'}">
-                          ${s.billingStatus === 'Paid' ? 'Paid (RM ' + (s.monthlyFee || 120) + ')' : 'Pending'}
+                          ${s.billingStatus === 'Paid' ? 'Paid (RM ' + escapeHtml(s.monthlyFee || 120) + ')' : 'Pending'}
                         </span>
                       </td>
-                      <td><a href="https://wa.me/${(s.phone || '').replace(/[^0-9]/g, '')}" target="_blank" style="color:#10b981;font-weight:600">${s.phone}</a></td>
+                      <td><a href="https://wa.me/${(s.phone || '').replace(/[^0-9]/g, '')}" target="_blank" style="color:#10b981;font-weight:600">${escapeHtml(s.phone)}</a></td>
                       <td>
-                        <button class="bf-btn bf-btn-sm bf-btn-outline" onclick="openCertificate('${s.name}', '${s.belt}')">Certificate</button>
+                        <button class="bf-btn bf-btn-sm bf-btn-outline" data-a1="${escapeHtml(String(s.name))}" data-a2="${escapeHtml(String(s.belt))}" onclick="openCertificate(this.dataset.a1, this.dataset.a2)">Certificate</button>
                       </td>
                     </tr>
                   `).join('')}
@@ -4719,7 +4723,7 @@
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
             <div>
               <h2 style="font-size:22px;color:var(--bf-navy)">Classes & Training Sessions</h2>
-              <p style="font-size:12px;color:var(--bf-text-muted)">${pName} · ${pClasses.length} active classes</p>
+              <p style="font-size:12px;color:var(--bf-text-muted)">${escapeHtml(pName)} · ${pClasses.length} active classes</p>
             </div>
             <button class="bf-btn bf-btn-primary" onclick="openModal('newClassModal')">
               <i data-lucide="plus-circle" style="width:14px;height:14px"></i>
@@ -4757,18 +4761,18 @@
                     const enrolled = students.filter(s => s.class_id == c.id && s.status === 'Active').length;
                     return `
                       <tr>
-                        <td><strong>${c.name}</strong></td>
-                        <td>${c.schedule}</td>
-                        <td>${c.location || 'Main Mat'}</td>
-                        <td><strong>${c.master_name || 'Master'}</strong></td>
+                        <td><strong>${escapeHtml(c.name)}</strong></td>
+                        <td>${escapeHtml(c.schedule)}</td>
+                        <td>${escapeHtml(c.location || 'Main Mat')}</td>
+                        <td><strong>${escapeHtml(c.master_name || 'Master')}</strong></td>
                         <td>RM ${Number(c.monthly_fee ?? 120).toFixed(2)} <span style="font-size:10px;color:var(--bf-text-muted)">(read only — set by Class Master)</span></td>
-                        <td><strong>${enrolled}</strong> students</td>
+                        <td><strong>${escapeHtml(enrolled)}</strong> students</td>
                         <td style="display:flex;gap:6px;flex-wrap:wrap">
-                          <button class="bf-btn bf-btn-sm bf-btn-outline" onclick="activeCoachClassId = ${c.id}; switchRole('coach')">
+                          <button class="bf-btn bf-btn-sm bf-btn-outline" data-a1="${escapeHtml(String(c.id))}" onclick="activeCoachClassId = Number(this.dataset.a1); switchRole('coach')">
                             Enter Mat Coach View →
                           </button>
-                          <button class="bf-btn bf-btn-sm bf-btn-outline" onclick="openMonthlyDuesReport('${c.id}')">Monthly Dues Report</button>
-                          <button class="bf-btn bf-btn-sm bf-btn-outline" onclick="openAssignMasterModal('${c.id}', '${escapeHtmlAttr(c.name)}')">Assign / Replace Master</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-outline" data-a1="${escapeHtml(String(c.id))}" onclick="openMonthlyDuesReport(this.dataset.a1)">Monthly Dues Report</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-outline" data-a1="${escapeHtml(String(c.id))}" data-a2="${escapeHtml(String(c.name))}" onclick="openAssignMasterModal(this.dataset.a1, this.dataset.a2)">Assign / Replace Master</button>
                         </td>
                       </tr>
                     `;
@@ -4788,7 +4792,7 @@
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
             <div>
               <h2 style="font-size:22px;color:var(--bf-navy)">Instructors & Coaching Staff</h2>
-              <p style="font-size:12px;color:var(--bf-text-muted)">${pName} · Certified mat instructors</p>
+              <p style="font-size:12px;color:var(--bf-text-muted)">${escapeHtml(pName)} · Certified mat instructors</p>
             </div>
             <button class="bf-btn bf-btn-primary" onclick="openModal('newCoachModal')">
               <i data-lucide="shield" style="width:14px;height:14px"></i>
@@ -4822,11 +4826,11 @@
                     </tr>
                   ` : pCoaches.map(c => `
                     <tr>
-                      <td><strong>${c.name}</strong></td>
-                      <td><span class="belt-badge belt-black">${c.credential_level || 'Instructor'}</span></td>
-                      <td>${c.phone ? `<a href="https://wa.me/${c.phone.replace(/[^0-9]/g,'')}" target="_blank" style="color:#10b981;font-weight:600">${c.phone}</a>` : '<span style="color:var(--bf-text-muted)">N/A</span>'}</td>
-                      <td>${c.email}</td>
-                      <td><span class="belt-badge" style="background:#dcfce7;color:#166534">${c.status}</span></td>
+                      <td><strong>${escapeHtml(c.name)}</strong></td>
+                      <td><span class="belt-badge belt-black">${escapeHtml(c.credential_level || 'Instructor')}</span></td>
+                      <td>${c.phone ? `<a href="https://wa.me/${c.phone.replace(/[^0-9]/g,'')}" target="_blank" style="color:#10b981;font-weight:600">${escapeHtml(c.phone)}</a>` : '<span style="color:var(--bf-text-muted)">N/A</span>'}</td>
+                      <td>${escapeHtml(c.email)}</td>
+                      <td><span class="belt-badge" style="background:#dcfce7;color:#166534">${escapeHtml(c.status)}</span></td>
                     </tr>
                   `).join('')}
                 </tbody>
@@ -4847,7 +4851,7 @@
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
             <div>
               <h2 style="font-size:22px;color:var(--bf-navy)">Billing, Sibling Discounts & Receipts</h2>
-              <p style="font-size:12px;color:var(--bf-text-muted)">${pName} · Class fees are set individually by each Class Master (see Classes tab) · Sibling Discount: ${p ? (p.siblingDiscountPercent || 10) : 10}%</p>
+              <p style="font-size:12px;color:var(--bf-text-muted)">${escapeHtml(pName)} · Class fees are set individually by each Class Master (see Classes tab) · Sibling Discount: ${escapeHtml(p ? (p.siblingDiscountPercent || 10) : 10)}%</p>
             </div>
             <button class="bf-btn bf-btn-primary" onclick="openManualPaymentModal()">
               <i data-lucide="receipt" style="width:14px;height:14px"></i>
@@ -4873,15 +4877,15 @@
                   <tbody>
                     ${pendingPay.map(pay => `
                       <tr style="background:#fff">
-                        <td><strong>${pay.studentName}</strong></td>
-                        <td><strong>${pay.amount}</strong></td>
-                        <td>${pay.method}</td>
-                        <td>${pay.proofNotes || '-'}</td>
-                        <td>${pay.date}</td>
+                        <td><strong>${escapeHtml(pay.studentName)}</strong></td>
+                        <td><strong>${escapeHtml(pay.amount)}</strong></td>
+                        <td>${escapeHtml(pay.method)}</td>
+                        <td>${escapeHtml(pay.proofNotes || '-')}</td>
+                        <td>${escapeHtml(pay.date)}</td>
                         <td>
                           <div style="display:flex;gap:6px">
-                            <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="coachApprovePayment('${pay.id}')">Approve</button>
-                            <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="coachRejectPayment('${pay.id}')">Reject</button>
+                            <button class="bf-btn bf-btn-sm bf-btn-primary" data-a1="${escapeHtml(String(pay.id))}" onclick="coachApprovePayment(this.dataset.a1)">Approve</button>
+                            <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" data-a1="${escapeHtml(String(pay.id))}" onclick="coachRejectPayment(this.dataset.a1)">Reject</button>
                           </div>
                         </td>
                       </tr>
@@ -4920,12 +4924,12 @@
                     </tr>
                   ` : approvedPay.map(pay => `
                     <tr>
-                      <td><strong>${pay.studentName}</strong></td>
-                      <td>${pay.className}</td>
-                      <td><strong>${pay.amount}</strong></td>
-                      <td>${pay.method}</td>
-                      <td>${pay.reviewedAt || pay.date}</td>
-                      <td>${pay.reviewedBy || 'Master'}</td>
+                      <td><strong>${escapeHtml(pay.studentName)}</strong></td>
+                      <td>${escapeHtml(pay.className)}</td>
+                      <td><strong>${escapeHtml(pay.amount)}</strong></td>
+                      <td>${escapeHtml(pay.method)}</td>
+                      <td>${escapeHtml(pay.reviewedAt || pay.date)}</td>
+                      <td>${escapeHtml(pay.reviewedBy || 'Master')}</td>
                       <td><span class="belt-badge" style="background:#dcfce7;color:#166534">Approved</span></td>
                     </tr>
                   `).join('')}
@@ -4944,7 +4948,7 @@
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
             <div>
               <h2 style="font-size:22px;color:var(--bf-navy)">Belt Promotion Grading Examinations</h2>
-              <p style="font-size:12px;color:var(--bf-text-muted)">${pName} · Official belt grading sessions & digital promotions</p>
+              <p style="font-size:12px;color:var(--bf-text-muted)">${escapeHtml(pName)} · Official belt grading sessions & digital promotions</p>
             </div>
             <button class="bf-btn bf-btn-primary" onclick="openModal('newGradingModal')">
               <i data-lucide="award" style="width:14px;height:14px"></i>
@@ -4980,18 +4984,18 @@
                     </tr>
                   ` : pGradings.map(g => `
                     <tr>
-                      <td><strong>${g.title}</strong></td>
-                      <td>${g.date}</td>
-                      <td>${g.location}</td>
-                      <td>${g.fee}</td>
+                      <td><strong>${escapeHtml(g.title)}</strong></td>
+                      <td>${escapeHtml(g.date)}</td>
+                      <td>${escapeHtml(g.location)}</td>
+                      <td>${escapeHtml(g.fee)}</td>
                       <td><strong>${(g.candidates || []).length}</strong> candidates</td>
                       <td>
                         <span class="belt-badge" style="background:${g.status === 'Completed' ? '#dcfce7' : '#fef3c7'};color:${g.status === 'Completed' ? '#166534' : '#92400e'}">
-                          ${g.status}
+                          ${escapeHtml(g.status)}
                         </span>
                       </td>
                       <td>
-                        <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="openRecordGradingResults('${g.id}')">
+                        <button class="bf-btn bf-btn-sm bf-btn-primary" data-a1="${escapeHtml(String(g.id))}" onclick="openRecordGradingResults(this.dataset.a1)">
                           ${g.status === 'Completed' ? 'View / Update Results' : 'Grade Candidates →'}
                         </button>
                       </td>
@@ -5012,7 +5016,7 @@
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
             <div>
               <h2 style="font-size:22px;color:var(--bf-navy)">Academy Tournaments & Medal Tally</h2>
-              <p style="font-size:12px;color:var(--bf-text-muted)">${pName} · Competitive championships & achievements</p>
+              <p style="font-size:12px;color:var(--bf-text-muted)">${escapeHtml(pName)} · Competitive championships & achievements</p>
             </div>
             <button class="bf-btn bf-btn-primary" onclick="openModal('newTournamentModal')">
               <i data-lucide="trophy" style="width:14px;height:14px"></i>
@@ -5049,17 +5053,17 @@
                     const medals = (t.participants || []).filter(x => x.medal !== 'Participant' && x.medal !== 'None').length;
                     return `
                       <tr>
-                        <td><strong>${t.title}</strong></td>
-                        <td>${t.date}</td>
-                        <td>${t.location}</td>
+                        <td><strong>${escapeHtml(t.title)}</strong></td>
+                        <td>${escapeHtml(t.date)}</td>
+                        <td>${escapeHtml(t.location)}</td>
                         <td><strong style="color:var(--bf-amber)">${medals}</strong> medals</td>
                         <td>
                           <span class="belt-badge" style="background:${t.status === 'Completed' ? '#dcfce7' : '#fef3c7'};color:${t.status === 'Completed' ? '#166534' : '#92400e'}">
-                            ${t.status}
+                            ${escapeHtml(t.status)}
                           </span>
                         </td>
                         <td>
-                          <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="openRecordTournamentMedals('${t.id}')">
+                          <button class="bf-btn bf-btn-sm bf-btn-primary" data-a1="${escapeHtml(String(t.id))}" onclick="openRecordTournamentMedals(this.dataset.a1)">
                             ${t.status === 'Completed' ? 'View / Update Medals' : 'Record Medals →'}
                           </button>
                         </td>
@@ -5087,12 +5091,12 @@
             <div class="bf-card">
               <h3 style="font-size:16px;color:var(--bf-navy);margin-bottom:14px">Academy Profile & Fees</h3>
               <div style="font-size:13px;color:var(--bf-navy);line-height:2">
-                <strong>Academy Name:</strong> ${pName}<br>
-                <strong>State / Region:</strong> ${p ? p.state : 'Selangor'}<br>
-                <strong>Martial Arts Style:</strong> <span class="belt-badge" style="background:#e0f2fe;color:#0369a1">${style}</span><br>
-                <strong>Head Master:</strong> ${p ? p.master : 'Master'}<br>
-                <strong>Master WhatsApp:</strong> ${p ? p.phone : '+60123456789'}<br>
-                <strong>Sibling Discount:</strong> ${p ? (p.siblingDiscountPercent || 10) : 10}%<br>
+                <strong>Academy Name:</strong> ${escapeHtml(pName)}<br>
+                <strong>State / Region:</strong> ${escapeHtml(p ? p.state : 'Selangor')}<br>
+                <strong>Martial Arts Style:</strong> <span class="belt-badge" style="background:#e0f2fe;color:#0369a1">${escapeHtml(style)}</span><br>
+                <strong>Head Master:</strong> ${escapeHtml(p ? p.master : 'Master')}<br>
+                <strong>Master WhatsApp:</strong> ${escapeHtml(p ? p.phone : '+60123456789')}<br>
+                <strong>Sibling Discount:</strong> ${escapeHtml(p ? (p.siblingDiscountPercent || 10) : 10)}%<br>
                 <span style="font-size:11px;color:var(--bf-text-muted)">Monthly tuition is now set per class by each class's assigned Master — see the Classes tab for current fees.</span>
               </div>
               <button class="bf-btn bf-btn-primary" style="margin-top:16px" onclick="openEditSettingsModal()">
@@ -5125,8 +5129,8 @@
         ${toastHtml}
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
           <div>
-            <h2 style="font-size:22px;color:var(--bf-navy)">${pName}</h2>
-            <p style="font-size:12px;color:var(--bf-text-muted)">Master: <strong>${p ? p.master : 'Master'}</strong> · <span class="belt-badge" style="background:#e0f2fe;color:#0369a1">${style}</span></p>
+            <h2 style="font-size:22px;color:var(--bf-navy)">${escapeHtml(pName)}</h2>
+            <p style="font-size:12px;color:var(--bf-text-muted)">Master: <strong>${escapeHtml(p ? p.master : 'Master')}</strong> · <span class="belt-badge" style="background:#e0f2fe;color:#0369a1">${escapeHtml(style)}</span></p>
           </div>
           <div style="display:flex;gap:8px">
             <button class="bf-btn bf-btn-outline" onclick="openAddStudentModalForAdmin()">+ Add Student</button>
@@ -5147,7 +5151,7 @@
           </div>
           <div class="kpi-card">
             <div class="kpi-title">Monthly Collections</div>
-            <div class="kpi-value">RM ${(activeStudents.reduce((acc, s) => acc + (s.monthlyFee || 120), 0)).toLocaleString()}</div>
+            <div class="kpi-value">RM ${escapeHtml((activeStudents.reduce((acc, s) => acc + (s.monthlyFee || 120), 0)).toLocaleString())}</div>
             <div class="kpi-subtext">Projected revenue</div>
           </div>
           <div class="kpi-card">
@@ -5178,30 +5182,30 @@
                 <tbody>
                   ${pendingStudents.map(s => `
                     <tr style="background:#fff">
-                      <td><strong>${s.name}</strong><br><span style="font-size:10px;color:var(--bf-text-muted)">${s.email}</span></td>
+                      <td><strong>${escapeHtml(s.name)}</strong><br><span style="font-size:10px;color:var(--bf-text-muted)">${escapeHtml(s.email)}</span></td>
                       <td><span class="belt-badge" style="background:#fef3c7;color:#92400e">Student</span></td>
-                      <td>${s.className}</td>
-                      <td><span class="belt-badge ${s.beltClass}">${s.belt}</span></td>
-                      <td>${s.phone}</td>
+                      <td>${escapeHtml(s.className)}</td>
+                      <td><span class="belt-badge ${escapeHtml(s.beltClass)}">${escapeHtml(s.belt)}</span></td>
+                      <td>${escapeHtml(s.phone)}</td>
                       <td>
                         <div style="display:flex;gap:6px">
-                          <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="approveRegistration('${s.id}', 'student')">Approve</button>
-                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="rejectRegistration('${s.id}', 'student')">Decline</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-primary" data-a1="${escapeHtml(String(s.id))}" onclick="approveRegistration(this.dataset.a1, 'student')">Approve</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" data-a1="${escapeHtml(String(s.id))}" onclick="rejectRegistration(this.dataset.a1, 'student')">Decline</button>
                         </div>
                       </td>
                     </tr>
                   `).join('')}
                   ${pendingCoaches.map(c => `
                     <tr style="background:#fff">
-                      <td><strong>${c.name}</strong><br><span style="font-size:10px;color:var(--bf-text-muted)">${c.email}</span></td>
+                      <td><strong>${escapeHtml(c.name)}</strong><br><span style="font-size:10px;color:var(--bf-text-muted)">${escapeHtml(c.email)}</span></td>
                       <td><span class="belt-badge" style="background:#e0f2fe;color:#0369a1">Instructor</span></td>
                       <td>All Classes</td>
-                      <td>${c.credential_level || 'Coach'}</td>
-                      <td>${c.phone}</td>
+                      <td>${escapeHtml(c.credential_level || 'Coach')}</td>
+                      <td>${escapeHtml(c.phone)}</td>
                       <td>
                         <div style="display:flex;gap:6px">
-                          <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="approveRegistration('${c.id}', 'coach')">Approve</button>
-                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="rejectRegistration('${c.id}', 'coach')">Decline</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-primary" data-a1="${escapeHtml(String(c.id))}" onclick="approveRegistration(this.dataset.a1, 'coach')">Approve</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" data-a1="${escapeHtml(String(c.id))}" onclick="rejectRegistration(this.dataset.a1, 'coach')">Decline</button>
                         </div>
                       </td>
                     </tr>
@@ -5242,11 +5246,11 @@
                   </tr>
                 ` : activeStudents.slice(0, 5).map(s => `
                   <tr>
-                    <td><strong>${s.name}</strong></td>
-                    <td>${s.className}</td>
-                    <td><span class="belt-badge ${s.beltClass}">${s.belt}</span></td>
-                    <td><strong style="color:${s.attendance != null && s.attendance < 75 ? 'var(--bf-danger)' : 'var(--bf-success)'}">${s.attendance == null ? "—" : s.attendance + "%"}</strong></td>
-                    <td><span class="belt-badge" style="background:#dcfce7;color:#166534">RM ${s.monthlyFee || 120} (${s.billingStatus || 'Paid'})</span></td>
+                    <td><strong>${escapeHtml(s.name)}</strong></td>
+                    <td>${escapeHtml(s.className)}</td>
+                    <td><span class="belt-badge ${escapeHtml(s.beltClass)}">${escapeHtml(s.belt)}</span></td>
+                    <td><strong style="color:${s.attendance != null && s.attendance < 75 ? 'var(--bf-danger)' : 'var(--bf-success)'}">${escapeHtml(s.attendance == null ? "—" : s.attendance + "%")}</strong></td>
+                    <td><span class="belt-badge" style="background:#dcfce7;color:#166534">RM ${escapeHtml(s.monthlyFee || 120)} (${escapeHtml(s.billingStatus || 'Paid')})</span></td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -5265,7 +5269,7 @@
         openModal('newClassModal');
         return;
       }
-      classSelect.innerHTML = pClasses.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      classSelect.innerHTML = pClasses.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
 
       const beltSelect = document.getElementById('newStudentBelt');
       const style = activePersatuan.style || 'Silambam (Indian Martial Arts)';
@@ -5301,9 +5305,9 @@
           (pendingRegistrations.length === 0
             ? '<div class="empty-state">No pending student registrations for your classes.</div>'
             : pendingRegistrations.map(r => `<div class="bf-card" style="margin-top:12px">
-                <strong>${r.full_name}</strong><div style="margin-top:8px;display:flex;gap:8px">
-                <button class="bf-btn bf-btn-primary" onclick="reviewStudentRegistration('${r.id}','approve')">Approve</button>
-                <button class="bf-btn bf-btn-outline" onclick="reviewStudentRegistration('${r.id}','reject')">Reject</button>
+                <strong>${escapeHtml(r.full_name)}</strong><div style="margin-top:8px;display:flex;gap:8px">
+                <button class="bf-btn bf-btn-primary" data-a1="${escapeHtml(String(r.id))}" onclick="reviewStudentRegistration(this.dataset.a1,'approve')">Approve</button>
+                <button class="bf-btn bf-btn-outline" data-a1="${escapeHtml(String(r.id))}" onclick="reviewStudentRegistration(this.dataset.a1,'reject')">Reject</button>
                 </div></div>`).join(''));
         return;
       }
@@ -5315,8 +5319,8 @@
             : pendingTransfers.map(t => `<div class="bf-card" style="margin-top:12px">
                 <strong>${escapeHtml(t.student_name)}</strong> requests a class transfer.
                 <div style="margin-top:8px;display:flex;gap:8px">
-                <button class="bf-btn bf-btn-primary" onclick="reviewTransfer('${t.id}','approve')">Approve</button>
-                <button class="bf-btn bf-btn-outline" onclick="reviewTransfer('${t.id}','reject')">Reject</button>
+                <button class="bf-btn bf-btn-primary" data-a1="${escapeHtml(String(t.id))}" onclick="reviewTransfer(this.dataset.a1,'approve')">Approve</button>
+                <button class="bf-btn bf-btn-outline" data-a1="${escapeHtml(String(t.id))}" onclick="reviewTransfer(this.dataset.a1,'reject')">Reject</button>
                 </div></div>`).join(''));
         return;
       }
@@ -5330,7 +5334,7 @@
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
             <div>
               <h2 style="font-size:22px;color:var(--bf-navy)">Coach Portal · Today's Training Schedule</h2>
-              <p style="font-size:12px;color:var(--bf-text-muted)">${p ? p.name : 'Academy'} · <span class="belt-badge" style="background:#e0f2fe;color:#0369a1">${p ? p.style : 'Martial Arts'}</span></p>
+              <p style="font-size:12px;color:var(--bf-text-muted)">${escapeHtml(p ? p.name : 'Academy')} · <span class="belt-badge" style="background:#e0f2fe;color:#0369a1">${escapeHtml(p ? p.style : 'Martial Arts')}</span></p>
             </div>
             <div style="display:flex;gap:8px">
               <button class="bf-btn bf-btn-primary" onclick="switchTab('attendance')">
@@ -5389,48 +5393,48 @@
                       <div>
                         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
                           <span class="belt-badge" style="background:${isUpcoming ? '#f1f5f9' : (isInProgress ? '#dcfce7' : '#e0f2fe')};color:${isUpcoming ? '#475569' : (isInProgress ? '#166534' : '#0369a1')}">
-                            ${isInProgress ? '<span class=\"status-pulse\"></span>In progress' : sess.status}
+                            ${isInProgress ? '<span class=\"status-pulse\"></span>In progress' : escapeHtml(sess.status)}
                           </span>
                           <span style="font-size:12px;font-weight:700;color:var(--bf-navy)">${enrolled.length} Students</span>
                         </div>
-                        <h4 style="font-size:16px;color:var(--bf-navy);margin-bottom:6px">${c.name}</h4>
+                        <h4 style="font-size:16px;color:var(--bf-navy);margin-bottom:6px">${escapeHtml(c.name)}</h4>
                         <div style="font-size:12px;color:var(--bf-text-muted);display:flex;align-items:center;gap:6px;margin-bottom:4px">
                           <i data-lucide="map-pin" style="width:14px;height:14px"></i>
-                          <span>${c.location || 'Main Mat'}</span>
+                          <span>${escapeHtml(c.location || 'Main Mat')}</span>
                         </div>
                         <div style="font-size:12px;color:var(--bf-text-muted);display:flex;align-items:center;gap:6px">
                           <i data-lucide="clock" style="width:14px;height:14px"></i>
-                          <span>${c.schedule}</span>
+                          <span>${escapeHtml(c.schedule)}</span>
                         </div>
                         <div style="font-size:13px;font-weight:700;color:var(--bf-navy);margin-top:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
                           <i data-lucide="banknote" style="width:14px;height:14px"></i>
                           <span>RM ${Number(c.monthly_fee ?? 120).toFixed(2)} / month</span>
-                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="padding:2px 8px;font-size:11px" onclick="openSetClassFeeModal('${c.id}', ${Number(c.monthly_fee ?? 120)})">Edit Fee</button>
-                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="padding:2px 8px;font-size:11px" onclick="openMonthlyDuesReport('${c.id}')">Monthly Dues</button>
-                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="padding:2px 8px;font-size:11px" onclick="openGroupsScheduleModal('${c.id}', '${escapeHtmlAttr(c.name)}')">Groups & Schedule</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="padding:2px 8px;font-size:11px" data-a1="${escapeHtml(String(c.id))}" data-a2="${escapeHtml(String(Number(c.monthly_fee ?? 120)))}" onclick="openSetClassFeeModal(this.dataset.a1, Number(this.dataset.a2))">Edit Fee</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="padding:2px 8px;font-size:11px" data-a1="${escapeHtml(String(c.id))}" onclick="openMonthlyDuesReport(this.dataset.a1)">Monthly Dues</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="padding:2px 8px;font-size:11px" data-a1="${escapeHtml(String(c.id))}" data-a2="${escapeHtml(String(c.name))}" onclick="openGroupsScheduleModal(this.dataset.a1, this.dataset.a2)">Groups & Schedule</button>
                         </div>
                       </div>
 
                       <div style="margin-top:18px;display:flex;gap:8px;flex-wrap:wrap">
                         ${isUpcoming ? `
-                          <button class="bf-btn bf-btn-primary" style="flex:1" onclick="coachStartClass('${c.id}')">
+                          <button class="bf-btn bf-btn-primary" style="flex:1" data-a1="${escapeHtml(String(c.id))}" onclick="coachStartClass(this.dataset.a1)">
                             <i data-lucide="play" style="width:14px;height:14px"></i>
                             <span>Start Class</span>
                           </button>
                         ` : ''}
 
                         ${isInProgress ? `
-                          <button class="bf-btn bf-btn-success" style="flex:1" onclick="activeCoachClassId = ${c.id}; switchTab('attendance')">
+                          <button class="bf-btn bf-btn-success" style="flex:1" data-a1="${escapeHtml(String(c.id))}" onclick="activeCoachClassId = Number(this.dataset.a1); switchTab('attendance')">
                             <i data-lucide="clipboard-check" style="width:14px;height:14px"></i>
                             <span>Take Attendance</span>
                           </button>
-                          <button class="bf-btn bf-btn-outline" onclick="coachCompleteClass('${c.id}')">
+                          <button class="bf-btn bf-btn-outline" data-a1="${escapeHtml(String(c.id))}" onclick="coachCompleteClass(this.dataset.a1)">
                             <span>Complete Class</span>
                           </button>
                         ` : ''}
 
                         ${isCompleted ? `
-                          <button class="bf-btn bf-btn-outline" style="flex:1" onclick="activeCoachClassId = ${c.id}; switchTab('attendance_history')">
+                          <button class="bf-btn bf-btn-outline" style="flex:1" data-a1="${escapeHtml(String(c.id))}" onclick="activeCoachClassId = Number(this.dataset.a1); switchTab('attendance_history')">
                             <i data-lucide="history" style="width:14px;height:14px"></i>
                             <span>View Session Attendance</span>
                           </button>
@@ -5473,12 +5477,12 @@
               <div>
                 <label class="bf-label">Selected Class</label>
                 <select class="bf-input" onchange="activeCoachClassId = parseInt(this.value); renderContent()">
-                  ${coachClasses.map(c => `<option value="${c.id}" ${c.id == activeCoachClassId ? 'selected' : ''}>${c.name}</option>`).join('')}
+                  ${coachClasses.map(c => `<option value="${escapeHtml(c.id)}" ${c.id == activeCoachClassId ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
                 </select>
               </div>
               <div>
                 <label class="bf-label">Session Date</label>
-                <input type="date" class="bf-input" value="${activeCoachAttendanceDate}" onchange="activeCoachAttendanceDate = this.value; renderContent()">
+                <input type="date" class="bf-input" value="${escapeHtml(activeCoachAttendanceDate)}" onchange="activeCoachAttendanceDate = this.value; renderContent()">
               </div>
               <div style="display:flex;gap:8px">
                 <button class="bf-btn bf-btn-outline bf-btn-sm" style="flex:1" onclick="coachMarkAllAttendance('Present')">Mark All Present</button>
@@ -5508,16 +5512,16 @@
                   return `
                     <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border:1px solid var(--bf-border);border-radius:var(--radius-sm);background:#ffffff;flex-wrap:wrap;gap:10px">
                       <div>
-                        <div style="font-weight:700;font-size:14px;color:var(--bf-navy)">${s.name}</div>
+                        <div style="font-weight:700;font-size:14px;color:var(--bf-navy)">${escapeHtml(s.name)}</div>
                         <div style="font-size:11px;color:var(--bf-text-muted)">
-                          <span class="belt-badge ${s.beltClass}">${s.belt}</span> · ${s.attendance == null ? "—" : s.attendance + "%"} overall attendance
+                          <span class="belt-badge ${escapeHtml(s.beltClass)}">${escapeHtml(s.belt)}</span> · ${escapeHtml(s.attendance == null ? "—" : s.attendance + "%")} overall attendance
                         </div>
                       </div>
                       <div style="display:flex;gap:6px">
-                        <button class="bf-btn bf-btn-sm ${current === 'Present' ? 'bf-btn-primary' : 'bf-btn-outline'}" onclick="coachSetAttendanceStatus('${activeCoachClassId}', '${activeCoachAttendanceDate}', '${s.id}', 'Present')">Present</button>
-                        <button class="bf-btn bf-btn-sm ${current === 'Late' ? 'bf-btn-primary' : 'bf-btn-outline'}" onclick="coachSetAttendanceStatus('${activeCoachClassId}', '${activeCoachAttendanceDate}', '${s.id}', 'Late')">Late</button>
-                        <button class="bf-btn bf-btn-sm ${current === 'Absent' ? 'bf-btn-navy' : 'bf-btn-outline'}" onclick="coachSetAttendanceStatus('${activeCoachClassId}', '${activeCoachAttendanceDate}', '${s.id}', 'Absent')">Absent</button>
-                        <button class="bf-btn bf-btn-sm ${current === 'Excused' ? 'bf-btn-navy' : 'bf-btn-outline'}" onclick="coachSetAttendanceStatus('${activeCoachClassId}', '${activeCoachAttendanceDate}', '${s.id}', 'Excused')">Excused</button>
+                        <button class="bf-btn bf-btn-sm ${current === 'Present' ? 'bf-btn-primary' : 'bf-btn-outline'}" data-a1="${escapeHtml(String(activeCoachClassId))}" data-a2="${escapeHtml(String(activeCoachAttendanceDate))}" data-a3="${escapeHtml(String(s.id))}" onclick="coachSetAttendanceStatus(this.dataset.a1, this.dataset.a2, this.dataset.a3, 'Present')">Present</button>
+                        <button class="bf-btn bf-btn-sm ${current === 'Late' ? 'bf-btn-primary' : 'bf-btn-outline'}" data-a1="${escapeHtml(String(activeCoachClassId))}" data-a2="${escapeHtml(String(activeCoachAttendanceDate))}" data-a3="${escapeHtml(String(s.id))}" onclick="coachSetAttendanceStatus(this.dataset.a1, this.dataset.a2, this.dataset.a3, 'Late')">Late</button>
+                        <button class="bf-btn bf-btn-sm ${current === 'Absent' ? 'bf-btn-navy' : 'bf-btn-outline'}" data-a1="${escapeHtml(String(activeCoachClassId))}" data-a2="${escapeHtml(String(activeCoachAttendanceDate))}" data-a3="${escapeHtml(String(s.id))}" onclick="coachSetAttendanceStatus(this.dataset.a1, this.dataset.a2, this.dataset.a3, 'Absent')">Absent</button>
+                        <button class="bf-btn bf-btn-sm ${current === 'Excused' ? 'bf-btn-navy' : 'bf-btn-outline'}" data-a1="${escapeHtml(String(activeCoachClassId))}" data-a2="${escapeHtml(String(activeCoachAttendanceDate))}" data-a3="${escapeHtml(String(s.id))}" onclick="coachSetAttendanceStatus(this.dataset.a1, this.dataset.a2, this.dataset.a3, 'Excused')">Excused</button>
                       </div>
                     </div>
                   `;
@@ -5548,12 +5552,12 @@
               <div>
                 <label class="bf-label">Select Class</label>
                 <select class="bf-input" onchange="activeCoachClassId = parseInt(this.value); renderContent()">
-                  ${coachClasses.map(c => `<option value="${c.id}" ${c.id == activeCoachClassId ? 'selected' : ''}>${c.name}</option>`).join('')}
+                  ${coachClasses.map(c => `<option value="${escapeHtml(c.id)}" ${c.id == activeCoachClassId ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
                 </select>
               </div>
               <div>
                 <label class="bf-label">Historical Date</label>
-                <input type="date" class="bf-input" value="${activeCoachHistoryDate}" onchange="activeCoachHistoryDate = this.value; renderContent()">
+                <input type="date" class="bf-input" value="${escapeHtml(activeCoachHistoryDate)}" onchange="activeCoachHistoryDate = this.value; renderContent()">
               </div>
             </div>
 
@@ -5581,11 +5585,11 @@
                     const st = rec[s.id] || 'Not Marked';
                     return `
                       <tr>
-                        <td><strong>${s.name}</strong></td>
-                        <td><span class="belt-badge ${s.beltClass}">${s.belt}</span></td>
+                        <td><strong>${escapeHtml(s.name)}</strong></td>
+                        <td><span class="belt-badge ${escapeHtml(s.beltClass)}">${escapeHtml(s.belt)}</span></td>
                         <td>
                           <span class="belt-badge" style="background:${st === 'Present' ? '#dcfce7' : (st === 'Late' ? '#fef3c7' : '#fee2e2')};color:${st === 'Present' ? '#166534' : (st === 'Late' ? '#92400e' : '#991b1b')}">
-                            ${st}
+                            ${escapeHtml(st)}
                           </span>
                         </td>
                       </tr>
@@ -5624,7 +5628,7 @@
               <div>
                 <label class="bf-label">Training Class</label>
                 <select class="bf-input" onchange="activeCoachClassId = parseInt(this.value); renderContent()">
-                  ${coachClasses.map(c => `<option value="${c.id}" ${c.id == activeCoachClassId ? 'selected' : ''}>${c.name}</option>`).join('')}
+                  ${coachClasses.map(c => `<option value="${escapeHtml(c.id)}" ${c.id == activeCoachClassId ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
                 </select>
               </div>
               <div>
@@ -5664,19 +5668,19 @@
                     <div style="border:1px solid var(--bf-border);border-radius:var(--radius-sm);padding:14px;background:#ffffff">
                       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
                         <div>
-                          <strong style="font-size:14px;color:var(--bf-navy)">${s.name}</strong>
-                          <span class="belt-badge ${s.beltClass}" style="margin-left:6px">${s.belt}</span>
+                          <strong style="font-size:14px;color:var(--bf-navy)">${escapeHtml(s.name)}</strong>
+                          <span class="belt-badge ${escapeHtml(s.beltClass)}" style="margin-left:6px">${escapeHtml(s.belt)}</span>
                         </div>
-                        <span class="level-badge level-${currLevel.toLowerCase().replace(' ', '-')}">Current Level: ${currLevel}</span>
+                        <span class="level-badge level-${escapeHtml(currLevel.toLowerCase().replace(' ', '-'))}">Current Level: ${escapeHtml(currLevel)}</span>
                       </div>
 
                       <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center">
-                        <input type="text" id="coachSkillNotes_${s.id}_${currentSkill ? currentSkill.id : ''}" class="bf-input" placeholder="Coach observation notes (e.g. Good balance, needs faster recoil)" value="${pData.notes || ''}">
+                        <input type="text" id="coachSkillNotes_${escapeHtml(s.id)}_${escapeHtml(currentSkill ? currentSkill.id : '')}" class="bf-input" placeholder="Coach observation notes (e.g. Good balance, needs faster recoil)" value="${escapeHtml(pData.notes || '')}">
                         <div style="display:flex;gap:4px">
-                          <button class="bf-btn bf-btn-sm ${currLevel === 'Not started' ? 'bf-btn-navy' : 'bf-btn-outline'}" onclick="coachSetStudentSkillLevel('${s.id}', '${currentSkill.id}', 'Not started')">Not started</button>
-                          <button class="bf-btn bf-btn-sm ${currLevel === 'Learning' ? 'bf-btn-primary' : 'bf-btn-outline'}" onclick="coachSetStudentSkillLevel('${s.id}', '${currentSkill.id}', 'Learning')">Learning</button>
-                          <button class="bf-btn bf-btn-sm ${currLevel === 'Good' ? 'bf-btn-primary' : 'bf-btn-outline'}" onclick="coachSetStudentSkillLevel('${s.id}', '${currentSkill.id}', 'Good')">Good</button>
-                          <button class="bf-btn bf-btn-sm ${currLevel === 'Mastered' ? 'bf-btn-success' : 'bf-btn-outline'}" onclick="coachSetStudentSkillLevel('${s.id}', '${currentSkill.id}', 'Mastered')">Mastered</button>
+                          <button class="bf-btn bf-btn-sm ${currLevel === 'Not started' ? 'bf-btn-navy' : 'bf-btn-outline'}" data-a1="${escapeHtml(String(s.id))}" data-a2="${escapeHtml(String(currentSkill.id))}" onclick="coachSetStudentSkillLevel(this.dataset.a1, this.dataset.a2, 'Not started')">Not started</button>
+                          <button class="bf-btn bf-btn-sm ${currLevel === 'Learning' ? 'bf-btn-primary' : 'bf-btn-outline'}" data-a1="${escapeHtml(String(s.id))}" data-a2="${escapeHtml(String(currentSkill.id))}" onclick="coachSetStudentSkillLevel(this.dataset.a1, this.dataset.a2, 'Learning')">Learning</button>
+                          <button class="bf-btn bf-btn-sm ${currLevel === 'Good' ? 'bf-btn-primary' : 'bf-btn-outline'}" data-a1="${escapeHtml(String(s.id))}" data-a2="${escapeHtml(String(currentSkill.id))}" onclick="coachSetStudentSkillLevel(this.dataset.a1, this.dataset.a2, 'Good')">Good</button>
+                          <button class="bf-btn bf-btn-sm ${currLevel === 'Mastered' ? 'bf-btn-success' : 'bf-btn-outline'}" data-a1="${escapeHtml(String(s.id))}" data-a2="${escapeHtml(String(currentSkill.id))}" onclick="coachSetStudentSkillLevel(this.dataset.a1, this.dataset.a2, 'Mastered')">Mastered</button>
                         </div>
                       </div>
                     </div>
@@ -5725,16 +5729,16 @@
                     </tr>
                   ` : pendingPayments.map(pay => `
                     <tr>
-                      <td><strong>${pay.studentName}</strong></td>
-                      <td>${pay.className}</td>
-                      <td><strong>${pay.amount}</strong></td>
-                      <td>${pay.method}</td>
-                      <td>${pay.proofNotes || '-'}</td>
-                      <td>${pay.date}</td>
+                      <td><strong>${escapeHtml(pay.studentName)}</strong></td>
+                      <td>${escapeHtml(pay.className)}</td>
+                      <td><strong>${escapeHtml(pay.amount)}</strong></td>
+                      <td>${escapeHtml(pay.method)}</td>
+                      <td>${escapeHtml(pay.proofNotes || '-')}</td>
+                      <td>${escapeHtml(pay.date)}</td>
                       <td>
                         <div style="display:flex;gap:6px">
-                          <button class="bf-btn bf-btn-sm bf-btn-primary" onclick="coachApprovePayment('${pay.id}')">Approve</button>
-                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" onclick="coachRejectPayment('${pay.id}')">Reject</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-primary" data-a1="${escapeHtml(String(pay.id))}" onclick="coachApprovePayment(this.dataset.a1)">Approve</button>
+                          <button class="bf-btn bf-btn-sm bf-btn-outline" style="color:var(--bf-danger);border-color:var(--bf-danger)" data-a1="${escapeHtml(String(pay.id))}" onclick="coachRejectPayment(this.dataset.a1)">Reject</button>
                         </div>
                       </td>
                     </tr>
@@ -5787,8 +5791,8 @@
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;background:var(--bf-card-bg);padding:10px 14px;border:1px solid var(--bf-border);border-radius:var(--radius-sm)">
           ${parentChildren.length > 1 ? `<span style="font-size:12px;font-weight:600;color:var(--bf-navy)">Active Child:</span>` : ''}
           ${parentChildren.map(c => `
-            <button class="bf-btn bf-btn-sm ${c.id == activeParentChildId ? 'bf-btn-primary' : 'bf-btn-outline'}" onclick="parentSwitchChild('${c.id}')">
-              ${c.name} (${c.belt})
+            <button class="bf-btn bf-btn-sm ${c.id == activeParentChildId ? 'bf-btn-primary' : 'bf-btn-outline'}" data-a1="${escapeHtml(String(c.id))}" onclick="parentSwitchChild(this.dataset.a1)">
+              ${escapeHtml(c.name)} (${escapeHtml(c.belt)})
             </button>
           `).join('')}
           <button class="bf-btn bf-btn-sm bf-btn-outline" style="margin-left:auto" onclick="openLinkExistingChildModal()">
@@ -5805,10 +5809,10 @@
           <div style="background:linear-gradient(135deg, #0d2b47 0%, #153c61 100%);color:#ffffff;border-radius:var(--radius-md);padding:24px;margin-bottom:20px">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
               <div>
-                <span class="belt-badge ${activeChild.beltClass}">Current Rank: ${activeChild.belt}</span>
-                <div style="font-size:22px;font-weight:800;margin-top:8px">${activeChild.name}</div>
+                <span class="belt-badge ${escapeHtml(activeChild.beltClass)}">Current Rank: ${escapeHtml(activeChild.belt)}</span>
+                <div style="font-size:22px;font-weight:800;margin-top:8px">${escapeHtml(activeChild.name)}</div>
                 <div style="font-size:12px;color:#cbd5e1;margin-top:4px">
-                  ${activeChild.className} · ${p ? p.name : 'Academy'} · <strong style="color:#10b981">${activeChild.attendance == null ? "—" : activeChild.attendance + "%"} Attendance Rate</strong>
+                  ${escapeHtml(activeChild.className)} · ${escapeHtml(p ? p.name : 'Academy')} · <strong style="color:#10b981">${escapeHtml(activeChild.attendance == null ? "—" : activeChild.attendance + "%")} Attendance Rate</strong>
                 </div>
               </div>
               <div style="text-align:right">
@@ -5824,14 +5828,14 @@
             <div class="kpi-card">
               <div class="kpi-title">Monthly Tuition Status</div>
               <div class="kpi-value" style="font-size:20px;color:${activeChild.billingStatus === 'Paid' ? 'var(--bf-success)' : 'var(--bf-amber)'}">
-                ${activeChild.billingStatus === 'Paid' ? 'RM ' + (activeChild.monthlyFee || 120) + ' (Paid)' : 'Pending (RM ' + (activeChild.monthlyFee || 120) + ')'}
+                ${activeChild.billingStatus === 'Paid' ? 'RM ' + escapeHtml(activeChild.monthlyFee || 120) + ' (Paid)' : 'Pending (RM ' + escapeHtml(activeChild.monthlyFee || 120) + ')'}
               </div>
-              <div class="kpi-subtext">${activeChild.sibling ? `${activePersatuan ? (activePersatuan.siblingDiscountPercent || 10) : 10}% Sibling Discount Applied` : 'Standard Tuition'}</div>
+              <div class="kpi-subtext">${activeChild.sibling ? `${escapeHtml(activePersatuan ? (activePersatuan.siblingDiscountPercent || 10) : 10)}% Sibling Discount Applied` : 'Standard Tuition'}</div>
             </div>
             <div class="kpi-card">
               <div class="kpi-title">Outstanding Balance</div>
               <div class="kpi-value" style="font-size:20px;color:${(activeChild.totalPending || 0) > 0 ? '#dc2626' : 'var(--bf-success)'}">RM ${(activeChild.totalPending || 0).toFixed(2)}</div>
-              <div class="kpi-subtext">${activeChild.monthsPendingCount || 0} month(s) pending</div>
+              <div class="kpi-subtext">${escapeHtml(activeChild.monthsPendingCount || 0)} month(s) pending</div>
             </div>
             <div class="kpi-card">
               <div class="kpi-title">Earned Digital Certificates</div>
@@ -5840,8 +5844,8 @@
             </div>
             <div class="kpi-card">
               <div class="kpi-title">Class Attendance</div>
-              <div class="kpi-value">${activeChild.attendance == null ? "—" : activeChild.attendance + "%"}</div>
-              <div class="kpi-subtext">${activeChild.className}</div>
+              <div class="kpi-value">${escapeHtml(activeChild.attendance == null ? "—" : activeChild.attendance + "%")}</div>
+              <div class="kpi-subtext">${escapeHtml(activeChild.className)}</div>
             </div>
           </div>
 
@@ -5851,8 +5855,8 @@
               myUpcomingSessions.map(s => `
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bf-border)">
                   <div>
-                    <strong style="font-size:13px">${s.session_date}</strong> · ${s.day_of_week}, ${s.start_time}–${s.end_time}
-                    <div style="font-size:11px;color:var(--bf-text-muted)">${s.group_name} · ${s.location}${s.is_extra ? ' · <span style="color:#92400e">Extra Session</span>' : ''}</div>
+                    <strong style="font-size:13px">${escapeHtml(s.session_date)}</strong> · ${escapeHtml(s.day_of_week)}, ${escapeHtml(s.start_time)}–${escapeHtml(s.end_time)}
+                    <div style="font-size:11px;color:var(--bf-text-muted)">${escapeHtml(s.group_name)} · ${escapeHtml(s.location)}${s.is_extra ? ' · <span style="color:#92400e">Extra Session</span>' : ''}</div>
                   </div>
                 </div>
               `).join('')}
@@ -5863,24 +5867,24 @@
             ${myNotices.length === 0 ? '<p style="font-size:12px;color:var(--bf-text-muted)">No notices yet.</p>' :
               myNotices.slice(0, 8).map(n => `
                 <div style="padding:8px 0;border-bottom:1px solid var(--bf-border)">
-                  <span class="belt-badge" style="background:${n.type === 'CANCELLED' ? '#fee2e2' : n.type === 'EXTRA_SESSION' ? '#fef3c7' : '#e0f2fe'};color:${n.type === 'CANCELLED' ? '#991b1b' : n.type === 'EXTRA_SESSION' ? '#92400e' : '#0369a1'};font-size:9px">${n.type.replace('_', ' ')}</span>
-                  <div style="font-size:12px;color:var(--bf-navy);margin-top:4px">${n.message}</div>
-                  <div style="font-size:10px;color:var(--bf-text-muted)">${new Date(n.created_at).toLocaleString()} · ${n.sender_name}</div>
+                  <span class="belt-badge" style="background:${n.type === 'CANCELLED' ? '#fee2e2' : n.type === 'EXTRA_SESSION' ? '#fef3c7' : '#e0f2fe'};color:${n.type === 'CANCELLED' ? '#991b1b' : n.type === 'EXTRA_SESSION' ? '#92400e' : '#0369a1'};font-size:9px">${escapeHtml(n.type.replace('_', ' '))}</span>
+                  <div style="font-size:12px;color:var(--bf-navy);margin-top:4px">${escapeHtml(n.message)}</div>
+                  <div style="font-size:10px;color:var(--bf-text-muted)">${new Date(n.created_at).toLocaleString()} · ${escapeHtml(n.sender_name)}</div>
                 </div>
               `).join('')}
           </div>
 
           <div class="bf-card" style="margin-top:16px">
-            <h3 style="font-size:15px;margin-bottom:10px">${activeChild.name}'s Attendance History</h3>
+            <h3 style="font-size:15px;margin-bottom:10px">${escapeHtml(activeChild.name)}'s Attendance History</h3>
             ${myAttendanceHistory.length === 0 ? '<p style="font-size:12px;color:var(--bf-text-muted)">No attendance recorded yet.</p>' : `
               <table class="bf-table"><thead><tr><th>Date</th><th>Group</th><th>Time</th><th>Status</th></tr></thead>
               <tbody>
                 ${myAttendanceHistory.slice(0, 15).map(a => `
                   <tr>
-                    <td>${a.session_date}</td>
-                    <td>${a.group_name}</td>
-                    <td>${a.start_time}–${a.end_time}</td>
-                    <td><span class="belt-badge" style="background:${a.status === 'Present' ? '#dcfce7' : a.status === 'Absent' ? '#fee2e2' : '#fef3c7'};color:${a.status === 'Present' ? '#166534' : a.status === 'Absent' ? '#991b1b' : '#92400e'}">${a.status}</span></td>
+                    <td>${escapeHtml(a.session_date)}</td>
+                    <td>${escapeHtml(a.group_name)}</td>
+                    <td>${escapeHtml(a.start_time)}–${escapeHtml(a.end_time)}</td>
+                    <td><span class="belt-badge" style="background:${a.status === 'Present' ? '#dcfce7' : a.status === 'Absent' ? '#fee2e2' : '#fef3c7'};color:${a.status === 'Present' ? '#166534' : a.status === 'Absent' ? '#991b1b' : '#92400e'}">${escapeHtml(a.status)}</span></td>
                   </tr>
                 `).join('')}
               </tbody></table>
@@ -5894,7 +5898,7 @@
           <div class="portal-header">
             <div>
               <h2>Fee Payments & Invoices</h2>
-              <p>Tuition receipts and verified fee status for ${activeChild.name}.</p>
+              <p>Tuition receipts and verified fee status for ${escapeHtml(activeChild.name)}.</p>
             </div>
             <button class="bf-btn bf-btn-primary" onclick="openParentSubmitPayment()">
               <i data-lucide="upload" style="width:14px;height:14px"></i>
@@ -5925,13 +5929,13 @@
                   <tbody>
                     ${childPayments.map(pay => `
                       <tr>
-                        <td>${pay.date}</td>
-                        <td><strong>${pay.amount}</strong></td>
-                        <td>${pay.method}</td>
-                        <td>${pay.proofNotes || '-'}</td>
+                        <td>${escapeHtml(pay.date)}</td>
+                        <td><strong>${escapeHtml(pay.amount)}</strong></td>
+                        <td>${escapeHtml(pay.method)}</td>
+                        <td>${escapeHtml(pay.proofNotes || '-')}</td>
                         <td>
                           <span class="status-badge ${pay.status === 'Approved' ? 'status-active' : (pay.status === 'Rejected' ? 'status-danger' : 'status-pending')}">
-                            ${pay.status}
+                            ${escapeHtml(pay.status)}
                           </span>
                         </td>
                       </tr>
@@ -5949,7 +5953,7 @@
           <div class="portal-header">
             <div>
               <h2>Official Digital Certificates</h2>
-              <p>Verifiable credentials and belt promotions awarded to ${activeChild.name}.</p>
+              <p>Verifiable credentials and belt promotions awarded to ${escapeHtml(activeChild.name)}.</p>
             </div>
           </div>
 
@@ -5965,12 +5969,12 @@
                 ${childCerts.map(cert => `
                   <div style="border:1.5px solid var(--bf-border);border-radius:var(--radius-sm);padding:14px;background:#ffffff">
                     <div style="display:flex;justify-content:space-between;align-items:center">
-                      <span class="belt-badge belt-yellow">${cert.type}</span>
-                      <span style="font-size:11px;color:var(--bf-text-muted)">${cert.issueDate}</span>
+                      <span class="belt-badge belt-yellow">${escapeHtml(cert.type)}</span>
+                      <span style="font-size:11px;color:var(--bf-text-muted)">${escapeHtml(cert.issueDate)}</span>
                     </div>
-                    <div style="font-weight:700;font-size:14px;color:var(--bf-navy);margin:8px 0 2px">${cert.rankOrTitle}</div>
-                    <div style="font-size:11px;color:var(--bf-text-muted)">Code: <code>${cert.code}</code></div>
-                    <button class="bf-btn bf-btn-sm bf-btn-navy" style="width:100%;margin-top:10px" onclick="openCertificate('${cert.studentName}', '${cert.rankOrTitle}', '${cert.code}')">
+                    <div style="font-weight:700;font-size:14px;color:var(--bf-navy);margin:8px 0 2px">${escapeHtml(cert.rankOrTitle)}</div>
+                    <div style="font-size:11px;color:var(--bf-text-muted)">Code: <code>${escapeHtml(cert.code)}</code></div>
+                    <button class="bf-btn bf-btn-sm bf-btn-navy" style="width:100%;margin-top:10px" data-a1="${escapeHtml(String(cert.studentName))}" data-a2="${escapeHtml(String(cert.rankOrTitle))}" data-a3="${escapeHtml(String(cert.code))}" onclick="openCertificate(this.dataset.a1, this.dataset.a2, this.dataset.a3)">
                       View Official Certificate →
                     </button>
                   </div>
@@ -5986,7 +5990,7 @@
           <div class="portal-header">
             <div>
               <h2>Skills & Syllabus Progress</h2>
-              <p>Curriculum mastery and technique levels for ${activeChild.name} (${cfg.style}).</p>
+              <p>Curriculum mastery and technique levels for ${escapeHtml(activeChild.name)} (${cfg.style}).</p>
             </div>
           </div>
 
@@ -5999,9 +6003,9 @@
                     <div>
                       <strong style="font-size:13px;color:var(--bf-navy)">${sk.name}</strong>
                       <div style="font-size:11px;color:var(--bf-text-muted)">${sk.category} · Target Belt: ${sk.targetBelt}</div>
-                      ${prog.notes ? `<div style="font-size:11px;color:var(--bf-text-muted);margin-top:2px"><em>Coach Note: "${prog.notes}"</em></div>` : ''}
+                      ${prog.notes ? `<div style="font-size:11px;color:var(--bf-text-muted);margin-top:2px"><em>Coach Note: "${escapeHtml(prog.notes)}"</em></div>` : ''}
                     </div>
-                    <span class="level-badge level-${prog.level.toLowerCase().replace(' ', '-')}">${prog.level}</span>
+                    <span class="level-badge level-${escapeHtml(prog.level.toLowerCase().replace(' ', '-'))}">${escapeHtml(prog.level)}</span>
                   </div>
                 `;
               }).join('')}
@@ -6018,7 +6022,7 @@
           <div class="portal-header">
             <div>
               <h2>Upcoming Gradings & Tournaments</h2>
-              <p>Scheduled examinations and competition events at ${p ? p.name : 'the Academy'}.</p>
+              <p>Scheduled examinations and competition events at ${escapeHtml(p ? p.name : 'the Academy')}.</p>
             </div>
           </div>
 
@@ -6033,12 +6037,12 @@
                     const isRegistered = (g.candidateStudentIds || []).includes(activeChild.id);
                     return `
                     <div style="border:1px solid var(--bf-border);border-radius:var(--radius-sm);padding:12px;background:#fff">
-                      <div style="font-weight:700;color:var(--bf-navy)">${g.title}</div>
-                      <div style="font-size:11px;color:var(--bf-text-muted)">Date: ${g.date} · Fee: RM ${g.fee}</div>
+                      <div style="font-weight:700;color:var(--bf-navy)">${escapeHtml(g.title)}</div>
+                      <div style="font-size:11px;color:var(--bf-text-muted)">Date: ${escapeHtml(g.date)} · Fee: RM ${escapeHtml(g.fee)}</div>
                       <div style="margin-top:8px">
                         ${isRegistered
-                          ? `<span class="belt-badge" style="background:#dcfce7;color:#166534">✓ ${activeChild.name} Registered</span>`
-                          : `<button class="bf-btn bf-btn-sm bf-btn-primary" onclick="openRegisterGradingCandidate('${g.id}')">Register ${activeChild.name}</button>`}
+                          ? `<span class="belt-badge" style="background:#dcfce7;color:#166534">✓ ${escapeHtml(activeChild.name)} Registered</span>`
+                          : `<button class="bf-btn bf-btn-sm bf-btn-primary" data-a1="${escapeHtml(String(g.id))}" onclick="openRegisterGradingCandidate(this.dataset.a1)">Register ${escapeHtml(activeChild.name)}</button>`}
                       </div>
                     </div>
                   `;
@@ -6055,8 +6059,8 @@
                 <div style="display:flex;flex-direction:column;gap:10px">
                   ${pTournaments.map(t => `
                     <div style="border:1px solid var(--bf-border);border-radius:var(--radius-sm);padding:12px;background:#fff">
-                      <div style="font-weight:700;color:var(--bf-navy)">${t.title}</div>
-                      <div style="font-size:11px;color:var(--bf-text-muted)">Date: ${t.date} · Location: ${t.location}</div>
+                      <div style="font-weight:700;color:var(--bf-navy)">${escapeHtml(t.title)}</div>
+                      <div style="font-size:11px;color:var(--bf-text-muted)">Date: ${escapeHtml(t.date)} · Location: ${escapeHtml(t.location)}</div>
                     </div>
                   `).join('')}
                 </div>
@@ -6097,9 +6101,9 @@
             : `<div class="bf-card"><p>Your current class: ${escapeHtml(student.className)}</p>
                <label class="bf-label" for="transferClassSelect">Destination class</label>
                <select id="transferClassSelect" class="bf-input">${destinations.map(c =>
-                 `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}</select>
+                 `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('')}</select>
                <p>Both your current and destination Masters must approve this request.</p>
-               <button class="bf-btn bf-btn-primary" onclick="requestClassTransfer('${student.id}')">Submit transfer request</button>
+               <button class="bf-btn bf-btn-primary" data-a1="${escapeHtml(String(student.id))}" onclick="requestClassTransfer(this.dataset.a1)">Submit transfer request</button>
                </div>`);
         return;
       }
@@ -6110,10 +6114,10 @@
           <div style="background:linear-gradient(135deg, #0d2b47 0%, #153c61 100%);color:#ffffff;border-radius:var(--radius-md);padding:24px;margin-bottom:20px">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
               <div>
-                <span class="belt-badge ${student.beltClass}">Current Rank: ${student.belt}</span>
-                <div style="font-size:24px;font-weight:800;margin-top:8px">${student.name}</div>
+                <span class="belt-badge ${escapeHtml(student.beltClass)}">Current Rank: ${escapeHtml(student.belt)}</span>
+                <div style="font-size:24px;font-weight:800;margin-top:8px">${escapeHtml(student.name)}</div>
                 <div style="font-size:12px;color:#cbd5e1;margin-top:4px">
-                  ${student.className} · ${p ? p.name : 'Academy'} · <strong style="color:#10b981">${student.attendance == null ? "—" : student.attendance + "%"} Attendance Rate</strong>
+                  ${escapeHtml(student.className)} · ${escapeHtml(p ? p.name : 'Academy')} · <strong style="color:#10b981">${escapeHtml(student.attendance == null ? "—" : student.attendance + "%")} Attendance Rate</strong>
                 </div>
               </div>
             </div>
@@ -6122,12 +6126,12 @@
           <div class="kpi-grid">
             <div class="kpi-card">
               <div class="kpi-title">Current Belt Rank</div>
-              <div class="kpi-value">${student.belt}</div>
-              <div class="kpi-subtext">${student.className}</div>
+              <div class="kpi-value">${escapeHtml(student.belt)}</div>
+              <div class="kpi-subtext">${escapeHtml(student.className)}</div>
             </div>
             <div class="kpi-card">
               <div class="kpi-title">Training Attendance</div>
-              <div class="kpi-value">${student.attendance == null ? "—" : student.attendance + "%"}</div>
+              <div class="kpi-value">${escapeHtml(student.attendance == null ? "—" : student.attendance + "%")}</div>
               <div class="kpi-subtext">Active student status</div>
             </div>
             <div class="kpi-card">
@@ -6143,8 +6147,8 @@
               myUpcomingSessions.map(s => `
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bf-border)">
                   <div>
-                    <strong style="font-size:13px">${s.session_date}</strong> · ${s.day_of_week}, ${s.start_time}–${s.end_time}
-                    <div style="font-size:11px;color:var(--bf-text-muted)">${s.group_name} · ${s.location}${s.is_extra ? ' · <span style="color:#92400e">Extra Session</span>' : ''}</div>
+                    <strong style="font-size:13px">${escapeHtml(s.session_date)}</strong> · ${escapeHtml(s.day_of_week)}, ${escapeHtml(s.start_time)}–${escapeHtml(s.end_time)}
+                    <div style="font-size:11px;color:var(--bf-text-muted)">${escapeHtml(s.group_name)} · ${escapeHtml(s.location)}${s.is_extra ? ' · <span style="color:#92400e">Extra Session</span>' : ''}</div>
                   </div>
                 </div>
               `).join('')}
@@ -6155,9 +6159,9 @@
             ${myNotices.length === 0 ? '<p style="font-size:12px;color:var(--bf-text-muted)">No notices yet.</p>' :
               myNotices.slice(0, 8).map(n => `
                 <div style="padding:8px 0;border-bottom:1px solid var(--bf-border)">
-                  <span class="belt-badge" style="background:${n.type === 'CANCELLED' ? '#fee2e2' : n.type === 'EXTRA_SESSION' ? '#fef3c7' : '#e0f2fe'};color:${n.type === 'CANCELLED' ? '#991b1b' : n.type === 'EXTRA_SESSION' ? '#92400e' : '#0369a1'};font-size:9px">${n.type.replace('_', ' ')}</span>
-                  <div style="font-size:12px;color:var(--bf-navy);margin-top:4px">${n.message}</div>
-                  <div style="font-size:10px;color:var(--bf-text-muted)">${new Date(n.created_at).toLocaleString()} · ${n.sender_name}</div>
+                  <span class="belt-badge" style="background:${n.type === 'CANCELLED' ? '#fee2e2' : n.type === 'EXTRA_SESSION' ? '#fef3c7' : '#e0f2fe'};color:${n.type === 'CANCELLED' ? '#991b1b' : n.type === 'EXTRA_SESSION' ? '#92400e' : '#0369a1'};font-size:9px">${escapeHtml(n.type.replace('_', ' '))}</span>
+                  <div style="font-size:12px;color:var(--bf-navy);margin-top:4px">${escapeHtml(n.message)}</div>
+                  <div style="font-size:10px;color:var(--bf-text-muted)">${new Date(n.created_at).toLocaleString()} · ${escapeHtml(n.sender_name)}</div>
                 </div>
               `).join('')}
           </div>
@@ -6169,10 +6173,10 @@
               <tbody>
                 ${myAttendanceHistory.slice(0, 15).map(a => `
                   <tr>
-                    <td>${a.session_date}</td>
-                    <td>${a.group_name}</td>
-                    <td>${a.start_time}–${a.end_time}</td>
-                    <td><span class="belt-badge" style="background:${a.status === 'Present' ? '#dcfce7' : a.status === 'Absent' ? '#fee2e2' : '#fef3c7'};color:${a.status === 'Present' ? '#166534' : a.status === 'Absent' ? '#991b1b' : '#92400e'}">${a.status}</span></td>
+                    <td>${escapeHtml(a.session_date)}</td>
+                    <td>${escapeHtml(a.group_name)}</td>
+                    <td>${escapeHtml(a.start_time)}–${escapeHtml(a.end_time)}</td>
+                    <td><span class="belt-badge" style="background:${a.status === 'Present' ? '#dcfce7' : a.status === 'Absent' ? '#fee2e2' : '#fef3c7'};color:${a.status === 'Present' ? '#166534' : a.status === 'Absent' ? '#991b1b' : '#92400e'}">${escapeHtml(a.status)}</span></td>
                   </tr>
                 `).join('')}
               </tbody></table>
@@ -6199,9 +6203,9 @@
                       <strong style="font-size:13px;color:var(--bf-navy)">${sk.name}</strong>
                       <div style="font-size:11px;color:var(--bf-text-muted)">${sk.category} · Target Belt: ${sk.targetBelt}</div>
                       ${sk.desc ? `<div style="font-size:11px;color:var(--bf-text-muted);margin-top:2px">${sk.desc}</div>` : ''}
-                      ${prog.notes ? `<div style="font-size:11px;color:var(--bf-amber);margin-top:2px"><em>Instructor Note: "${prog.notes}"</em></div>` : ''}
+                      ${prog.notes ? `<div style="font-size:11px;color:var(--bf-amber);margin-top:2px"><em>Instructor Note: "${escapeHtml(prog.notes)}"</em></div>` : ''}
                     </div>
-                    <span class="level-badge level-${prog.level.toLowerCase().replace(' ', '-')}">${prog.level}</span>
+                    <span class="level-badge level-${escapeHtml(prog.level.toLowerCase().replace(' ', '-'))}">${escapeHtml(prog.level)}</span>
                   </div>
                 `;
               }).join('')}
@@ -6230,12 +6234,12 @@
                 ${studentCerts.map(cert => `
                   <div style="border:1.5px solid var(--bf-border);border-radius:var(--radius-sm);padding:14px;background:#ffffff">
                     <div style="display:flex;justify-content:space-between;align-items:center">
-                      <span class="belt-badge belt-yellow">${cert.type}</span>
-                      <span style="font-size:11px;color:var(--bf-text-muted)">${cert.issueDate}</span>
+                      <span class="belt-badge belt-yellow">${escapeHtml(cert.type)}</span>
+                      <span style="font-size:11px;color:var(--bf-text-muted)">${escapeHtml(cert.issueDate)}</span>
                     </div>
-                    <div style="font-weight:700;font-size:14px;color:var(--bf-navy);margin:8px 0 2px">${cert.rankOrTitle}</div>
-                    <div style="font-size:11px;color:var(--bf-text-muted)">Code: <code>${cert.code}</code></div>
-                    <button class="bf-btn bf-btn-sm bf-btn-navy" style="width:100%;margin-top:10px" onclick="openCertificate('${cert.studentName}', '${cert.rankOrTitle}', '${cert.code}')">
+                    <div style="font-weight:700;font-size:14px;color:var(--bf-navy);margin:8px 0 2px">${escapeHtml(cert.rankOrTitle)}</div>
+                    <div style="font-size:11px;color:var(--bf-text-muted)">Code: <code>${escapeHtml(cert.code)}</code></div>
+                    <button class="bf-btn bf-btn-sm bf-btn-navy" style="width:100%;margin-top:10px" data-a1="${escapeHtml(String(cert.studentName))}" data-a2="${escapeHtml(String(cert.rankOrTitle))}" data-a3="${escapeHtml(String(cert.code))}" onclick="openCertificate(this.dataset.a1, this.dataset.a2, this.dataset.a3)">
                       View Official Certificate →
                     </button>
                   </div>
@@ -6266,8 +6270,8 @@
               <div style="display:flex;flex-direction:column;gap:12px">
                 ${studentTourneys.map(t => `
                   <div style="border:1px solid var(--bf-border);border-radius:var(--radius-sm);padding:14px;background:#fff">
-                    <div style="font-weight:700;font-size:14px;color:var(--bf-navy)">${t.title}</div>
-                    <div style="font-size:11px;color:var(--bf-text-muted)">Date: ${t.date} · Location: ${t.location} · Categories: ${t.categories || 'All Divisions'}</div>
+                    <div style="font-weight:700;font-size:14px;color:var(--bf-navy)">${escapeHtml(t.title)}</div>
+                    <div style="font-size:11px;color:var(--bf-text-muted)">Date: ${escapeHtml(t.date)} · Location: ${escapeHtml(t.location)} · Categories: ${escapeHtml(t.categories || 'All Divisions')}</div>
                   </div>
                 `).join('')}
               </div>
@@ -6280,7 +6284,7 @@
           <div class="portal-header">
             <div>
               <h2>Fee Status & Receipts</h2>
-              <p>Monthly training fee records and tuition status for ${student.name}.</p>
+              <p>Monthly training fee records and tuition status for ${escapeHtml(student.name)}.</p>
             </div>
           </div>
 
@@ -6288,10 +6292,10 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;background:var(--bf-light-gray);padding:14px;border-radius:var(--radius-sm);flex-wrap:wrap;gap:12px">
               <div>
                 <div style="font-size:12px;color:var(--bf-text-muted)">Current Tuition Fee</div>
-                <div style="font-size:20px;font-weight:800;color:var(--bf-navy)">RM ${student.monthlyFee || 120}.00 / month</div>
+                <div style="font-size:20px;font-weight:800;color:var(--bf-navy)">RM ${escapeHtml(student.monthlyFee || 120)}.00 / month</div>
               </div>
               <div style="text-align:right">
-                <div style="font-size:12px;color:var(--bf-text-muted)">${student.monthsPendingCount || 0} month(s) pending</div>
+                <div style="font-size:12px;color:var(--bf-text-muted)">${escapeHtml(student.monthsPendingCount || 0)} month(s) pending</div>
                 <div style="font-size:18px;font-weight:800;color:${(student.totalPending || 0) > 0 ? '#dc2626' : 'var(--bf-success)'}">RM ${(student.totalPending || 0).toFixed(2)} outstanding</div>
               </div>
             </div>
@@ -6311,10 +6315,10 @@
                   <tbody>
                     ${studentPayments.map(p => `
                       <tr>
-                        <td>${p.date}</td>
-                        <td><strong>${p.amount}</strong></td>
-                        <td>${p.method}</td>
-                        <td><span class="status-badge ${p.status === 'Approved' ? 'status-active' : 'status-pending'}">${p.status}</span></td>
+                        <td>${escapeHtml(p.date)}</td>
+                        <td><strong>${escapeHtml(p.amount)}</strong></td>
+                        <td>${escapeHtml(p.method)}</td>
+                        <td><span class="status-badge ${p.status === 'Approved' ? 'status-active' : 'status-pending'}">${escapeHtml(p.status)}</span></td>
                       </tr>
                     `).join('')}
                   </tbody>

@@ -106,7 +106,12 @@ export const authService = {
    * Change current account password
    */
   async changePassword(request: ChangePasswordRequest): Promise<void> {
-    await apiClient.post('/api/v1/auth/change-password', request);
+    // The server ends every older session when the password changes and
+    // returns a fresh token for this device.
+    const res = await apiClient.post<{ token?: string }>('/api/v1/auth/change-password', request);
+    if (res?.token) {
+      await setAuthToken(res.token);
+    }
   },
 
   /**

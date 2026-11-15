@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",
-    "beltflow": "file:..",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",

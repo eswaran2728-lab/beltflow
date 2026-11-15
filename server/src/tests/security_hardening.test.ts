@@ -185,6 +185,16 @@ async function runTests() {
     const me = await request(server, 'GET', '/auth/me', changed.data.token);
     assert.ok(String(me.headers['cache-control']).includes('no-store'), 'API responses are never cached');
     assert.ok(String(me.headers['content-security-policy']).includes("default-src 'none'"), 'API responses carry a locked-down CSP');
+    const oversized = await request(server, 'POST', '/auth/login', undefined, { email: 'a@example.test', password: 'x'.repeat(400000) });
+    assert.equal(oversized.status, 413, 'an oversized body is refused as too large, not as a server error');
+    const malformed = await new Promise<number>((resolve, reject) => {
+      const addr = server.address() as any;
+      const r = http.request({ host: '127.0.0.1', port: addr.port, path: '/api/v1/auth/login', method: 'POST', headers: { 'Content-Type': 'application/json', Connection: 'close' } },
+        res => { res.resume(); res.on('end', () => resolve(res.statusCode || 0)); });
+      r.on('error', reject);
+      r.end('{bad json');
+    });
+    assert.equal(malformed, 400, 'malformed JSON is a 400');
     console.log('✅ F: security headers present; API responses are not cached.');
 
     // ------------------------------------------------------------------ G

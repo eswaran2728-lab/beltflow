@@ -1,0 +1,26 @@
+# The Vercel site is only the web client (index.html and its assets).
+# Nothing else in this repository is deployed or served there.
+server
+mobile
+docs
+scripts
+scratch
+app
+gradle
+_ds
+uploads
+release-testing
+.github
+.superpowers
+*.md
+*.pdf
+*.kts
+*.properties
+*.dc.html
+*.jsx
+gradlew
+gradlew.bat
+metadata.json
+package.json
+pasted-*.png
+.thumbnail

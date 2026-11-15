@@ -216,6 +216,14 @@ app.use('/api/v1/assistant', moduleGate('assistant'), assistantRoutes);
 
 // Global Error Handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  // Bad requests are the caller's fault, not a server error.
+  const type = (err as any)?.type;
+  if (type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Request is too large.' });
+  }
+  if (type === 'entity.parse.failed' || type === 'encoding.unsupported' || type === 'charset.unsupported') {
+    return res.status(400).json({ error: 'Request body is not valid JSON.' });
+  }
   console.error('[API Error]:', err);
   res.status(500).json({ error: 'Internal server error', message: safeErrorMessage(err, 'An internal error occurred.') });
 });
