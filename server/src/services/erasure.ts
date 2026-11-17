@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { dbClient } from '../db/client';
+import { mediaStorageAdapter } from './mediaStorageAdapter';
 
 /**
  * Carrying out a deletion request.
@@ -12,6 +13,8 @@ import { dbClient } from '../db/client';
 
 /** Removes a student's personal details. The row stays so ledgers still add up. */
 export async function eraseStudentProfile(studentId: string): Promise<void> {
+  // The video files themselves are removed from storage, not only marked deleted.
+  const videos = await dbClient.query(`SELECT storage_key FROM video_submissions WHERE student_id = $1`, [studentId]);
   await dbClient.transaction(async (tx) => {
     await tx.query(
       `UPDATE students
@@ -36,6 +39,9 @@ export async function eraseStudentProfile(studentId: string): Promise<void> {
     await tx.query(`UPDATE certificates SET student_name = 'Deleted student' WHERE student_id = $1`, [studentId]);
     await tx.query(`UPDATE parent_student_links SET status = 'REVOKED' WHERE student_id = $1`, [studentId]);
   });
+  for (const row of videos.rows) {
+    if (row.storage_key) await mediaStorageAdapter.deleteObject(row.storage_key).catch(() => false);
+  }
 }
 
 /** Removes an account's personal details and ends its access. */

@@ -17,11 +17,11 @@
       "android"
     ],
     "ios": {
-      "bundleIdentifier": "com.beltflow.app",
+      "bundleIdentifier": "com.eswaran.beltflow",
       "supportsTablet": true
     },
     "android": {
-      "package": "com.beltflow.app",
+      "package": "com.eswaran.beltflow",
       "versionCode": 2,
       "allowBackup": false,
       "adaptiveIcon": {

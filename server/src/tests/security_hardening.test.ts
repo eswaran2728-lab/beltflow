@@ -209,18 +209,28 @@ async function runTests() {
 
     // ------------------------------------------------------------------ H
     const bad = validateProductionEnv({ NODE_ENV: 'production', JWT_SECRET: 'short', DATABASE_SSL: 'disable' });
-    for (const name of ['JWT_SECRET', 'MEDIA_STORAGE_SECRET', 'CORS_ALLOWED_ORIGINS', 'DATABASE_URL', 'QR_ED25519_PRIVATE_KEY_SEED', 'DATABASE_SSL']) {
+    for (const name of ['JWT_SECRET', 'MEDIA_STORAGE_SECRET', 'CORS_ALLOWED_ORIGINS', 'DATABASE_URL', 'QR_ED25519_PRIVATE_KEY_SEED', 'DATABASE_SSL', 'BELTFLOW_SETUP_TOKEN']) {
       assert.ok(bad.some(p => p.includes(name)), `${name} is reported: ${bad.join(' | ')}`);
     }
     const strong = 'k'.repeat(48);
     const good = validateProductionEnv({
       NODE_ENV: 'production', JWT_SECRET: strong, MEDIA_STORAGE_SECRET: strong + '2', CORS_ALLOWED_ORIGINS: 'https://app.example.test',
       DATABASE_URL: 'postgres://db.example.test/beltflow', QR_ED25519_PRIVATE_KEY_SEED: strong + '3', QR_ED25519_PREVIOUS_SEED: strong + '4',
+      BELTFLOW_SETUP_TOKEN: strong + '5',
     });
     assert.deepEqual(good, [], `a complete configuration passes: ${good.join(' | ')}`);
     assert.ok(validateProductionEnv({ ...{ NODE_ENV: 'production', JWT_SECRET: strong, MEDIA_STORAGE_SECRET: strong, CORS_ALLOWED_ORIGINS: '*', DATABASE_URL: 'postgres://x/y', QR_ED25519_PRIVATE_KEY_SEED: strong + '3', QR_ED25519_PREVIOUS_SEED: strong + '4' } })
       .some(p => p.includes('CORS_ALLOWED_ORIGINS') || p.includes('same value')), 'wildcard origins and reused secrets are reported');
     assert.deepEqual(validateProductionEnv({}), [], 'development needs nothing');
+    const fullProdEnv = {
+      NODE_ENV: 'production', JWT_SECRET: strong, MEDIA_STORAGE_SECRET: strong + '2', CORS_ALLOWED_ORIGINS: 'https://app.example.test',
+      QR_ED25519_PRIVATE_KEY_SEED: strong + '3', QR_ED25519_PREVIOUS_SEED: strong + '4', BELTFLOW_SETUP_TOKEN: strong + '5',
+    };
+    // A plain (non-TLS) database connection is allowed only to a private-network host.
+    assert.deepEqual(validateProductionEnv({ ...fullProdEnv, DATABASE_URL: 'postgresql://u:p@dpg-abc123-a/beltflow', DATABASE_SSL: 'disable' }), [],
+      'private-network host without TLS is accepted');
+    assert.ok(validateProductionEnv({ ...fullProdEnv, DATABASE_URL: 'postgresql://u:p@db.example.test:5432/beltflow', DATABASE_SSL: 'disable' })
+      .some(p => p.includes('DATABASE_SSL')), 'a public host without TLS is refused');
     assert.ok(!bad.join(' ').includes('short'), 'values are never printed');
     console.log('✅ H: production configuration is validated in one place, without printing values.');
 
@@ -256,6 +266,26 @@ async function runTests() {
     }
     assert.deepEqual(leaks, [], `5xx responses must use safeErrorMessage: ${leaks.join(', ')}`);
     console.log('✅ K: server errors do not echo raw exception text.');
+
+    // ------------------------------------------------------------------ L
+    // A fresh server must not hand the first Super Admin account to whoever
+    // finds it first: with BELTFLOW_SETUP_TOKEN set, setup needs that code.
+    const SETUP = 'setup-code-' + 'z'.repeat(32);
+    const savedSetup = process.env.BELTFLOW_SETUP_TOKEN;
+    await q(`DELETE FROM users WHERE role = 'SUPER_ADMIN'`);
+    try {
+      process.env.BELTFLOW_SETUP_TOKEN = SETUP;
+      const form = { fullName: 'Test Platform Admin', email: 'sh_setup@example.test', phone: '0100000000', password: PASSWORD, confirmPassword: PASSWORD };
+      assert.equal((await request(server, 'POST', '/auth/setup-admin', undefined, form)).status, 403, 'no setup code: refused');
+      assert.equal((await request(server, 'POST', '/auth/setup-admin', undefined, { ...form, setupToken: 'wrong-code' })).status, 403, 'wrong setup code: refused');
+      assert.equal((await q(`SELECT COUNT(*)::int AS n FROM users WHERE role = 'SUPER_ADMIN'`)).rows[0].n, 0);
+      const ok = await request(server, 'POST', '/auth/setup-admin', undefined, { ...form, setupToken: SETUP });
+      assert.equal(ok.status, 201, JSON.stringify(ok.data));
+      assert.equal((await request(server, 'POST', '/auth/setup-admin', undefined, { ...form, email: 'sh_setup2@example.test', setupToken: SETUP })).status, 403, 'and it stays locked afterwards');
+    } finally {
+      if (savedSetup === undefined) delete process.env.BELTFLOW_SETUP_TOKEN; else process.env.BELTFLOW_SETUP_TOKEN = savedSetup;
+    }
+    console.log('✅ L: the first Super Admin can only be created with the setup code.');
 
     console.log('\n🎉 Security hardening tests PASSED.');
   } finally {

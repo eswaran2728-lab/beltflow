@@ -62,6 +62,13 @@ jobs:
           npx tsc --noEmit -p .
           npx jest --silent
 
+      - name: Use a separate app ID for the testing build
+        # So a testing APK can be installed next to the Play Store app, and can
+        # never be mistaken for (or replace) it.
+        run: |
+          node -e "const fs=require('fs');const p='app.json';const c=JSON.parse(fs.readFileSync(p));c.expo.android.package='com.eswaran.beltflow.testing';c.expo.name='BeltFlow (testing)';fs.writeFileSync(p,JSON.stringify(c,null,2));"
+          grep -q 'com.eswaran.beltflow.testing' app.json
+
       - name: Generate the Android project
         run: npx expo prebuild --platform android --no-install
 

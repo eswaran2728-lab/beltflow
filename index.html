@@ -1674,6 +1674,11 @@
           Set up the primary BeltFlow platform administrator account. No hardcoded or default credentials are pre-configured.
         </p>
         <form onsubmit="handleSetupSuperAdmin(event)" style="display:flex;flex-direction:column;gap:14px">
+          <div id="setupAdminCodeGroup">
+            <label class="bf-label" for="setupAdminCode">Setup code</label>
+            <input type="password" id="setupAdminCode" autocomplete="off" class="bf-input" aria-describedby="setupAdminCodeHelp" placeholder="From the server settings (BELTFLOW_SETUP_TOKEN)">
+            <p id="setupAdminCodeHelp" style="font-size:12px;color:var(--bf-text-muted);margin-top:4px">Needed on a live server. Leave empty on a local test server.</p>
+          </div>
           <div>
             <label class="bf-label" for="setupAdminName">Full Name</label>
             <input type="text" id="setupAdminName" autocomplete="name" required aria-required="true" placeholder="e.g. Master Eswaran" class="bf-input">
@@ -2595,7 +2600,8 @@
 
       const res = await fetchApi('/auth/setup-admin', {
         method: 'POST',
-        body: JSON.stringify({ fullName: name, email, phone, password: pass, confirmPassword: confirmPass })
+        body: JSON.stringify({
+          setupToken: (document.getElementById('setupAdminCode').value || '').trim() || undefined, fullName: name, email, phone, password: pass, confirmPassword: confirmPass })
       });
 
       if (!res.ok || !res.data) {

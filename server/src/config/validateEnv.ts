@@ -16,7 +16,9 @@ export function validateProductionEnv(env: Record<string, string | undefined> = 
   const has = (name: string) => typeof env[name] === 'string' && env[name]!.trim().length > 0;
 
   // Secrets: present, long enough, and not shared between purposes.
-  const secrets = ['JWT_SECRET', 'MEDIA_STORAGE_SECRET', 'QR_ED25519_PRIVATE_KEY_SEED', 'QR_ED25519_PREVIOUS_SEED'];
+  // BELTFLOW_SETUP_TOKEN: the one-time code needed to create the first Super
+  // Admin, so a fresh public server cannot be claimed by whoever finds it first.
+  const secrets = ['JWT_SECRET', 'MEDIA_STORAGE_SECRET', 'QR_ED25519_PRIVATE_KEY_SEED', 'QR_ED25519_PREVIOUS_SEED', 'BELTFLOW_SETUP_TOKEN'];
   for (const name of secrets) {
     if (!has(name)) problems.push(`${name} is not set.`);
     else if (env[name]!.length < MIN_SECRET_LENGTH) problems.push(`${name} must be at least ${MIN_SECRET_LENGTH} characters.`);
@@ -44,11 +46,27 @@ export function validateProductionEnv(env: Record<string, string | undefined> = 
 
   // Database: a real server, with TLS.
   if (!has('DATABASE_URL')) problems.push('DATABASE_URL is not set (the embedded development database must not be used in production).');
-  if ((env.DATABASE_SSL || '').toLowerCase() === 'disable') problems.push('DATABASE_SSL must not be "disable" in production.');
+  // TLS may be switched off only for a host on the provider's private network
+  // (a bare internal name such as "dpg-xxxx-a", not reachable from the
+  // internet). Any public host must use TLS.
+  if ((env.DATABASE_SSL || '').toLowerCase() === 'disable' && !isPrivateNetworkHost(env.DATABASE_URL)) {
+    problems.push('DATABASE_SSL must not be "disable" in production unless DATABASE_URL points at a private-network host.');
+  }
 
   // Switches that are only for development or testing.
   if (env.ALLOW_INSECURE_HTTP === 'true') problems.push('ALLOW_INSECURE_HTTP is on; HTTPS would not be enforced.');
   if (has('DEBUG')) problems.push('DEBUG is set; turn debug output off in production.');
 
   return problems;
+}
+
+/** True for a bare host name with no dots (a private-network service name), false for anything else. */
+function isPrivateNetworkHost(databaseUrl: string | undefined): boolean {
+  if (!databaseUrl) return false;
+  try {
+    const host = new URL(databaseUrl).hostname;
+    return !!host && !host.includes('.') && !host.includes(':') && host !== 'localhost';
+  } catch {
+    return false;
+  }
 }

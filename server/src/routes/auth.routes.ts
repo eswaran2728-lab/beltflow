@@ -21,7 +21,8 @@ const router = Router();
 router.get('/setup-status', async (_req: Request, res: Response) => {
   try {
     const result = await dbClient.query("SELECT 1 FROM users WHERE role = 'SUPER_ADMIN' LIMIT 1");
-    return res.json({ setupRequired: result.rowCount === 0 });
+    // setupCodeRequired tells the setup form to ask for the code (never the code itself).
+    return res.json({ setupRequired: result.rowCount === 0, setupCodeRequired: !!process.env.BELTFLOW_SETUP_TOKEN });
   } catch (err: any) {
     console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
@@ -58,6 +59,21 @@ router.post('/setup-admin', authAttemptLimit, async (req: Request, res: Response
     const existing = await dbClient.query('SELECT id FROM users WHERE role = $1', [UserRole.SUPER_ADMIN]);
     if (existing.rowCount > 0) {
       return res.status(403).json({ error: 'Security Exception: Super Admin setup is permanently locked after initialization.' });
+    }
+
+    // A fresh public server must not hand the first Super Admin account to
+    // whoever finds it first. When BELTFLOW_SETUP_TOKEN is set (required in
+    // production), the person setting up must give that code.
+    const expected = process.env.BELTFLOW_SETUP_TOKEN;
+    if (expected) {
+      const supplied = typeof req.body?.setupToken === 'string' ? req.body.setupToken : '';
+      const a = crypto.createHash('sha256').update(supplied).digest();
+      const b = crypto.createHash('sha256').update(expected).digest();
+      if (!supplied || !crypto.timingSafeEqual(a, b)) {
+        res.locals.securityEventRecorded = true;
+        void recordSecurityEvent({ type: 'SUSPICIOUS_ACTIVITY', severity: 'ALERT', req, status: 403, detail: 'first Super Admin setup attempted without the correct setup code' });
+        return res.status(403).json({ error: 'The setup code is missing or wrong.', code: 'SETUP_TOKEN_REQUIRED' });
+      }
     }
 
     const { fullName, email, phone, password, confirmPassword } = req.body;

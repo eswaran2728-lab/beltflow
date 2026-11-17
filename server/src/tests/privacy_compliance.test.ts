@@ -24,6 +24,7 @@ import { dbClient } from '../db/client';
 import { generateAuthToken, hashPasswordServer } from '../security/crypto';
 import { UserRole } from '../security/rbac';
 import { LEGAL_DOCUMENTS_VERSION } from '../config/legal';
+import { mediaStorageAdapter } from '../services/mediaStorageAdapter';
 
 type Res = { status: number; data: any; text: string };
 function request(server: http.Server, method: string, urlPath: string, token?: string, body?: any): Promise<Res> {
@@ -144,6 +145,12 @@ async function runTests() {
     // Money already recorded for the child must survive the deletion.
     await q(`INSERT INTO payments (id, organization_id, student_id, amount, method, submitted_by, status) VALUES ('pay_pc_1', 'org_pc_a', $1, 80, 'Cash', $2, 'Approved')`, [childId, parentId]);
     await q(`INSERT INTO device_push_tokens (id, user_id, token, platform) VALUES ('dev_pc_1', $1, 'ExponentPushToken[test-pc]', 'android')`, [parentId]).catch(() => undefined);
+    // A training video of the child, stored as a file.
+    const videoKey = `persatuan/org_pc_a/students/${childId}/videos/vid_pc_1.mp4`;
+    await mediaStorageAdapter.saveObject(videoKey, Buffer.from([0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70, 0x6d, 0x70, 0x34, 0x32]), 'video/mp4');
+    await q(`INSERT INTO video_submissions (id, organization_id, student_id, uploader_user_id, title, file_size_bytes, mime_type, storage_key, upload_status)
+             VALUES ('vid_pc_1', 'org_pc_a', $1, $2, 'Test clip', 12, 'video/mp4', $3, 'UPLOADED')`, [childId, parentId, videoKey]);
+    assert.ok(await mediaStorageAdapter.getObject(videoKey), 'the video file exists before deletion');
 
     const done = await request(server, 'POST', `/privacy/requests/${requestId}/resolve`, tAdmA, { action: 'COMPLETE', note: 'Removed as requested.' });
     assert.equal(done.status, 200, JSON.stringify(done.data));
@@ -156,6 +163,7 @@ async function runTests() {
     assert.notEqual((await request(server, 'GET', '/privacy/my-data', tParent)).status, 200, 'its old session no longer works');
     assert.equal((await q(`SELECT COUNT(*)::int AS n FROM parent_student_links WHERE parent_id = $1 AND status = 'ACTIVE'`, [parentId])).rows[0].n, 0);
     assert.equal((await q(`SELECT COUNT(*)::int AS n FROM device_push_tokens WHERE user_id = $1`, [parentId])).rows[0].n, 0);
+    assert.equal(await mediaStorageAdapter.getObject(videoKey), null, 'the child\'s video file is removed from storage, not only marked deleted');
     const ledger = (await q(`SELECT amount, status FROM payments WHERE id = 'pay_pc_1'`)).rows[0];
     assert.equal(Number(ledger.amount), 80, 'the financial ledger is kept');
     assert.equal((await q(`SELECT status FROM data_requests WHERE id = $1`, [requestId])).rows[0].status, 'COMPLETED');
