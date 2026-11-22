@@ -1,6 +1,6 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { readableId } from '../../../utils/displayName';
-import { View, Text, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
 import {
   Calendar,
   Users,
@@ -21,8 +21,10 @@ import {
 import { ScreenContainer, ScreenHeader } from '../../../components/Layout';
 import { Card } from '../../../components/Card';
 import { Button } from '../../../components/Button';
-import { StatusBadge } from '../../../components/Badges';
-import { OfflineBanner, LoadingState, ErrorState } from '../../../components/Feedback';
+import { StatusBadge, BeltBadge } from '../../../components/Badges';
+import { SearchInput } from '../../../components/Input';
+import { masterRosterService, MasterClass, RosterStudent } from '../../../services/masterRosterService';
+import { OfflineBanner, LoadingState, ErrorState, EmptyState } from '../../../components/Feedback';
 import { useDashboardData } from '../../../hooks/useDashboardData';
 import { dashboardService, MasterDashboardData } from '../../../services/dashboardService';
 import { useI18n } from '../../../i18n';
@@ -98,7 +100,7 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <StitchAppHeader
-          dojangName={user.organizationId ? t('masterHome.headerPersatuan', { org: readableId(user.organizationId).toUpperCase() }) : t('masterHome.headerPersatuanFallback')}
+          organizationId={user.organizationId}
           roleBadgeText="MASTER"
           hasUnreadNotifications={false}
         />
@@ -123,7 +125,7 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <StitchAppHeader
-          dojangName={user.organizationId ? t('masterHome.headerPersatuan', { org: readableId(user.organizationId).toUpperCase() }) : t('masterHome.headerPersatuanFallback')}
+          organizationId={user.organizationId}
           roleBadgeText="MASTER"
           hasUnreadNotifications={false}
         />
@@ -147,7 +149,7 @@ export const MasterHomeScreen: React.FC<RoleScreenProps> = ({
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StitchAppHeader
-        dojangName={user.organizationId ? t('masterHome.headerPersatuan', { org: readableId(user.organizationId).toUpperCase() }) : t('masterHome.headerPersatuanFallback')}
+        organizationId={user.organizationId}
         roleBadgeText="MASTER"
         hasUnreadNotifications={inbox.unreadCount > 0}
         onNotificationPress={inbox.openInbox}
@@ -492,9 +494,138 @@ export { ClassProposalStatusScreen } from './ClassProposalStatusScreen';
 export { ClassEnrollmentInboxScreen } from './ClassEnrollmentInboxScreen';
 export { ClassWorkspaceScreen } from './ClassWorkspaceScreen';
 
+const ROSTER_STATUS_VARIANT: Record<string, 'success' | 'warning' | 'info' | 'neutral'> = {
+  ACTIVE: 'success', PAUSED: 'warning', PENDING: 'info', INACTIVE: 'neutral',
+};
+
 export const StudentsScreen: React.FC<RoleScreenProps> = props => {
-  const { colors, iconSize } = useTheme();
+  const { colors, iconSize, spacing, typography, borderRadius } = useTheme();
   const { t } = useI18n();
+  const orgId = props.user.organizationId || '';
+  const [classes, setClasses] = useState<MasterClass[] | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [students, setStudents] = useState<RosterStudent[]>([]);
+  const [total, setTotal] = useState(0);
+  const [search, setSearch] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    masterRosterService.listMyClasses(orgId).then(
+      list => {
+        if (!active) return;
+        setClasses(list);
+        setSelected(current => (current && list.some(c => c.id === current) ? current : list[0]?.id ?? null));
+        if (!list.length) setLoading(false);
+      },
+      () => {
+        if (!active) return;
+        setError(true);
+        setLoading(false);
+      }
+    );
+    return () => { active = false; };
+  }, [orgId, attempt]);
+
+  useEffect(() => {
+    if (!selected) return;
+    let active = true;
+    masterRosterService.getRoster(selected, appliedSearch).then(
+      res => {
+        if (!active) return;
+        setStudents(res.students);
+        setTotal(res.total);
+        setError(false);
+        setLoading(false);
+      },
+      () => {
+        if (!active) return;
+        setError(true);
+        setLoading(false);
+      }
+    );
+    return () => { active = false; };
+  }, [selected, appliedSearch, attempt]);
+
+  const chooseClass = (id: string) => {
+    if (id === selected) return;
+    setLoading(true);
+    setStudents([]);
+    setSelected(id);
+  };
+  const runSearch = () => {
+    setLoading(true);
+    setAppliedSearch(search.trim());
+  };
+  const retry = () => {
+    setError(false);
+    setLoading(true);
+    setAttempt(a => a + 1);
+  };
+  const loadMore = () => {
+    if (!selected) return;
+    masterRosterService.getRoster(selected, appliedSearch, students.length).then(
+      res => setStudents(prev => [...prev, ...res.students.filter(s => !prev.some(p => p.id === s.id))]),
+      () => setError(true)
+    );
+  };
+
+  let body: React.ReactNode;
+  if (error) {
+    body = <ErrorState testID="roster-error" message={t('masterHome.roster.loadError')} onRetry={retry} />;
+  } else if (classes && classes.length === 0) {
+    body = <EmptyState testID="roster-no-classes" title={t('masterHome.studentsTitle')} description={t('masterHome.roster.noClasses')} />;
+  } else if (loading || !classes) {
+    body = <LoadingState />;
+  } else if (students.length === 0) {
+    body = (
+      <EmptyState
+        testID="roster-empty"
+        title={appliedSearch ? t('masterHome.roster.emptySearch') : t('masterHome.roster.empty')}
+      />
+    );
+  } else {
+    body = (
+      <View>
+        <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.sm }]}>
+          {t('masterHome.roster.count', { count: total })}
+        </Text>
+        {students.map(s => {
+          const code = String(s.student_status || '').toUpperCase();
+          const known = ROSTER_STATUS_VARIANT[code];
+          return (
+            <Card key={s.id} style={{ marginBottom: spacing.sm }} testID={`roster-row-${s.id}`}>
+              <View style={rosterStyles.row}>
+                <View style={{ flex: 1, marginRight: spacing.sm }}>
+                  <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>{s.full_name}</Text>
+                  <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
+                    {s.group_name ? t('masterHome.roster.group', { name: s.group_name }) : t('masterHome.roster.noGroup')}
+                  </Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <BeltBadge beltName={s.belt_rank} size="sm" />
+                  <StatusBadge
+                    testID={`roster-status-${s.id}`}
+                    status={code}
+                    variant={known || 'neutral'}
+                    label={known ? t(`masterHome.roster.status.${code}`) : t('masterHome.roster.status.OTHER', { status: code })}
+                    style={{ marginTop: spacing.xs }}
+                  />
+                </View>
+              </View>
+            </Card>
+          );
+        })}
+        {students.length < total ? (
+          <Button title={t('masterHome.roster.loadMore')} variant="outline" onPress={loadMore} testID="roster-load-more" />
+        ) : null}
+      </View>
+    );
+  }
+
   return (
     <RolePlaceholderBase
       title={t('masterHome.studentsTitle')}
@@ -506,9 +637,60 @@ export const StudentsScreen: React.FC<RoleScreenProps> = props => {
       testID="master-students-screen"
       icon={<Users size={iconSize.lg} color={colors.buttonPrimaryBg} />}
       scopeDescription={t('masterHome.studentsScope')}
-    />
+    >
+      {classes && classes.length > 0 ? (
+        <View style={{ marginBottom: spacing.md }}>
+          <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
+            {t('masterHome.roster.classesLabel')}
+          </Text>
+          <View style={rosterStyles.chips}>
+            {classes.map(c => {
+              const on = c.id === selected;
+              return (
+                <TouchableOpacity
+                  key={c.id}
+                  testID={`roster-class-${c.id}`}
+                  onPress={() => chooseClass(c.id)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: on }}
+                  accessibilityLabel={c.schedule ? t('masterHome.roster.classA11y', { name: c.name, schedule: c.schedule }) : c.name}
+                  style={[
+                    rosterStyles.chip,
+                    {
+                      borderRadius: borderRadius.full,
+                      borderColor: on ? colors.buttonPrimaryBg : colors.border,
+                      backgroundColor: on ? colors.buttonPrimaryBg : colors.surface,
+                    },
+                  ]}
+                >
+                  <Text style={[typography.caption, { color: on ? colors.buttonPrimaryText : colors.textPrimary }]}>{c.name}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <SearchInput
+            testID="input-roster-search"
+            label={t('masterHome.roster.searchLabel')}
+            placeholder={t('masterHome.roster.searchPlaceholder')}
+            value={search}
+            onChangeText={setSearch}
+            onSubmitEditing={runSearch}
+            returnKeyType="search"
+            onClear={() => { setSearch(''); if (appliedSearch) { setLoading(true); setAppliedSearch(''); } }}
+            containerStyle={{ marginTop: spacing.sm }}
+          />
+        </View>
+      ) : null}
+      {body}
+    </RolePlaceholderBase>
   );
 };
+
+const rosterStyles = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center' },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { borderWidth: 1, paddingHorizontal: 14, paddingVertical: 8, minHeight: 44, justifyContent: 'center' },
+});
 
 export { AttendanceScreen } from './AttendanceScreen';
 export { MasterApplicationStatusScreen } from './MasterApplicationStatusScreen';

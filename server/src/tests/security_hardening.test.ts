@@ -175,6 +175,15 @@ async function runTests() {
     assert.equal((await complete(code2, 'Test-Password-0003')).status, 400, 'a code works once');
     assert.equal((await login('sh_par_reset@example.test', NEW_PASSWORD)).status, 200);
     assert.equal((await login('sh_par_reset@example.test', PASSWORD)).status, 401);
+    // Staff can also name the account by e-mail (the screens have no account list).
+    const byEmail = await request(server, 'POST', '/auth/password-reset/issue', tAdmA, { email: ' SH_PAR_RESET@example.test ' });
+    assert.equal(byEmail.status, 201, 'an Admin can issue a code by the member\'s e-mail: ' + JSON.stringify(byEmail.data));
+    const byEmailOther = await request(server, 'POST', '/auth/password-reset/issue', tAdmB, { email: 'sh_par_reset@example.test' });
+    const byEmailMissing = await request(server, 'POST', '/auth/password-reset/issue', tAdmA, { email: 'nobody-here@example.test' });
+    assert.equal(byEmailOther.status, 403, 'by e-mail, another Persatuan is still refused');
+    assert.equal(byEmailMissing.status, 403, 'an unknown e-mail gets the same answer as a refused one');
+    assert.equal(byEmailOther.data.error, byEmailMissing.data.error, 'the answers cannot be told apart');
+    assert.equal((await request(server, 'POST', '/auth/password-reset/issue', tAdmA, {})).status, 400, 'an account is required');
     console.log('✅ E: reset codes are hashed, expire in 30 minutes, work once and stay inside the Persatuan.');
 
     // ------------------------------------------------------------------ F

@@ -224,7 +224,7 @@ export const CurriculumManagementScreen: React.FC<CurriculumManagementScreenProp
       <StitchAppHeader
         inContainer
         roleBadgeText="ADMIN PERSATUAN"
-        dojangName="PERSATUAN DOJANG"
+        organizationId={user.organizationId}
       />
 
       {/* Screen Title & Subtitle banner */}

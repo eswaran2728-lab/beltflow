@@ -28,7 +28,25 @@ export interface MyData {
   [key: string]: unknown;
 }
 
+/** A request as an administrator sees it (only those they handle). */
+export interface StaffPrivacyRequest extends PrivacyRequest {
+  overdue: boolean;
+  requester: { name: string; email: string; role: string };
+}
+
 export const privacyService = {
+  /** Requests this administrator handles. The server decides which ones. */
+  async listRequestsToHandle(): Promise<StaffPrivacyRequest[]> {
+    const res = await apiClient.get<{ requests: StaffPrivacyRequest[] }>('/privacy/requests');
+    return res?.requests || [];
+  },
+
+  resolveRequest(id: string, action: 'COMPLETE' | 'REJECT', note?: string): Promise<{ message: string }> {
+    const body: Record<string, string> = { action };
+    if (note && note.trim()) body.note = note.trim();
+    return apiClient.post<{ message: string }>(`/privacy/requests/${encodeURIComponent(id)}/resolve`, body);
+  },
+
   getMyData(): Promise<MyData> {
     return apiClient.get<MyData>('/privacy/my-data');
   },

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { readableId } from '../../../utils/displayName';
-import { View, Text, StyleSheet, RefreshControl, TouchableOpacity, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, RefreshControl, TouchableOpacity, Alert, Modal, Share } from 'react-native';
 import {
   CheckSquare,
   FileText,
@@ -30,8 +30,8 @@ import {
 import { ScreenContainer, ScreenHeader } from '../../../components/Layout';
 import { Card } from '../../../components/Card';
 import { Button } from '../../../components/Button';
-import { StatusBadge, BeltBadge } from '../../../components/Badges';
-import { OfflineBanner, LoadingState, ErrorState } from '../../../components/Feedback';
+import { StatusBadge, BeltBadge, StatusBadgeVariant } from '../../../components/Badges';
+import { OfflineBanner, LoadingState, ErrorState, EmptyState } from '../../../components/Feedback';
 import { useDashboardData } from '../../../hooks/useDashboardData';
 import { dashboardService, StudentDashboardData, StudentCertificateSummary } from '../../../services/dashboardService';
 import { StudentDigitalPass } from '../../../components/StudentDigitalPass';
@@ -41,12 +41,25 @@ import { useI18n } from '../../../i18n';
 import { useNotificationInbox } from '../../../components/NotificationsInbox';
 import { useReleaseModules } from '../../../hooks/useReleaseModules';
 import { apiClient } from '../../../services/apiClient';
+import {
+  studentRecordsService,
+  StudentRecordLoader,
+  StudentSelfRecord,
+  StudentAttendanceEntry,
+  StudentCertificate,
+  AttendanceStatus,
+} from '../../../services/studentRecordsService';
 
 export interface RoleScreenProps {
   user: AuthUser;
   onLogout?: () => void;
   isOffline?: boolean;
   navigation?: any;
+}
+
+/** Share a certificate's name, code and date (no personal details). */
+function shareCertificate(t: (key: any, vars?: Record<string, string | number>) => string, title: string, code: string, date: string) {
+  Share.share({ message: t('components.certificate.shareMessage', { title, code, date }) }).catch(() => undefined);
 }
 
 export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
@@ -117,11 +130,7 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
   }, [studentSkills, t]);
 
   const handleDownloadCertificate = (cert: StudentCertificateSummary) => {
-    Alert.alert(
-      t('studentHome.downloadTitle'),
-      t('studentHome.downloadMessage', { number: cert.certificateNumber, belt: cert.beltRank }),
-      [{ text: t('studentHome.ok') }]
-    );
+    shareCertificate(t, t('studentHome.promotionTo', { belt: cert.beltRank }), cert.certificateNumber, new Date(cert.issuedDate).toLocaleDateString());
   };
 
   const handleViewCertificateQr = (cert: StudentCertificateSummary) => {
@@ -222,7 +231,8 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
       {/* 1. Google Stitch App Header */}
       <StitchAppHeader
         inContainer
-        dojangName={data?.persatuanName ? data.persatuanName.toUpperCase() : 'PERSATUAN DOJANG (SELANGOR)'}
+        dojangName={data?.persatuanName ? data.persatuanName.toUpperCase() : undefined}
+        organizationId={user.organizationId}
         roleBadgeText="STUDENT"
         hasUnreadNotifications={inbox.unreadCount > 0}
         onNotificationPress={inbox.openInbox}
@@ -370,12 +380,9 @@ export const StudentHomeScreen: React.FC<RoleScreenProps> = ({
             ))}
           </View>
         ) : (
-          <DigitalCertificateCard
-            title={t('studentHome.promotionTo', { belt: currentBeltRank })}
-            issuedDate={t('studentHome.pendingExam')}
-            certificateNumber="BF-PENDING-EVAL"
-            isVerified={false}
-          />
+          <Text style={[typography.caption, { color: colors.textSecondary }]} testID="home-certificates-empty">
+            {t('studentHome.certificates.emptyBody')}
+          </Text>
         )}
       </View>
 
@@ -674,11 +681,168 @@ export const ProgressScreen: React.FC<RoleScreenProps> = props => {
   );
 };
 
+// The signed-in student's own record id (students.id) and one kind of their
+// records. Never uses the login user id where a student id is required.
+function useOwnStudentRecords<T>(userId: string, load: StudentRecordLoader<T>) {
+  const [student, setStudent] = useState<StudentSelfRecord | null>(null);
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const self = await studentRecordsService.getMyStudentRecord(userId);
+        if (!active) return;
+        setStudent(self);
+        const result = await load(self.id);
+        if (!active) return;
+        setData(result);
+        setFailed(false);
+      } catch {
+        if (active) setFailed(true);
+      } finally {
+        if (active) {
+          setLoading(false);
+          setRefreshing(false);
+        }
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [userId, load, attempt]);
+
+  const retry = useCallback(() => {
+    setFailed(false);
+    setLoading(true);
+    setAttempt(a => a + 1);
+  }, []);
+  const refresh = useCallback(() => {
+    setRefreshing(true);
+    setAttempt(a => a + 1);
+  }, []);
+
+  return { student, data, loading, refreshing, failed, retry, refresh };
+}
+
+const loadAttendance: StudentRecordLoader<StudentAttendanceEntry[]> = studentId =>
+  studentRecordsService.getAttendanceHistory(studentId);
+const loadCertificates: StudentRecordLoader<StudentCertificate[]> = studentId =>
+  studentRecordsService.getCertificates(studentId);
+
+const ATTENDANCE_STATUS_DISPLAY: Record<AttendanceStatus, { key: string; variant: StatusBadgeVariant }> = {
+  PRESENT: { key: 'status.present', variant: 'success' },
+  LATE: { key: 'status.late', variant: 'warning' },
+  ABSENT: { key: 'status.absent', variant: 'danger' },
+  EXCUSED: { key: 'status.excused', variant: 'info' },
+  BOOKED: { key: 'studentHome.attendance.statusBooked', variant: 'neutral' },
+  OTHER: { key: 'studentHome.attendance.statusOther', variant: 'neutral' },
+};
+
 export const StudentAttendanceScreen: React.FC<RoleScreenProps> = props => {
-  const { colors, iconSize } = useTheme();
+  const { colors, iconSize, typography, spacing } = useTheme();
   const { t } = useI18n();
+  const { student, data, loading, refreshing, failed, retry, refresh } = useOwnStudentRecords(
+    props.user.id,
+    loadAttendance
+  );
+  const entries = data ?? [];
+  const summary = studentRecordsService.summarise(entries);
+  const summaryText = t('studentHome.attendance.summary', { attended: summary.attended, total: summary.total });
+
+  let body: React.ReactNode;
+  if (loading) {
+    body = <LoadingState message={t('studentHome.attendance.loading')} testID="student-attendance-loading" />;
+  } else if (failed) {
+    body = (
+      <ErrorState
+        message={t('studentHome.attendance.error')}
+        onRetry={retry}
+        testID="student-attendance-error"
+      />
+    );
+  } else if (entries.length === 0) {
+    body = (
+      <EmptyState
+        title={t('studentHome.attendance.emptyTitle')}
+        description={t('studentHome.attendance.emptyBody')}
+        icon={<CheckSquare size={iconSize.lg} color={colors.textMuted} />}
+        testID="student-attendance-empty"
+      />
+    );
+  } else {
+    body = (
+      <View>
+        <Card
+          variant="standard"
+          style={{ marginBottom: spacing.md }}
+          testID="attendance-summary"
+          accessibilityLabel={summaryText}
+        >
+          <Text style={[typography.sectionHeading, { color: colors.textPrimary }]}>{summaryText}</Text>
+        </Card>
+        <Text
+          style={[typography.titleMedium, { color: colors.textPrimary, marginBottom: spacing.sm }]}
+          accessibilityRole="header"
+        >
+          {t('studentHome.attendance.historyTitle')}
+        </Text>
+        {entries.map(entry => {
+          const display = ATTENDANCE_STATUS_DISPLAY[entry.status];
+          const statusLabel = t(display.key);
+          const timeText = entry.startTime && entry.endTime ? `${entry.startTime} – ${entry.endTime}` : entry.startTime;
+          const placeText = [timeText, entry.location].filter(Boolean).join(' • ');
+          return (
+            <Card
+              key={entry.id}
+              variant="standard"
+              style={{ marginBottom: spacing.sm, minHeight: 44 }}
+              testID={`attendance-row-${entry.id}`}
+              accessibilityLabel={t('studentHome.attendance.rowA11y', {
+                date: entry.sessionDate,
+                group: entry.groupName,
+                status: statusLabel,
+              })}
+            >
+              <View style={styles.userRow}>
+                <View style={{ flex: 1, marginRight: spacing.sm }}>
+                  <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>{entry.sessionDate}</Text>
+                  <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginTop: 2 }]}>
+                    {entry.groupName}
+                  </Text>
+                  {placeText ? (
+                    <Text style={[typography.caption, { color: colors.textMuted, marginTop: 2 }]}>{placeText}</Text>
+                  ) : null}
+                  {entry.isExtra ? (
+                    <Text style={[typography.caption, { color: colors.buttonPrimaryBg, marginTop: 2, fontWeight: '600' }]}>
+                      {t('studentHome.attendance.extra')}
+                    </Text>
+                  ) : null}
+                </View>
+                <StatusBadge
+                  status={entry.status}
+                  label={statusLabel}
+                  variant={display.variant}
+                  testID={`attendance-status-${entry.id}`}
+                />
+              </View>
+            </Card>
+          );
+        })}
+      </View>
+    );
+  }
+
   return (
-    <ScreenContainer scrollable testID="student-attendance-screen">
+    <ScreenContainer
+      scrollable
+      testID="student-attendance-screen"
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
+    >
       <StitchAppHeader
         inContainer
         dojangName={t('studentHome.attendance.header')}
@@ -694,17 +858,21 @@ export const StudentAttendanceScreen: React.FC<RoleScreenProps> = props => {
           <OfflineBanner message={t('studentHome.attendance.offline')} />
         </View>
       )}
-      <StudentDigitalPass
-        student={{
-          id: props.user.id,
-          organizationId: props.user.organizationId || '',
-          fullName: props.user.fullName,
-          beltRank: (props.user as any).beltRank || 'White Belt',
-          status: 'ACTIVE',
-        }}
-        isOffline={props.isOffline}
-        testID="student-personal-pass"
-      />
+      {/* The pass carries the student record id (students.id): the server's
+          digital-pass and verify-pass routes look the student up by that id. */}
+      {student ? (
+        <StudentDigitalPass
+          student={{
+            id: student.id,
+            organizationId: student.organizationId || props.user.organizationId || '',
+            fullName: student.fullName || props.user.fullName,
+            beltRank: student.beltRank,
+            status: student.status,
+          }}
+          isOffline={props.isOffline}
+          testID="student-personal-pass"
+        />
+      ) : null}
       <RolePlaceholderBase
         title={t('studentHome.attendance.logTitle')}
         subtitle={t('studentHome.attendance.logSubtitle')}
@@ -715,17 +883,98 @@ export const StudentAttendanceScreen: React.FC<RoleScreenProps> = props => {
         testID="student-attendance-log"
         icon={<CheckSquare size={iconSize.lg} color={colors.buttonPrimaryBg} />}
         scopeDescription={t('studentHome.attendance.logScope')}
-      />
+      >
+        {body}
+      </RolePlaceholderBase>
     </ScreenContainer>
   );
 };
 
 export const CertificatesScreen: React.FC<RoleScreenProps> = props => {
-  const { colors, iconSize } = useTheme();
+  const { colors, iconSize, typography, spacing } = useTheme();
   const { t } = useI18n();
+  const { data, loading, refreshing, failed, retry, refresh } = useOwnStudentRecords(
+    props.user.id,
+    loadCertificates
+  );
+  const certificates = data ?? [];
+
+  let body: React.ReactNode;
+  if (loading) {
+    body = <LoadingState message={t('studentHome.certificates.loading')} testID="student-certificates-loading" />;
+  } else if (failed) {
+    body = (
+      <ErrorState
+        message={t('studentHome.certificates.error')}
+        onRetry={retry}
+        testID="student-certificates-error"
+      />
+    );
+  } else if (certificates.length === 0) {
+    body = (
+      <EmptyState
+        title={t('studentHome.certificates.emptyTitle')}
+        description={t('studentHome.certificates.emptyBody')}
+        icon={<FileText size={iconSize.lg} color={colors.textMuted} />}
+        testID="student-certificates-empty"
+      />
+    );
+  } else {
+    body = (
+      <View>
+        {certificates.map(cert => {
+          const valid = !cert.isRevoked && cert.status === 'ACTIVE';
+          const statusLabel = cert.isRevoked
+            ? t('studentHome.certificates.statusRevoked')
+            : valid
+              ? t('studentHome.certificates.statusValid')
+              : undefined;
+          const issued = cert.issueDate || t('studentHome.certificates.noDate');
+          return (
+            <View
+              key={cert.id}
+              style={{ marginBottom: spacing.md }}
+              testID={`certificate-${cert.id}`}
+              accessible
+              accessibilityLabel={t('studentHome.certificates.cardA11y', {
+                title: cert.rankOrTitle,
+                status: statusLabel ?? cert.status,
+                date: issued,
+              })}
+            >
+              <DigitalCertificateCard
+                title={cert.rankOrTitle}
+                issuedDate={issued}
+                certificateNumber={cert.code}
+                isVerified={valid}
+                onDownloadPress={valid ? () => shareCertificate(t, cert.rankOrTitle, cert.code, issued) : undefined}
+              />
+              <View style={{ flexDirection: 'row', marginTop: spacing.sm }}>
+                <StatusBadge
+                  status={cert.isRevoked ? 'REVOKED' : cert.status}
+                  label={statusLabel}
+                  variant={cert.isRevoked ? 'danger' : valid ? 'success' : 'neutral'}
+                  testID={`certificate-status-${cert.id}`}
+                />
+              </View>
+              {cert.isRevoked ? (
+                <Text style={[typography.caption, { color: colors.textSecondary, marginTop: spacing.xs }]}>
+                  {t('studentHome.certificates.revokedNote')}
+                </Text>
+              ) : null}
+            </View>
+          );
+        })}
+      </View>
+    );
+  }
 
   return (
-    <ScreenContainer scrollable testID="student-certificates-screen">
+    <ScreenContainer
+      scrollable
+      testID="student-certificates-screen"
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
+    >
       <StitchAppHeader
         inContainer
         dojangName={t('studentHome.certificates.header')}
@@ -736,14 +985,6 @@ export const CertificatesScreen: React.FC<RoleScreenProps> = props => {
         title={t('studentHome.certificates.title')}
         subtitle={t('studentHome.certificates.subtitle')}
       />
-      <View style={{ marginBottom: 16 }}>
-        <DigitalCertificateCard
-          title={t('studentHome.certificates.credentialTitle')}
-          issuedDate={t('studentHome.certificates.credentialIssued')}
-          certificateNumber="BF-CREDENTIAL-ACTIVE"
-          isVerified={true}
-        />
-      </View>
       <RolePlaceholderBase
         title={t('studentHome.certificates.archiveTitle')}
         subtitle={t('studentHome.certificates.archiveSubtitle')}
@@ -751,10 +992,12 @@ export const CertificatesScreen: React.FC<RoleScreenProps> = props => {
         user={props.user}
         onLogout={props.onLogout}
         isOffline={props.isOffline}
-        testID="student-certificates-screen"
+        testID="student-certificates-archive"
         icon={<FileText size={iconSize.lg} color={colors.buttonPrimaryBg} />}
         scopeDescription={t('studentHome.certificates.archiveScope')}
-      />
+      >
+        {body}
+      </RolePlaceholderBase>
     </ScreenContainer>
   );
 };

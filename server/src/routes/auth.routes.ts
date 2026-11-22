@@ -331,11 +331,16 @@ const hashResetCode = (code: string) => crypto.createHash('sha256').update(code.
 router.post('/password-reset/issue', authAttemptLimit, authenticateJWT, async (req: Request, res: Response) => {
   try {
     const actor = req.user!;
-    const { userId } = req.body || {};
-    if (typeof userId !== 'string' || !userId) {
-      return res.status(400).json({ error: 'userId is required.' });
+    // The account is named by id or, from screens without an account list, by e-mail.
+    const { userId, email } = req.body || {};
+    const byId = typeof userId === 'string' && userId.length > 0 && userId.length <= 128;
+    const byEmail = !byId && typeof email === 'string' && email.trim().length > 0 && email.length <= 320;
+    if (!byId && !byEmail) {
+      return res.status(400).json({ error: 'userId or email is required.' });
     }
-    const targetRes = await dbClient.query('SELECT id, role, organization_id, status FROM users WHERE id = $1', [userId]);
+    const targetRes = byId
+      ? await dbClient.query('SELECT id, role, organization_id, status FROM users WHERE id = $1', [userId])
+      : await dbClient.query('SELECT id, role, organization_id, status FROM users WHERE LOWER(email) = LOWER($1)', [email.trim()]);
     const target = targetRes.rows[0];
     const allowed = !!target && target.id !== actor.id && (
       (actor.role === UserRole.ADMIN_PERSATUAN && !!actor.organizationId && target.organization_id === actor.organizationId &&
@@ -859,6 +864,15 @@ router.get('/parent-link-requests', authenticateJWT, async (req: Request, res: R
                JOIN students s ON s.id = psl.student_id
                WHERE psl.student_id = $1 AND psl.status = 'PENDING_STUDENT'`;
       params = [stuId];
+    } else if (user.role === UserRole.PARENT) {
+      // A parent sees only the requests they sent themselves, in every state.
+      query = `SELECT psl.id, psl.student_id, psl.status, psl.student_approved, psl.master_approved, psl.admin_approved,
+                      psl.created_at, s.full_name as student_name
+               FROM parent_student_links psl
+               JOIN students s ON s.id = psl.student_id
+               WHERE psl.parent_id = $1
+               ORDER BY psl.created_at DESC`;
+      params = [user.id];
     } else {
       return res.status(403).json({ error: 'Access denied.' });
     }

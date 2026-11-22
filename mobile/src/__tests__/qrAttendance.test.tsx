@@ -529,6 +529,23 @@ describe('BeltFlow Phase 2 Task 2.4 — QR Attendance Scanner & Student Digital 
       role: 'STUDENT',
       organizationId: currentOrgId,
     };
+    // The pass is built from the student record (students.id), not the login id.
+    (apiClient.get as jest.Mock).mockImplementation(async (path: string) => {
+      if (path === '/api/v1/students/me') {
+        return {
+          student: {
+            id: 'stu_student_1',
+            user_id: 'usr_student_1',
+            organization_id: currentOrgId,
+            full_name: 'Dinesh Kumar',
+            belt_rank: 'Yellow Belt',
+            status: 'ACTIVE',
+          },
+        };
+      }
+      if (path === '/api/v1/attendance/student/stu_student_1/history') return { attendance: [] };
+      throw new Error('unexpected GET ' + path);
+    });
 
     const screen = await render(
       <SafeAreaProvider initialMetrics={mockSafeAreaMetrics}>
@@ -539,7 +556,7 @@ describe('BeltFlow Phase 2 Task 2.4 — QR Attendance Scanner & Student Digital 
     );
 
     expect(screen.getByTestId('student-attendance-screen')).toBeTruthy();
-    expect(screen.getByTestId('student-personal-pass')).toBeTruthy();
+    expect(await screen.findByTestId('student-personal-pass')).toBeTruthy();
     expect(screen.getAllByText('Dinesh Kumar').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByTestId('pass-belt-badge')).toBeTruthy();
     expect(screen.getByTestId('pass-status-badge')).toBeTruthy();

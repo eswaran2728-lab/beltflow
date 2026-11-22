@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
-import { Download, QrCode } from 'lucide-react-native';
+import { Share2, QrCode } from 'lucide-react-native';
 import { StitchTokens } from '../../theme/tokens';
 import { useI18n } from '../../i18n';
 
@@ -51,19 +51,10 @@ export const DigitalCertificateCard: React.FC<DigitalCertificateCardProps> = ({
             activeOpacity={0.85}
             testID="btn-download-cert"
           >
-            <Download size={14} color="#FFFFFF" />
+            <Share2 size={14} color="#FFFFFF" />
             <Text style={styles.downloadBtnText}>{t('components.certificate.download')}</Text>
           </TouchableOpacity>
-        ) : (
-          <View
-            style={[styles.downloadBtn, { backgroundColor: '#94A3B8' }]}
-            testID="btn-download-cert-disabled"
-            accessibilityState={{ disabled: true }}
-          >
-            <Download size={14} color="#E2E8F0" />
-            <Text style={styles.downloadBtnText}>{t('components.certificate.pending')}</Text>
-          </View>
-        )}
+        ) : null}
 
         {onViewQrPress && (
           <TouchableOpacity

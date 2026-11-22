@@ -12,6 +12,7 @@ import { Button } from '../../components/Button';
 import { AuthUser, RoleType } from '../../types/auth';
 import { useI18n } from '../../i18n';
 import { PrivacyDataSheet } from '../../components/PrivacyDataSheet';
+import { StaffPasswordResetCard } from '../../components/StaffPasswordResetCard';
 
 export interface RolePlaceholderBaseProps {
   title: string;
@@ -27,6 +28,8 @@ export interface RolePlaceholderBaseProps {
   children?: React.ReactNode;
   /** H28: show the app-wide language picker (Profile screens). */
   showLanguageSelector?: boolean;
+  /** Show the "Coming soon" card. Off by default: no screen should need it. */
+  comingSoon?: boolean;
 }
 
 export const RolePlaceholderBase: React.FC<RolePlaceholderBaseProps> = ({
@@ -42,6 +45,7 @@ export const RolePlaceholderBase: React.FC<RolePlaceholderBaseProps> = ({
   actionButtons,
   children,
   showLanguageSelector = false,
+  comingSoon = false,
 }) => {
   const { colors, typography, spacing, iconSize } = useTheme();
   const [privacyOpen, setPrivacyOpen] = useState(false);
@@ -138,9 +142,11 @@ export const RolePlaceholderBase: React.FC<RolePlaceholderBaseProps> = ({
             />
           </Card>
         ) : null}
-        <PrivacyDataSheet visible={privacyOpen} onClose={() => setPrivacyOpen(false)} />
+        {showLanguageSelector ? <StaffPasswordResetCard role={user.role} /> : null}
+        <PrivacyDataSheet visible={privacyOpen} onClose={() => setPrivacyOpen(false)} role={user.role} />
 
-        {/* Feature Overview Card */}
+        {/* Feature Overview Card: only for a feature that is not built yet (none today). */}
+        {comingSoon ? (
         <Card variant="elevated" style={styles.featureCard}>
           <View style={styles.featureHeaderRow}>
             {icon ? (
@@ -172,6 +178,7 @@ export const RolePlaceholderBase: React.FC<RolePlaceholderBaseProps> = ({
             <View style={{ marginTop: spacing.lg }}>{actionButtons}</View>
           ) : null}
         </Card>
+        ) : null}
 
         {/* Children content if any */}
         {children ? <View style={{ marginTop: spacing.md }}>{children}</View> : null}

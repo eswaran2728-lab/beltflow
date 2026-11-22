@@ -18,6 +18,7 @@ import { useI18n } from '../i18n';
 import { getApiBaseUrl } from '../config/env';
 import { Button } from './Button';
 import { Card } from './Card';
+import { StaffPrivacyRequests } from './StaffPrivacyRequests';
 import { privacyService, MyData, PrivacyRequest, PrivacyRequestType } from '../services/privacyService';
 
 /**
@@ -28,11 +29,13 @@ import { privacyService, MyData, PrivacyRequest, PrivacyRequestType } from '../s
 export interface PrivacyDataSheetProps {
   visible: boolean;
   onClose: () => void;
+  /** The signed-in role. Administrators also see the requests they handle. */
+  role?: string | null;
 }
 
 const TYPES: PrivacyRequestType[] = ['CORRECT', 'DELETE', 'WITHDRAW_CONSENT'];
 
-export const PrivacyDataSheet: React.FC<PrivacyDataSheetProps> = ({ visible, onClose }) => {
+export const PrivacyDataSheet: React.FC<PrivacyDataSheetProps> = ({ visible, onClose, role }) => {
   const { colors, typography, spacing, borderRadius } = useTheme();
   const { t } = useI18n();
 
@@ -281,6 +284,7 @@ export const PrivacyDataSheet: React.FC<PrivacyDataSheetProps> = ({ visible, onC
               ))
             )}
           </Card>
+          {visible ? <StaffPrivacyRequests role={role} /> : null}
         </ScrollView>
       </SafeAreaView>
     </Modal>

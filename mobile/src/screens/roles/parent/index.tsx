@@ -1,8 +1,7 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { readableId } from '../../../utils/displayName';
-import { View, Text, StyleSheet, RefreshControl, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, RefreshControl, TouchableOpacity, ScrollView, Linking } from 'react-native';
 import {
-  Users,
   Award,
   Bell,
   ArrowRight,
@@ -10,6 +9,10 @@ import {
   LogOut,
   Calendar,
   MessageSquare,
+  Square,
+  CheckSquare,
+  AlertTriangle,
+  Link2,
 } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { StitchTokens } from '../../../theme/tokens';
@@ -24,7 +27,14 @@ import {
 import { ScreenContainer, ScreenHeader } from '../../../components/Layout';
 import { Card } from '../../../components/Card';
 import { Button } from '../../../components/Button';
-import { StatusBadge, BeltBadge } from '../../../components/Badges';
+import { StatusBadge, BeltBadge, StatusBadgeVariant } from '../../../components/Badges';
+import { Input } from '../../../components/Input';
+import { getApiBaseUrl } from '../../../config/env';
+import {
+  parentRecordsService,
+  ParentLinkRequest,
+  ParentNotice,
+} from '../../../services/parentRecordsService';
 import { OfflineBanner, LoadingState, ErrorState, EmptyState } from '../../../components/Feedback';
 import { useDashboardData } from '../../../hooks/useDashboardData';
 import { dashboardService, ParentDashboardData, ParentChildSummary } from '../../../services/dashboardService';
@@ -565,6 +575,293 @@ function getBeltDotColor(beltRank?: string): string {
   return '#94A3B8';
 }
 
+/** Sign-out button for a screen header (same action the placeholder offered). */
+const SignOutAction: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
+  const { colors, iconSize } = useTheme();
+  const { t } = useI18n();
+  if (!onLogout) return null;
+  return (
+    <Button
+      label={t('parentHome.signOut')}
+      onPress={onLogout}
+      variant="outline"
+      size="sm"
+      leftIcon={<LogOut size={iconSize.sm} color={colors.textSecondary} />}
+      testID="btn-role-logout"
+      accessibilityLabel={t('parentHome.signOutA11y')}
+    />
+  );
+};
+
+function errorReason(err: unknown): string {
+  return (err as { message?: string } | null)?.message || '';
+}
+
+// Server statuses: server/src/routes/auth.routes.ts (parent_student_links.status).
+const LINK_STATUSES = ['PENDING_STUDENT', 'PENDING_MASTER', 'PENDING_ADMIN', 'ACTIVE', 'REJECTED', 'REVOKED'];
+const LINK_STATUS_VARIANT: Record<string, StatusBadgeVariant> = {
+  PENDING_STUDENT: 'warning',
+  PENDING_MASTER: 'warning',
+  PENDING_ADMIN: 'warning',
+  ACTIVE: 'success',
+  REJECTED: 'danger',
+  REVOKED: 'neutral',
+};
+
+interface LinkRequestsState {
+  loading: boolean;
+  error: boolean;
+  /** False when the server does not list requests for parent accounts (403). */
+  available: boolean;
+  requests: ParentLinkRequest[];
+  /** Requests sent from this screen (the server response rows). */
+  sent: ParentLinkRequest[];
+  reload(): Promise<void>;
+  addSent: (request: ParentLinkRequest) => void;
+}
+
+function useLinkRequests(): LinkRequestsState {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [available, setAvailable] = useState(true);
+  const [requests, setRequests] = useState<ParentLinkRequest[]>([]);
+  const [sent, setSent] = useState<ParentLinkRequest[]>([]);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  // Only sets state after the request settles (safe to call from an effect).
+  const fetchList = useCallback(async () => {
+    try {
+      const res = await parentRecordsService.listLinkRequests();
+      if (!mounted.current) return;
+      setAvailable(res.available);
+      setRequests(res.requests);
+      setError(false);
+    } catch {
+      if (mounted.current) setError(true);
+    } finally {
+      if (mounted.current) setLoading(false);
+    }
+  }, []);
+
+  const reload = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    await fetchList();
+  }, [fetchList]);
+
+  useEffect(() => {
+    // Load once on mount; state is set only after the request settles.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchList();
+  }, [fetchList]);
+
+  const addSent = useCallback((request: ParentLinkRequest) => {
+    setSent(prev => [request, ...prev.filter(r => r.id !== request.id)]);
+  }, []);
+
+  return useMemo(
+    () => ({ loading, error, available, requests, sent, reload, addSent }),
+    [loading, error, available, requests, sent, reload, addSent]
+  );
+}
+
+const LinkChildSection: React.FC<{ links: LinkRequestsState }> = ({ links }) => {
+  const { colors, typography, spacing, iconSize } = useTheme();
+  const { t } = useI18n();
+  const [icNumber, setIcNumber] = useState('');
+  const [guardian, setGuardian] = useState(false);
+  const [icError, setIcError] = useState('');
+  const [guardianError, setGuardianError] = useState('');
+  const [submitError, setSubmitError] = useState('');
+  const [sentNote, setSentNote] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  const submit = async () => {
+    const value = icNumber.trim();
+    setIcError(value ? '' : t('parentHome.link.icRequired'));
+    setGuardianError(guardian ? '' : t('parentHome.link.guardianRequired'));
+    setSubmitError('');
+    setSentNote(false);
+    if (!value || !guardian || sending) return;
+    setSending(true);
+    try {
+      const request = await parentRecordsService.requestChildLink(value);
+      if (request) links.addSent(request);
+      setIcNumber('');
+      setGuardian(false);
+      setSentNote(true);
+    } catch (err) {
+      setSubmitError(t('parentHome.link.failed', { reason: errorReason(err) }));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const serverIds = new Set(links.requests.map(r => r.id));
+  const shown = [...links.sent.filter(r => !serverIds.has(r.id)), ...links.requests];
+
+  return (
+    <>
+      <Card variant="standard" style={[styles.sectionCard, { marginTop: spacing.md }]} testID="parent-link-child">
+        <View style={[styles.sectionHeaderRow, { justifyContent: 'flex-start', gap: spacing.sm, marginBottom: spacing.sm }]}>
+          <Link2 size={iconSize.md} color={colors.buttonPrimaryBg} />
+          <Text style={[typography.sectionHeading, { color: colors.textPrimary, flex: 1 }]} accessibilityRole="header">
+            {t('parentHome.link.title')}
+          </Text>
+        </View>
+        <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginBottom: spacing.md }]}>
+          {t('parentHome.link.intro')}
+        </Text>
+        <Input
+          label={t('parentHome.link.icLabel')}
+          accessibilityLabel={t('parentHome.link.icLabel')}
+          placeholder={t('parentHome.link.icPlaceholder')}
+          value={icNumber}
+          onChangeText={text => {
+            setIcNumber(text);
+            if (icError) setIcError('');
+          }}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          errorText={icError || undefined}
+          testID="input-link-child-ic"
+        />
+        <TouchableOpacity
+          onPress={() => {
+            setGuardian(v => !v);
+            setGuardianError('');
+          }}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: guardian }}
+          accessibilityLabel={t('parentHome.link.guardianConfirm')}
+          style={[styles.checkboxRow, { marginTop: spacing.md, gap: spacing.sm }]}
+          testID="checkbox-link-guardian"
+        >
+          {guardian ? (
+            <CheckSquare size={iconSize.md} color={colors.buttonPrimaryBg} />
+          ) : (
+            <Square size={iconSize.md} color={colors.textSecondary} />
+          )}
+          <Text style={[typography.bodyMedium, { color: colors.textPrimary, flex: 1 }]}>
+            {t('parentHome.link.guardianConfirm')}
+          </Text>
+        </TouchableOpacity>
+        {guardianError ? (
+          <Text style={[typography.caption, { color: colors.errorText }]} accessibilityRole="alert">
+            {guardianError}
+          </Text>
+        ) : null}
+        <TouchableOpacity
+          onPress={() => {
+            Linking.openURL(`${getApiBaseUrl()}/legal/privacy.html`).catch(() => undefined);
+          }}
+          accessibilityRole="link"
+          accessibilityLabel={t('parentHome.link.privacyLink')}
+          accessibilityHint={t('parentHome.link.privacyOpens')}
+          style={styles.linkTarget}
+          testID="link-link-privacy"
+        >
+          <Text style={[typography.bodyMedium, { color: colors.buttonPrimaryBg, fontWeight: '600', textDecorationLine: 'underline' }]}>
+            {t('parentHome.link.privacyLink')}
+          </Text>
+        </TouchableOpacity>
+        <Button
+          label={t('parentHome.link.send')}
+          onPress={submit}
+          loading={sending}
+          variant="primary"
+          size="md"
+          fullWidth
+          style={{ marginTop: spacing.sm }}
+          testID="btn-send-link-request"
+          accessibilityLabel={t('parentHome.link.sendA11y')}
+        />
+        {submitError ? (
+          <Text
+            style={[typography.bodyMedium, { color: colors.errorText, marginTop: spacing.sm }]}
+            accessibilityRole="alert"
+            testID="link-request-error"
+          >
+            {submitError}
+          </Text>
+        ) : null}
+        {sentNote ? (
+          <Text
+            style={[typography.bodyMedium, { color: colors.textPrimary, marginTop: spacing.sm }]}
+            accessibilityLiveRegion="polite"
+            testID="link-request-sent"
+          >
+            {t('parentHome.link.sent')}
+          </Text>
+        ) : null}
+      </Card>
+
+      <Card variant="standard" style={[styles.sectionCard, { marginTop: spacing.md }]} testID="parent-link-requests">
+        <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.sm }]} accessibilityRole="header">
+          {t('parentHome.link.requestsTitle')}
+        </Text>
+        {links.loading ? (
+          <LoadingState message={t('parentHome.link.loading')} testID="link-requests-loading" />
+        ) : links.error ? (
+          <ErrorState message={t('parentHome.link.requestsError')} onRetry={links.reload} testID="link-requests-error" />
+        ) : (
+          <>
+            {!links.available ? (
+              <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.sm }]} testID="link-requests-unavailable">
+                {t('parentHome.link.requestsUnavailable')}
+              </Text>
+            ) : null}
+            {shown.length === 0 && links.available ? (
+              <EmptyState
+                title={t('parentHome.link.requestsEmpty')}
+                description={t('parentHome.link.requestsEmptyBody')}
+                testID="link-requests-empty"
+              />
+            ) : null}
+            {shown.map(request => {
+              const known = LINK_STATUSES.includes(request.status);
+              const statusText = known
+                ? t(`parentHome.link.status.${request.status}`)
+                : t('parentHome.link.status.other', { status: String(request.status) });
+              return (
+                <View
+                  key={request.id}
+                  style={[styles.requestRow, { borderColor: colors.border, paddingVertical: spacing.sm }]}
+                  testID={`link-request-${request.id}`}
+                >
+                  <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
+                    {request.student_name
+                      ? t('parentHome.link.requestChild', { name: request.student_name })
+                      : t('parentHome.link.requestChildUnknown')}
+                  </Text>
+                  {request.created_at ? (
+                    <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
+                      {t('parentHome.link.requestDate', { date: formatCertDate(request.created_at) })}
+                    </Text>
+                  ) : null}
+                  <StatusBadge
+                    status={String(request.status)}
+                    label={statusText}
+                    variant={LINK_STATUS_VARIANT[request.status] || 'neutral'}
+                    style={{ alignSelf: 'flex-start', marginTop: spacing.xs }}
+                    testID={`link-request-status-${request.id}`}
+                  />
+                </View>
+              );
+            })}
+          </>
+        )}
+      </Card>
+    </>
+  );
+};
+
 export const ChildrenScreen: React.FC<RoleScreenProps> = props => {
   const { colors, iconSize, typography, spacing } = useTheme();
   const { t } = useI18n();
@@ -575,10 +872,20 @@ export const ChildrenScreen: React.FC<RoleScreenProps> = props => {
   const fetcher = useCallback(() => {
     return dashboardService.getParentDashboard(props.user);
   }, [props.user]);
-  const { data } = useDashboardData<ParentDashboardData>({
+  const { data, refresh } = useDashboardData<ParentDashboardData>({
     fetcher,
     isOffline: props.isOffline,
   });
+  const links = useLinkRequests();
+  const [pulling, setPulling] = useState(false);
+  const onPull = useCallback(async () => {
+    setPulling(true);
+    try {
+      await Promise.all([Promise.resolve(refresh()), links.reload()]);
+    } finally {
+      setPulling(false);
+    }
+  }, [refresh, links]);
 
   const childrenList: LinkedChildPassData[] = (data?.children || []).map(c => ({
     id: c.id,
@@ -589,10 +896,22 @@ export const ChildrenScreen: React.FC<RoleScreenProps> = props => {
   }));
 
   return (
-    <ScreenContainer scrollable testID="parent-children-screen">
+    <ScreenContainer
+      scrollable
+      testID="parent-children-screen"
+      refreshControl={
+        <RefreshControl
+          refreshing={pulling}
+          onRefresh={onPull}
+          tintColor={StitchTokens.colors.colorAccent}
+          colors={[StitchTokens.colors.colorAccent]}
+        />
+      }
+    >
       <ScreenHeader
         title={t('parentHome.children.title')}
         subtitle={t('parentHome.children.subtitle')}
+        rightAction={<SignOutAction onLogout={props.onLogout} />}
       />
       {props.isOffline && (
         <View style={{ marginBottom: 12 }}>
@@ -687,17 +1006,7 @@ export const ChildrenScreen: React.FC<RoleScreenProps> = props => {
           ))}
         </View>
       ) : null}
-      <RolePlaceholderBase
-        title={t('parentHome.children.overviewTitle')}
-        subtitle={t('parentHome.children.overviewSubtitle')}
-        role={UserRole.PARENT}
-        user={props.user}
-        onLogout={props.onLogout}
-        isOffline={props.isOffline}
-        testID="parent-children-overview"
-        icon={<Users size={iconSize.lg} color={colors.buttonPrimaryBg} />}
-        scopeDescription={t('parentHome.children.scope')}
-      />
+      <LinkChildSection links={links} />
     </ScreenContainer>
   );
 };
@@ -712,21 +1021,203 @@ export { ParentStudentLifecycleScreen } from './ParentStudentLifecycleScreen';
 export { FamilyTimelineHubScreen } from './FamilyTimelineHubScreen';
 export { ParentMasterMessagingScreen } from './ParentMasterMessagingScreen';
 
+// Notice types: server/src/routes/notices.routes.ts (VALID_NOTICE_TYPES).
+// The server has no priority field; a cancelled class or a schedule change is
+// marked Important (icon and text, not colour alone).
+const NOTICE_TYPES = ['NEW_SCHEDULE', 'SCHEDULE_CHANGE', 'CANCELLED', 'EXTRA_SESSION', 'GENERAL'];
+const IMPORTANT_NOTICE_TYPES = ['CANCELLED', 'SCHEDULE_CHANGE'];
+
 export const NoticesScreen: React.FC<RoleScreenProps> = props => {
-  const { colors, iconSize } = useTheme();
+  const { colors, typography, spacing, iconSize } = useTheme();
   const { t } = useI18n();
+  const { user } = props;
+  const [notices, setNotices] = useState<ParentNotice[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [acked, setAcked] = useState<Record<string, boolean>>({});
+  const [acking, setAcking] = useState<Record<string, boolean>>({});
+  const [ackErrors, setAckErrors] = useState<Record<string, string>>({});
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  // Linked children with their class: a parent acknowledges for a child.
+  const fetcher = useCallback(() => dashboardService.getParentDashboard(user), [user]);
+  const { data: dashboard } = useDashboardData<ParentDashboardData>({ fetcher, isOffline: props.isOffline });
+
+  const load = useCallback(async (mode: 'initial' | 'refresh') => {
+    if (mode === 'refresh') setRefreshing(true);
+    else setLoading(true);
+    setFailed(false);
+    try {
+      const list = await parentRecordsService.listNotices();
+      if (mounted.current) setNotices(list);
+    } catch {
+      if (mounted.current) setFailed(true);
+    } finally {
+      if (mounted.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    load('initial');
+  }, [load]);
+
+  const acknowledge = async (notice: ParentNotice) => {
+    setAcking(prev => ({ ...prev, [notice.id]: true }));
+    setAckErrors(prev => ({ ...prev, [notice.id]: '' }));
+    try {
+      const family = dashboard ?? (await dashboardService.getParentDashboard(user));
+      const children = (family?.children || []).filter(c => c.classId === notice.class_id);
+      if (children.length === 0) {
+        setAckErrors(prev => ({ ...prev, [notice.id]: t('parentHome.notices.ackNoChild') }));
+        return;
+      }
+      for (const child of children) {
+        await parentRecordsService.acknowledgeNotice(notice.id, child.id);
+      }
+      if (mounted.current) setAcked(prev => ({ ...prev, [notice.id]: true }));
+    } catch (err) {
+      if (mounted.current) {
+        setAckErrors(prev => ({ ...prev, [notice.id]: t('parentHome.notices.ackFailed', { reason: errorReason(err) }) }));
+      }
+    } finally {
+      if (mounted.current) setAcking(prev => ({ ...prev, [notice.id]: false }));
+    }
+  };
+
   return (
-    <RolePlaceholderBase
-      title={t('parentHome.notices.title')}
-      subtitle={t('parentHome.notices.subtitle')}
-      role={UserRole.PARENT}
-      user={props.user}
-      onLogout={props.onLogout}
-      isOffline={props.isOffline}
+    <ScreenContainer
+      scrollable
       testID="parent-notices-screen"
-      icon={<Bell size={iconSize.lg} color={colors.buttonPrimaryBg} />}
-      scopeDescription={t('parentHome.notices.scope')}
-    />
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => load('refresh')}
+          tintColor={StitchTokens.colors.colorAccent}
+          colors={[StitchTokens.colors.colorAccent]}
+        />
+      }
+    >
+      <ScreenHeader
+        title={t('parentHome.notices.title')}
+        subtitle={t('parentHome.notices.subtitle')}
+        rightAction={<SignOutAction onLogout={props.onLogout} />}
+      />
+      {props.isOffline ? (
+        <View style={{ marginBottom: spacing.md }}>
+          <OfflineBanner message={t('auth.role.offline')} />
+        </View>
+      ) : null}
+      {loading ? (
+        <LoadingState message={t('parentHome.notices.loading')} testID="notices-loading" />
+      ) : failed ? (
+        <ErrorState message={t('parentHome.notices.error')} onRetry={() => load('initial')} testID="notices-error" />
+      ) : notices.length === 0 ? (
+        <EmptyState
+          title={t('parentHome.notices.empty')}
+          description={t('parentHome.notices.emptyBody')}
+          icon={<Bell size={iconSize.xl} color={colors.textMuted} />}
+          testID="notices-empty"
+        />
+      ) : (
+        <View style={{ gap: spacing.md }}>
+          {notices.map(notice => {
+            const title = NOTICE_TYPES.includes(notice.type)
+              ? t(`parentHome.notices.type.${notice.type}`)
+              : t('parentHome.notices.type.GENERAL');
+            const important = IMPORTANT_NOTICE_TYPES.includes(notice.type);
+            const done = acked[notice.id] || Boolean(notice.acknowledged_by_me);
+            return (
+              <Card
+                key={notice.id}
+                variant="standard"
+                style={[styles.sectionCard, important ? { borderLeftWidth: 4, borderLeftColor: colors.badgeDangerText } : null]}
+                testID={`notice-${notice.id}`}
+              >
+                {important ? (
+                  <View
+                    style={[styles.importantRow, { backgroundColor: colors.badgeDangerBg, gap: spacing.xs, marginBottom: spacing.sm }]}
+                    testID={`notice-important-${notice.id}`}
+                  >
+                    <AlertTriangle size={iconSize.sm} color={colors.badgeDangerText} />
+                    <Text style={[typography.caption, { color: colors.badgeDangerText, fontWeight: '700' }]}>
+                      {t('parentHome.notices.important')}
+                    </Text>
+                  </View>
+                ) : null}
+                <Text
+                  style={[typography.sectionHeading, { color: colors.textPrimary }]}
+                  accessibilityRole="header"
+                  testID={`notice-title-${notice.id}`}
+                >
+                  {title}
+                </Text>
+                <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
+                  {t('parentHome.notices.sentOn', { date: formatCertDate(notice.created_at) })}
+                </Text>
+                <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
+                  {t('parentHome.notices.from', { name: notice.sender_name })}
+                </Text>
+                <Text style={[typography.bodyMedium, { color: colors.textPrimary, marginTop: spacing.sm }]}>
+                  {notice.message}
+                </Text>
+                {notice.requires_acknowledgement ? (
+                  <View style={{ marginTop: spacing.md }}>
+                    {done ? (
+                      <>
+                        <StatusBadge
+                          status="COMPLETED"
+                          label={t('parentHome.notices.acknowledged')}
+                          variant="success"
+                          style={{ alignSelf: 'flex-start' }}
+                          testID={`notice-acked-${notice.id}`}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <Text style={[typography.caption, { color: colors.textPrimary, fontWeight: '600' }]}>
+                          {notice.acknowledgement_deadline
+                            ? t('parentHome.notices.ackBy', { date: formatCertDate(notice.acknowledgement_deadline) })
+                            : t('parentHome.notices.needsAck')}
+                        </Text>
+                        <Button
+                          label={t('parentHome.notices.acknowledge')}
+                          onPress={() => acknowledge(notice)}
+                          loading={Boolean(acking[notice.id])}
+                          variant="primary"
+                          size="md"
+                          style={{ marginTop: spacing.sm, alignSelf: 'flex-start' }}
+                          testID={`btn-ack-${notice.id}`}
+                          accessibilityLabel={t('parentHome.notices.acknowledgeA11y', { title })}
+                        />
+                      </>
+                    )}
+                    {ackErrors[notice.id] ? (
+                      <Text
+                        style={[typography.caption, { color: colors.errorText, marginTop: spacing.xs }]}
+                        accessibilityRole="alert"
+                        testID={`notice-ack-error-${notice.id}`}
+                      >
+                        {ackErrors[notice.id]}
+                      </Text>
+                    ) : null}
+                  </View>
+                ) : null}
+              </Card>
+            );
+          })}
+        </View>
+      )}
+    </ScreenContainer>
   );
 };
 
@@ -766,6 +1257,27 @@ const styles = StyleSheet.create({
   },
   sectionCard: {
     padding: 18,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 44,
+  },
+  linkTarget: {
+    minHeight: 44,
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
+  },
+  requestRow: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  importantRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   sectionHeaderRow: {
     flexDirection: 'row',

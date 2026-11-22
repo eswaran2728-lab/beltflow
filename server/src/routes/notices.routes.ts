@@ -101,7 +101,29 @@ router.get('/mine', authenticateJWT, async (req: Request, res: Response) => {
        ORDER BY n.created_at DESC`,
       [studentIds]
     );
-    return res.json({ notices: result.rows });
+    // Which of these notices this account has already acknowledged, and for
+    // which of its own students (a parent acknowledges per child).
+    const ids = result.rows.map((n: any) => n.id);
+    const acks = ids.length
+      ? await dbClient.query(
+          `SELECT notice_id, student_id FROM notice_acknowledgements
+           WHERE user_id = $1 AND notice_id = ANY($2::text[])`,
+          [user.id, ids]
+        )
+      : { rows: [] as any[] };
+    const ackMap = new Map<string, string[]>();
+    for (const a of acks.rows) {
+      const list = ackMap.get(a.notice_id) || [];
+      if (a.student_id && studentIds.includes(a.student_id)) list.push(a.student_id);
+      ackMap.set(a.notice_id, list);
+    }
+    return res.json({
+      notices: result.rows.map((n: any) => ({
+        ...n,
+        acknowledged_by_me: ackMap.has(n.id),
+        acknowledged_student_ids: ackMap.get(n.id) || [],
+      })),
+    });
   } catch (err: any) {
     console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });

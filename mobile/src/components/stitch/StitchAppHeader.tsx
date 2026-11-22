@@ -5,9 +5,12 @@ import Svg, { Defs, LinearGradient, Stop, Rect, Circle } from 'react-native-svg'
 import { BrandMark } from '../BrandMark';
 import { StitchTokens } from '../../theme/tokens';
 import { useI18n } from '../../i18n';
+import { useOrganizationName } from '../../hooks/useOrganizationName';
 
 export interface StitchAppHeaderProps {
   dojangName?: string;
+  /** When given (and no dojangName), the header shows this Persatuan's real name. */
+  organizationId?: string | null;
   roleBadgeText?: string;
   hasUnreadNotifications?: boolean;
   onNotificationPress?: () => void;
@@ -26,6 +29,7 @@ export interface StitchAppHeaderProps {
 
 export const StitchAppHeader: React.FC<StitchAppHeaderProps> = ({
   dojangName: dojangNameProp,
+  organizationId,
   roleBadgeText,
   hasUnreadNotifications = true,
   onNotificationPress,
@@ -35,7 +39,8 @@ export const StitchAppHeader: React.FC<StitchAppHeaderProps> = ({
   style,
 }) => {
   const { t } = useI18n();
-  const dojangName = dojangNameProp ?? t('components.header.defaultDojang');
+  const orgName = useOrganizationName(dojangNameProp ? null : organizationId);
+  const dojangName = dojangNameProp ?? (orgName ? orgName.toUpperCase() : t('components.header.defaultDojang'));
   return (
     <View style={[styles.headerContainer, inContainer && styles.inContainer, style]} testID="stitch-app-header">
       {/* Depth: a lit navy gradient with two soft glows instead of a flat bar */}

@@ -866,7 +866,7 @@
         <div class="bf-input-group">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
             <label class="bf-label" for="loginPassword" style="margin-bottom:0">Password</label>
-            <span style="font-size:11px;color:var(--bf-text-muted)" title="Contact your academy administrator for an account reset">Password reset: contact your administrator</span>
+            <button type="button" onclick="openForgotPasswordModal()" style="font-size:12px;color:var(--bf-amber);background:none;border:none;padding:6px 0;min-height:24px;cursor:pointer;text-decoration:underline">Forgot password? Use a reset code</button>
           </div>
           <div style="position:relative">
             <input type="password" id="loginPassword" autocomplete="current-password" required aria-required="true" class="bf-input" placeholder="Enter your password" style="padding-right:40px">
@@ -1854,6 +1854,38 @@
   </div>
 
   <!-- MODAL: FORGOT PASSWORD -->
+  <div id="issueResetModal" class="modal-overlay">
+    <div class="modal-box" style="max-width:440px" role="dialog" aria-modal="true" aria-labelledby="issueResetModalTitle" tabindex="-1">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <i aria-hidden="true" data-lucide="key-round" style="width:20px;height:20px;color:var(--bf-amber)"></i>
+          <h2 style="font-size:16px" id="issueResetModalTitle">Give a password reset code</h2>
+        </div>
+        <button type="button" class="btn-close-modal" aria-label="Close dialog" onclick="closeIssueResetModal()">
+          <i aria-hidden="true" data-lucide="x" style="width:14px;height:14px"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p id="issueResetIntro" style="margin:0 0 12px;color:var(--bf-text-muted);font-size:13px"></p>
+        <form onsubmit="submitIssueReset(event)" style="display:flex;flex-direction:column;gap:14px">
+          <div>
+            <label class="bf-label" for="issueResetEmail">Their account e-mail</label>
+            <input type="email" id="issueResetEmail" autocomplete="off" required aria-required="true" class="bf-input">
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:8px">
+            <button type="button" class="bf-btn bf-btn-outline" onclick="closeIssueResetModal()">Close</button>
+            <button type="submit" class="bf-btn bf-btn-primary">Create code</button>
+          </div>
+        </form>
+        <div id="issueResetResult" style="display:none;margin-top:16px" aria-live="polite">
+          <div class="bf-label">One-time code</div>
+          <div id="issueResetCode" style="font-size:22px;font-weight:800;letter-spacing:3px;text-align:center;padding:12px;border:1.5px solid var(--bf-amber);border-radius:10px;user-select:all"></div>
+          <p id="issueResetExpiry" style="margin:8px 0 0;color:var(--bf-text-muted);font-size:13px"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="forgotPasswordModal" class="modal-overlay">
     <div class="modal-box" style="max-width:440px" role="dialog" aria-modal="true" aria-labelledby="forgotPasswordModalTitle" tabindex="-1">
       <div class="modal-header">
@@ -1867,12 +1899,17 @@
       </div>
       <div class="modal-body">
         <form onsubmit="handleDirectResetPassword(event)" style="display:flex;flex-direction:column;gap:14px">
+          <p style="margin:0;color:var(--bf-text-muted);font-size:13px">Ask your academy administrator for a one-time reset code. It works once and expires after 30 minutes.</p>
           <div>
             <label class="bf-label" for="forgotEmailInput">Registered Account Email</label>
             <input type="email" id="forgotEmailInput" autocomplete="email" required aria-required="true" placeholder="e.g. master@academy.com" class="bf-input">
           </div>
           <div>
-            <label class="bf-label" for="forgotNewPass">New Password</label>
+            <label class="bf-label" for="forgotCodeInput">Reset Code</label>
+            <input type="text" id="forgotCodeInput" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" maxlength="20" required aria-required="true" placeholder="XXXX-XXXX-XXXX" class="bf-input" style="text-transform:uppercase;letter-spacing:1px">
+          </div>
+          <div>
+            <label class="bf-label" for="forgotNewPass">New Password (at least 12 characters)</label>
             <input type="password" id="forgotNewPass" autocomplete="new-password" required aria-required="true" placeholder="Enter new password" class="bf-input">
           </div>
           <div>
@@ -1988,6 +2025,10 @@
           <button type="button" class="bf-btn bf-btn-outline" style="width:100%" onclick="openPrivacyModal()">
             <i aria-hidden="true" data-lucide="shield-check" style="width:16px;height:16px"></i>
             <span>Privacy and my data</span>
+          </button>
+          <button type="button" id="issueResetEntry" class="bf-btn bf-btn-outline" style="width:100%;margin-top:8px;display:none" onclick="openIssueResetModal()">
+            <i aria-hidden="true" data-lucide="key-round" style="width:16px;height:16px"></i>
+            <span>Give a password reset code</span>
           </button>
         </div>
       </div>
@@ -2726,12 +2767,66 @@
     }
 
     function openForgotPasswordModal() {
-      alert('Contact your academy administrator to request a password reset.');
+      ['forgotCodeInput', 'forgotNewPass', 'forgotConfirmPass'].forEach(id => { document.getElementById(id).value = ''; });
+      const typed = document.getElementById('loginEmail').value.trim();
+      if (typed) document.getElementById('forgotEmailInput').value = typed;
+      openModal('forgotPasswordModal');
     }
 
-    function handleDirectResetPassword(e) {
+    async function handleDirectResetPassword(e) {
       e.preventDefault();
-      alert('Contact your academy administrator to request a password reset.');
+      const email = document.getElementById('forgotEmailInput').value.trim();
+      const code = document.getElementById('forgotCodeInput').value.trim().toUpperCase();
+      const newPassword = document.getElementById('forgotNewPass').value;
+      const confirmPassword = document.getElementById('forgotConfirmPass').value;
+      if (newPassword.trim().length < 12) { alert('The new password must have at least 12 characters.'); return; }
+      if (newPassword !== confirmPassword) { alert('The two passwords are not the same.'); return; }
+      const res = await fetchApi('/auth/password-reset/complete', { method: 'POST', body: JSON.stringify({ email, code, newPassword }) });
+      if (res.ok) {
+        ['forgotCodeInput', 'forgotNewPass', 'forgotConfirmPass'].forEach(id => { document.getElementById(id).value = ''; });
+        closeModal('forgotPasswordModal');
+        showToast('Your password has been changed. Sign in with the new password.');
+      } else if (res.status === 429) {
+        alert('Too many tries. Wait a few minutes and try again.');
+      } else if (res.status === 400) {
+        alert('The code is wrong or has expired, or the password is not accepted. Ask your administrator for a new code if needed.');
+      } else if (res.status !== 0) {
+        alert('The password could not be changed. Try again.');
+      }
+    }
+
+    function openIssueResetModal() {
+      closeModal('changePasswordModal');
+      document.getElementById('issueResetEmail').value = '';
+      document.getElementById('issueResetResult').style.display = 'none';
+      document.getElementById('issueResetCode').textContent = '';
+      document.getElementById('issueResetIntro').textContent = currentRole === 'super'
+        ? 'For a Persatuan Admin who cannot sign in. Check who they are first, then give them the code directly.'
+        : 'For a Master, parent or student in your Persatuan who cannot sign in. Check who they are first, then give them the code in person or by phone.';
+      openModal('issueResetModal');
+    }
+
+    async function submitIssueReset(e) {
+      e.preventDefault();
+      const email = document.getElementById('issueResetEmail').value.trim();
+      if (!email) return;
+      const res = await fetchApi('/auth/password-reset/issue', { method: 'POST', body: JSON.stringify({ email }) });
+      if (res.ok && res.data && res.data.code) {
+        document.getElementById('issueResetCode').textContent = res.data.code;
+        document.getElementById('issueResetExpiry').textContent = 'Works once. Expires at ' + new Date(res.data.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '. It is not shown again.';
+        document.getElementById('issueResetResult').style.display = 'block';
+        document.getElementById('issueResetEmail').value = '';
+      } else if (res.status === 403 || res.status === 400) {
+        alert('No code was created. The e-mail may be wrong, or the account is not one you look after.');
+      } else if (res.status !== 0) {
+        alert('The code could not be created. Try again.');
+      }
+    }
+
+    function closeIssueResetModal() {
+      document.getElementById('issueResetCode').textContent = '';
+      document.getElementById('issueResetResult').style.display = 'none';
+      closeModal('issueResetModal');
     }
 
     function openChangePasswordModal() {
@@ -2739,6 +2834,8 @@
       if (cpCur) cpCur.value = '';
       document.getElementById('cpNewPassword').value = '';
       document.getElementById('cpConfirmPassword').value = '';
+      const issueEntry = document.getElementById('issueResetEntry');
+      if (issueEntry) issueEntry.style.display = (currentRole === 'super' || currentRole === 'persatuan') ? 'flex' : 'none';
       openModal('changePasswordModal');
     }
 

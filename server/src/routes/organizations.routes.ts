@@ -72,8 +72,75 @@ router.post('/', authenticateJWT, requirePermission(Permission.ORGANIZATION_CREA
 // List all organizations (Super Admin)
 router.get('/', authenticateJWT, requirePermission(Permission.SUPER_ADMIN_MANAGE), async (req: Request, res: Response) => {
   try {
-    const listRes = await dbClient.query('SELECT * FROM organizations ORDER BY created_at DESC');
-    return res.json({ organizations: listRes.rows });
+    // Per-Persatuan aggregate counts only (numbers, never names or records):
+    // Super Admin must not see individual child or operational records.
+    const listRes = await dbClient.query(
+      `SELECT o.*,
+              (SELECT COUNT(*)::int FROM classes c WHERE c.organization_id = o.id AND c.status = 'ACTIVE') AS class_count,
+              (SELECT COUNT(*)::int FROM students s WHERE s.organization_id = o.id AND s.status = 'ACTIVE') AS active_student_count,
+              (SELECT COUNT(*)::int FROM users u WHERE u.organization_id = o.id AND u.role = 'MASTER' AND u.status = 'ACTIVE') AS master_count
+       FROM organizations o
+       ORDER BY o.created_at DESC`
+    );
+    const organizations = listRes.rows.map(({ class_count, active_student_count, master_count, ...org }: any) => ({
+      ...org,
+      classCount: Number(class_count) || 0,
+      activeStudentCount: Number(active_student_count) || 0,
+      masterCount: Number(master_count) || 0,
+    }));
+    return res.json({ organizations });
+  } catch (err: any) {
+    console.error('[Database error]', err);
+    return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
+// Suspend or reactivate a Persatuan (Super Admin only). A suspended
+// Persatuan's users are refused on every request by authenticateJWT.
+const ORGANIZATION_STATUSES = ['ACTIVE', 'SUSPENDED'] as const;
+const MAX_STATUS_REASON = 500;
+router.put('/:orgId/status', authenticateJWT, requirePermission(Permission.SUPER_ADMIN_MANAGE), async (req: Request, res: Response) => {
+  try {
+    if (req.user!.role !== UserRole.SUPER_ADMIN) {
+      return res.status(403).json({ error: 'Only the platform Super Admin can change a Persatuan status.' });
+    }
+    const { status, reason } = req.body || {};
+    if (typeof status !== 'string' || !(ORGANIZATION_STATUSES as readonly string[]).includes(status)) {
+      return res.status(400).json({ error: 'Status must be ACTIVE or SUSPENDED.' });
+    }
+    if (reason !== undefined && reason !== null && typeof reason !== 'string') {
+      return res.status(400).json({ error: 'Reason must be text.' });
+    }
+    const reasonText = typeof reason === 'string' ? reason.trim() : '';
+    if (status === 'SUSPENDED' && !reasonText) {
+      return res.status(400).json({ error: 'A reason is required to suspend a Persatuan.' });
+    }
+    if (reasonText.length > MAX_STATUS_REASON) {
+      return res.status(400).json({ error: `Reason must be at most ${MAX_STATUS_REASON} characters.` });
+    }
+
+    const orgRes = await dbClient.query(
+      `UPDATE organizations SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2
+       RETURNING id, name, state, status, updated_at`,
+      [status, req.params.orgId]
+    );
+    if (orgRes.rowCount === 0) return res.status(404).json({ error: 'Organization not found.' });
+
+    // Who, which organization and the new status. The reason is the Super
+    // Admin's own note about the tenant; no child or personal records.
+    await dbClient.query(
+      `INSERT INTO audit_logs (id, action, details, user_role, user_email)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [
+        `audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        'Organization Status Changed',
+        `Organization ${req.params.orgId} set to ${status}${reasonText ? `. Reason: ${reasonText}` : ''}`,
+        req.user!.role,
+        req.user!.email,
+      ]
+    );
+
+    return res.json({ message: 'Organization status updated.', organization: orgRes.rows[0] });
   } catch (err: any) {
     console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });

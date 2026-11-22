@@ -11,7 +11,7 @@ const router = Router();
 router.get('/', authenticateJWT, requirePermission(Permission.AUDIT_LOG_VIEW_GLOBAL), async (req: Request, res: Response) => {
   try {
     const logsRes = await dbClient.query(
-      `SELECT * FROM audit_logs WHERE action IN ('Super Admin Setup', 'Organization Onboarded')
+      `SELECT * FROM audit_logs WHERE action IN ('Super Admin Setup', 'Organization Onboarded', 'Organization Status Changed')
        ORDER BY timestamp DESC LIMIT 200`);
     return res.json({ logs: logsRes.rows });
   } catch (err: any) {
