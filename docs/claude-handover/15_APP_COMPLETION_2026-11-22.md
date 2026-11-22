@@ -15,7 +15,7 @@ browser run against a seeded test server were used.
 | Master | Students | The Master's own classes as chips; the roster with belt, group and status; name search; "show more". IC numbers are never shown | `GET /classes/organization/:orgId`, `GET /classes/:classId/students` |
 | Parent | Children | The existing child cards; "Link another child" by IC with a required guardian tick and a privacy link; "My link requests" with every status in plain words | `POST/GET /auth/parent-link-requests` |
 | Parent | Notices | Newest first; type, date, sender, message; Acknowledge per child, remembered by the server | `GET /notices/mine`, `POST /notices/:id/acknowledge` |
-| Admin | Locations | Classes grouped by venue, with schedule, Master, status and capacity | `GET /classes/organization/:orgId` |
+| Admin | Locations | Classes grouped by venue, with schedule, Master, status and "12 active students of 25 places" | `GET /classes/organization/:orgId` (adds `active_student_count`) |
 | Admin | Reports | Period chips; enrolment, trials, retention and money figures; "switched off" message when the analytics module is disabled | `GET /analytics/metrics?period=` |
 | Student | Attendance | Summary ("2 of 4 sessions attended") and history | `GET /attendance/student/:id/history` |
 | Student | Certificates | One card per real certificate; only active ones are marked verified; revoked ones say so; Share | `GET /certificates/student/:id` |
@@ -72,19 +72,22 @@ browser run against a seeded test server were used.
   required to suspend). `GET /organizations` adds class, active-student and
   Master counts (numbers only, no names).
 - `GET /audit` also lists "Organization Status Changed".
+- `GET /classes/organization/:orgId` adds `active_student_count` (active
+  enrolment and active student, as in the reports).
+- Notices store the sender's name, not their e-mail, and `GET /notices/mine`
+  shows the sender's current name (older notices that stored an e-mail are
+  shown by name too).
 
 New suites: `superadmin_persatuan_status`, `app_completion_gaps`; e-mail
 checks added to `security_hardening`.
 
 ## Open points for the owner
 
-- The suspension reason is stored in the audit log as typed. Ask staff not to
-  write personal details there, or say if it should not be stored.
+- The suspension reason is stored in the platform audit log as typed. The
+  form now asks staff not to include names, IC numbers or health details.
 - Notice titles come from the notice type; "Important" is shown for
-  cancellations and schedule changes. Notices sent by a Master show the
-  Master's e-mail as the sender (existing server behaviour).
-- Admin Locations shows capacity, not the number of students per class (the
-  class list has no student count).
+  cancellations and schedule changes.
 - BM and Tamil text needs a native speaker's review, as before.
 - Not tested on a real phone: pull to refresh, the camera scanner with the
-  signed pass, Share.
+  signed pass, Share. The GitHub testing APK build of this work succeeded and
+  can be installed for that check.

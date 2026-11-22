@@ -790,11 +790,15 @@ export const LocationsScreen: React.FC<RoleScreenProps> = props => {
                         {master}
                       </Text>
                     </View>
-                    {c.capacity !== null ? (
+                    {c.capacity !== null || c.activeStudents !== null ? (
                       <View style={styles.venueMetaRow}>
                         <Users size={iconSize.sm} color={colors.textSecondary} />
-                        <Text style={[typography.bodyMedium, styles.venueMetaText, { color: colors.textPrimary }]}>
-                          {t('adminHome.locations.capacity', { count: c.capacity })}
+                        <Text style={[typography.bodyMedium, styles.venueMetaText, { color: colors.textPrimary }]} testID={`class-students-${c.id}`}>
+                          {c.activeStudents !== null && c.capacity !== null
+                            ? t('adminHome.locations.studentsOfCapacity', { count: c.activeStudents, capacity: c.capacity })
+                            : c.activeStudents !== null
+                              ? t('adminHome.locations.students', { count: c.activeStudents })
+                              : t('adminHome.locations.capacity', { count: c.capacity ?? 0 })}
                         </Text>
                       </View>
                     ) : null}

@@ -45,7 +45,7 @@ const CLASSES = [
   {
     id: 'cls_test_1', organization_id: 'org_test_01', name: 'Junior Silambam', location: 'Dewan Komuniti Shah Alam',
     venue_details: 'Hall B, level 2', schedule: 'Mon & Wed 5:00 PM', master_name: 'Test Master One',
-    status: 'ACTIVE', operational_status: 'ACTIVE', capacity: 25, monthly_fee: '120.00',
+    status: 'ACTIVE', operational_status: 'ACTIVE', capacity: 25, monthly_fee: '120.00', active_student_count: 12,
   },
   {
     id: 'cls_test_2', organization_id: 'org_test_01', name: 'Adult Silambam', location: 'Dewan Komuniti Shah Alam',
@@ -102,6 +102,7 @@ describe('groupClassesByLocation', () => {
       CLASSES.map(c => ({
         id: c.id, name: c.name, location: c.location || null, venueDetails: c.venue_details, schedule: c.schedule,
         masterName: c.master_name, status: c.operational_status, capacity: c.capacity,
+        activeStudents: (c as any).active_student_count ?? null,
       }))
     );
     expect(groups.map(g => g.location)).toEqual(['Dewan Komuniti Shah Alam', 'Klang Sports Centre', null]);
@@ -132,7 +133,8 @@ describe('Admin Locations screen', () => {
     expect(screen.getAllByText(en['adminHome.locations.statusActive']).length).toBe(2);
     // Two classes at the first venue, counted in the header.
     expect(screen.getByText('2 classes')).toBeTruthy();
-    expect(screen.getByText('Capacity: 25 places')).toBeTruthy();
+    expect(screen.getByText('12 active students of 25 places')).toBeTruthy();
+    expect(screen.getByText('Capacity: 20 places')).toBeTruthy(); // an older server without counts
   });
 
   test('shows the empty state when the academy has no classes', async () => {

@@ -100,11 +100,17 @@ router.post('/', authenticateJWT, requirePermission(Permission.PERSATUAN_MANAGE_
 router.get('/organization/:orgId', authenticateJWT, requirePermission(Permission.CLASS_VIEW), async (req: Request, res: Response) => {
   try {
     const listRes = req.user!.role === UserRole.MASTER
-      ? await dbClient.query(`SELECT c.*, u.full_name AS master_name FROM classes c
+      ? await dbClient.query(`SELECT c.*, u.full_name AS master_name,
+                                (SELECT COUNT(*)::int FROM class_enrollments ce JOIN students s ON s.id = ce.student_id
+                                 WHERE ce.class_id = c.id AND ce.status = 'ACTIVE' AND s.status = 'ACTIVE') AS active_student_count
+                              FROM classes c
                               JOIN coach_class_assignments a ON a.class_id = c.id
                               LEFT JOIN users u ON u.id = c.main_master_id
                               WHERE c.organization_id = $1 AND a.coach_id = $2 ORDER BY c.created_at DESC`, [req.params.orgId, req.user!.id])
-      : await dbClient.query(`SELECT c.*, u.full_name AS master_name FROM classes c
+      : await dbClient.query(`SELECT c.*, u.full_name AS master_name,
+                                (SELECT COUNT(*)::int FROM class_enrollments ce JOIN students s ON s.id = ce.student_id
+                                 WHERE ce.class_id = c.id AND ce.status = 'ACTIVE' AND s.status = 'ACTIVE') AS active_student_count
+                              FROM classes c
                               LEFT JOIN users u ON u.id = c.main_master_id
                               WHERE c.organization_id = $1 ORDER BY c.created_at DESC`, [req.params.orgId]);
     return res.json({ classes: listRes.rows });

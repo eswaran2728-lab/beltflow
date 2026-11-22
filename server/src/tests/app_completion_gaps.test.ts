@@ -91,7 +91,19 @@ async function runTests() {
     assert.deepEqual(byId.ntc_1.acknowledged_student_ids, ['stu_gp_1']);
     assert.equal(byId.ntc_2.acknowledged_by_me, false);
     assert.deepEqual(byId.ntc_2.acknowledged_student_ids, []);
-    console.log('✅ B: the notice feed says what has already been acknowledged.');
+    assert.equal(byId.ntc_1.sender_name, 'Test gp_mst', 'the sender is shown by name');
+    // A notice stored with the Master's e-mail (older behaviour) still shows the name.
+    await q(`INSERT INTO notices (id, organization_id, class_id, type, message, sender_id, sender_name)
+             VALUES ('ntc_3', 'org_gp', 'cls_gp', 'GENERAL', 'Test notice three', 'gp_mst', 'gp_mst@example.test')`);
+    const feed2 = await request(server, 'GET', '/notices/mine', tPar);
+    const n3 = feed2.data.notices.find((n: any) => n.id === 'ntc_3');
+    assert.equal(n3.sender_name, 'Test gp_mst', 'an e-mail is never shown as the sender');
+    const tMst = tok('gp_mst', UserRole.MASTER);
+    await q(`INSERT INTO coach_class_assignments (coach_id, class_id, is_main_master) VALUES ('gp_mst', 'cls_gp', TRUE) ON CONFLICT DO NOTHING`);
+    const sent = await request(server, 'POST', '/notices', tMst, { classId: 'cls_gp', type: 'GENERAL', message: 'Test notice four' });
+    assert.equal(sent.status, 201, JSON.stringify(sent.data));
+    assert.equal(sent.data.notice.sender_name, 'Test gp_mst', 'new notices store the name, not the e-mail');
+    console.log('✅ B: the notice feed says what has already been acknowledged, and who sent it by name.');
 
     // ------------------------------------------------------------------ C
     const now = new Date('2026-11-22T03:00:00.000Z'); // 11:00 in Malaysia
@@ -118,6 +130,14 @@ async function runTests() {
     const odd = await metrics('not_a_period');
     assert.equal(odd.metadata.period, 'current_month', 'an unknown period falls back to the current month');
     console.log('✅ C: reports honour the chosen period.');
+
+    // ------------------------------------------------------------------ D
+    await q(`INSERT INTO class_enrollments (id, student_id, class_id, organization_id, status) VALUES ('ce_gp_1', 'stu_gp_1', 'cls_gp', 'org_gp', 'ACTIVE'), ('ce_gp_2', 'stu_gp_2', 'cls_gp', 'org_gp', 'ACTIVE')`);
+    await q(`UPDATE students SET status = 'INACTIVE' WHERE id = 'stu_gp_2'`);
+    const classes = await request(server, 'GET', '/classes/organization/org_gp', tAdm);
+    assert.equal(classes.status, 200, JSON.stringify(classes.data));
+    assert.equal(classes.data.classes[0].active_student_count, 1, 'each class says how many active students it has');
+    console.log('✅ D: the class list counts active students.');
 
     console.log('🎉 App completion gap tests PASSED.');
   } finally {

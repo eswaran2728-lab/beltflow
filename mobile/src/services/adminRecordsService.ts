@@ -34,6 +34,8 @@ export interface AdminClassRecord {
   status: ClassOperationalStatus;
   /** `classes.capacity` (places), null when the server does not send it. */
   capacity: number | null;
+  /** Active students in the class (`active_student_count`), null on older servers. */
+  activeStudents: number | null;
 }
 
 export interface VenueGroup {
@@ -54,6 +56,7 @@ const text = (v: unknown): string | null => {
 
 function toClassRecord(row: any): AdminClassRecord {
   const capacity = Number(row?.capacity);
+  const active = row?.active_student_count;
   return {
     id: String(row?.id ?? ''),
     name: text(row?.name) ?? String(row?.id ?? ''),
@@ -63,6 +66,7 @@ function toClassRecord(row: any): AdminClassRecord {
     masterName: text(row?.master_name),
     status: text(row?.operational_status) ?? text(row?.status) ?? 'ACTIVE',
     capacity: Number.isFinite(capacity) && capacity > 0 ? capacity : null,
+    activeStudents: active === undefined || active === null || !Number.isFinite(Number(active)) ? null : Number(active),
   };
 }
 

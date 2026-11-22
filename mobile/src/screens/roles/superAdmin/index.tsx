@@ -531,6 +531,7 @@ export const PersatuanManagementScreen: React.FC<RoleScreenProps> = props => {
               value={reason}
               onChangeText={text => { setReason(text); if (reasonError && text.trim()) setReasonError(false); }}
               errorText={reasonError ? t('superAdminHome.pm.reasonRequired') : undefined}
+              helperText={t('superAdminHome.pm.reasonHint')}
               maxLength={500}
               multiline
               accessibilityLabel={t('superAdminHome.pm.reasonLabel')}
