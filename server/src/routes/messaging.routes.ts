@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { safeErrorMessage } from '../security/errors';
 import { dbClient } from '../db/client';
 import { authenticateJWT } from '../middleware/auth';
 import { UserRole } from '../security/rbac';
@@ -279,7 +280,7 @@ router.post('/threads', authenticateJWT, async (req: Request, res: Response) => 
     return res.status(201).json(thread);
   } catch (err: any) {
     console.error('[createThread error]:', err);
-    return res.status(500).json({ error: err.message || 'Internal server error creating thread.' });
+    return res.status(500).json({ error: safeErrorMessage(err, 'Internal server error creating thread.') });
   }
 });
 
@@ -437,7 +438,7 @@ router.post('/threads/:threadId/messages', authenticateJWT, async (req: Request,
     return res.status(201).json(insMsg.rows[0]);
   } catch (err: any) {
     console.error('[sendMessage error]:', err);
-    return res.status(500).json({ error: err.message || 'Internal server error sending message.' });
+    return res.status(500).json({ error: safeErrorMessage(err, 'Internal server error sending message.') });
   }
 });
 
@@ -507,7 +508,7 @@ router.get('/threads', authenticateJWT, async (req: Request, res: Response) => {
     return res.status(200).json(result.rows);
   } catch (err: any) {
     console.error('[listThreads error]:', err);
-    return res.status(500).json({ error: err.message || 'Internal server error listing threads.' });
+    return res.status(500).json({ error: safeErrorMessage(err, 'Internal server error listing threads.') });
   }
 });
 
@@ -574,7 +575,7 @@ router.get('/threads/:threadId/messages', authenticateJWT, async (req: Request, 
     });
   } catch (err: any) {
     console.error('[getThreadMessages error]:', err);
-    return res.status(500).json({ error: err.message || 'Internal server error retrieving messages.' });
+    return res.status(500).json({ error: safeErrorMessage(err, 'Internal server error retrieving messages.') });
   }
 });
 
@@ -648,7 +649,7 @@ router.post('/messages/:id/report', authenticateJWT, async (req: Request, res: R
     });
   } catch (err: any) {
     console.error('[reportMessage error]:', err);
-    return res.status(500).json({ error: err.message || 'Internal server error reporting message.' });
+    return res.status(500).json({ error: safeErrorMessage(err, 'Internal server error reporting message.') });
   }
 });
 
@@ -675,7 +676,7 @@ router.get('/reports', authenticateJWT, async (req: Request, res: Response) => {
     return res.status(200).json(resReports.rows);
   } catch (err: any) {
     console.error('[getReports error]:', err);
-    return res.status(500).json({ error: err.message || 'Internal server error retrieving reports.' });
+    return res.status(500).json({ error: safeErrorMessage(err, 'Internal server error retrieving reports.') });
   }
 });
 

@@ -230,7 +230,7 @@ export const ClassApprovalsScreen: React.FC<ClassApprovalsScreenProps> = ({
       <StitchAppHeader
         inContainer
         roleBadgeText="ADMIN PERSATUAN"
-        dojangName="PERSATUAN DOJANG"
+        organizationId={user.organizationId}
         hasUnreadNotifications={pendingCount > 0}
       />
 

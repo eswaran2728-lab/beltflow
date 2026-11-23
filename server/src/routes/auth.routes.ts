@@ -1,11 +1,18 @@
 import { Router, Request, Response } from 'express';
 import { dbClient } from '../db/client';
 import { UserRole } from '../security/rbac';
-import { hashPasswordServer, verifyPasswordServer, generateAuthToken } from '../security/crypto';
+import crypto from 'crypto';
+import { hashPasswordServer, verifyPasswordServer, generateAuthToken, passwordNeedsRehash, DUMMY_PASSWORD_HASH } from '../security/crypto';
+import { recordSecurityEvent } from '../services/securityEvents';
+import { agreed, recordConsents } from '../services/consent';
 import { validatePassword } from '../security/passwordPolicy';
 import { authenticateJWT } from '../middleware/auth';
 import { safeErrorMessage } from '../security/errors';
 import { rateLimit } from '../middleware/rateLimit';
+
+// Ten wrong passwords in a row lock the account for 15 minutes.
+const MAX_FAILED_LOGINS = 10;
+const LOCKOUT_MINUTES = 15;
 
 const authAttemptLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: 'Too many attempts. Please try again in a few minutes.' });
 
@@ -14,7 +21,8 @@ const router = Router();
 router.get('/setup-status', async (_req: Request, res: Response) => {
   try {
     const result = await dbClient.query("SELECT 1 FROM users WHERE role = 'SUPER_ADMIN' LIMIT 1");
-    return res.json({ setupRequired: result.rowCount === 0 });
+    // setupCodeRequired tells the setup form to ask for the code (never the code itself).
+    return res.json({ setupRequired: result.rowCount === 0, setupCodeRequired: !!process.env.BELTFLOW_SETUP_TOKEN });
   } catch (err: any) {
     console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
@@ -53,6 +61,21 @@ router.post('/setup-admin', authAttemptLimit, async (req: Request, res: Response
       return res.status(403).json({ error: 'Security Exception: Super Admin setup is permanently locked after initialization.' });
     }
 
+    // A fresh public server must not hand the first Super Admin account to
+    // whoever finds it first. When BELTFLOW_SETUP_TOKEN is set (required in
+    // production), the person setting up must give that code.
+    const expected = process.env.BELTFLOW_SETUP_TOKEN;
+    if (expected) {
+      const supplied = typeof req.body?.setupToken === 'string' ? req.body.setupToken : '';
+      const a = crypto.createHash('sha256').update(supplied).digest();
+      const b = crypto.createHash('sha256').update(expected).digest();
+      if (!supplied || !crypto.timingSafeEqual(a, b)) {
+        res.locals.securityEventRecorded = true;
+        void recordSecurityEvent({ type: 'SUSPICIOUS_ACTIVITY', severity: 'ALERT', req, status: 403, detail: 'first Super Admin setup attempted without the correct setup code' });
+        return res.status(403).json({ error: 'The setup code is missing or wrong.', code: 'SETUP_TOKEN_REQUIRED' });
+      }
+    }
+
     const { fullName, email, phone, password, confirmPassword } = req.body;
     if (!fullName || !email || !password) {
       return res.status(400).json({ error: 'Full name, email, and password are required.' });
@@ -82,7 +105,7 @@ router.post('/setup-admin', authAttemptLimit, async (req: Request, res: Response
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email)
        VALUES ($1, $2, $3, $4, $5)`,
-      [`audit_${Date.now()}`, 'Super Admin Setup', `Initial setup of Super Admin: ${newUser.full_name}`, newUser.role, newUser.email]
+      [`audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, 'Super Admin Setup', `Initial setup of Super Admin: ${newUser.full_name}`, newUser.role, newUser.email]
     );
 
     const token = generateAuthToken({
@@ -106,20 +129,57 @@ router.post('/setup-admin', authAttemptLimit, async (req: Request, res: Response
 // Login endpoint
 router.post('/login', authAttemptLimit, async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
+    const { email, password } = req.body || {};
+    // Text only: an object or array here is an injection attempt or a bug.
+    if (typeof email !== 'string' || typeof password !== 'string' || !email.trim() || !password ||
+        email.length > 320 || password.length > 1024) {
       return res.status(400).json({ error: 'Email and password are required.' });
     }
 
     const userRes = await dbClient.query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [email.trim()]);
     if (userRes.rowCount === 0) {
+      // Spend the same time as a real check, so an unknown address is not faster.
+      verifyPasswordServer(password.trim(), DUMMY_PASSWORD_HASH);
+      res.locals.securityEventRecorded = true;
+      void recordSecurityEvent({ type: 'LOGIN_FAILED', req, status: 401, detail: 'unknown account' });
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
 
     const user = userRes.rows[0];
+
+    // Locked after repeated wrong passwords: refuse before checking, so the
+    // lock cannot be used to keep guessing.
+    if (user.locked_until && new Date(user.locked_until).getTime() > Date.now()) {
+      res.locals.securityEventRecorded = true;
+      void recordSecurityEvent({ type: 'LOGIN_FAILED', req, userId: user.id, status: 429, detail: 'attempt while locked' });
+      return res.status(429).json({ code: 'ACCOUNT_LOCKED', error: 'Too many failed sign-in attempts. Please try again later.' });
+    }
+
     const isValid = verifyPasswordServer(password.trim(), user.password_hash);
     if (!isValid) {
+      const failed = await dbClient.query(
+        `UPDATE users
+         SET failed_login_count = failed_login_count + 1,
+             locked_until = CASE WHEN failed_login_count + 1 >= $2 THEN CURRENT_TIMESTAMP + ($3 || ' minutes')::interval ELSE locked_until END
+         WHERE id = $1
+         RETURNING failed_login_count`,
+        [user.id, MAX_FAILED_LOGINS, String(LOCKOUT_MINUTES)]
+      );
+      const count = Number(failed.rows[0]?.failed_login_count || 0);
+      res.locals.securityEventRecorded = true;
+      void recordSecurityEvent({ type: 'LOGIN_FAILED', req, userId: user.id, status: 401, detail: `wrong password (${count} in a row)` });
+      if (count >= MAX_FAILED_LOGINS) {
+        void recordSecurityEvent({ type: 'ACCOUNT_LOCKED', severity: 'ALERT', req, userId: user.id, detail: `locked for ${LOCKOUT_MINUTES} minutes after ${count} failed sign-ins` });
+      }
       return res.status(401).json({ error: 'Invalid email or password.' });
+    }
+
+    // Correct password: clear the failure counter and upgrade an old hash.
+    if (Number(user.failed_login_count) > 0 || user.locked_until || passwordNeedsRehash(user.password_hash)) {
+      await dbClient.query(
+        `UPDATE users SET failed_login_count = 0, locked_until = NULL, password_hash = $2 WHERE id = $1`,
+        [user.id, passwordNeedsRehash(user.password_hash) ? hashPasswordServer(password.trim()) : user.password_hash]
+      );
     }
     if (user.status !== 'ACTIVE') {
       return res.status(403).json({ error: 'Account is awaiting approval or is inactive.' });
@@ -165,7 +225,7 @@ router.post('/login', authAttemptLimit, async (req: Request, res: Response) => {
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email)
        VALUES ($1, $2, $3, $4, $5)`,
-      [`audit_${Date.now()}`, 'User Login', `User logged in: ${user.full_name}`, user.role, user.email]
+      [`audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, 'User Login', `User logged in: ${user.full_name}`, user.role, user.email]
     );
 
     return res.json({
@@ -234,18 +294,154 @@ router.post('/change-password', authAttemptLimit, authenticateJWT, async (req: R
     }
 
     const hashed = hashPasswordServer(newPassword.trim());
-    await dbClient.query('UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [hashed, req.user!.id]);
+    // password_changed_at ends every session issued before now (see authenticateJWT).
+    await dbClient.query(
+      'UPDATE users SET password_hash = $1, password_changed_at = CURRENT_TIMESTAMP, failed_login_count = 0, locked_until = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [hashed, req.user!.id]);
+    void recordSecurityEvent({ type: 'PASSWORD_CHANGED', severity: 'INFO', req, userId: req.user!.id });
 
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email)
        VALUES ($1, $2, $3, $4, $5)`,
-      [`audit_${Date.now()}`, 'Password Changed', `User updated their account password`, req.user!.role, req.user!.email]
+      [`audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, 'Password Changed', `User updated their account password`, req.user!.role, req.user!.email]
     );
 
-    return res.json({ message: 'Password successfully updated in PostgreSQL database.' });
+    // The caller keeps working with a new session; all older ones are now invalid.
+    return res.json({ message: 'Password updated. Other devices have been signed out.', token: generateAuthToken(req.user!) });
   } catch (err: any) {
     console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Password reset with one-time codes.
+//
+// There is no e-mail service, so a reset is issued by a person who can
+// verify the account holder: the Persatuan's Admin for Masters, parents and
+// students of that Persatuan; the Super Admin for Persatuan Admins. The code
+// is shown once, stored only as a hash, expires after 30 minutes, works once,
+// and is cancelled after 5 wrong tries. Using it ends all older sessions.
+// ---------------------------------------------------------------------------
+const RESET_CODE_MINUTES = 30;
+const RESET_MAX_ATTEMPTS = 5;
+const RESET_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
+const hashResetCode = (code: string) => crypto.createHash('sha256').update(code.replace(/[^A-Za-z0-9]/g, '').toUpperCase()).digest('hex');
+
+router.post('/password-reset/issue', authAttemptLimit, authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const actor = req.user!;
+    // The account is named by id or, from screens without an account list, by e-mail.
+    const { userId, email } = req.body || {};
+    const byId = typeof userId === 'string' && userId.length > 0 && userId.length <= 128;
+    const byEmail = !byId && typeof email === 'string' && email.trim().length > 0 && email.length <= 320;
+    if (!byId && !byEmail) {
+      return res.status(400).json({ error: 'userId or email is required.' });
+    }
+    const targetRes = byId
+      ? await dbClient.query('SELECT id, role, organization_id, status FROM users WHERE id = $1', [userId])
+      : await dbClient.query('SELECT id, role, organization_id, status FROM users WHERE LOWER(email) = LOWER($1)', [email.trim()]);
+    const target = targetRes.rows[0];
+    const allowed = !!target && target.id !== actor.id && (
+      (actor.role === UserRole.ADMIN_PERSATUAN && !!actor.organizationId && target.organization_id === actor.organizationId &&
+        [UserRole.MASTER, UserRole.PARENT, UserRole.STUDENT].includes(target.role)) ||
+      (actor.role === UserRole.SUPER_ADMIN && target.role === UserRole.ADMIN_PERSATUAN)
+    );
+    if (!allowed) {
+      // Same answer whether the account exists or not.
+      return res.status(403).json({ error: 'You cannot reset the password for this account.' });
+    }
+
+    const bytes = crypto.randomBytes(12);
+    const chars = Array.from(bytes, b => RESET_ALPHABET[b % RESET_ALPHABET.length]).join('');
+    const code = `${chars.slice(0, 4)}-${chars.slice(4, 8)}-${chars.slice(8, 12)}`;
+    const expiresAt = new Date(Date.now() + RESET_CODE_MINUTES * 60_000);
+
+    // Only the newest code for an account is valid.
+    await dbClient.query(`UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE user_id = $1 AND used_at IS NULL`, [target.id]);
+    await dbClient.query(
+      `INSERT INTO password_reset_tokens (id, user_id, token_hash, issued_by, expires_at) VALUES ($1, $2, $3, $4, $5)`,
+      [`prt_${Date.now()}_${crypto.randomBytes(6).toString('hex')}`, target.id, hashResetCode(code), actor.id, expiresAt]
+    );
+    await dbClient.query(
+      `INSERT INTO audit_logs (id, action, details, user_role, user_email) VALUES ($1, $2, $3, $4, $5)`,
+      [`audit_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`, 'Password Reset Issued', `Reset code issued for user ${target.id}`, actor.role, actor.email]
+    );
+    void recordSecurityEvent({ type: 'PASSWORD_RESET_ISSUED', severity: 'INFO', req, userId: target.id });
+
+    return res.status(201).json({
+      message: `Give this code to the account holder. It works once and expires in ${RESET_CODE_MINUTES} minutes.`,
+      code,
+      expiresAt: expiresAt.toISOString(),
+    });
+  } catch (err: any) {
+    console.error('[Password reset issue error]', err);
+    return res.status(500).json({ error: 'Internal server error', message: safeErrorMessage(err, 'Could not issue a reset code.') });
+  }
+});
+
+router.post('/password-reset/complete', authAttemptLimit, async (req: Request, res: Response) => {
+  const refuse = () => res.status(400).json({ error: 'The reset code is wrong or has expired.' });
+  try {
+    const { email, code, newPassword } = req.body || {};
+    if (typeof email !== 'string' || typeof code !== 'string' || !email.trim() || !code.trim() || email.length > 320 || code.length > 64) {
+      return res.status(400).json({ error: 'Email, reset code and new password are required.' });
+    }
+    const passwordCheck = validatePassword(newPassword);
+    if (!passwordCheck.valid) {
+      return res.status(400).json({ error: passwordCheck.error });
+    }
+
+    const userRes = await dbClient.query('SELECT id, role, email FROM users WHERE LOWER(email) = LOWER($1)', [email.trim()]);
+    const user = userRes.rows[0];
+    if (!user) {
+      void recordSecurityEvent({ type: 'PASSWORD_RESET_FAILED', req, status: 400, detail: 'unknown account' });
+      return refuse();
+    }
+    const tokenRes = await dbClient.query(
+      `SELECT id, token_hash, expires_at, failed_attempts FROM password_reset_tokens
+       WHERE user_id = $1 AND used_at IS NULL ORDER BY created_at DESC LIMIT 1`,
+      [user.id]
+    );
+    const token = tokenRes.rows[0];
+    const supplied = Buffer.from(hashResetCode(code), 'hex');
+    const matches = !!token && crypto.timingSafeEqual(supplied, Buffer.from(token.token_hash, 'hex'));
+    const live = !!token && new Date(token.expires_at).getTime() > Date.now() && Number(token.failed_attempts) < RESET_MAX_ATTEMPTS;
+    if (!matches || !live) {
+      if (token && !matches) {
+        // Count the wrong try; too many cancels the code.
+        await dbClient.query(
+          `UPDATE password_reset_tokens
+           SET failed_attempts = failed_attempts + 1,
+               used_at = CASE WHEN failed_attempts + 1 >= $2 THEN CURRENT_TIMESTAMP ELSE used_at END
+           WHERE id = $1`,
+          [token.id, RESET_MAX_ATTEMPTS]
+        );
+      }
+      void recordSecurityEvent({ type: 'PASSWORD_RESET_FAILED', req, userId: user.id, status: 400, detail: !token ? 'no active code' : !matches ? 'wrong code' : 'expired code' });
+      return refuse();
+    }
+
+    // Single use: only one request can claim the code.
+    const claimed = await dbClient.query(
+      `UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE id = $1 AND used_at IS NULL RETURNING id`,
+      [token.id]
+    );
+    if (claimed.rows.length === 0) return refuse();
+
+    await dbClient.query(
+      `UPDATE users SET password_hash = $1, password_changed_at = CURRENT_TIMESTAMP, failed_login_count = 0, locked_until = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+      [hashPasswordServer(String(newPassword).trim()), user.id]
+    );
+    await dbClient.query(
+      `INSERT INTO audit_logs (id, action, details, user_role, user_email) VALUES ($1, $2, $3, $4, $5)`,
+      [`audit_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`, 'Password Reset Completed', 'Password reset with a one-time code', user.role, user.email]
+    );
+    void recordSecurityEvent({ type: 'PASSWORD_RESET_COMPLETED', severity: 'INFO', req, userId: user.id });
+    return res.json({ message: 'Password updated. You can sign in with the new password.' });
+  } catch (err: any) {
+    console.error('[Password reset complete error]', err);
+    return res.status(500).json({ error: 'Internal server error', message: safeErrorMessage(err, 'Could not reset the password.') });
   }
 });
 
@@ -259,6 +455,14 @@ router.post('/register-student', authAttemptLimit, async (req: Request, res: Res
 
     if (!fullName || !email || !password || !organizationId || !classId) {
       return res.status(400).json({ error: 'fullName, email, password, organizationId, and requested classId are required.' });
+    }
+    // Explicit agreement is required before anything is stored (PDPA). A
+    // person under 18 needs a parent's or guardian's agreement.
+    if (!agreed(req.body.acceptedPrivacyNotice) || !agreed(req.body.acceptedTerms) || !agreed(req.body.ageOrGuardianConfirmed)) {
+      return res.status(400).json({
+        code: 'CONSENT_REQUIRED',
+        error: 'Please confirm that you have read the Privacy Notice, agree to the Terms, and are 18 or older or have your parent\'s or guardian\'s agreement.',
+      });
     }
     const studentPasswordCheck = validatePassword(password);
     if (!studentPasswordCheck.valid) {
@@ -302,6 +506,7 @@ router.post('/register-student', authAttemptLimit, async (req: Request, res: Res
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [userId, organizationId, cleanEmail, passHash, fullName.trim(), phone?.trim() || null, UserRole.STUDENT, 'PENDING_VERIFICATION']
     );
+    await recordConsents(userId, ['PRIVACY_NOTICE', 'TERMS', 'AGE_OR_GUARDIAN'], req);
 
     // 2. Create the student profile row (status PENDING until approved)
     await dbClient.query(
@@ -327,7 +532,7 @@ router.post('/register-student', authAttemptLimit, async (req: Request, res: Res
 
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email) VALUES ($1, $2, $3, $4, $5)`,
-      [`audit_${Date.now()}`, 'Student Self-Registration', `Student ${fullName.trim()} registered — awaiting Master approval`, UserRole.STUDENT, cleanEmail]
+      [`audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, 'Student Self-Registration', `Student ${fullName.trim()} registered — awaiting Master approval`, UserRole.STUDENT, cleanEmail]
     );
 
     return res.status(201).json({
@@ -432,6 +637,14 @@ router.post('/register-parent', authAttemptLimit, async (req: Request, res: Resp
     if (!reqStudentId && (!childName || !classId)) {
       return res.status(400).json({ error: 'Child name and class are required for a new child.' });
     }
+    // Explicit agreement is required before anything is stored (PDPA), and a
+    // child's data needs the parent's or guardian's consent.
+    if (!agreed(req.body.acceptedPrivacyNotice) || !agreed(req.body.acceptedTerms) || !agreed(req.body.guardianConsent)) {
+      return res.status(400).json({
+        code: 'CONSENT_REQUIRED',
+        error: 'Please confirm that you have read the Privacy Notice, agree to the Terms, and consent as the child\'s parent or guardian.',
+      });
+    }
 
     const cleanEmail = email.trim().toLowerCase();
     const existingUser = await dbClient.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [cleanEmail]);
@@ -465,6 +678,7 @@ router.post('/register-parent', authAttemptLimit, async (req: Request, res: Resp
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [parentId, targetOrgId, cleanEmail, passHash, parentFullName.trim(), phone?.trim() || null, UserRole.PARENT, 'ACTIVE']
     );
+    await recordConsents(parentId, ['PRIVACY_NOTICE', 'TERMS', 'GUARDIAN'], req);
 
     // --- Branch: new child vs. linking to existing student ---
     if (reqStudentId) {
@@ -501,7 +715,7 @@ router.post('/register-parent', authAttemptLimit, async (req: Request, res: Resp
       await dbClient.query(
         `INSERT INTO audit_logs (id, action, details, user_role, user_email)
          VALUES ($1, $2, $3, $4, $5)`,
-        [`audit_${Date.now()}`, 'Parent Link Request', `Parent ${parentFullName.trim()} requested link to existing student ${reqStudentId}`, UserRole.PARENT, cleanEmail]
+        [`audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, 'Parent Link Request', `Parent ${parentFullName.trim()} requested link to existing student ${reqStudentId}`, UserRole.PARENT, cleanEmail]
       );
 
       // Issue token but linkedStudentIds is empty until the link is fully approved.
@@ -552,7 +766,7 @@ router.post('/register-parent', authAttemptLimit, async (req: Request, res: Resp
       await dbClient.query(
         `INSERT INTO audit_logs (id, action, details, user_role, user_email)
          VALUES ($1, $2, $3, $4, $5)`,
-        [`audit_${Date.now()}`, 'Parent Registration', `Registered parent: ${parentFullName.trim()} with provisional child student ${newStudentId} (Application: ${appId || 'None'})`, UserRole.PARENT, cleanEmail]
+        [`audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, 'Parent Registration', `Registered parent: ${parentFullName.trim()} with provisional child student ${newStudentId} (Application: ${appId || 'None'})`, UserRole.PARENT, cleanEmail]
       );
 
       return res.status(201).json({
@@ -650,6 +864,15 @@ router.get('/parent-link-requests', authenticateJWT, async (req: Request, res: R
                JOIN students s ON s.id = psl.student_id
                WHERE psl.student_id = $1 AND psl.status = 'PENDING_STUDENT'`;
       params = [stuId];
+    } else if (user.role === UserRole.PARENT) {
+      // A parent sees only the requests they sent themselves, in every state.
+      query = `SELECT psl.id, psl.student_id, psl.status, psl.student_approved, psl.master_approved, psl.admin_approved,
+                      psl.created_at, s.full_name as student_name
+               FROM parent_student_links psl
+               JOIN students s ON s.id = psl.student_id
+               WHERE psl.parent_id = $1
+               ORDER BY psl.created_at DESC`;
+      params = [user.id];
     } else {
       return res.status(403).json({ error: 'Access denied.' });
     }
@@ -726,7 +949,7 @@ router.post('/parent-link-requests/:linkId/approve', authenticateJWT, async (req
 
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email) VALUES ($1, $2, $3, $4, $5)`,
-      [`audit_${Date.now()}`, 'Parent Link Approved', `${user.role} approved link ${linkId}. New status: ${newStatus}`, user.role, user.email]
+      [`audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, 'Parent Link Approved', `${user.role} approved link ${linkId}. New status: ${newStatus}`, user.role, user.email]
     );
 
     return res.json({ message: `Approval recorded. Link status is now: ${newStatus}`, status: newStatus });
@@ -791,7 +1014,7 @@ router.post('/parent-link-requests/:linkId/reject', authenticateJWT, async (req:
 
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email) VALUES ($1, $2, $3, $4, $5)`,
-      [`audit_${Date.now()}`, 'Parent Link Rejected', `${user.role} rejected link ${linkId} (student ${link.student_id})`, user.role, user.email]
+      [`audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, 'Parent Link Rejected', `${user.role} rejected link ${linkId} (student ${link.student_id})`, user.role, user.email]
     );
 
     return res.json({ message: 'Link request rejected.' });

@@ -1,8 +1,8 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { readableId } from '../../../utils/displayName';
 import { useI18n, translate } from '../../../i18n';
 import { useNotificationInbox } from '../../../components/NotificationsInbox';
-import { View, Text, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, RefreshControl, TouchableOpacity, Pressable } from 'react-native';
 import {
   MapPin,
   Users,
@@ -16,6 +16,7 @@ import {
   LogOut,
   BookOpen,
   Globe,
+  Check,
 } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { StitchTokens } from '../../../theme/tokens';
@@ -25,13 +26,24 @@ import {
   StitchAppHeader,
   StitchStatCard,
 } from '../../../components/stitch';
-import { ScreenContainer } from '../../../components/Layout';
+import { ScreenContainer, ScreenHeader } from '../../../components/Layout';
 import { Card } from '../../../components/Card';
 import { Button } from '../../../components/Button';
-import { StatusBadge } from '../../../components/Badges';
-import { OfflineBanner, LoadingState, ErrorState } from '../../../components/Feedback';
+import { StatusBadge, StatusBadgeVariant } from '../../../components/Badges';
+import { OfflineBanner, LoadingState, ErrorState, EmptyState } from '../../../components/Feedback';
 import { useDashboardData } from '../../../hooks/useDashboardData';
 import { dashboardService, AdminPersatuanDashboardData } from '../../../services/dashboardService';
+import {
+  adminRecordsService,
+  AdminClassRecord,
+  groupClassesByLocation,
+  isModuleDisabledError,
+  metricsAreEmpty,
+  formatMoney,
+  formatPercent,
+  REPORT_PERIODS,
+  ReportPeriod,
+} from '../../../services/adminRecordsService';
 import { MasterApprovalsScreen } from './MasterApprovalsScreen';
 import { AdminAcademySetupScreen } from './AdminAcademySetupScreen';
 
@@ -116,7 +128,7 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
       <ScreenContainer scrollable testID="admin-persatuan-home-screen">
         <StitchAppHeader
         inContainer
-          dojangName="PERSATUAN DOJANG"
+          organizationId={user.organizationId}
           roleBadgeText="ADMIN PERSATUAN"
           hasUnreadNotifications={false}
           onNotificationPress={() => navigation?.navigate('Masters')}
@@ -145,7 +157,7 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
       <ScreenContainer scrollable testID="admin-persatuan-home-screen">
         <StitchAppHeader
         inContainer
-          dojangName="PERSATUAN DOJANG"
+          organizationId={user.organizationId}
           roleBadgeText="ADMIN PERSATUAN"
           hasUnreadNotifications={false}
           onNotificationPress={() => navigation?.navigate('Masters')}
@@ -189,7 +201,7 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
       {/* 1. Google Stitch App Header */}
       <StitchAppHeader
         inContainer
-        dojangName="PERSATUAN DOJANG"
+        organizationId={user.organizationId}
         roleBadgeText="ADMIN PERSATUAN"
         hasUnreadNotifications={inbox.unreadCount > 0}
         onNotificationPress={inbox.openInbox}
@@ -522,21 +534,296 @@ export const AdminPersatuanHomeScreen: React.FC<RoleScreenProps> = ({
   );
 };
 
-export const LocationsScreen: React.FC<RoleScreenProps> = props => {
-  const { colors, iconSize } = useTheme();
+// ----------------------------------------------------------------------------
+// Locations and Reports (2026-11-22). Read-only, tenant-scoped on the server.
+// ----------------------------------------------------------------------------
+
+interface AdminResource<T> {
+  data: T | null;
+  error: unknown;
+  loading: boolean;
+  refreshing: boolean;
+  reload: () => void;
+  refresh: () => void;
+}
+
+/** Loader passed to useAdminResource (call signature avoids a generic after an arrow). */
+type AdminFetcher<T> = { (): Promise<T> };
+
+/**
+ * Loads `fetcher` and loads again whenever it changes or on retry. Each load
+ * has its own token, so a late answer for an old period is ignored.
+ */
+function useAdminResource<T>(fetcher: AdminFetcher<T>): AdminResource<T> {
+  const [reloadCount, setReloadCount] = useState(0);
+  const token = useMemo(() => ({ fetcher, reloadCount }), [fetcher, reloadCount]);
+  const [result, setResult] = useState<{ token: object | null; data: T | null; error: unknown }>({
+    token: null,
+    data: null,
+    error: null,
+  });
+  const [refreshing, setRefreshing] = useState(false);
+  const tokenRef = useRef(token);
+
+  useEffect(() => {
+    tokenRef.current = token;
+    let cancelled = false;
+    token.fetcher().then(
+      data => {
+        if (!cancelled) setResult({ token, data, error: null });
+      },
+      error => {
+        if (!cancelled) setResult({ token, data: null, error });
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  const refresh = useCallback(() => {
+    const current = tokenRef.current;
+    setRefreshing(true);
+    current.fetcher().then(
+      data => {
+        if (tokenRef.current === current) setResult({ token: current, data, error: null });
+      },
+      error => {
+        if (tokenRef.current === current) setResult({ token: current, data: null, error });
+      }
+    ).finally(() => setRefreshing(false));
+  }, []);
+
+  const loading = result.token !== token;
+  return {
+    data: loading ? null : result.data,
+    error: loading ? null : result.error,
+    loading,
+    refreshing,
+    reload: () => setReloadCount(n => n + 1),
+    refresh,
+  };
+}
+
+interface AdminRecordsFrameProps extends RoleScreenProps {
+  title: string;
+  subtitle: string;
+  scope: string;
+  testID: string;
+  refreshing: boolean;
+  onRefresh: () => void;
+  children: React.ReactNode;
+}
+
+const AdminRecordsFrame: React.FC<AdminRecordsFrameProps> = ({
+  title,
+  subtitle,
+  scope,
+  testID,
+  onLogout,
+  isOffline,
+  refreshing,
+  onRefresh,
+  children,
+}) => {
+  const { colors, typography, spacing, iconSize } = useTheme();
   const { t } = useI18n();
   return (
-    <RolePlaceholderBase
+    <ScreenContainer
+      scrollable
+      testID={testID}
+      style={{ backgroundColor: colors.background }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    >
+      <ScreenHeader
+        title={title}
+        subtitle={subtitle}
+        rightAction={
+          onLogout ? (
+            <Button
+              label={t('auth.common.signOut')}
+              onPress={onLogout}
+              variant="outline"
+              size="sm"
+              leftIcon={<LogOut size={iconSize.sm} color={colors.textSecondary} />}
+              testID="btn-role-logout"
+              accessibilityLabel={t('auth.role.signOutA11y')}
+            />
+          ) : undefined
+        }
+      />
+      <View style={{ paddingVertical: spacing.md }}>
+        {isOffline ? (
+          <View style={{ marginBottom: spacing.md }}>
+            <OfflineBanner message={t('auth.role.offline')} testID="offline-security-banner" />
+          </View>
+        ) : null}
+        <Text style={[typography.caption, { color: colors.textMuted, marginBottom: spacing.md }]}>{scope}</Text>
+        {children}
+      </View>
+    </ScreenContainer>
+  );
+};
+
+const CLASS_STATUS_VARIANT: Record<string, StatusBadgeVariant> = {
+  ACTIVE: 'success',
+  PAUSED: 'warning',
+  NOT_STARTED: 'info',
+  CLOSED: 'neutral',
+};
+
+export const LocationsScreen: React.FC<RoleScreenProps> = props => {
+  const { colors, typography, spacing, iconSize } = useTheme();
+  const { t } = useI18n();
+  const orgId = props.user.organizationId || null;
+
+  const fetcher = useCallback(
+    () => (orgId ? adminRecordsService.listAcademyClasses(orgId) : Promise.resolve<AdminClassRecord[]>([])),
+    [orgId]
+  );
+  const { data, error, loading, refreshing, reload, refresh } = useAdminResource(fetcher);
+  const groups = useMemo(() => groupClassesByLocation(data ?? []), [data]);
+
+  const statusLabel = (status: string) => {
+    switch (status) {
+      case 'ACTIVE':
+        return t('adminHome.locations.statusActive');
+      case 'PAUSED':
+        return t('adminHome.locations.statusPaused');
+      case 'NOT_STARTED':
+        return t('adminHome.locations.statusNotStarted');
+      case 'CLOSED':
+        return t('adminHome.locations.statusClosed');
+      default:
+        return t('adminHome.locations.statusOther', { status });
+    }
+  };
+  const countLabel = (count: number) =>
+    count === 1 ? t('adminHome.locations.classCountOne') : t('adminHome.locations.classCount', { count });
+
+  let body: React.ReactNode;
+  if (!orgId) {
+    body = <EmptyState title={t('adminHome.locations.emptyTitle')} description={t('adminHome.locations.noOrg')} testID="locations-empty" />;
+  } else if (loading) {
+    body = <LoadingState message={t('adminHome.locations.loading')} testID="locations-loading" />;
+  } else if (error) {
+    body = (
+      <ErrorState
+        title={t('adminHome.locations.errorTitle')}
+        message={t('adminHome.locations.errorBody')}
+        onRetry={reload}
+        testID="locations-error"
+      />
+    );
+  } else if (groups.length === 0) {
+    body = (
+      <EmptyState
+        title={t('adminHome.locations.emptyTitle')}
+        description={t('adminHome.locations.emptyBody')}
+        icon={<MapPin size={iconSize.lg} color={colors.textMuted} />}
+        testID="locations-empty"
+      />
+    );
+  } else {
+    const venues = groups.filter(g => g.location !== null).length;
+    body = (
+      <View testID="locations-list">
+        <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
+          {t('adminHome.locations.summary', { venues, classes: data?.length ?? 0 })}
+        </Text>
+        <Text style={[typography.caption, { color: colors.textMuted, marginBottom: spacing.md }]}>
+          {t('adminHome.locations.sourceNote')}
+        </Text>
+        {groups.map((group, index) => {
+          const venueName = group.location ?? t('adminHome.locations.notSet');
+          return (
+            <Card key={group.location ?? '__unset__'} variant="standard" style={{ marginBottom: spacing.md }} testID={`venue-group-${index}`}>
+              <View
+                style={styles.venueHeader}
+                accessible
+                accessibilityRole="header"
+                accessibilityLabel={t('adminHome.locations.venueA11y', { venue: venueName, count: group.classes.length })}
+              >
+                <MapPin size={iconSize.md} color={group.location ? colors.buttonPrimaryBg : colors.textMuted} />
+                <View style={{ flex: 1, marginLeft: spacing.sm }}>
+                  <Text style={[typography.sectionHeading, { color: group.location ? colors.textPrimary : colors.textSecondary }]}>
+                    {venueName}
+                  </Text>
+                  <Text style={[typography.caption, { color: colors.textSecondary }]}>{countLabel(group.classes.length)}</Text>
+                </View>
+              </View>
+              {group.classes.map(c => {
+                const schedule = c.schedule ?? t('adminHome.locations.noSchedule');
+                const master = c.masterName
+                  ? t('adminHome.locations.master', { name: c.masterName })
+                  : t('adminHome.locations.noMaster');
+                const status = statusLabel(c.status);
+                return (
+                  <View
+                    key={c.id}
+                    style={[styles.venueClassRow, { borderTopColor: colors.border, paddingTop: spacing.sm, marginTop: spacing.sm }]}
+                    testID={`venue-class-${c.id}`}
+                    accessible
+                    accessibilityLabel={t('adminHome.locations.classA11y', { name: c.name, schedule, master, status })}
+                  >
+                    <View style={styles.venueClassTitleRow}>
+                      <Text style={[typography.titleMedium, { color: colors.textPrimary, flex: 1, marginRight: spacing.sm }]}>
+                        {c.name}
+                      </Text>
+                      <StatusBadge
+                        status={c.status}
+                        label={status}
+                        variant={CLASS_STATUS_VARIANT[c.status] ?? 'neutral'}
+                        testID={`class-status-${c.id}`}
+                      />
+                    </View>
+                    {c.venueDetails ? (
+                      <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>{c.venueDetails}</Text>
+                    ) : null}
+                    <View style={styles.venueMetaRow}>
+                      <Calendar size={iconSize.sm} color={colors.textSecondary} />
+                      <Text style={[typography.bodyMedium, styles.venueMetaText, { color: colors.textPrimary }]}>{schedule}</Text>
+                    </View>
+                    <View style={styles.venueMetaRow}>
+                      <User size={iconSize.sm} color={colors.textSecondary} />
+                      <Text style={[typography.bodyMedium, styles.venueMetaText, { color: c.masterName ? colors.textPrimary : colors.textMuted }]}>
+                        {master}
+                      </Text>
+                    </View>
+                    {c.capacity !== null || c.activeStudents !== null ? (
+                      <View style={styles.venueMetaRow}>
+                        <Users size={iconSize.sm} color={colors.textSecondary} />
+                        <Text style={[typography.bodyMedium, styles.venueMetaText, { color: colors.textPrimary }]} testID={`class-students-${c.id}`}>
+                          {c.activeStudents !== null && c.capacity !== null
+                            ? t('adminHome.locations.studentsOfCapacity', { count: c.activeStudents, capacity: c.capacity })
+                            : c.activeStudents !== null
+                              ? t('adminHome.locations.students', { count: c.activeStudents })
+                              : t('adminHome.locations.capacity', { count: c.capacity ?? 0 })}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+                );
+              })}
+            </Card>
+          );
+        })}
+      </View>
+    );
+  }
+
+  return (
+    <AdminRecordsFrame
+      {...props}
       title={t('adminHome.locationsTitle')}
       subtitle={t('adminHome.locationsSubtitle')}
-      role={UserRole.ADMIN_PERSATUAN}
-      user={props.user}
-      onLogout={props.onLogout}
-      isOffline={props.isOffline}
+      scope={t('adminHome.locationsScope')}
       testID="admin-persatuan-locations-screen"
-      icon={<MapPin size={iconSize.lg} color={colors.buttonPrimaryBg} />}
-      scopeDescription={t('adminHome.locationsScope')}
-    />
+      refreshing={refreshing}
+      onRefresh={refresh}
+    >
+      {body}
+    </AdminRecordsFrame>
   );
 };
 
@@ -548,21 +835,209 @@ export const AcademySetupScreen: React.FC<RoleScreenProps> = props => {
   return <AdminAcademySetupScreen {...props} />;
 };
 
-export const ReportsScreen: React.FC<RoleScreenProps> = props => {
-  const { colors, iconSize } = useTheme();
+const ReportBar: React.FC<{ label: string; percent: number | null; testID: string }> = ({ label, percent, testID }) => {
+  const { colors, typography, spacing } = useTheme();
   const { t } = useI18n();
+  const shown = percent === null ? t('adminHome.reports.notEnoughData') : formatPercent(percent);
+  const width = percent === null ? 0 : Math.max(0, Math.min(100, percent));
   return (
-    <RolePlaceholderBase
+    <View
+      style={{ marginBottom: spacing.md }}
+      testID={testID}
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityLabel={t('adminHome.reports.barA11y', { label, value: shown })}
+      accessibilityValue={percent === null ? undefined : { min: 0, max: 100, now: Math.round(width) }}
+    >
+      <View style={styles.reportBarLabelRow}>
+        <Text style={[typography.bodyMedium, { color: colors.textPrimary, flex: 1 }]}>{label}</Text>
+        <Text style={[typography.bodyMedium, { color: colors.textPrimary, fontWeight: '700' }]}>{shown}</Text>
+      </View>
+      <View style={[styles.reportBarTrack, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}>
+        <View style={[styles.reportBarFill, { width: `${width}%`, backgroundColor: colors.buttonPrimaryBg }]} />
+      </View>
+    </View>
+  );
+};
+
+export const ReportsScreen: React.FC<RoleScreenProps> = props => {
+  const { colors, typography, spacing, iconSize } = useTheme();
+  const { t } = useI18n();
+  const [period, setPeriod] = useState<ReportPeriod>('current_month');
+
+  const fetcher = useCallback(() => adminRecordsService.getAcademyMetrics(period), [period]);
+  const { data, error, loading, refreshing, reload, refresh } = useAdminResource(fetcher);
+  const disabled = !loading && isModuleDisabledError(error);
+
+  const periodLabel = (p: string) =>
+    (REPORT_PERIODS as readonly string[]).includes(p) ? t(`adminHome.reports.period.${p}`) : p;
+
+  const sectionTitle = (key: string) => (
+    <Text style={[typography.sectionHeading, { color: colors.textPrimary, marginBottom: spacing.sm }]} accessibilityRole="header">
+      {t(key)}
+    </Text>
+  );
+  const stat = (key: string, value: string | number, testID: string) => (
+    <View style={styles.reportStatCol}>
+      <StitchStatCard label={t(key)} value={value} testID={testID} />
+    </View>
+  );
+
+  let body: React.ReactNode;
+  if (loading) {
+    body = <LoadingState message={t('adminHome.reports.loading')} testID="reports-loading" />;
+  } else if (disabled) {
+    body = (
+      <EmptyState
+        title={t('adminHome.reports.disabledTitle')}
+        description={t('adminHome.reports.disabledBody')}
+        icon={<BarChart3 size={iconSize.lg} color={colors.textMuted} />}
+        testID="reports-disabled"
+      />
+    );
+  } else if (error || !data) {
+    body = (
+      <ErrorState
+        title={t('adminHome.reports.errorTitle')}
+        message={t('adminHome.reports.errorBody')}
+        onRetry={reload}
+        testID="reports-error"
+      />
+    );
+  } else if (metricsAreEmpty(data)) {
+    body = (
+      <EmptyState
+        title={t('adminHome.reports.emptyTitle')}
+        description={t('adminHome.reports.emptyBody')}
+        icon={<BarChart3 size={iconSize.lg} color={colors.textMuted} />}
+        testID="reports-empty"
+      />
+    );
+  } else {
+    const { enrollment, trialConversion, retention, ledgerTotals, metadata } = data;
+    const money = (amount: number) => formatMoney(amount, ledgerTotals.currency);
+    const calculated = new Date(metadata.calculatedAt);
+    body = (
+      <View testID="reports-figures">
+        <Text style={[typography.caption, { color: colors.textSecondary }]}>
+          {t('adminHome.reports.periodShown', {
+            period: periodLabel(metadata.period),
+            time: isNaN(calculated.getTime()) ? metadata.calculatedAt : calculated.toLocaleString(),
+          })}
+        </Text>
+        <Text style={[typography.caption, { color: colors.textMuted, marginTop: spacing.xs }]}>{t('adminHome.reports.periodNote')}</Text>
+        <Text style={[typography.caption, { color: colors.textMuted, marginTop: spacing.xs, marginBottom: spacing.md }]}>
+          {t('adminHome.reports.aggregatesNote')}
+        </Text>
+
+        <Card variant="standard" style={{ marginBottom: spacing.md }}>
+          {sectionTitle('adminHome.reports.sectionStudents')}
+          <View style={styles.reportStatGrid}>
+            {stat('adminHome.reports.activeStudents', enrollment.activeEnrolledStudents, 'stat-active-students')}
+            {stat('adminHome.reports.pendingApplicants', enrollment.pendingApplicants, 'stat-pending-applicants')}
+            {stat('adminHome.reports.activeClasses', enrollment.activeClassesCount, 'stat-active-classes')}
+            {stat('adminHome.reports.totalCapacity', enrollment.totalClassCapacity, 'stat-total-capacity')}
+          </View>
+          <ReportBar
+            label={t('adminHome.reports.barCapacity')}
+            percent={enrollment.totalClassCapacity > 0 ? enrollment.capacityUtilizationPercent : null}
+            testID="bar-capacity"
+          />
+        </Card>
+
+        <Card variant="standard" style={{ marginBottom: spacing.md }}>
+          {sectionTitle('adminHome.reports.sectionTrials')}
+          <View style={styles.reportStatGrid}>
+            {stat('adminHome.reports.trialsBooked', trialConversion.totalTrialsBooked, 'stat-trials-booked')}
+            {stat('adminHome.reports.trialsAttended', trialConversion.trialsAttended, 'stat-trials-attended')}
+            {stat('adminHome.reports.trialsConverted', trialConversion.trialsConverted, 'stat-trials-converted')}
+          </View>
+          <ReportBar
+            label={t('adminHome.reports.barConversion')}
+            percent={trialConversion.totalTrialsBooked > 0 ? trialConversion.conversionRatePercent : null}
+            testID="bar-conversion"
+          />
+        </Card>
+
+        <Card variant="standard" style={{ marginBottom: spacing.md }}>
+          {sectionTitle('adminHome.reports.sectionRetention')}
+          <ReportBar
+            label={t('adminHome.reports.barRetention')}
+            percent={retention.activeStudents + retention.pausedMemberships > 0 ? retention.retentionRatePercent : null}
+            testID="bar-retention"
+          />
+          <Text style={[typography.bodyMedium, { color: colors.textPrimary }]}>
+            {t('adminHome.reports.pausedMemberships', { count: retention.pausedMemberships })}
+          </Text>
+          <Text style={[typography.bodyMedium, { color: colors.textPrimary, marginTop: spacing.xs }]}>
+            {t('adminHome.reports.transfers', { count: retention.transfersCount })}
+          </Text>
+        </Card>
+
+        <Card variant="standard" style={{ marginBottom: spacing.md }}>
+          {sectionTitle('adminHome.reports.sectionFees')}
+          <View style={styles.reportStatGrid}>
+            {stat('adminHome.reports.collected', money(ledgerTotals.totalCollected), 'stat-collected')}
+            {stat('adminHome.reports.outstanding', money(ledgerTotals.totalOutstanding), 'stat-outstanding')}
+            {stat('adminHome.reports.discounts', money(ledgerTotals.siblingDiscountSavings), 'stat-discounts')}
+          </View>
+        </Card>
+      </View>
+    );
+  }
+
+  return (
+    <AdminRecordsFrame
+      {...props}
       title={t('adminHome.reportsTitle')}
       subtitle={t('adminHome.reportsSubtitle')}
-      role={UserRole.ADMIN_PERSATUAN}
-      user={props.user}
-      onLogout={props.onLogout}
-      isOffline={props.isOffline}
+      scope={t('adminHome.reportsScope')}
       testID="admin-persatuan-reports-screen"
-      icon={<BarChart3 size={iconSize.lg} color={colors.buttonPrimaryBg} />}
-      scopeDescription={t('adminHome.reportsScope')}
-    />
+      refreshing={refreshing}
+      onRefresh={refresh}
+    >
+      {disabled ? null : (
+        <View style={{ marginBottom: spacing.md }}>
+          <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
+            {t('adminHome.reports.periodLabel')}
+          </Text>
+          <View style={styles.periodRow} accessibilityRole="radiogroup">
+            {REPORT_PERIODS.map(p => {
+              const selected = p === period;
+              return (
+                <Pressable
+                  key={p}
+                  onPress={() => setPeriod(p)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected, checked: selected }}
+                  accessibilityLabel={t('adminHome.reports.periodA11y', { period: periodLabel(p) })}
+                  testID={`period-${p}`}
+                  style={[
+                    styles.periodChip,
+                    {
+                      borderColor: selected ? colors.buttonPrimaryBg : colors.border,
+                      backgroundColor: selected ? colors.buttonPrimaryBg : colors.surface,
+                      borderWidth: selected ? 2 : 1,
+                    },
+                  ]}
+                >
+                  {selected ? <Check size={iconSize.sm} color={colors.buttonPrimaryText} /> : null}
+                  <Text
+                    style={[
+                      typography.caption,
+                      { color: selected ? colors.buttonPrimaryText : colors.textPrimary, fontWeight: selected ? '700' : '500' },
+                    ]}
+                  >
+                    {periodLabel(p)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      )}
+      {body}
+    </AdminRecordsFrame>
   );
 };
 
@@ -664,6 +1139,67 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,
+  },
+  venueHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 44,
+  },
+  venueClassRow: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  venueClassTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  venueMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  venueMetaText: {
+    marginLeft: 6,
+    flex: 1,
+  },
+  periodRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  periodChip: {
+    minHeight: 44,
+    minWidth: 44,
+    paddingHorizontal: 12,
+    borderRadius: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  reportStatGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -4,
+    marginBottom: 8,
+  },
+  reportStatCol: {
+    width: '50%',
+    padding: 4,
+  },
+  reportBarLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  reportBarTrack: {
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  reportBarFill: {
+    height: '100%',
   },
 });
 

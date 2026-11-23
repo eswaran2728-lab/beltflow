@@ -327,6 +327,7 @@ async function runPhase2ReadinessTests() {
 
     // Register Parent for Student A1
     const parentA1Reg = await http('POST', '/auth/register-parent', {
+      acceptedPrivacyNotice: true, acceptedTerms: true, guardianConsent: true,
       organizationId: orgAId,
       studentId: studentA1Id,
       fullName: 'Raja Raman (Parent)',
@@ -439,6 +440,7 @@ async function runPhase2ReadinessTests() {
 
     // Inactive / Pending Student Registration
     const pendingReg = await http('POST', '/auth/register-student', {
+      acceptedPrivacyNotice: true, acceptedTerms: true, ageOrGuardianConfirmed: true,
       organizationId: orgAId,
       classId: classA1Id,
       fullName: 'Pending Unapproved Student',

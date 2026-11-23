@@ -207,7 +207,7 @@ router.post('/', authenticateJWT, requirePermission(Permission.PERSATUAN_MANAGE_
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email)
        VALUES ($1, $2, $3, $4, $5)`,
-      [`audit_${Date.now()}`, 'Grading Event Created', `Created promotion exam: ${title.trim()}`, req.user!.role, req.user!.email]
+      [`audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, 'Grading Event Created', `Created promotion exam: ${title.trim()}`, req.user!.role, req.user!.email]
     );
 
     return res.status(201).json({ message: 'Grading event created successfully in PostgreSQL.', event: eventRes.rows[0] });
@@ -414,7 +414,7 @@ router.post('/:eventId/score', authenticateJWT, requirePermission(Permission.CLA
         await dbClient.query(
           `INSERT INTO audit_logs (id, action, details, user_role, user_email)
            VALUES ($1, $2, $3, $4, $5)`,
-          [`audit_${Date.now()}`, 'Certificate Issued', `Issued cert ${certCode} (${r.targetBelt}) to ${student.full_name}`, req.user!.role, req.user!.email]
+          [`audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, 'Certificate Issued', `Issued cert ${certCode} (${r.targetBelt}) to ${student.full_name}`, req.user!.role, req.user!.email]
         );
       }
     }

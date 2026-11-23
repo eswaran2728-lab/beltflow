@@ -1,4 +1,5 @@
 import { apiClient, onUnauthorizedResponse } from './apiClient';
+import { signedPassService } from './signedPassService';
 import {
   setAuthToken,
   getAuthToken,
@@ -106,7 +107,32 @@ export const authService = {
    * Change current account password
    */
   async changePassword(request: ChangePasswordRequest): Promise<void> {
-    await apiClient.post('/api/v1/auth/change-password', request);
+    // The server ends every older session when the password changes and
+    // returns a fresh token for this device.
+    const res = await apiClient.post<{ token?: string }>('/api/v1/auth/change-password', request);
+    if (res?.token) {
+      await setAuthToken(res.token);
+    }
+  },
+
+  /**
+   * Staff only: create a one-time reset code for an account the server says
+   * this person looks after. The code is shown once and never stored in clear.
+   */
+  async issuePasswordResetCode(email: string): Promise<{ code: string; expiresAt: string }> {
+    return apiClient.post<{ code: string; expiresAt: string }>('/api/v1/auth/password-reset/issue', { email: email.trim() });
+  },
+
+  /**
+   * Set a new password with the one-time code an administrator gave the
+   * person. No session is needed; the person signs in afterwards.
+   */
+  async completePasswordReset(email: string, code: string, newPassword: string): Promise<void> {
+    await apiClient.post('/api/v1/auth/password-reset/complete', {
+      email: email.trim(),
+      code: code.trim().toUpperCase(),
+      newPassword,
+    });
   },
 
   /**
@@ -133,6 +159,7 @@ export const authService = {
    */
   async logout(): Promise<void> {
     await clearAuth();
+    await signedPassService.forgetAll();
     notifySessionEnded();
   },
 

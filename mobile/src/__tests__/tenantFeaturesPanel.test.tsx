@@ -44,13 +44,18 @@ beforeEach(() => {
   (apiClient.put as jest.Mock).mockResolvedValue({ organizationId: 'org_test_a', key: 'messaging', setting: 'OFF', effective: false });
 });
 
-const renderScreen = () => render(
-  <SafeAreaProvider initialMetrics={metrics}>
-    <ThemeProvider defaultMode="light">
-      <PersatuanManagementScreen user={superAdmin} onLogout={jest.fn()} />
-    </ThemeProvider>
-  </SafeAreaProvider>
-);
+// The panel sits behind the "Feature switches" section of Persatuan management.
+const renderScreen = async () => {
+  const r = await render(
+    <SafeAreaProvider initialMetrics={metrics}>
+      <ThemeProvider defaultMode="light">
+        <PersatuanManagementScreen user={superAdmin} onLogout={jest.fn()} />
+      </ThemeProvider>
+    </SafeAreaProvider>
+  );
+  await act(async () => { fireEvent.press(r.getByTestId('persatuan-section-features')); });
+  return r;
+};
 
 test('lists Persatuans, shows module settings and saves a change for one Persatuan', async () => {
   const r = await renderScreen();

@@ -309,7 +309,7 @@ router.post('/', authenticateJWT, requirePermission(Permission.PERSATUAN_MANAGE_
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email)
        VALUES ($1, $2, $3, $4, $5)`,
-      [`audit_${Date.now()}`, 'Student Enrolled', `Enrolled student ${fullName.trim()} with fee RM ${calculatedFee} (10% Sibling Discount: ${isSibling})`, req.user!.role, req.user!.email]
+      [`audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, 'Student Enrolled', `Enrolled student ${fullName.trim()} with fee RM ${calculatedFee} (10% Sibling Discount: ${isSibling})`, req.user!.role, req.user!.email]
     );
 
     return res.status(201).json({

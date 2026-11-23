@@ -113,7 +113,7 @@ router.post('/', authenticateJWT, requirePermission(Permission.PERSATUAN_MANAGE_
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email)
        VALUES ($1, $2, $3, $4, $5)`,
-      [`audit_${Date.now()}`, 'Tournament Scheduled', `Scheduled tournament: ${tourneyTitle.trim()} (Discipline: ${discipline}, Ruleset: ${rSet}, Status: ${rulesetStatus})`, req.user!.role, req.user!.email]
+      [`audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, 'Tournament Scheduled', `Scheduled tournament: ${tourneyTitle.trim()} (Discipline: ${discipline}, Ruleset: ${rSet}, Status: ${rulesetStatus})`, req.user!.role, req.user!.email]
     );
 
     return res.status(201).json({ message: 'Tournament scheduled in PostgreSQL.', tournament: insertRes.rows[0] });
@@ -369,7 +369,7 @@ router.post('/assign-judge', authenticateJWT, async (req: Request, res: Response
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email)
        VALUES ($1, $2, $3, $4, $5)`,
-      [`audit_${Date.now()}`, 'JUDGE_ASSIGNED', `Judge ${judgeId} (${roleVal}) assigned to match ${matchId}`, req.user!.role, req.user!.email]
+      [`audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, 'JUDGE_ASSIGNED', `Judge ${judgeId} (${roleVal}) assigned to match ${matchId}`, req.user!.role, req.user!.email]
     );
 
     return res.status(201).json({
@@ -425,7 +425,7 @@ router.post('/revoke-judge', authenticateJWT, async (req: Request, res: Response
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email)
        VALUES ($1, $2, $3, $4, $5)`,
-      [`audit_${Date.now()}`, 'JUDGE_REVOKED', `Judge ${judgeId} revoked from match ${matchId}. Reason: ${reason || 'Official administrative action'}`, req.user!.role, req.user!.email]
+      [`audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, 'JUDGE_REVOKED', `Judge ${judgeId} revoked from match ${matchId}. Reason: ${reason || 'Official administrative action'}`, req.user!.role, req.user!.email]
     );
 
     return res.status(200).json({
@@ -757,7 +757,7 @@ router.post('/matches/:matchId/lock', authenticateJWT, async (req: Request, res:
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email)
        VALUES ($1, $2, $3, $4, $5)`,
-      [`audit_${Date.now()}`, 'MATCH_RESULT_LOCKED', `Match ${matchId} locked. Winner: ${winnerId}. Tie break applied: ${tieBreakApplied} (${tieBreakReason})`, req.user!.role, req.user!.email]
+      [`audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, 'MATCH_RESULT_LOCKED', `Match ${matchId} locked. Winner: ${winnerId}. Tie break applied: ${tieBreakApplied} (${tieBreakReason})`, req.user!.role, req.user!.email]
     );
 
     return res.status(200).json({
@@ -801,7 +801,7 @@ router.post('/matches/:matchId/appeal', authenticateJWT, async (req: Request, re
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email)
        VALUES ($1, $2, $3, $4, $5)`,
-      [`audit_${Date.now()}`, 'MATCH_APPEAL_SUBMITTED', `Appeal submitted for match ${matchId} on competitor ${competitorId}. Preserved original score A: ${match.score_a}, score B: ${match.score_b}`, req.user!.role, req.user!.email]
+      [`audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, 'MATCH_APPEAL_SUBMITTED', `Appeal submitted for match ${matchId} on competitor ${competitorId}. Preserved original score A: ${match.score_a}, score B: ${match.score_b}`, req.user!.role, req.user!.email]
     );
 
     return res.status(201).json({
@@ -1022,7 +1022,7 @@ router.post('/:id/results', authenticateJWT, requirePermission(Permission.PERSAT
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email)
        VALUES ($1, $2, $3, $4, $5)`,
-      [`audit_${Date.now()}`, 'Tournament Results Finalized',
+      [`audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, 'Tournament Results Finalized',
        `Finalized results for tournament ${tourneyId} (${results.length} entries, ${issuedCertificates.length} certificates issued)`,
        req.user!.role, req.user!.email]
     );

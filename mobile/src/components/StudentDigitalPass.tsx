@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { useTheme } from '../theme/ThemeProvider';
 import { BeltBadge, StatusBadge } from './Badges';
 import { Card } from './Card';
-import { qrPassService, StudentQRPayload } from '../services/qrPassService';
+import { signedPassService, SignedPass } from '../services/signedPassService';
 import { ShieldCheck, Calendar, Clock, AlertTriangle } from 'lucide-react-native';
 import { useI18n } from '../i18n';
 
@@ -18,6 +18,7 @@ export interface StudentDigitalPassProps {
     persatuanName?: string;
   };
   isOffline?: boolean;
+  /** Not used: the server sets the pass validity. Kept for older callers. */
   expiresInDays?: number;
   testID?: string;
 }
@@ -25,19 +26,38 @@ export interface StudentDigitalPassProps {
 export const StudentDigitalPass: React.FC<StudentDigitalPassProps> = ({
   student,
   isOffline = false,
-  expiresInDays = 30,
   testID = 'student-digital-pass',
 }) => {
   const { colors, typography } = useTheme();
   const { t } = useI18n();
 
-  const payload: StudentQRPayload = qrPassService.createStudentPassPayload(student, {
-    expiresInDays,
-  });
+  // Only a pass signed by the server is shown: scanners refuse anything else.
+  const [pass, setPass] = useState<SignedPass | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let active = true;
+    signedPassService.getCached(student.id).then(cached => {
+      if (active && cached) setPass(cached);
+    });
+    if (!isOffline) {
+      signedPassService.fetch(student.id).then(
+        fresh => {
+          if (!active) return;
+          setPass(fresh);
+          setFailed(false);
+        },
+        () => {
+          if (active) setFailed(true);
+        }
+      );
+    }
+    return () => {
+      active = false;
+    };
+  }, [student.id, isOffline]);
 
-  const qrData = qrPassService.serializePayload(payload);
-  const issuedDate = new Date(payload.iat * 1000).toLocaleDateString();
-  const expiryDate = new Date(payload.exp * 1000).toLocaleDateString();
+  const issuedDate = pass ? new Date(pass.issuedAt).toLocaleDateString() : '';
+  const expiryDate = pass ? new Date(pass.expiresAt).toLocaleDateString() : '';
 
   return (
     <Card
@@ -77,16 +97,20 @@ export const StudentDigitalPass: React.FC<StudentDigitalPassProps> = ({
         testID="pass-qr-container"
         accessibilityLabel={t('components.pass.qrA11y')}
       >
-        <QRCode
-          value={qrData}
-          size={180}
-          backgroundColor="#FFFFFF"
-          color="#0F172A"
-        />
+        {pass ? (
+          <QRCode value={pass.qrString} size={180} backgroundColor="#FFFFFF" color="#0F172A" />
+        ) : (
+          <View style={styles.qrPlaceholder} testID="pass-not-ready">
+            <Text style={[typography.caption, { color: '#334155', textAlign: 'center' }]}>
+              {failed || isOffline ? t('components.pass.unavailable') : t('components.pass.preparing')}
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Security notice & Expiry Details */}
       <View style={styles.footerContainer}>
+        {pass ? (
         <View style={styles.metaRow}>
           <View style={styles.metaItem}>
             <Calendar size={13} color={colors.textSecondary} />
@@ -101,12 +125,13 @@ export const StudentDigitalPass: React.FC<StudentDigitalPassProps> = ({
             </Text>
           </View>
         </View>
+        ) : null}
 
         <Text style={[styles.watermarkText, { color: colors.textMuted }]}>
           {t('components.pass.watermark')}
         </Text>
 
-        {isOffline && (
+        {isOffline && pass && (
           <View style={[styles.offlineBanner, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}>
             <AlertTriangle size={14} color="#B45309" />
             <Text style={[styles.offlineBannerText, { color: '#B45309' }]}>
@@ -120,6 +145,7 @@ export const StudentDigitalPass: React.FC<StudentDigitalPassProps> = ({
 };
 
 const styles = StyleSheet.create({
+  qrPlaceholder: { width: 180, height: 180, alignItems: 'center', justifyContent: 'center', padding: 12 },
   container: {
     padding: 20,
     borderRadius: 16,

@@ -30,6 +30,7 @@ router.post('/', authenticateJWT, async (req: Request, res: Response) => {
     }
     const noticeType = VALID_NOTICE_TYPES.includes(type) ? type : 'GENERAL';
     const cls = (await dbClient.query('SELECT organization_id FROM classes WHERE id = $1', [classId])).rows[0];
+    const sender = (await dbClient.query('SELECT full_name FROM users WHERE id = $1', [req.user!.id])).rows[0];
 
     const result = await dbClient.query(
       `INSERT INTO notices (
@@ -45,7 +46,7 @@ router.post('/', authenticateJWT, async (req: Request, res: Response) => {
         noticeType,
         message.trim(),
         req.user!.id,
-        req.user!.email,
+        sender?.full_name || req.user!.email,
         Boolean(requiresAcknowledgement),
         acknowledgementDeadline ? new Date(acknowledgementDeadline).toISOString() : null,
       ]
@@ -101,7 +102,36 @@ router.get('/mine', authenticateJWT, async (req: Request, res: Response) => {
        ORDER BY n.created_at DESC`,
       [studentIds]
     );
-    return res.json({ notices: result.rows });
+    // Which of these notices this account has already acknowledged, and for
+    // which of its own students (a parent acknowledges per child).
+    const ids = result.rows.map((n: any) => n.id);
+    const acks = ids.length
+      ? await dbClient.query(
+          `SELECT notice_id, student_id FROM notice_acknowledgements
+           WHERE user_id = $1 AND notice_id = ANY($2::text[])`,
+          [user.id, ids]
+        )
+      : { rows: [] as any[] };
+    const ackMap = new Map<string, string[]>();
+    for (const a of acks.rows) {
+      const list = ackMap.get(a.notice_id) || [];
+      if (a.student_id && studentIds.includes(a.student_id)) list.push(a.student_id);
+      ackMap.set(a.notice_id, list);
+    }
+    // Show the sender's name, not the e-mail some older notices stored.
+    const senderIds = [...new Set(result.rows.map((n: any) => n.sender_id).filter(Boolean))];
+    const senders = senderIds.length
+      ? await dbClient.query(`SELECT id, full_name FROM users WHERE id = ANY($1::text[])`, [senderIds])
+      : { rows: [] as any[] };
+    const senderName = new Map<string, string>(senders.rows.map((u: any) => [u.id, u.full_name]));
+    return res.json({
+      notices: result.rows.map((n: any) => ({
+        ...n,
+        sender_name: senderName.get(n.sender_id) || n.sender_name,
+        acknowledged_by_me: ackMap.has(n.id),
+        acknowledged_student_ids: ackMap.get(n.id) || [],
+      })),
+    });
   } catch (err: any) {
     console.error('[Database error]', err);
     return res.status(500).json({ error: 'Database error', message: safeErrorMessage(err, 'An internal error occurred.') });

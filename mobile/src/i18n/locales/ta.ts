@@ -20,6 +20,7 @@ import { parentLifecycleTa } from './modules/parentLifecycle';
 import { studentFlowsTa } from './modules/studentFlows';
 import { componentsTa } from './modules/components';
 import { notificationsTa } from './modules/notifications';
+import { privacyTa } from './modules/privacy';
 
 
 export const ta: Dictionary = {
@@ -162,4 +163,5 @@ export const ta: Dictionary = {
   ...studentFlowsTa,
   ...componentsTa,
   ...notificationsTa,
+  ...privacyTa,
 };

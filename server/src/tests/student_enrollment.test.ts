@@ -290,6 +290,7 @@ async function runTests() {
     console.log('Test 6: AUTH-REG-001 fix — New child registration does not auto-activate enrollment...');
     const newRegEmail = `par_reg_${Date.now()}@test.my`;
     const t6RegRes = await call('POST', '/auth/register-parent', {
+      acceptedPrivacyNotice: true, acceptedTerms: true, guardianConsent: true,
       organizationId: orgAId,
       fullName: 'New Parent User',
       email: newRegEmail,

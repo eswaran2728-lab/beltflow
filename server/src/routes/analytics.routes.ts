@@ -15,6 +15,7 @@ export interface AcademyMetricsResult {
     calculatedAt: string;
     scope: 'global' | 'organization' | 'class';
     period: string;
+    periodStart?: string | null;
     organizationId?: string;
     organizationName?: string;
     classId?: string;
@@ -197,6 +198,33 @@ async function resolveAuthorizedScope(req: Request): Promise<{
  * Core Metric Calculation Engine (getAcademyMetrics)
  * Implements server-authoritative calculations strictly meeting all 5 acceptance criteria.
  */
+/**
+ * Start of a reporting period, in Malaysia time (UTC+8, no daylight saving).
+ * Totals that happen over time (trials, transfers, money collected,
+ * discounts) count only inside the period; figures that describe today
+ * (active students, capacity, outstanding fees, pauses) are always current.
+ */
+export const REPORT_PERIODS = ['current_month', 'last_30_days', 'last_90_days', 'year_to_date', 'all_time'] as const;
+export function periodStart(period: string, now: Date = new Date()): Date | null {
+  const MYT = 8 * 3600_000;
+  const local = new Date(now.getTime() + MYT);
+  switch (period) {
+    case 'last_30_days': return new Date(now.getTime() - 30 * 86400_000);
+    case 'last_90_days': return new Date(now.getTime() - 90 * 86400_000);
+    case 'year_to_date': return new Date(Date.UTC(local.getUTCFullYear(), 0, 1) - MYT);
+    case 'all_time': return null;
+    case 'current_month':
+    default: return new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), 1) - MYT);
+  }
+}
+
+/** Adds "AND <column> >= $n" for the period, if it has a start. */
+function withPeriod(sql: string, params: any[], column: string, since: Date | null): string {
+  if (!since) return sql;
+  params.push(since.toISOString());
+  return `${sql} AND ${column} >= $${params.length}`;
+}
+
 export async function calculateAcademyMetrics(
   targetScope: 'global' | 'organization' | 'class',
   targetOrgId?: string,
@@ -204,6 +232,8 @@ export async function calculateAcademyMetrics(
   assignedClassIds?: string[],
   period: string = 'current_month'
 ): Promise<AcademyMetricsResult> {
+  if (!(REPORT_PERIODS as readonly string[]).includes(period)) period = 'current_month';
+  const since = periodStart(period);
   const now = new Date();
   let orgName: string | undefined;
   let className: string | undefined;
@@ -351,6 +381,7 @@ export async function calculateAcademyMetrics(
     trialSql += ' AND tb.organization_id = $1';
     trialParams = [targetOrgId];
   }
+  trialSql = withPeriod(trialSql, trialParams, 'tb.scheduled_date', since);
   const trialRes = await dbClient.query(trialSql, trialParams);
   const totalTrialsBooked = trialRes.rows[0]?.total_trials || 0;
   const trialsAttended = trialRes.rows[0]?.trials_attended || 0;
@@ -387,6 +418,7 @@ export async function calculateAcademyMetrics(
     transferSql += ' AND ctr.organization_id = $1';
     transferParams = [targetOrgId];
   }
+  transferSql = withPeriod(transferSql, transferParams, 'COALESCE(ctr.approved_at, ctr.updated_at)', since);
   const transferRes = await dbClient.query(transferSql, transferParams);
   const transfersCount = transferRes.rows[0]?.count || 0;
 
@@ -414,6 +446,7 @@ export async function calculateAcademyMetrics(
     paymentSql += ' AND p.organization_id = $1';
     paymentParams = [targetOrgId];
   }
+  paymentSql = withPeriod(paymentSql, paymentParams, 'COALESCE(p.approved_at, p.created_at)', since);
   const paymentRes = await dbClient.query(paymentSql, paymentParams);
   const totalCollected = parseFloat(paymentRes.rows[0]?.total_collected) || 0.00;
 
@@ -448,6 +481,7 @@ export async function calculateAcademyMetrics(
     discSql += ' AND inv.organization_id = $1';
     discParams = [targetOrgId];
   }
+  discSql = withPeriod(discSql, discParams, 'inv.created_at', since);
   const discRes = await dbClient.query(discSql, discParams);
   const siblingDiscountSavings = parseFloat(discRes.rows[0]?.total_discount) || 0.00;
 
@@ -457,6 +491,7 @@ export async function calculateAcademyMetrics(
       calculatedAt: now.toISOString(),
       scope: targetScope,
       period,
+      periodStart: since ? since.toISOString() : null,
       organizationId: targetOrgId,
       organizationName: orgName,
       classId: targetClassId,

@@ -130,7 +130,9 @@ export class LocalMediaStorageProvider implements IMediaStorageProvider {
   private baseDir: string;
 
   constructor(baseDir?: string) {
-    this.baseDir = baseDir || path.resolve(process.cwd(), '.storage', 'media');
+    // MEDIA_STORAGE_DIR points at a persistent disk in production, so uploaded
+    // videos survive a redeploy (a container's own files do not).
+    this.baseDir = baseDir || process.env.MEDIA_STORAGE_DIR || path.resolve(process.cwd(), '.storage', 'media');
     if (!fs.existsSync(this.baseDir)) {
       fs.mkdirSync(this.baseDir, { recursive: true });
     }

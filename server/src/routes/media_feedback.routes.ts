@@ -1,9 +1,13 @@
 import { Router, Request, Response } from 'express';
+import { safeErrorMessage } from '../security/errors';
 import { dbClient } from '../db/client';
 import { authenticateJWT } from '../middleware/auth';
 import { UserRole } from '../security/rbac';
 import { mediaStorageAdapter } from '../services/mediaStorageAdapter';
 import crypto from 'crypto';
+
+// Content types accepted by the upload endpoint (the bytes are checked again at finalize).
+const UPLOAD_MIME_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'];
 
 const router = Router();
 
@@ -262,7 +266,7 @@ router.post(
       });
     } catch (err: any) {
       console.error('[requestUpload error]:', err);
-      return res.status(500).json({ error: err.message || 'Internal server error requesting upload.' });
+      return res.status(500).json({ error: safeErrorMessage(err, 'Internal server error requesting upload.') });
     }
   }
 );
@@ -345,7 +349,7 @@ router.post(
       });
     } catch (err: any) {
       console.error('[finalizeUpload error]:', err);
-      return res.status(500).json({ error: err.message || 'Internal server error finalizing upload.' });
+      return res.status(500).json({ error: safeErrorMessage(err, 'Internal server error finalizing upload.') });
     }
   }
 );
@@ -442,7 +446,7 @@ router.post(
       });
     } catch (err: any) {
       console.error('[addVideoFeedback error]:', err);
-      return res.status(500).json({ error: err.message || 'Internal server error adding video feedback.' });
+      return res.status(500).json({ error: safeErrorMessage(err, 'Internal server error adding video feedback.') });
     }
   }
 );
@@ -533,7 +537,7 @@ router.post(
       });
     } catch (err: any) {
       console.error('[revokeMediaConsent error]:', err);
-      return res.status(500).json({ error: err.message || 'Internal server error revoking media consent.' });
+      return res.status(500).json({ error: safeErrorMessage(err, 'Internal server error revoking media consent.') });
     }
   }
 );
@@ -653,7 +657,7 @@ router.get(
       });
     } catch (err: any) {
       console.error('[playback error]:', err);
-      return res.status(500).json({ error: err.message || 'Internal server error retrieving playback.' });
+      return res.status(500).json({ error: safeErrorMessage(err, 'Internal server error retrieving playback.') });
     }
   }
 );
@@ -723,7 +727,7 @@ router.get(
       return res.status(200).json(result.rows);
     } catch (err: any) {
       console.error('[listVideos error]:', err);
-      return res.status(500).json({ error: err.message || 'Internal server error listing videos.' });
+      return res.status(500).json({ error: safeErrorMessage(err, 'Internal server error listing videos.') });
     }
   }
 );
@@ -801,7 +805,7 @@ router.delete(
       });
     } catch (err: any) {
       console.error('[deleteVideo error]:', err);
-      return res.status(500).json({ error: err.message || 'Internal server error deleting video.' });
+      return res.status(500).json({ error: safeErrorMessage(err, 'Internal server error deleting video.') });
     }
   }
 );
@@ -836,17 +840,38 @@ router.put('/storage/upload/:key(*)', async (req: Request, res: Response) => {
       return res.status(409).json({ error: 'This video has already been uploaded.' });
     }
 
-    // Read body buffer
-    const chunks: Buffer[] = [];
-    req.on('data', (chunk) => chunks.push(chunk));
-    await new Promise((resolve) => req.on('end', resolve));
-    const buffer = Buffer.concat(chunks);
-
-    if (buffer.length > MAX_VIDEO_FILE_SIZE_BYTES) {
-      return res.status(400).json({ error: 'oversized_invalid_upload_rejected: Upload exceeds 50MB limit.' });
+    // Type and size are checked before any bytes are kept in memory.
+    const mimeType = String(req.headers['content-type'] || 'video/mp4').split(';')[0].trim().toLowerCase();
+    if (!UPLOAD_MIME_TYPES.includes(mimeType)) {
+      return res.status(415).json({ error: 'oversized_invalid_upload_rejected: Only MP4, QuickTime or WebM video can be uploaded.' });
+    }
+    const declared = Number(req.headers['content-length']);
+    if (Number.isFinite(declared) && declared > MAX_VIDEO_FILE_SIZE_BYTES) {
+      return res.status(413).json({ error: 'oversized_invalid_upload_rejected: Upload exceeds 50MB limit.' });
     }
 
-    const mimeType = (req.headers['content-type'] as string) || 'video/mp4';
+    // Read the body, stopping as soon as it passes the limit (the declared
+    // length can be missing or wrong).
+    const chunks: Buffer[] = [];
+    let received = 0;
+    const tooLarge = await new Promise<boolean>((resolve, reject) => {
+      req.on('data', (chunk: Buffer) => {
+        received += chunk.length;
+        if (received > MAX_VIDEO_FILE_SIZE_BYTES) {
+          req.removeAllListeners('data');
+          req.resume(); // drain without keeping the bytes
+          resolve(true);
+          return;
+        }
+        chunks.push(chunk);
+      });
+      req.on('end', () => resolve(false));
+      req.on('error', reject);
+    });
+    if (tooLarge) {
+      return res.status(413).json({ error: 'oversized_invalid_upload_rejected: Upload exceeds 50MB limit.' });
+    }
+    const buffer = Buffer.concat(chunks);
     const saved = await mediaStorageAdapter.saveObject(key, buffer, mimeType);
 
     return res.status(200).json({
@@ -856,7 +881,7 @@ router.put('/storage/upload/:key(*)', async (req: Request, res: Response) => {
       checksumSha256: saved.checksumSha256,
     });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 
@@ -900,7 +925,7 @@ router.get('/storage/playback/:key(*)', async (req: Request, res: Response) => {
     res.setHeader('Content-Length', obj.buffer.length);
     return res.send(obj.buffer);
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: safeErrorMessage(err, 'An internal error occurred.') });
   }
 });
 

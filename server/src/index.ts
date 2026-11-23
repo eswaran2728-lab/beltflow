@@ -1,3 +1,4 @@
+import './preflight';
 import app from './app';
 import { dbClient } from './db/client';
 import { startBackgroundWorkers } from './workers/scheduler';

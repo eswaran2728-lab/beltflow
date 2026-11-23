@@ -25,11 +25,16 @@ export async function authenticateJWT(req: Request, res: Response, next: NextFun
   try {
     const claim = verifyAuthToken(token);
     const result = await dbClient.query(
-      `SELECT u.id, u.email, u.role, u.organization_id, u.status, o.status AS organization_status
+      `SELECT u.id, u.email, u.role, u.organization_id, u.status, u.password_changed_at, o.status AS organization_status
        FROM users u LEFT JOIN organizations o ON o.id = u.organization_id WHERE u.id = $1`,
       [claim.id]
     );
     const account = result.rows[0];
+    // A password change or reset ends every session issued before it.
+    const issuedAt = Number((claim as any).iat || 0);
+    if (account?.password_changed_at && issuedAt < Math.floor(new Date(account.password_changed_at).getTime() / 1000)) {
+      return res.status(401).json({ error: 'Your session has ended. Please sign in again.', code: 'SESSION_ENDED' });
+    }
     if (!account || account.status !== 'ACTIVE' ||
         (account.organization_id && account.organization_status !== 'ACTIVE')) {
       return res.status(403).json({ error: 'Account or organization is not active.' });

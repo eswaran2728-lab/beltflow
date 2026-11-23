@@ -12,12 +12,13 @@ describe('BeltFlow Mobile — Phase 1 Task 1.1 Configuration', () => {
     expect(Colors.danger).toBe('#EF4444');
   });
 
-  test('app.json targets Android package com.beltflow.app', () => {
-    expect(appConfig.expo.android.package).toBe('com.beltflow.app');
+  // The Google Play listing's app ID. It can never change once the app is published.
+  test('app.json targets Android package com.eswaran.beltflow', () => {
+    expect(appConfig.expo.android.package).toBe('com.eswaran.beltflow');
   });
 
-  test('app.json targets iOS bundle identifier com.beltflow.app', () => {
-    expect(appConfig.expo.ios.bundleIdentifier).toBe('com.beltflow.app');
+  test('app.json targets iOS bundle identifier com.eswaran.beltflow', () => {
+    expect(appConfig.expo.ios.bundleIdentifier).toBe('com.eswaran.beltflow');
   });
 
   test('app.json defines BeltFlow name and portrait orientation', () => {

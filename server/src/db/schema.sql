@@ -1687,3 +1687,77 @@ CREATE TABLE IF NOT EXISTS organization_module_settings (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (organization_id, module_key)
 );
+
+
+-- ============================================================================
+-- Security hardening (2026-11-15)
+-- ============================================================================
+-- Sign-in protection and session invalidation.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_login_count INT NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ;
+
+-- Suspicious-activity log. Holds no passwords, tokens or child data: the
+-- client address is stored only as a one-way hash.
+CREATE TABLE IF NOT EXISTS security_events (
+    id TEXT PRIMARY KEY,
+    type VARCHAR(50) NOT NULL,
+    severity VARCHAR(10) NOT NULL DEFAULT 'INFO', -- 'INFO', 'WARN', 'ALERT'
+    client_hash VARCHAR(64),
+    user_id TEXT,
+    method VARCHAR(10),
+    path VARCHAR(255),
+    status INT,
+    detail VARCHAR(500),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_security_events_created ON security_events(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_security_events_type ON security_events(type, created_at DESC);
+
+-- One-time password reset codes. Only a hash of the code is stored.
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash VARCHAR(64) NOT NULL,
+    issued_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    used_at TIMESTAMPTZ,
+    failed_attempts INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_password_reset_user ON password_reset_tokens(user_id, created_at DESC);
+
+
+-- ============================================================================
+-- Privacy compliance (PDPA), 2026-11-15
+-- ============================================================================
+-- Who agreed to what, to which document version, and when. Append-only.
+CREATE TABLE IF NOT EXISTS user_consents (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    consent_type VARCHAR(30) NOT NULL,
+    document_version VARCHAR(20) NOT NULL,
+    client_hash VARCHAR(64),
+    accepted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_user_consents_user ON user_consents(user_id);
+
+-- Requests from people about their own data: deletion, correction, or
+-- withdrawal of consent. Handled by the Persatuan's Admin (a Persatuan
+-- Admin's own request by the Super Admin).
+CREATE TABLE IF NOT EXISTS data_requests (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE,
+    student_id TEXT REFERENCES students(id) ON DELETE SET NULL,
+    type VARCHAR(30) NOT NULL,
+    details VARCHAR(1000),
+    status VARCHAR(20) NOT NULL DEFAULT 'OPEN',
+    due_at TIMESTAMPTZ NOT NULL,
+    resolved_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    resolved_at TIMESTAMPTZ,
+    resolution_note VARCHAR(1000),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_data_requests_org ON data_requests(organization_id, status);
+CREATE INDEX IF NOT EXISTS idx_data_requests_user ON data_requests(user_id);

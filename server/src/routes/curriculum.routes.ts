@@ -404,7 +404,7 @@ router.post('/', authenticateJWT, requirePermission(Permission.PERSATUAN_MANAGE_
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email)
        VALUES ($1, $2, $3, $4, $5)`,
-      [`audit_${Date.now()}`, 'Curriculum Draft Created', `Created draft curriculum v${nextVersion} (${curriculum.system_name})`, req.user!.role, req.user!.email]
+      [`audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, 'Curriculum Draft Created', `Created draft curriculum v${nextVersion} (${curriculum.system_name})`, req.user!.role, req.user!.email]
     );
 
     return res.status(201).json({
@@ -615,7 +615,7 @@ router.post('/:id/publish', authenticateJWT, requirePermission(Permission.PERSAT
       `INSERT INTO audit_logs (id, action, details, user_role, user_email)
        VALUES ($1, $2, $3, $4, $5)`,
       [
-        `audit_${Date.now()}`,
+        `audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
         'Curriculum Published',
         `Published curriculum v${publishedCurriculum.version} (${publishedCurriculum.system_name}) with ${ranksRes.rowCount} belt ranks. Previous version archived.`,
         req.user!.role,
@@ -659,7 +659,7 @@ router.delete('/:id', authenticateJWT, requirePermission(Permission.PERSATUAN_MA
     await dbClient.query(
       `INSERT INTO audit_logs (id, action, details, user_role, user_email)
        VALUES ($1, $2, $3, $4, $5)`,
-      [`audit_${Date.now()}`, 'Curriculum Draft Deleted', `Deleted draft curriculum v${curriculum.version}`, req.user!.role, req.user!.email]
+      [`audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, 'Curriculum Draft Deleted', `Deleted draft curriculum v${curriculum.version}`, req.user!.role, req.user!.email]
     );
 
     return res.json({

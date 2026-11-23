@@ -38,8 +38,15 @@ import commerceRoutes from './routes/commerce.routes';
 import assistantRoutes from './routes/assistant.routes';
 import { moduleGate } from './release/modules';
 import releaseRoutes from './routes/release.routes';
+import securityRoutes from './routes/security.routes';
+import privacyRoutes from './routes/privacy.routes';
+import { httpsOnly } from './middleware/httpsOnly';
+import { securityAudit } from './middleware/securityAudit';
+import { rateLimit } from './middleware/rateLimit';
 
 const app = express();
+// Do not advertise the framework.
+app.disable('x-powered-by');
 // Client IP for rate limits: only trust X-Forwarded-For from the given number
 // of reverse-proxy hops (TRUST_PROXY_HOPS). Unset = use the socket address.
 {
@@ -68,8 +75,21 @@ if (!allowedOrigins && process.env.NODE_ENV === 'production') {
   );
 }
 
+// HTTPS only in production, before anything reads the request.
+app.use(httpsOnly);
+// Record refused requests (401/403/429) in the security event log.
+app.use(securityAudit);
+
 app.use(cors(allowedOrigins ? { origin: allowedOrigins } : undefined));
-app.use(express.json());
+// Whole-API flood protection, per client address. Sensitive endpoints
+// (sign-in, registration, password reset) have their own, stricter limits.
+app.use('/api/', rateLimit({
+  windowMs: 60_000,
+  max: Math.max(60, Number(process.env.API_RATE_LIMIT_PER_MINUTE) || 600),
+  perPath: false,
+  name: 'api',
+}));
+app.use(express.json({ limit: '200kb' }));
 
 // Security headers.
 //
@@ -85,6 +105,13 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+  if (req.path.startsWith('/api/')) {
+    // API responses are data, never a page: nothing may run or be framed,
+    // and private data must not be kept by a browser or shared cache.
+    res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
+    res.setHeader('Cache-Control', 'no-store');
+  }
   if (process.env.NODE_ENV === 'production') {
     // Only meaningful when actually served over HTTPS (production
     // deployments sit behind a TLS-terminating reverse proxy/CDN).
@@ -93,24 +120,33 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// Serve Static Web Client Assets
+// Serve the web client (PWA).
 //
-// webRoot is the repository root (this backend also hosts the PWA), which
-// also contains files that must never be reachable over HTTP even when
-// gitignored - a signing keystore, build artifacts, local SDK config, etc.
-// express.static already denies dotfiles by default; this blocks the
-// remaining sensitive extensions/paths before they reach the static handler.
+// The web root is the repository root, which also holds the server and
+// mobile source, documentation, CI files, build scripts and screenshots.
+// None of that is served: only the files the web client itself needs are,
+// by an explicit allow-list. Anything else is a 404.
 const webRoot = path.resolve(__dirname, '../../');
-const BLOCKED_STATIC_PATTERN = /\.(keystore|jks|p12|pem|key|base64|apk|aab|properties|env|kts|gradle)$|^\/(package(-lock)?\.json)$|(^|\/)(node_modules|\.git|\.gradle|\.kotlin|server|scratch)(\/|$)/i;
+const WEB_FILES = new Set(['/index.html', '/manifest.json', '/sw.js', '/support.js', '/.well-known/assetlinks.json']);
+const WEB_DIRS = ['/assets/', '/legal/'];
 
 app.use((req: Request, res: Response, next: NextFunction) => {
-  if (BLOCKED_STATIC_PATTERN.test(req.path)) {
+  if (req.path.startsWith('/api/')) return next();
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  let requested: string;
+  try {
+    requested = decodeURIComponent(req.path);
+  } catch {
     return res.status(404).end();
   }
-  next();
+  if (requested === '/') requested = '/index.html';
+  const allowed = !requested.includes('..') && !requested.includes('\\') &&
+    (WEB_FILES.has(requested) || WEB_DIRS.some(dir => requested.startsWith(dir)));
+  if (!allowed) return res.status(404).end();
+  return res.sendFile(requested.slice(1), { root: webRoot, dotfiles: 'allow' }, err => {
+    if (err && !res.headersSent) res.status(404).end();
+  });
 });
-
-app.use(express.static(webRoot));
 
 // Liveness: process is up and serving HTTP. Deliberately does not touch
 // the database, so an orchestrator can use it to decide whether to
@@ -142,6 +178,8 @@ app.use('/api/v1/release', releaseRoutes);
 // Optional R2-R4 modules sit behind moduleGate() (see release/modules.ts);
 // everything else is core R1 and always on.
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/security', securityRoutes);
+app.use('/api/v1/privacy', privacyRoutes);
 app.use('/api/v1/organizations', organizationRoutes);
 app.use('/api/v1/classes', classRoutes);
 app.use('/api/v1/students', studentRoutes);
@@ -180,6 +218,14 @@ app.use('/api/v1/assistant', moduleGate('assistant'), assistantRoutes);
 
 // Global Error Handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  // Bad requests are the caller's fault, not a server error.
+  const type = (err as any)?.type;
+  if (type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Request is too large.' });
+  }
+  if (type === 'entity.parse.failed' || type === 'encoding.unsupported' || type === 'charset.unsupported') {
+    return res.status(400).json({ error: 'Request body is not valid JSON.' });
+  }
   console.error('[API Error]:', err);
   res.status(500).json({ error: 'Internal server error', message: safeErrorMessage(err, 'An internal error occurred.') });
 });
